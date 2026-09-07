@@ -18,3 +18,4 @@ docs/spikes/**/evidence/*.wav
 docs/spikes/**/evidence/*.bin
 *.keystore
 *.jks
+tools/spikes/p0-10a-dsp/out/*.wav

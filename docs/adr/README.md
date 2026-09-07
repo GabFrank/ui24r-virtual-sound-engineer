@@ -22,4 +22,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [016](ADR-016-documentacion-minima.md) | Documentación mínima para arrancar | Aceptada |
 | [017](ADR-017-wizards-obligatorios.md) | Asistentes de configuración obligatorios | Aceptada |
 | [018](ADR-018-spike-usb-b.md) | Spike de conexión USB directa a la consola | Aceptada |
-| 019 | Arquitectura con o sin interfaz externa | Reservada, se decide en DEC-19 tras G-B |
+| [019](ADR-019-arquitectura-interfaz-audio.md) | Arquitectura con o sin interfaz de audio externa | Reservada, se decide en DEC-19 tras G-B |

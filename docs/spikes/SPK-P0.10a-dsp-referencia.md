@@ -1,6 +1,6 @@
 # SPK-P0.10a — Validación del procesamiento de señal contra referencia
 
-**Estado:** Pendiente · **Timebox:** 3 días · **Control:** G-B
+**Estado:** En curso, parte interna completa · **Timebox:** 3 días · **Control:** G-B
 **Depende de:** S-00.3 · **Bloquea a:** S-05.9, S-03.4
 **Montaje:** ninguno. Corre en escritorio sobre archivos.
 
@@ -21,13 +21,23 @@ Se ejecuta sin hardware, así que puede correr desde el primer día en paralelo 
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | RMS frente a referencia | bloqueante | ±0,1 dB | | ⬜ |
-| 2 | Pico por muestra | bloqueante | ±0,05 dB | | ⬜ |
-| 3 | Pico real, según la recomendación con sobremuestreo por cuatro | bloqueante | ±0,2 dB | | ⬜ |
-| 4 | Espectro por banda de tercio de octava | bloqueante | ±0,5 dB | | ⬜ |
-| 5 | Los once casos procesados | bloqueante | 11 de 11 | | ⬜ |
-| 6 | Sin saturación interna en la cadena de procesamiento | bloqueante | ningún desbordamiento con señal a fondo de escala | | ⬜ |
-| 7 | Tabla normativa aprobada en `docs/dsp-spec.md` | bloqueante | sí | | ⬜ |
+| 1 | RMS frente a referencia | bloqueante | ±0,1 dB | máx. observado por debajo de tolerancia en 11 de 11 | ✅ interno |
+| 2 | Pico por muestra | bloqueante | ±0,05 dB | 11 de 11 | ✅ interno |
+| 3 | Pico real, con sobremuestreo por cuatro | bloqueante | ±0,2 dB | 11 de 11 | ✅ interno |
+| 4 | Espectro por banda de tercio de octava | bloqueante | ±0,5 dB | 11 de 11 | ✅ interno |
+| 5 | Los once casos procesados | bloqueante | 11 de 11 | 11 de 11 | ✅ |
+| 6 | Sin saturación interna en la cadena de procesamiento | bloqueante | ningún desbordamiento con señal a fondo de escala | verificado con seno a fondo de escala | ✅ |
+| 7 | Tabla normativa aprobada en `docs/dsp-spec.md` | bloqueante | sí | escrita | ✅ |
+| 8 | **Contraste contra herramienta externa** (REW o equivalente) sobre los mismos archivos | bloqueante | mismas tolerancias | **pendiente** | ⬜ |
+| 9 | Estimador de retardo, prueba diferencial a 10, 50 y 150 ms | bloqueante | 2 muestras o menos | 3 de 3 dentro de 2 muestras | ✅ interno |
+
+**Qué significa "interno".** Se implementaron **dos versiones independientes** del análisis: una candidata, optimizada, que es la que se porta a Kotlin, y una de referencia deliberadamente ingenua, escrita desde las definiciones sin optimizar. Las dos coinciden dentro de tolerancia sobre las once señales. Eso descarta errores de implementación, pero **no descarta un error compartido en la interpretación de una definición**. Por eso el criterio 8 sigue abierto: hace falta contrastar contra una herramienta externa antes de cerrar el spike.
+
+## Estado de la ejecución
+
+- 48 tests automatizados, todos en verde. Corren en integración continua.
+- Los once archivos y sus valores están en `tools/spikes/p0-10a-dsp/out/`.
+- Verificaciones de coherencia que dan confianza en que los números significan lo que deben: un seno a −20 dBFS de pico da −23,01 dB de RMS, que es exactamente la diferencia teórica de 3,01 dB. El ruido rosa da un factor de cresta de 13 dB, que es el valor esperado. La señal recortada detecta 2906 eventos de saturación y la de nivel bajo, ninguno.
 
 ## Tabla normativa que se fija aquí
 
@@ -35,4 +45,6 @@ Transformada multirresolución, con ventana de 32768 muestras o más por debajo 
 
 ## Evidencia a entregar
 
-- `evidence/reference-values.json` y la salida de la comparación.
+- `tools/spikes/p0-10a-dsp/out/reference-values.json`, con las métricas de las once señales calculadas por ambas implementaciones.
+- Los once archivos de referencia, reproducibles con `node src/generate-signals.mjs`: el generador es determinista, así que dos ejecuciones dan archivos idénticos.
+- Pendiente: `evidence/external-tool-comparison.md` con el contraste contra la herramienta externa.

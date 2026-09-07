@@ -1,0 +1,10 @@
+{
+  "name": "@vse/spike-p0-10a-dsp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "node src/generate-signals.mjs",
+    "report": "node src/report.mjs"
+  }
+}
