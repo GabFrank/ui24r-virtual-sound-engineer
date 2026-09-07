@@ -1,0 +1,26 @@
+{
+  "name": "ui24r-virtual-sound-engineer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Ingeniero de sonido virtual asistido por medición para Soundcraft Ui24R",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
+    "validate:docs": "node tools/docs/validate-ids.mjs",
+    "deps:graph": "node tools/docs/build-graph.mjs"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "typescript": "~5.6.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
