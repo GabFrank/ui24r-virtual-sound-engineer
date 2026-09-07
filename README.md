@@ -8,6 +8,13 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 **Filosofía:** offline-first, measurement-first, safe-by-design.
 **Estado:** Fase 0 en curso. Ninguna función de producto está implementada todavía.
 
+| | |
+|---|---|
+| Tests en verde | 110 |
+| Spikes cerrados | 0 de 22 |
+| Controles de paso aprobados | 0 de 5 |
+| Rutas crudas escribibles | 0, y así seguirá hasta que un spike verifique cada conversión |
+
 ---
 
 ## Principios que gobiernan este repositorio
