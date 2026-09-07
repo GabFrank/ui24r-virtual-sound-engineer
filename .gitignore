@@ -19,3 +19,5 @@ docs/spikes/**/evidence/*.bin
 *.keystore
 *.jks
 tools/spikes/p0-10a-dsp/out/*.wav
+apps/mobile/dist/
+apps/mobile/.angular/
