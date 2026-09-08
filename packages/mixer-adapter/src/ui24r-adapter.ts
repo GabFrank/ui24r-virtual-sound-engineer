@@ -2,7 +2,7 @@ import type {
   BulkExternalChange, ConnectionState, DeviceInfo, MixerDomainAPI,
   ReadResult, WriteResult,
 } from './api.ts';
-import { ConfirmedStateStore } from './confirmed-store.ts';
+import { ConfirmedStateStore, type EntradaEstado } from './confirmed-store.ts';
 import { codificarSetd, decodificar, decodificarVu } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
 import type { Transport } from './transport.ts';
@@ -142,6 +142,17 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
   async infoDispositivo(): Promise<DeviceInfo> {
     return this.info;
+  }
+
+  /**
+   * El estado confirmado entero, tal como está.
+   *
+   * Existe para el diagnóstico: la huella que compara dos clientes conectados a
+   * la vez (criterio 5 de SPK-P0.1) tiene que cubrir todo lo leído y no una
+   * muestra elegida a ojo. Es de solo lectura y no expone el almacén.
+   */
+  volcadoDelEstado(): ReadonlyMap<string, EntradaEstado> {
+    return this.store.volcar();
   }
 
   /**

@@ -96,6 +96,17 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
           </div>
         </ui-card>
 
+        <ui-card titulo="Prueba de conexión"
+                 subtitulo="Mide, no escribe">
+          <p class="nota">
+            Cronometra la cadencia de los medidores y el tiempo que tarda en
+            volver el estado tras un corte de red, desde esta tablet. No escribe
+            nada en la consola.
+          </p>
+          <ui-button variante="secundario" icono="refrescar"
+                     (pulsado)="irADiagnostico()">Abrir la prueba</ui-button>
+        </ui-card>
+
         <ui-card titulo="Actualización de la aplicación"
                  subtitulo="No se publica en ninguna tienda">
           <p class="nota">
@@ -288,6 +299,7 @@ export class AjustesComponent {
   }
 
   irAActualizacion(): void { void this.router.navigate(['/ajustes/actualizacion']); }
+  irADiagnostico(): void { void this.router.navigate(['/ajustes/diagnostico']); }
 
   alternarGraves(): void {
     this.soloGraves.update((v) => !v);

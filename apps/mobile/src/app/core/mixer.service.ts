@@ -39,6 +39,45 @@ export class MixerService {
   readonly conectando = signal(false);
   readonly ultimoError = signal<string | null>(null);
 
+  /** Última dirección con la que se conectó, para el informe de diagnóstico. */
+  readonly direccion = signal<string | null>(null);
+
+  /*
+   * Observadores del diagnóstico.
+   *
+   * Viven en el servicio y no en el adaptador porque el adaptador se crea de
+   * nuevo en cada conexión: si se suscribieran a él, una reconexión --que es
+   * justo lo que el diagnóstico mide-- los dejaría sin oír nada.
+   */
+  private readonly oyentesTelemetria: (() => void)[] = [];
+  private readonly oyentesVolcado: (() => void)[] = [];
+  private readonly oyentesConexion: ((estado: ConnectionState) => void)[] = [];
+
+  observarTelemetria(cb: () => void): () => void {
+    this.oyentesTelemetria.push(cb);
+    return () => quitar(this.oyentesTelemetria, cb);
+  }
+
+  observarVolcado(cb: () => void): () => void {
+    this.oyentesVolcado.push(cb);
+    return () => quitar(this.oyentesVolcado, cb);
+  }
+
+  observarConexion(cb: (estado: ConnectionState) => void): () => void {
+    this.oyentesConexion.push(cb);
+    return () => quitar(this.oyentesConexion, cb);
+  }
+
+  /** El estado confirmado entero. Vacío si no hay conexión. */
+  volcadoDelEstado(): ReadonlyMap<string, { readonly valor: number }> {
+    return this.adapter?.volcadoDelEstado() ?? new Map();
+  }
+
+  async infoDispositivo(): Promise<{ modelo: string; firmware: string } | null> {
+    if (this.adapter === null) return null;
+    return this.adapter.infoDispositivo();
+  }
+
   async conectar(url: string): Promise<void> {
     this.conectando.set(true);
     this.ultimoError.set(null);
@@ -49,15 +88,18 @@ export class MixerService {
       adapter.alCambiarConexion((e: ConnectionState) => {
         this.sincronizarConexion(e);
         this.log.info('mixer', 'conexion_cambio', { estado: e });
+        for (const cb of this.oyentesConexion) cb(e);
       });
 
       adapter.alVolcadoCompleto(() => {
         this.conexion.volcadoCompletoRecibido();
         this.log.info('mixer', 'volcado_completo', {});
+        for (const cb of this.oyentesVolcado) cb();
       });
 
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
+        for (const cb of this.oyentesTelemetria) cb();
       });
 
       adapter.alCambiarExterno((parametro, valor) => {
@@ -75,6 +117,7 @@ export class MixerService {
       });
 
       await adapter.conectar(url);
+      this.direccion.set(url);
       this.canales.set(adapter.canales());
     } catch (e) {
       this.ultimoError.set(String(e));
@@ -166,4 +209,9 @@ export class MixerService {
     // de verdad la justifica.
     this.conexion.fijarEstado(e);
   }
+}
+
+function quitar<T>(lista: T[], elemento: T): void {
+  const i = lista.indexOf(elemento);
+  if (i >= 0) lista.splice(i, 1);
 }

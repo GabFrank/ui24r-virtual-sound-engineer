@@ -54,6 +54,15 @@ const REGLAS = [
       'sin Angular, sin Android y sin esperar a que se llene una tabla.',
   },
   {
+    paquete: 'packages/diagnostico',
+    prohibido: ['@vse/mixer-adapter', '@vse/safety', '@angular/core', '@capacitor/core'],
+    motivo:
+      'El diagnóstico calcula estadística sobre marcas de tiempo y las formatea. No se ' +
+      'conecta a nada: quien mide es la aplicación, que es la única que sabe cuándo llegó ' +
+      'cada trama. Así los números se pueden probar con marcas inventadas, sin consola y ' +
+      'sin esperar diez minutos.',
+  },
+  {
     paquete: 'packages/store',
     prohibido: ['@vse/mixer-adapter', '@vse/safety', '@angular/core', '@capacitor/core'],
     motivo:

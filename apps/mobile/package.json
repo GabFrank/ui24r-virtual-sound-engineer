@@ -22,14 +22,15 @@
     "@capacitor-community/sqlite": "^6.0.2",
     "@capacitor/android": "^6.2.2",
     "@capacitor/core": "^6.2.2",
+    "@vse/assistants": "*",
+    "@vse/diagnostico": "*",
+    "@vse/logging": "*",
+    "@vse/safety": "*",
+    "@vse/store": "*",
+    "@vse/updater": "*",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.14.10",
-    "@vse/assistants": "*",
-    "@vse/safety": "*",
-    "@vse/updater": "*",
-    "@vse/store": "*",
-    "@vse/logging": "*"
+    "zone.js": "~0.14.10"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.21",

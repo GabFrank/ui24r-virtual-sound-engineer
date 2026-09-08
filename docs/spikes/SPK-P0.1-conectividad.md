@@ -28,6 +28,16 @@ La respuesta al eco determina cómo se confirma cada escritura, y la cadencia de
 | 4 | Cadencia de medidores: intervalo medio, mediana, percentil 95 | bloqueante | los tres valores registrados; umbral de inestabilidad = 3 veces el intervalo medio | | ⬜ |
 | 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | | ⬜ |
 
+## Quién mide
+
+**La propia aplicación**, en Ajustes → Prueba de conexión. Cronometra la cadencia de los medidores y cada vuelta tras un corte, y exporta el informe en Markdown o JSON.
+
+Se mide desde la tablet y no desde una laptop a propósito: cuánto tarda en reconectar y con qué cadencia llegan las tramas son propiedades del aparato en esa red —su radio, su sistema, su gestión de energía—, no del protocolo. El número de una laptop no dice nada del que se va a usar en el show.
+
+La prueba **no escribe nada**. Eso deja el criterio 3, el eco de las escrituras propias, sin contestar: exige escribir, y en esta fase la aplicación no escribe. Lo dice el propio informe en la sección de lo que no midió, para que nadie lo lea como comprobado.
+
+El criterio 5 se contesta a medias: la aplicación da la huella de su estado confirmado, y comparar tres clientes es generar las otras dos huellas y ver si coinciden.
+
 ## Evidencia a entregar
 
 - `evidence/reconnect-log.jsonl` con los sesenta ciclos y sus tiempos.
