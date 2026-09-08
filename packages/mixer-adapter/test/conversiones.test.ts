@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FADER_DB_MAXIMO, FADER_DB_MINIMO, GANANCIA_DB_MAXIMA, GANANCIA_DB_MINIMA,
+  FADER_DB_MAXIMO, FADER_DB_MINIMO, FADER_POSICION_0_DB, GANANCIA_DB_MAXIMA,
+  GANANCIA_DB_MINIMA, GANANCIA_ESCALONES, ORIGEN_DE_LAS_CURVAS,
   VERIFICADO_CONTRA_CONSOLA, dbAFader, dbAGanancia, faderADb, gananciaADb,
+  gananciaAlcanzable, rawParaGananciaMasCercana,
 } from '../src/conversiones.ts';
 
 test('solo el fader al cero es silencio', () => {
@@ -83,7 +85,80 @@ test('fuera del tramo la vuelta elige el extremo, y esta bien que asi sea', () =
 test('la ganancia recorre el rango confirmado en la matriz', () => {
   assert.equal(gananciaADb(0), GANANCIA_DB_MINIMA);
   assert.equal(gananciaADb(1), GANANCIA_DB_MAXIMA);
-  assert.equal(gananciaADb(0.5), (GANANCIA_DB_MINIMA + GANANCIA_DB_MAXIMA) / 2);
+});
+
+test('la ganancia NO es lineal: la consola indexa una tabla', () => {
+  // Esta prueba reemplaza a `gananciaADb(0.5) === (min + max) / 2`, que era la
+  // suposicion anterior. La consola hace `ui24pgains[trunc(64*v)] - 1`, no una
+  // recta. En el medio del recorrido la recta erraba medio decibel, y no es
+  // parejo: erra mas en unos tramos que en otros.
+  const recta = (v: number): number =>
+    GANANCIA_DB_MINIMA + v * (GANANCIA_DB_MAXIMA - GANANCIA_DB_MINIMA);
+  assert.equal(gananciaADb(0.5), 26, 'la tabla da 26 dB en la mitad del recorrido');
+  assert.equal(recta(0.5), 25.5, 'la recta que se suponia antes daba 25,5');
+  let peor = 0;
+  for (let i = 0; i <= 1000; i++) {
+    peor = Math.max(peor, Math.abs(gananciaADb(i / 1000) - recta(i / 1000)));
+  }
+  assert.ok(peor > 1,
+    `si la recta se aleja menos de 1 dB de la tabla, revisa la tabla: se aleja ${peor}`);
+});
+
+test('la ganancia tiene 48 escalones, y no son parejos', () => {
+  // Lo que el asistente de ganancia tiene que respetar: no hay medio escalon.
+  assert.equal(GANANCIA_ESCALONES.length, 48);
+  assert.equal(GANANCIA_ESCALONES[0], GANANCIA_DB_MINIMA);
+  assert.equal(GANANCIA_ESCALONES[GANANCIA_ESCALONES.length - 1], GANANCIA_DB_MAXIMA);
+  // De 2 en 2 hasta +26, de 1 en 1 desde +27.
+  for (let i = 1; i < GANANCIA_ESCALONES.length; i++) {
+    const salto = GANANCIA_ESCALONES[i]! - GANANCIA_ESCALONES[i - 1]!;
+    const esperado = GANANCIA_ESCALONES[i]! <= 26 ? 2 : 1;
+    assert.equal(salto, esperado,
+      `salto de ${salto} dB hasta ${GANANCIA_ESCALONES[i]}, se esperaba ${esperado}`);
+  }
+});
+
+test('encadenar las dos conversiones no da el escalon mas cercano', () => {
+  // El desajuste que esta prueba fija por escrito: `GAIN24toV` reparte el
+  // recorrido en 63 partes y `VtoGAIN24` lo trunca sobre 64 indices.
+  //
+  // La primera version de esta prueba afirmaba "siempre cae por debajo" y la
+  // prueba la desmintio: 9,75 dB sube a 10. El sesgo es mayormente hacia abajo
+  // pero no siempre, y esa es justo la clase de regla que conviene medir en vez
+  // de suponer.
+  assert.equal(gananciaAlcanzable(11.5), 10, 'pedir 11,5 aterriza en 10');
+  assert.equal(gananciaAlcanzable(9.75), 10, 'y 9,75 sube a 10');
+  let porArriba = 0;
+  let porAbajo = 0;
+  for (let i = 0; i <= 25200; i++) {
+    const db = GANANCIA_DB_MINIMA + i * 0.0025;
+    if (db > GANANCIA_DB_MAXIMA) break;
+    const caida = gananciaAlcanzable(db);
+    assert.ok(GANANCIA_ESCALONES.includes(caida), `${caida} no es un escalon`);
+    porArriba = Math.max(porArriba, caida - db);
+    porAbajo = Math.max(porAbajo, db - caida);
+  }
+  assert.ok(porAbajo > 1.9 && porAbajo < 2,
+    `desvio por abajo de ${porAbajo.toFixed(3)} dB, se esperaba cerca de 1,97`);
+  assert.ok(porArriba > 0.9 && porArriba < 1,
+    `desvio por arriba de ${porArriba.toFixed(3)} dB, se esperaba cerca de 0,98`);
+});
+
+test('para elegir bien hay que ir al escalon mas cercano, no al de abajo', () => {
+  // Lo que un asistente tiene que hacer: 11,5 esta mas cerca de 12 que de 10.
+  assert.equal(gananciaADb(rawParaGananciaMasCercana(11.5)), 12);
+  assert.equal(gananciaADb(rawParaGananciaMasCercana(11.4)), 12);
+  assert.equal(gananciaADb(rawParaGananciaMasCercana(10.6)), 10);
+  for (const db of GANANCIA_ESCALONES) {
+    assert.equal(gananciaADb(rawParaGananciaMasCercana(db)), db,
+      `${db} dB es un escalon y deberia elegirse a si mismo`);
+  }
+  for (let db = GANANCIA_DB_MINIMA; db <= GANANCIA_DB_MAXIMA; db += 0.25) {
+    const elegido = gananciaADb(rawParaGananciaMasCercana(db));
+    assert.ok(GANANCIA_ESCALONES.includes(elegido));
+    assert.ok(Math.abs(elegido - db) <= 1,
+      `${db} dB fue a ${elegido}, a mas de medio escalon de distancia`);
+  }
 });
 
 test('la ganancia se acota en vez de salirse del rango', () => {
@@ -93,17 +168,52 @@ test('la ganancia se acota en vez de salirse del rango', () => {
   assert.equal(dbAGanancia(100), 1);
 });
 
-test('ida y vuelta de la ganancia', () => {
-  for (let db = GANANCIA_DB_MINIMA; db <= GANANCIA_DB_MAXIMA; db += 0.5) {
-    assert.ok(Math.abs(gananciaADb(dbAGanancia(db)) - db) < 1e-9);
+test('ida y vuelta de la ganancia, escalon por escalon', () => {
+  // Antes se recorria de 0,5 en 0,5 dB y se exigia cierre exacto. Eso solo
+  // podia pasar con una recta. El destino es escalonado: la unica ida y vuelta
+  // que tiene sentido exigir es la de los valores que la consola puede tomar,
+  // y esa cierra exacta en los 48.
+  for (const db of GANANCIA_ESCALONES) {
+    assert.equal(gananciaADb(dbAGanancia(db)), db, `${db} dB no volvio igual`);
   }
 });
 
-test('las conversiones siguen declaradas como no verificadas', () => {
-  // Esta prueba falla el dia que alguien ponga la bandera en true. Es a
-  // proposito: cambiarla significa que SPK-P0.2a dejo evidencia, y entonces
-  // hay que actualizar tambien la matriz de capacidades y estas curvas, que
-  // hoy son suposiciones con forma de funcion.
-  assert.equal(VERIFICADO_CONTRA_CONSOLA, false,
-    'si se midio la curva, actualiza las conversiones y la matriz de capacidades');
+test('ningun valor crudo cae fuera de la tabla de ganancia', () => {
+  for (let i = 0; i <= 2000; i++) {
+    const db = gananciaADb(i / 2000);
+    assert.ok(GANANCIA_ESCALONES.includes(db), `${db} dB no es un escalon`);
+  }
+});
+
+test('el fader llega a +10 dB, y 0 dB no esta en el tope', () => {
+  // La suposicion peligrosa que esto descarta: que 1,0 sea 0 dB. No lo es.
+  assert.equal(faderADb(1), 10);
+  assert.ok(Math.abs(faderADb(FADER_POSICION_0_DB)) < 1e-9,
+    `la posicion de 0 dB dio ${faderADb(FADER_POSICION_0_DB)}`);
+});
+
+test('la curva del fader coincide con la que muestra la consola', () => {
+  // Puntos calculados con las funciones que sirve la propia consola. Si alguien
+  // toca la curva, esto lo detecta.
+  const puntos: readonly (readonly [number, number])[] = [
+    [-60, 0.058824], [-40, 0.186230], [-30, 0.269355], [-20, 0.376506],
+    [-10, 0.529412], [-6, 0.612728], [-3, 0.685589], [0, 0.764706],
+    [3, 0.843756], [6, 0.916539], [10, 1],
+  ];
+  for (const [db, posicion] of puntos) {
+    assert.ok(Math.abs(dbAFader(db) - posicion) < 1e-6,
+      `${db} dB deberia caer en ${posicion} y cayo en ${dbAFader(db)}`);
+    assert.ok(Math.abs(faderADb(posicion) - db) < 1e-3,
+      `la posicion ${posicion} deberia dar ${db} dB y dio ${faderADb(posicion)}`);
+  }
+});
+
+test('las curvas estan declaradas como tomadas de la consola', () => {
+  // El reverso de la prueba anterior a la medicion, que exigia `false` para que
+  // nadie confundiera una estimacion con un dato. Ahora exige `true` y ademas
+  // que quede escrito de que firmware salieron: una curva de otra consola no
+  // vale, y sin esa referencia la bandera no significa nada.
+  assert.equal(VERIFICADO_CONTRA_CONSOLA, true);
+  assert.equal(ORIGEN_DE_LAS_CURVAS.firmware, '3.4.8318-ui24');
+  assert.equal(ORIGEN_DE_LAS_CURVAS.modelo, 'ui24');
 });
