@@ -1,6 +1,6 @@
 # Invariantes de seguridad
 
-**Versión 1.1.** Estas 33 invariantes son la suite de aceptación de seguridad del proyecto (ADR-011). Cada una tiene enunciado verificable, test unitario, test contra hardware real y la versión desde la que aplica.
+**Versión 1.2.** Estas 34 invariantes son la suite de aceptación de seguridad del proyecto (ADR-011). Cada una tiene enunciado verificable, test unitario, test contra hardware real y la versión desde la que aplica.
 
 **Ninguna historia que escriba en la consola o reproduzca audio se cierra sin su rebanada de la suite en verde.** Cada test lleva el identificador de su invariante en el nombre.
 
@@ -14,10 +14,11 @@ El generador de señal es el reproductor de la consola (ADR-002); las invariante
 
 ## Estado de implementación
 
-Cubiertas por test unitario, en `packages/safety` y `packages/domain`:
+Cubiertas por test unitario, en `packages/safety`, `packages/domain` y
+`packages/updater`:
 INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008,
 INV-009, INV-010, INV-017, INV-019 (parte de bloqueo), INV-020, INV-021,
-INV-024, INV-025.
+INV-024, INV-025, INV-034.
 
 Pendientes de hardware, se cierran con su spike: INV-011 (política de
 confirmación, depende de SPK-P0.1), INV-012 a INV-016 y INV-026 (generador,
@@ -62,3 +63,4 @@ simulador reproduce nuestras hipótesis del protocolo, no la consola.
 | INV-031 | CONTROLLED AUTO no envía writes sin app en foreground y pantalla desbloqueada. Si la pantalla se bloquea o la app pasa a background durante Apply/Verify, la transacción completa su verificación (o revierte por timeout) y el loop se detiene en STOPPED_BY_LOCK sin iniciar otra iteración. | Instrumentado: bloquear en la iteración 2 → 0 writes posteriores. | MVP4b |
 | INV-032 | Al conectar, la app publica un marcador de presencia (mecanismo validado en P0.9: `BMSG^SYNC` con id VSE o snapshot `VSE_LOCK_<deviceId>` renovado cada 60 s) y busca marcadores ajenos; si existe uno con antigüedad < 120 s, arranca en READ-ONLY (sin writes ni generador) y lo muestra. | HIL: dos tablets → exactamente una con writes; apagar la primera → la segunda obtiene writes tras ≤ 180 s con rearme explícito. | MVP0 |
 | INV-033 | Si `deviceInfo.firmware$` ≠ firmware listado en la Capability Matrix, todo write RAW queda deshabilitado (solo API tipada y solo en ASSISTED) hasta que el usuario acepte explícitamente "firmware no certificado" y quede registrado en la sesión. | Unit + HIL con matriz editada. | MVP1 |
+| INV-034 | La aplicación no se actualiza a sí misma mientras haya una sesión de sonido abierta (estado ≠ `CLOSED`), ni con una transacción en curso, ni mientras esté conectada a la consola. La conexión es el suplente de la sesión hasta que el modelo de sesión esté cableado a la interfaz: sin él, en MVP0 la invariante no se dispararía nunca. El contexto se vuelve a evaluar inmediatamente antes de empezar la descarga, no sólo al consultar el catálogo. Sólo se instalan publicaciones estables, descargadas por HTTPS desde servidores de GitHub, con SHA-256 verificado antes de abrir la sesión de instalación (ADR-020). | Unit: `packages/updater/test/decision.test.ts` y `manifest.test.ts`. | MVP0 |

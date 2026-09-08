@@ -32,6 +32,40 @@ jobs:
       - name: Validación DSP de referencia
         run: npm run test:dsp
 
+  # El complemento nativo no lo compila `npm run lint`: sin este trabajo, un
+  # error de tipeo en Java llegaria hasta el momento de publicar, que es cuando
+  # menos tiempo hay para arreglarlo. Se compila en depuracion y sin firmar,
+  # asi que no necesita ningun secreto.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Compilar el contenido web
+        run: npm run build --workspace mobile
+
+      - name: Sincronizar Capacitor
+        working-directory: apps/mobile
+        run: npx cap sync android
+
+      - name: Compilar el APK de depuracion
+        working-directory: apps/mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
   commitlint:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'

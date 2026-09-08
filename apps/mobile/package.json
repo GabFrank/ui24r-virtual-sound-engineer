@@ -24,7 +24,8 @@
     "tslib": "^2.3.0",
     "zone.js": "~0.14.10",
     "@vse/assistants": "*",
-    "@vse/safety": "*"
+    "@vse/safety": "*",
+    "@vse/updater": "*"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.21",

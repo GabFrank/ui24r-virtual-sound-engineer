@@ -23,3 +23,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [017](ADR-017-wizards-obligatorios.md) | Asistentes de configuración obligatorios | Aceptada |
 | [018](ADR-018-spike-usb-b.md) | Spike de conexión USB directa a la consola | Aceptada |
 | [019](ADR-019-arquitectura-interfaz-audio.md) | Arquitectura con o sin interfaz de audio externa | Reservada, se decide en DEC-19 tras G-B |
+| [020](ADR-020-actualizacion-en-app.md) | La aplicación se actualiza a sí misma desde GitHub | Aceptada |
