@@ -3,8 +3,8 @@ import { Router, RouterLink } from '@angular/router';
 import { crearBanda, crearLocal, crearPa, type BandProfile, type PAProfile, type VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
-  PageHeaderComponent, ToastService,
+  BadgeComponent, ButtonComponent, Cargable, CardComponent, CargandoComponent,
+  EmptyStateComponent, FalloComponent, PageHeaderComponent, ToastService,
 } from '../ui';
 
 type Pestania = 'bandas' | 'locales' | 'pa';
@@ -21,8 +21,8 @@ type Pestania = 'bandas' | 'locales' | 'pa';
   selector: 'app-perfiles',
   standalone: true,
   imports: [
-    RouterLink, BadgeComponent, ButtonComponent, CardComponent,
-    EmptyStateComponent, PageHeaderComponent,
+    RouterLink, BadgeComponent, ButtonComponent, CardComponent, CargandoComponent,
+    EmptyStateComponent, FalloComponent, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -46,6 +46,11 @@ type Pestania = 'bandas' | 'locales' | 'pa';
         }
       </div>
 
+      @if (problema(); as p) {
+        <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
+      } @else if (cargando()) {
+        <ui-cargando texto="Leyendo los perfiles guardados" />
+      } @else {
       @switch (pestania()) {
         @case ('bandas') {
           @if (bandas().length === 0) {
@@ -121,6 +126,7 @@ type Pestania = 'bandas' | 'locales' | 'pa';
           }
         }
       }
+      }
     </div>
   `,
   styles: [`
@@ -150,9 +156,28 @@ export class PerfilesComponent {
   private readonly avisos = inject(ToastService);
 
   readonly pestania = signal<Pestania>('bandas');
-  readonly bandas = signal<readonly BandProfile[]>([]);
-  readonly locales = signal<readonly VenueProfile[]>([]);
-  readonly pas = signal<readonly PAProfile[]>([]);
+
+  /**
+   * Los tres se leen juntos y se muestran de a uno. Un solo `Cargable` y no
+   * tres porque el fallo es el mismo —el almacén no contestó— y tres mensajes
+   * de error apilados no dicen nada que uno no diga.
+   */
+  private readonly datos = new Cargable(
+    { bandas: [] as readonly BandProfile[], locales: [] as readonly VenueProfile[],
+      pas: [] as readonly PAProfile[] },
+    async () => {
+      const [bandas, locales, pas] = await Promise.all([
+        this.repos.bandas(), this.repos.locales(), this.repos.pas(),
+      ]);
+      return { bandas, locales, pas };
+    },
+  );
+
+  readonly cargando = this.datos.cargando;
+  readonly problema = this.datos.problema;
+  readonly bandas = computed(() => this.datos.valor().bandas);
+  readonly locales = computed(() => this.datos.valor().locales);
+  readonly pas = computed(() => this.datos.valor().pas);
 
   readonly pestanias: readonly { id: Pestania; etiqueta: string }[] = [
     { id: 'bandas', etiqueta: 'Bandas' },
@@ -181,20 +206,19 @@ export class PerfilesComponent {
     // Se recarga cuando cambia la revisión del repositorio: así volver de una
     // pantalla de edición muestra el cambio sin que la edición tenga que
     // avisar a esta pantalla.
+    // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
+    // escritura de señal dentro del efecto. La prohibición existe para evitar
+    // bucles: acá no hay ninguno, porque el efecto depende del identificador y
+    // de la revisión del repositorio, y no del estado de la lectura. Antes esto
+    // no saltaba solo porque la escritura ocurría dentro de un `await`, o sea
+    // que el efecto ya había terminado -- estaba igual de mal y no se veía.
     effect(() => {
       this.repos.revision();
-      void this.recargar();
-    });
+      this.recargar();
+    }, { allowSignalWrites: true });
   }
 
-  private async recargar(): Promise<void> {
-    const [bandas, locales, pas] = await Promise.all([
-      this.repos.bandas(), this.repos.locales(), this.repos.pas(),
-    ]);
-    this.bandas.set(bandas);
-    this.locales.set(locales);
-    this.pas.set(pas);
-  }
+  recargar(): void { void this.datos.recargar(); }
 
   async crear(): Promise<void> {
     switch (this.pestania()) {

@@ -84,6 +84,30 @@ export class Repositorios {
     return d === null ? null : (d.datos as PAProfile);
   }
 
+  /**
+   * Los locales que usan este sistema.
+   *
+   * Se consulta antes de borrar. El esquema declara claves foráneas pero
+   * **nadie las aplica** —no se ejecuta «PRAGMA foreign_keys = ON»— así que la
+   * base no impide dejar un local apuntando a un sistema que ya no está. Y un
+   * local sin sistema no es un local incompleto: es uno sobre el que la
+   * aplicación no puede decidir dónde corregir, porque no sabe qué equipo hay.
+   */
+  async localesQueUsanPa(id: PAProfileId): Promise<readonly string[]> {
+    const locales = await this.locales();
+    return locales.filter((l) => l.paProfileId === id).map((l) => l.nombre);
+  }
+
+  async borrarPa(id: PAProfileId): Promise<void> {
+    const enUso = await this.localesQueUsanPa(id);
+    if (enUso.length > 0) {
+      throw new Error(`Lo usan ${enUso.length} local(es): ${enUso.join(', ')}.`);
+    }
+    await this.almacen.borrar('pa_profile', id);
+    this.log.info('system', 'pa_borrado', { id });
+    this.tocar();
+  }
+
   // --- Locales ------------------------------------------------------------
 
   async guardarLocal(v: VenueProfile): Promise<void> {

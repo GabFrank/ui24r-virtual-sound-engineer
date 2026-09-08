@@ -7,8 +7,9 @@ import {
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  ButtonComponent, CamposTocados, CardComponent, DialogComponent, EmptyStateComponent,
-  FieldComponent, PageHeaderComponent, ToastService,
+  ButtonComponent, CamposTocados, CardComponent, CargandoComponent, DialogComponent,
+  EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
+  ToastService,
 } from '../ui';
 
 /**
@@ -23,8 +24,8 @@ import {
   selector: 'app-banda-edit',
   standalone: true,
   imports: [
-    FormsModule, ButtonComponent, CardComponent, DialogComponent,
-    EmptyStateComponent, FieldComponent, PageHeaderComponent,
+    ButtonComponent, CardComponent, CargandoComponent, DialogComponent, EmptyStateComponent,
+    FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -34,7 +35,11 @@ import {
         <ui-button variante="sutil" icono="atras" (pulsado)="volver()">Volver</ui-button>
       </ui-page-header>
 
-      @if (banda() === null) {
+      @if (lectura.problema(); as p) {
+        <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
+      } @else if (lectura.cargando()) {
+        <ui-cargando texto="Leyendo la banda" />
+      } @else if (banda() === null) {
         <ui-empty icono="error" titulo="Esa banda ya no existe"
                   detalle="Puede que se haya borrado desde otra pantalla." />
       } @else {
@@ -181,12 +186,23 @@ export class BandaEditComponent {
   readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
   readonly errorNuevoVisible = this.tocadosDialogo.visible('nombre', this.errorNuevo);
 
+  /** Estado de la lectura: mientras lee no dice que no existe. */
+  readonly lectura = new Lectura();
+
   constructor() {
+    // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
+    // escritura de señal dentro del efecto. La prohibición existe para evitar
+    // bucles: acá no hay ninguno, porque el efecto depende del identificador y
+    // de la revisión del repositorio, y no del estado de la lectura. Antes esto
+    // no saltaba solo porque la escritura ocurría dentro de un `await`, o sea
+    // que el efecto ya había terminado -- estaba igual de mal y no se veía.
     effect(() => {
-      const id = this.id();
-      void this.cargar(id as BandProfileId);
-    });
+      this.id();
+      this.recargar();
+    }, { allowSignalWrites: true });
   }
+
+  recargar(): void { void this.lectura.correr(() => this.cargar(this.id() as BandProfileId)); }
 
   private async cargar(id: BandProfileId): Promise<void> {
     const [b, todas] = await Promise.all([this.repos.banda(id), this.repos.bandas()]);
