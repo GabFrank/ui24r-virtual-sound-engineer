@@ -16,7 +16,7 @@ export type NombreDeIcono =
   | 'error' | 'info' | 'buscar' | 'ajustes' | 'medidor' | 'canales'
   | 'ganancia' | 'sesion' | 'banda' | 'local' | 'historial' | 'descargar'
   | 'refrescar' | 'paro' | 'conectar' | 'editar' | 'borrar' | 'guardar'
-  | 'menu' | 'expandir' | 'contraer';
+  | 'menu' | 'expandir' | 'contraer' | 'registro';
 
 const TRAZOS: Readonly<Record<NombreDeIcono, string>> = {
   atras: 'M15 6l-6 6 6 6',
@@ -47,6 +47,7 @@ const TRAZOS: Readonly<Record<NombreDeIcono, string>> = {
   menu: 'M4 7h16M4 12h16M4 17h16',
   expandir: 'M6 9.5l6 6 6-6',
   contraer: 'M6 14.5l6-6 6 6',
+  registro: 'M5 3h11l3 3v15H5zM8.5 8.5h7M8.5 12.5h7M8.5 16.5h4',
 };
 
 @Component({

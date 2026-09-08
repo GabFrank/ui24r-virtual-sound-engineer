@@ -6,11 +6,38 @@ import { validarUrlDeConsola } from '@vse/domain';
 import { ConnectionStateService } from '../core/connection.state';
 import { MixerService } from '../core/mixer.service';
 import { Preferencias } from '../core/preferencias.service';
+import { RegistroService } from '../core/registro.service';
 import { Repositorios } from '../core/repos/repositorios';
+import type { LogEvent } from '@vse/logging';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, FieldComponent,
+  BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent, FieldComponent,
   PageHeaderComponent, ToastService,
 } from '../ui';
+
+/**
+ * Una línea del registro, ya formateada.
+ *
+ * El formato se hace acá y no en la plantilla porque una llamada desde la
+ * plantilla se reevalúa en cada ciclo de detección de cambios, y esta lista
+ * tiene cien líneas.
+ */
+interface LineaDeRegistro {
+  readonly clave: string;
+  readonly clase: string;
+  readonly hora: string;
+  readonly que: string;
+  readonly donde: string;
+}
+
+function aLinea(e: LogEvent, i: number): LineaDeRegistro {
+  return {
+    clave: `${e.ts}-${i}`,
+    clase: `nivel-${e.level}`,
+    hora: e.ts.slice(11, 19),
+    que: e.event,
+    donde: e.category,
+  };
+}
 
 /**
  * Ajustes.
@@ -27,7 +54,7 @@ import {
   selector: 'app-ajustes',
   standalone: true,
   imports: [
-    FormsModule, BadgeComponent, ButtonComponent, CardComponent,
+    FormsModule, BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
     FieldComponent, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -96,6 +123,47 @@ import {
           </div>
         </ui-card>
 
+        <ui-card titulo="Registro" [subtitulo]="resumenRegistro()">
+          <p class="nota">
+            Lo que la aplicación hizo, en orden y con su hora. Es lo primero que
+            hay que mirar cuando algo salió distinto de lo esperado, y lo que se
+            adjunta a una consulta de soporte.
+          </p>
+
+          @if (errorRegistro(); as e) {
+            <p class="error">No se pudo guardar el registro: {{ e }}</p>
+          }
+
+          <div class="racimo">
+            <ui-button variante="secundario" icono="refrescar" [cargando]="cargandoRegistro()"
+                       (pulsado)="verRegistro()">
+              {{ soloGraves() ? 'Ver avisos y errores' : 'Ver los últimos' }}
+            </ui-button>
+            <ui-button variante="sutil" (pulsado)="alternarGraves()">
+              {{ soloGraves() ? 'Mostrar todo' : 'Solo avisos y errores' }}
+            </ui-button>
+            <ui-button variante="secundario" icono="descargar" [cargando]="copiandoRegistro()"
+                       (pulsado)="copiarRegistro()">Copiar como JSONL</ui-button>
+          </div>
+
+          @if (eventos().length === 0) {
+            @if (registroPedido()) {
+              <ui-empty icono="registro" titulo="No hay eventos"
+                              descripcion="Todavía no se guardó nada, o el filtro los deja a todos fuera." />
+            }
+          } @else {
+            <ol class="eventos">
+              @for (e of eventos(); track e.clave) {
+                <li [class]="e.clase">
+                  <span class="hora">{{ e.hora }}</span>
+                  <span class="que">{{ e.que }}</span>
+                  <span class="donde">{{ e.donde }}</span>
+                </li>
+              }
+            </ol>
+          }
+        </ui-card>
+
         <ui-card titulo="Sobre esta aplicación">
           <p class="nota">
             Ingeniero de sonido virtual asistido por medición para Soundcraft
@@ -120,12 +188,31 @@ import {
       color: var(--ink-2);
     }
     .conteos li:last-child { border-bottom: 0; }
+
+    .eventos {
+      list-style: none; margin: var(--sp-3) 0 0; padding: 0;
+      max-height: 40vh; overflow-y: auto;
+      border: 1px solid var(--line); border-radius: var(--radio-2);
+    }
+    .eventos li {
+      display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3);
+      align-items: baseline;
+      padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line);
+      font-size: var(--txt-sm);
+    }
+    .eventos li:last-child { border-bottom: 0; }
+    .hora { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .que { color: var(--ink); overflow-wrap: anywhere; }
+    .donde { color: var(--muted); font-size: var(--txt-xxs); text-transform: uppercase; }
+    .nivel-warn .que { color: var(--warn); }
+    .nivel-error .que { color: var(--danger); }
   `],
 })
 export class AjustesComponent {
   private readonly mixer = inject(MixerService);
   private readonly conexion = inject(ConnectionStateService);
   private readonly repos = inject(Repositorios);
+  private readonly registro = inject(RegistroService);
   private readonly avisos = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -138,6 +225,23 @@ export class AjustesComponent {
   readonly exportando = signal(false);
 
   readonly conteos = signal({ bandas: 0, locales: 0, pas: 0, sesiones: 0 });
+
+  readonly eventos = signal<readonly LineaDeRegistro[]>([]);
+  readonly cargandoRegistro = signal(false);
+  readonly copiandoRegistro = signal(false);
+  /** Sin esto, «no hay eventos» aparecería antes de haber mirado. */
+  readonly registroPedido = signal(false);
+  readonly soloGraves = signal(false);
+  readonly errorRegistro = signal<string | null>(null);
+
+  private readonly filtroRegistro = computed(() =>
+    this.soloGraves() ? ({ desdeNivel: 'warn', limite: 100 } as const) : ({ limite: 100 } as const));
+
+  readonly resumenRegistro = computed(() => {
+    const n = this.eventos().length;
+    if (!this.registroPedido()) return 'Guardado en el dispositivo';
+    return n === 0 ? 'Sin eventos' : `${n} evento${n === 1 ? '' : 's'}`;
+  });
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
 
@@ -167,6 +271,36 @@ export class AjustesComponent {
   }
 
   irAActualizacion(): void { void this.router.navigate(['/ajustes/actualizacion']); }
+
+  alternarGraves(): void {
+    this.soloGraves.update((v) => !v);
+    if (this.registroPedido()) void this.verRegistro();
+  }
+
+  async verRegistro(): Promise<void> {
+    this.cargandoRegistro.set(true);
+    this.registroPedido.set(true);
+    try {
+      this.eventos.set((await this.registro.eventos(this.filtroRegistro())).map(aLinea));
+      this.errorRegistro.set(this.registro.ultimoError());
+    } finally {
+      this.cargandoRegistro.set(false);
+    }
+  }
+
+  async copiarRegistro(): Promise<void> {
+    this.copiandoRegistro.set(true);
+    try {
+      await navigator.clipboard.writeText(
+        await this.registro.exportarJsonl(this.filtroRegistro()),
+      );
+      this.avisos.ok('Registro copiado como JSONL.');
+    } catch {
+      this.avisos.error('No se pudo copiar. El sistema no dio permiso al portapapeles.');
+    } finally {
+      this.copiandoRegistro.set(false);
+    }
+  }
 
   conectar(): void {
     void this.mixer.conectar(this.host()).catch(() => { /* el error ya está en la señal */ });

@@ -19,7 +19,8 @@ export type Coleccion =
   | 'sound_session'
   | 'measurement'
   | 'finding'
-  | 'recommendation';
+  | 'recommendation'
+  | 'log_event';
 
 export type ValorIndice = string | number | null;
 
@@ -43,6 +44,14 @@ export interface Almacen {
   guardar(coleccion: Coleccion, doc: Documento): Promise<void>;
   obtener(coleccion: Coleccion, id: string): Promise<Documento | null>;
   listar(coleccion: Coleccion, filtro?: Filtro): Promise<readonly Documento[]>;
+  /**
+   * Cuántos documentos hay, sin traerlos.
+   *
+   * Existe por el registro: para saber si hay que purgar hacen falta el número
+   * y nada más, y traer cinco mil eventos con su carga útil para contarlos es
+   * lo que convierte una purga barata en un tirón visible.
+   */
+  contar(coleccion: Coleccion, filtro?: Filtro): Promise<number>;
   borrar(coleccion: Coleccion, id: string): Promise<void>;
   /** Vuelca todo, para adjuntar a un informe de campo. Sin audio. */
   exportar(): Promise<string>;

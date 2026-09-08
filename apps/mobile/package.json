@@ -27,7 +27,8 @@
     "@vse/assistants": "*",
     "@vse/safety": "*",
     "@vse/updater": "*",
-    "@vse/store": "*"
+    "@vse/store": "*",
+    "@vse/logging": "*"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.21",

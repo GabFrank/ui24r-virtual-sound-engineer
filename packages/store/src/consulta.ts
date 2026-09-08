@@ -12,6 +12,18 @@ import type { Documento, Filtro, ValorIndice } from './tipos.ts';
  * aparecería solo en la tablet.
  */
 
+/**
+ * El valor por el que se filtra o se ordena.
+ *
+ * `id` no está en `indices` —es una propiedad del documento— pero en SQLite sí
+ * es una columna más, así que ordenar por `id` funcionaba allá y acá no hacía
+ * nada. Es exactamente la consulta con la que se lee el registro, que se ordena
+ * por identificador porque el identificador lleva la marca de tiempo.
+ */
+export function valorDe(doc: Documento, campo: string): ValorIndice | undefined {
+  return campo === 'id' ? doc.id : doc.indices[campo];
+}
+
 /** Un índice ausente y uno guardado como `null` son lo mismo. */
 export function coincide(valor: ValorIndice | undefined, buscado: ValorIndice): boolean {
   if (buscado === null) return valor === null || valor === undefined;
@@ -25,7 +37,7 @@ export function filtrar(
   if (donde === undefined) return docs;
   const pares = Object.entries(donde);
   if (pares.length === 0) return docs;
-  return docs.filter((d) => pares.every(([k, v]) => coincide(d.indices[k], v)));
+  return docs.filter((d) => pares.every(([k, v]) => coincide(valorDe(d, k), v)));
 }
 
 /**
@@ -45,8 +57,8 @@ export function ordenar(
   if (campo === undefined) return docs;
   const signo = descendente ? -1 : 1;
   return [...docs].sort((a, b) => {
-    const x = a.indices[campo];
-    const y = b.indices[campo];
+    const x = valorDe(a, campo);
+    const y = valorDe(b, campo);
     const xFalta = x === null || x === undefined;
     const yFalta = y === null || y === undefined;
     if (xFalta && yFalta) return 0;

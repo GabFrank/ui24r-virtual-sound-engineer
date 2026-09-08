@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { AlmacenEnMemoria } from '../src/memoria.ts';
 import { INDICES, MIGRACIONES } from '../src/esquema.ts';
-import { aDocumento, sentenciaBorrar, sentenciaGuardar, sentenciaListar, sentenciaObtener }
-  from '../src/sql.ts';
+import {
+  aDocumento, sentenciaBorrar, sentenciaContar, sentenciaGuardar, sentenciaListar,
+  sentenciaObtener,
+} from '../src/sql.ts';
 import type { Almacen, Coleccion, Documento, Filtro } from '../src/tipos.ts';
 
 /**
@@ -40,6 +42,12 @@ class AlmacenSqliteDePrueba implements Almacen {
     const s = sentenciaListar(coleccion, filtro);
     const filas = this.db.prepare(s.sql).all(...(s.valores as never[]));
     return (filas as Record<string, unknown>[]).map((f) => aDocumento(coleccion, f));
+  }
+
+  async contar(coleccion: Coleccion, filtro: Filtro = {}): Promise<number> {
+    const s = sentenciaContar(coleccion, filtro);
+    const fila = this.db.prepare(s.sql).get(...(s.valores as never[])) as { n: number };
+    return fila.n;
   }
 
   async borrar(coleccion: Coleccion, id: string): Promise<void> {
@@ -144,6 +152,34 @@ test('filtro y orden combinados coinciden', async () => {
     ordenarPor: 'iniciada_el',
   });
   assert.deepEqual(ids, ['s1', 's3']);
+});
+
+test('ordenar y filtrar por identificador coinciden', async () => {
+  // En SQLite `id` es una columna mas; en memoria es una propiedad del
+  // documento y no esta en `indices`. Ordenar por identificador funcionaba en
+  // la tablet y no hacia nada en el navegador. Es la consulta con la que se lee
+  // el registro, que se ordena por `id` porque el `id` lleva la marca de
+  // tiempo.
+  assert.deepEqual(await mismosIds({ ordenarPor: 'id' }), ['s1', 's2', 's3', 's4']);
+  assert.deepEqual(await mismosIds({ ordenarPor: 'id', descendente: true }),
+    ['s4', 's3', 's2', 's1']);
+  assert.deepEqual(await mismosIds({ donde: { id: 's3' } }), ['s3']);
+});
+
+test('contar contesta lo mismo que listar, sin traer', async () => {
+  const [memoria, sqlite] = await ambos();
+  for (const filtro of [{}, { donde: { cerrada_el: null } }, { donde: { state: 'CLOSED' } }]) {
+    const enMemoria = await memoria.contar('sound_session', filtro);
+    const enSqlite = await sqlite.contar('sound_session', filtro);
+    assert.equal(enSqlite, enMemoria, `contar difiere para ${JSON.stringify(filtro)}`);
+    assert.equal(enSqlite, (await sqlite.listar('sound_session', filtro)).length);
+  }
+});
+
+test('contar ignora el limite: es cuantos hay, no cuantos se devolverian', async () => {
+  const [memoria, sqlite] = await ambos();
+  assert.equal(await sqlite.contar('sound_session', { limite: 1 }), 4);
+  assert.equal(await memoria.contar('sound_session', { limite: 1 }), 4);
 });
 
 test('obtener y borrar se comportan igual', async () => {

@@ -48,6 +48,7 @@ Más: telemetría en vivo contra la consola o el simulador, paro de emergencia, 
 | `packages/mixer-adapter` | Protocolo, estado confirmado, adaptador | **Único** punto que habla con la consola. |
 | `packages/safety` | Motor de seguridad, diario, ejecutor de transacciones | Tiene autoridad sobre cualquier asistente. |
 | `packages/assistants` | Análisis y propuestas | Funciones puras. No tocan la consola ni la base. |
+| `packages/logging` | Registro, sumideros y lectura del registro guardado | Depende del almacén y de nada más. |
 | `packages/store` | Puerto de almacén, esquema de la base y semántica de consulta | La verdad sobre qué contesta una consulta. Incluye el SQL, para poder probarlo. |
 | `packages/updater` | Política de actualización | TypeScript puro, sin red ni Android. |
 | `packages/dsp-contract` | Tipos del puente con el motor de audio nativo | Todavía sin implementación. |

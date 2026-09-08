@@ -88,6 +88,26 @@ export function sentenciaListar(coleccion: Coleccion, filtro: Filtro = {}): Sent
   return { sql: `${sql};`, valores };
 }
 
+/**
+ * Cuenta sin traer.
+ *
+ * Comparte el WHERE con `sentenciaListar` a proposito: si contara distinto de
+ * como lista, el numero no describiria a la lista y la purga del registro
+ * borraria de mas o de menos.
+ */
+export function sentenciaContar(coleccion: Coleccion, filtro: Filtro = {}): Sentencia {
+  const condiciones: string[] = [];
+  const valores: unknown[] = [];
+  for (const [campo, valor] of Object.entries(filtro.donde ?? {})) {
+    validarCampo(coleccion, campo);
+    if (valor === null) condiciones.push(`${campo} IS NULL`);
+    else { condiciones.push(`${campo} = ?`); valores.push(valor); }
+  }
+  let sql = `SELECT COUNT(*) AS n FROM ${coleccion}`;
+  if (condiciones.length > 0) sql += ` WHERE ${condiciones.join(' AND ')}`;
+  return { sql: `${sql};`, valores };
+}
+
 /** Reconstruye el documento desde la fila. Las columnas de índice se releen. */
 export function aDocumento(coleccion: Coleccion, fila: Record<string, unknown>): Documento {
   const indices: Record<string, string | number | null> = {};
