@@ -80,3 +80,26 @@
 | Identidad del cliente en los mensajes | — | **no existe** | CONFIRMADO como ausente | ⬜ | P0.1 |
 | Eco de las escrituras propias | — | — | DESCONOCIDO | ⬜ | P0.1 |
 | Consola como interfaz USB de 32 canales hacia Android | — | — | DESCONOCIDO | ⬜ | P0.3b |
+
+## Capacidades afirmadas por revisión de firmware, sin verificar
+
+Vienen del [documento de hallazgos](hallazgos-firmware-y-contexto-musical.md) y **ninguna está comprobada contra una consola**: el manual base corresponde a un firmware anterior y no las documenta. Se anotan acá para que existan como preguntas y no como suposiciones; las mide [SPK-FW3](spikes/SPK-FW3-capacidades-firmware.md).
+
+Mientras sigan en DESCONOCIDO no se implementa nada sobre ellas. Es la misma regla que rige el resto de esta matriz.
+
+| Función | Ruta cruda | Estado | Probado | Spike |
+|---|---|---|---|---|
+| Sidechain de un subgrupo sobre otro | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| RTA de la consola: congelar y compartir la medición | sin clave conocida | DESCONOCIDO | ⬜ | FW3, P0.2a |
+| AFS2: modos fijo y directo, y estado de los filtros | `a.B.afs.*`, `m.afs.*` | INFERIDO en lectura, DESCONOCIDO en escritura | ⬜ | FW3, P0.2c |
+| Pre-delay de la reverberación Lexicon | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| Punto de derivación de los envíos de efectos, antes o después del fader | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| Matriz de patcheo completa entre entradas, USB, DSP, subgrupos, auxiliares, matriz, efectos y salidas | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| Canales DSP que no corresponden a una entrada física | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| Cuántos buses auxiliares y de matriz existen, y cuáles tienen salida física | según topología | DESCONOCIDO | ⬜ | FW3, PA-BUS |
+| Filtros pasa altos y pasa bajos en buses auxiliares | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| CUE: qué parámetros incluye, y si toca envíos de AUX | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| CUE: si los AUX se pueden excluir de la recuperación | sin clave conocida | DESCONOCIDO | ⬜ | FW3 |
+| Frecuencia de escritura que la consola sostiene sin descartar | — | DESCONOCIDO | ⬜ | FW3, P0.9 |
+
+La fila del CUE y los AUX es la que más decide: si la recuperación de un CUE mueve envíos de monitores, INV-010 la prohíbe desde la aplicación y la automatización por canción cambia de arquitectura. Está anotado como R-22.
