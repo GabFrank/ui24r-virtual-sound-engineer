@@ -78,7 +78,31 @@ aplicación funcione igual en una tablet dividida en dos que a pantalla completa
 | `ui-stepper` | Asistentes | Los asistentes son obligatorios (ADR-017). Si no se ve cuántos pasos faltan, se abandonan a la mitad. |
 | `ui-page-header` | Encabezado de pantalla | La descripción no es decorativa: cada pantalla dice qué hace y qué no hace. |
 | `ui-icon` | Iconografía | Trazados en el código, no tipografía de iconos. Una tipografía que no carga deja cuadrados vacíos donde debería estar el paro de emergencia. |
+| `ui-cargando` | Que algo se está leyendo | Barras del alto del contenido que va a llegar, no un disco que gira: así la pantalla no salta. El texto va en `aria-live`. |
+| `ui-fallo` | Que algo no se pudo leer | **Siempre con reintentar.** Casi todos estos fallos son transitorios, y sin el botón la única salida es cerrar la aplicación. |
 | `ui-toasts` | Avisos efímeros | **Nunca para nada de lo que dependa la seguridad.** Un rechazo del motor de seguridad se muestra en la pantalla, con su invariante, no en un mensaje que se desvanece. |
+
+### Las tres respuestas de una pantalla que lee
+
+Una pantalla que lee algo de disco tiene tres respuestas posibles y **el orden
+en que se preguntan importa**:
+
+```
+@if (problema(); as p)   { <ui-fallo …> }     ← primero: un fallo importa más que estar reintentando
+@else if (cargando())    { <ui-cargando …> }  ← después: todavía no se sabe
+@else if (vacío)         { <ui-empty …> }     ← recién acá: se miró y no hay nada
+@else                    { …contenido… }
+```
+
+Está en este orden porque el orden equivocado ya estaba en el código: mientras
+la sesión cargaba, el detalle decía «esa sesión ya no está». Y «todavía no hay
+ninguna banda» cuando en realidad el almacén falló es peor que un error, porque
+la reacción de quien lo lee es crear una banda que ya existía.
+
+`Cargable<T>` lo resuelve para una pantalla con un valor; `Lectura` para una que
+reparte lo leído en un campo por control, como los formularios. Los dos
+conservan el último valor bueno mientras recargan: vaciar una lista que ya
+estaba en pantalla pierde información que todavía servía.
 
 ## Accesibilidad
 

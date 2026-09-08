@@ -3,8 +3,9 @@ import { Router } from '@angular/router';
 import type { BandProfile, SessionId, SoundSession, VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, DialogComponent,
-  EmptyStateComponent, PageHeaderComponent, StatComponent, ToastService,
+  BadgeComponent, ButtonComponent, Cargable, CardComponent, CargandoComponent,
+  DialogComponent, EmptyStateComponent, FalloComponent, PageHeaderComponent, StatComponent,
+  ToastService,
 } from '../ui';
 import { ESTADOS } from '../sesion/estados';
 
@@ -19,8 +20,8 @@ import { ESTADOS } from '../sesion/estados';
   selector: 'app-sesion-detalle',
   standalone: true,
   imports: [
-    BadgeComponent, ButtonComponent, CardComponent, DialogComponent,
-    EmptyStateComponent, PageHeaderComponent, StatComponent,
+    BadgeComponent, ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
+    EmptyStateComponent, FalloComponent, PageHeaderComponent, StatComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -29,8 +30,15 @@ import { ESTADOS } from '../sesion/estados';
         <ui-button variante="sutil" icono="atras" (pulsado)="volver()">Volver</ui-button>
       </ui-page-header>
 
-      @if (sesion() === null) {
-        <ui-empty icono="error" titulo="Esa sesión ya no está" />
+      <!-- El orden importa: mientras cargaba, «sesion()» todavía era null y la
+           pantalla decía «esa sesión ya no está» antes de haber mirado. -->
+      @if (problema(); as p) {
+        <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
+      } @else if (cargando()) {
+        <ui-cargando texto="Leyendo la sesión" />
+      } @else if (sesion() === null) {
+        <ui-empty icono="error" titulo="Esa sesión ya no está"
+                  detalle="Puede que se haya borrado desde el historial." />
       } @else {
         <div class="pila-lg">
           <ui-card>
@@ -103,9 +111,24 @@ export class SesionDetalleComponent {
 
   readonly id = input.required<string>();
 
-  readonly sesion = signal<SoundSession | null>(null);
-  readonly banda = signal<BandProfile | null>(null);
-  readonly local = signal<VenueProfile | null>(null);
+  private readonly datos = new Cargable(
+    { sesion: null as SoundSession | null, banda: null as BandProfile | null,
+      local: null as VenueProfile | null },
+    async () => {
+      const sesion = await this.repos.sesion(this.id() as SessionId);
+      if (sesion === null) return { sesion, banda: null, local: null };
+      const [banda, local] = await Promise.all([
+        this.repos.banda(sesion.bandProfileId), this.repos.local(sesion.venueProfileId),
+      ]);
+      return { sesion, banda, local };
+    },
+  );
+
+  readonly cargando = this.datos.cargando;
+  readonly problema = this.datos.problema;
+  readonly sesion = computed(() => this.datos.valor().sesion);
+  readonly banda = computed(() => this.datos.valor().banda);
+  readonly local = computed(() => this.datos.valor().local);
   readonly confirmarBorrado = signal(false);
 
   readonly titulo = computed(() => this.local()?.nombre ?? 'Sesión');
@@ -135,22 +158,19 @@ export class SesionDetalleComponent {
   readonly vacia = computed(() => (this.sesion()?.measurementIds.length ?? 0) === 0);
 
   constructor() {
+    // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
+    // escritura de señal dentro del efecto. La prohibición existe para evitar
+    // bucles: acá no hay ninguno, porque el efecto depende del identificador y
+    // de la revisión del repositorio, y no del estado de la lectura. Antes esto
+    // no saltaba solo porque la escritura ocurría dentro de un `await`, o sea
+    // que el efecto ya había terminado -- estaba igual de mal y no se veía.
     effect(() => {
-      const id = this.id();
-      void this.cargar(id as SessionId);
-    });
+      this.id();
+      this.recargar();
+    }, { allowSignalWrites: true });
   }
 
-  private async cargar(id: SessionId): Promise<void> {
-    const s = await this.repos.sesion(id);
-    this.sesion.set(s);
-    if (s === null) return;
-    const [banda, local] = await Promise.all([
-      this.repos.banda(s.bandProfileId), this.repos.local(s.venueProfileId),
-    ]);
-    this.banda.set(banda);
-    this.local.set(local);
-  }
+  recargar(): void { void this.datos.recargar(); }
 
   async exportar(): Promise<void> {
     const s = this.sesion();

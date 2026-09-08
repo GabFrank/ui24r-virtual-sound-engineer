@@ -135,7 +135,23 @@ async function recorrer(contexto, tamanio) {
   await p.fill('#pa-desde', '65');
   await p.fill('#pa-hasta', '16000');
   await paso(12, 'pa-rango-valido', 'rango útil corregido');
-  await p.click('.racimo-fin ui-button button');
+
+  // El sistema lo usa el local que se acaba de crear, así que no se puede
+  // borrar: un local sin sistema no dice con qué equipo se toca. La
+  // comprobación es que el diálogo lo explique en vez de borrar y dejar el
+  // local apuntando a nada -- el esquema declara la clave foránea pero nadie
+  // la aplica.
+  await p.click('.racimo-entre ui-button:first-child button');
+  await p.waitForSelector('ui-dialog[titulo="Borrar el sistema"] [open]');
+  const textoBorrado = await p.textContent('ui-dialog[titulo="Borrar el sistema"]');
+  if (!/No se puede borrar/.test(textoBorrado ?? '')) {
+    fallos.push('el sistema en uso se dejó borrar sin avisar');
+  }
+  await p.click('ui-dialog[titulo="Borrar el sistema"] [pie] ui-button button');
+  await esperar(300);
+
+  // Guardar es el último botón de la fila; el primero ahora es borrar.
+  await p.click('.racimo-entre ui-button:last-child button');
   await esperar(400);
 
   // --- Sesión ---

@@ -11,3 +11,6 @@ export * from './stepper.component';
 export * from './toast.service';
 export * from './toast.component';
 export * from './tocado';
+export * from './cargable';
+export * from './cargando.component';
+export * from './fallo.component';

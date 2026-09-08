@@ -7,8 +7,9 @@ import {
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, CamposTocados, CardComponent, DialogComponent,
-  FieldComponent, PageHeaderComponent, ToastService,
+  BadgeComponent, ButtonComponent, CamposTocados, CardComponent, CargandoComponent,
+  DialogComponent, EmptyStateComponent, FalloComponent, FieldComponent, Lectura,
+  PageHeaderComponent, ToastService,
 } from '../ui';
 
 function textoDeBus(b: BusRef): string {
@@ -39,8 +40,8 @@ function textoDeBus(b: BusRef): string {
   selector: 'app-pa-edit',
   standalone: true,
   imports: [
-    FormsModule, BadgeComponent, ButtonComponent, CardComponent, DialogComponent,
-    FieldComponent, PageHeaderComponent,
+    BadgeComponent, ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
+    EmptyStateComponent, FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -50,7 +51,17 @@ function textoDeBus(b: BusRef): string {
         <ui-button variante="sutil" icono="atras" (pulsado)="volver()">Volver</ui-button>
       </ui-page-header>
 
-      @if (pa() !== null) {
+      <!-- Antes solo estaba la rama de «hay sistema»: si el identificador no
+           existía, la pantalla quedaba con el encabezado y nada debajo, sin
+           decir por qué. -->
+      @if (lectura.problema(); as p) {
+        <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
+      } @else if (lectura.cargando()) {
+        <ui-cargando texto="Leyendo el sistema" />
+      } @else if (pa() === null) {
+        <ui-empty icono="error" titulo="Ese sistema ya no existe"
+                  detalle="Puede que se haya borrado desde otra pantalla." />
+      } @else {
         <div class="pila-lg">
           <ui-card titulo="Identidad">
             <div class="pila">
@@ -123,7 +134,10 @@ function textoDeBus(b: BusRef): string {
             }
           </ui-card>
 
-          <div class="racimo racimo-fin">
+          <div class="racimo racimo-entre">
+            <ui-button variante="peligro" icono="borrar" (pulsado)="abrirBorrado()">
+              Borrar sistema
+            </ui-button>
             <ui-button variante="primario" icono="guardar" [deshabilitado]="!sePuedeGuardar()"
                        (pulsado)="guardar()">Guardar</ui-button>
           </div>
@@ -159,6 +173,31 @@ function textoDeBus(b: BusRef): string {
         <ui-button variante="primario" [deshabilitado]="errorNuevo() !== null"
                    (pulsado)="agregar()">Agregar</ui-button>
       </div>
+    </ui-dialog>
+
+    <ui-dialog titulo="Borrar el sistema" [abierto]="confirmarBorrado()"
+               [cerrableAlTocarFuera]="false" (cerrado)="confirmarBorrado.set(false)">
+      @if (usosDelSistema().length > 0) {
+        <p class="lectura">
+          No se puede borrar: lo usan {{ usosDelSistema().length }} local(es)
+          ({{ textoDeUsos() }}). Un local sin sistema de amplificación no dice
+          con qué equipo se toca, y sin eso la aplicación no puede decidir dónde
+          corregir. Cambiá primero el sistema de esos locales.
+        </p>
+        <div pie>
+          <ui-button variante="sutil" (pulsado)="confirmarBorrado.set(false)">Entendido</ui-button>
+        </div>
+      } @else {
+        <p class="lectura">
+          Se borra el sistema y sus componentes. Las mediciones por componente de
+          sesiones anteriores quedan en el historial, pero ya no se va a poder
+          saber a qué caja correspondía cada una.
+        </p>
+        <div pie>
+          <ui-button variante="sutil" (pulsado)="confirmarBorrado.set(false)">Cancelar</ui-button>
+          <ui-button variante="peligro" icono="borrar" (pulsado)="borrar()">Borrar</ui-button>
+        </div>
+      }
     </ui-dialog>
   `,
   styles: [`
@@ -232,17 +271,59 @@ export class PaEditComponent {
     );
   });
 
+  readonly confirmarBorrado = signal(false);
+  readonly usosDelSistema = signal<readonly string[]>([]);
+  readonly textoDeUsos = computed(() => this.usosDelSistema().join(', '));
+
   readonly tocados = new CamposTocados();
   readonly tocadosDialogo = new CamposTocados();
   readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
   readonly errorRangoVisible = this.tocados.visible('rango', this.errorRango);
   readonly errorNuevoVisible = this.tocadosDialogo.visible('nombre', this.errorNuevo);
 
+  /** Estado de la lectura: mientras lee no dice que no existe. */
+  readonly lectura = new Lectura();
+
   constructor() {
+    // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
+    // escritura de señal dentro del efecto. La prohibición existe para evitar
+    // bucles: acá no hay ninguno, porque el efecto depende del identificador y
+    // de la revisión del repositorio, y no del estado de la lectura. Antes esto
+    // no saltaba solo porque la escritura ocurría dentro de un `await`, o sea
+    // que el efecto ya había terminado -- estaba igual de mal y no se veía.
     effect(() => {
-      const id = this.id();
-      void this.cargar(id as PAProfileId);
-    });
+      this.id();
+      this.recargar();
+    }, { allowSignalWrites: true });
+  }
+
+  recargar(): void { void this.lectura.correr(() => this.cargar(this.id() as PAProfileId)); }
+
+  /**
+   * Se consulta al abrir el diálogo y no al pintar la pantalla: la respuesta
+   * sale de leer todos los locales, y no hace falta pagarla cada vez que se
+   * abre un sistema para cambiarle el nombre.
+   */
+  async abrirBorrado(): Promise<void> {
+    this.usosDelSistema.set(await this.repos.localesQueUsanPa(this.id() as PAProfileId));
+    this.confirmarBorrado.set(true);
+  }
+
+  async borrar(): Promise<void> {
+    const p = this.pa();
+    if (p === null) return;
+    try {
+      await this.repos.borrarPa(p.id);
+    } catch (e) {
+      // El repositorio vuelve a comprobar el uso antes de borrar: entre abrir
+      // el diálogo y confirmar pudo crearse un local que lo usa.
+      this.avisos.error(e instanceof Error ? e.message : 'No se pudo borrar el sistema.');
+      this.confirmarBorrado.set(false);
+      return;
+    }
+    this.confirmarBorrado.set(false);
+    this.avisos.ok('Sistema borrado.');
+    await this.volver();
   }
 
   private async cargar(id: PAProfileId): Promise<void> {

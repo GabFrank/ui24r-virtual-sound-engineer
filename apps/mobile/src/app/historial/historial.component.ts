@@ -3,7 +3,8 @@ import { RouterLink } from '@angular/router';
 import type { BandProfile, SoundSession, VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
+  BadgeComponent, Cargable, CardComponent, CargandoComponent, EmptyStateComponent,
+  FalloComponent, PageHeaderComponent,
 } from '../ui';
 import { ESTADOS } from '../sesion/estados';
 
@@ -27,14 +28,21 @@ interface Fila {
 @Component({
   selector: 'app-historial',
   standalone: true,
-  imports: [RouterLink, BadgeComponent, CardComponent, EmptyStateComponent, PageHeaderComponent],
+  imports: [
+    RouterLink, BadgeComponent, CardComponent, CargandoComponent, EmptyStateComponent,
+    FalloComponent, PageHeaderComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="pagina">
       <ui-page-header titulo="Historial"
         descripcion="Cada sesión guarda qué se midió, qué se propuso y qué se aplicó. Es lo que permite comparar una noche con la anterior en el mismo sitio." />
 
-      @if (filas().length === 0) {
+      @if (problema(); as p) {
+        <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
+      } @else if (cargando()) {
+        <ui-cargando texto="Leyendo el historial" />
+      } @else if (filas().length === 0) {
         <ui-empty icono="historial" titulo="Todavía no hay sesiones"
                   detalle="Cuando cierres la primera, va a aparecer acá." />
       } @else {
@@ -132,9 +140,22 @@ interface Fila {
 export class HistorialComponent {
   private readonly repos = inject(Repositorios);
 
-  private readonly sesiones = signal<readonly SoundSession[]>([]);
-  private readonly bandas = signal<readonly BandProfile[]>([]);
-  private readonly locales = signal<readonly VenueProfile[]>([]);
+  private readonly datos = new Cargable(
+    { sesiones: [] as readonly SoundSession[], bandas: [] as readonly BandProfile[],
+      locales: [] as readonly VenueProfile[] },
+    async () => {
+      const [sesiones, bandas, locales] = await Promise.all([
+        this.repos.sesiones(), this.repos.bandas(), this.repos.locales(),
+      ]);
+      return { sesiones, bandas, locales };
+    },
+  );
+
+  readonly cargando = this.datos.cargando;
+  readonly problema = this.datos.problema;
+  private readonly sesiones = computed(() => this.datos.valor().sesiones);
+  private readonly bandas = computed(() => this.datos.valor().bandas);
+  private readonly locales = computed(() => this.datos.valor().locales);
 
   readonly filas = computed<readonly Fila[]>(() => {
     const bandas = new Map(this.bandas().map((b) => [b.id as string, b.nombre]));
@@ -154,18 +175,17 @@ export class HistorialComponent {
   });
 
   constructor() {
+    // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
+    // escritura de señal dentro del efecto. La prohibición existe para evitar
+    // bucles: acá no hay ninguno, porque el efecto depende del identificador y
+    // de la revisión del repositorio, y no del estado de la lectura. Antes esto
+    // no saltaba solo porque la escritura ocurría dentro de un `await`, o sea
+    // que el efecto ya había terminado -- estaba igual de mal y no se veía.
     effect(() => {
       this.repos.revision();
-      void this.recargar();
-    });
+      this.recargar();
+    }, { allowSignalWrites: true });
   }
 
-  private async recargar(): Promise<void> {
-    const [sesiones, bandas, locales] = await Promise.all([
-      this.repos.sesiones(), this.repos.bandas(), this.repos.locales(),
-    ]);
-    this.sesiones.set(sesiones);
-    this.bandas.set(bandas);
-    this.locales.set(locales);
-  }
+  recargar(): void { void this.datos.recargar(); }
 }
