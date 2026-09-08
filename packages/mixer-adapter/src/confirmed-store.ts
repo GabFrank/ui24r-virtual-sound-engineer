@@ -48,12 +48,22 @@ interface EscrituraPendiente {
   readonly enviadaEnMs: number;
 }
 
+/**
+ * La ruta de la instantánea activa.
+ *
+ * Está acá y no en `clasificar-ruta.ts` porque el almacén la necesita antes de
+ * clasificar nada: un cambio en esta ruta invalida el estado entero, sin mirar
+ * qué más pasó.
+ */
+export const RUTA_INSTANTANEA_ACTIVA = 'var.currentSnapshot';
+
 export class ConfirmedStateStore {
   private readonly estado = new Map<string, EntradaEstado>();
   private pendientes: EscrituraPendiente[] = [];
   private cambiosRecientes: { path: string; enMs: number }[] = [];
   private _storeState: StoreState = 'INVALID';
   private enRafagaHastaMs = 0;
+  private causaAvisada: BulkExternalChange['probableCausa'] | null = null;
   private cargandoVolcado = false;
 
   private readonly ventanaMs: number;
@@ -219,16 +229,66 @@ export class ConfirmedStateStore {
     this.cambiosRecientes = this.cambiosRecientes.filter((c) => t - c.enMs <= this.ventanaRafagaMs);
 
     const rutas = new Set(this.cambiosRecientes.map((c) => c.path));
-    if (rutas.size >= this.umbralRutas && t >= this.enRafagaHastaMs) {
-      this.enRafagaHastaMs = t + this.ventanaRafagaMs;
-      this.invalidar();
-      const evento: BulkExternalChange = {
-        rutasAfectadas: rutas.size,
-        ventanaMs: this.ventanaRafagaMs,
-        probableCausa: 'SNAPSHOT_RECALL',
-        timestamp: new Date(t).toISOString(),
-      };
-      for (const cb of this.oyentesRafaga) cb(evento);
+    // INV-021 dice «cambio masivo **o** cambio de currentSnapshot», y solo
+    // estaba la primera mitad. Un recall desde el navegador de la consola
+    // cambia la instantánea activa y después los parámetros que difieran: si
+    // difieren menos de diez, la avalancha no se detectaba y el estado local
+    // seguía dándose por bueno cuando ya no describía la consola. Es peor que
+    // la avalancha grande, porque un recall chico es el que nadie nota.
+    const cambioDeInstantanea = path === RUTA_INSTANTANEA_ACTIVA;
+    const hayAvalancha = rutas.size >= this.umbralRutas;
+    if (!cambioDeInstantanea && !hayAvalancha) return;
+
+    if (t < this.enRafagaHastaMs) {
+      // Ya se avisó por esta avalancha. La única razón para volver a hablar es
+      // haber aprendido algo: la consola no promete un orden, así que el
+      // cambio de instantánea puede llegar **después** de los parámetros que
+      // movió. Cuando llega, lo que se aviso como un arrastre de faders era en
+      // realidad un recall, y eso cambia lo que conviene hacer. Se corrige una
+      // sola vez por avalancha.
+      if (cambioDeInstantanea && this.causaAvisada !== 'SNAPSHOT_RECALL') {
+        this.causaAvisada = 'SNAPSHOT_RECALL';
+        this.avisarRafaga(rutas.size, 'SNAPSHOT_RECALL', t);
+      }
+      return;
     }
+
+    this.enRafagaHastaMs = t + this.ventanaRafagaMs;
+    this.invalidar();
+    this.causaAvisada = this.causaProbable(cambioDeInstantanea, rutas);
+    this.avisarRafaga(rutas.size, this.causaAvisada, t);
+  }
+
+  private avisarRafaga(
+    rutasAfectadas: number,
+    probableCausa: BulkExternalChange['probableCausa'],
+    t: number,
+  ): void {
+    const evento: BulkExternalChange = {
+      rutasAfectadas,
+      ventanaMs: this.ventanaRafagaMs,
+      probableCausa,
+      timestamp: new Date(t).toISOString(),
+    };
+    for (const cb of this.oyentesRafaga) cb(evento);
+  }
+
+  /**
+   * De dónde salió la avalancha.
+   *
+   * Estaba fijo en `SNAPSHOT_RECALL`, que es mentira siempre que no lo sea, y
+   * la causa se le muestra al usuario para que decida qué hacer. Ahora se
+   * deduce de lo que se vio: la instantánea activa cambió, o todas las rutas
+   * son el mismo parámetro de canales distintos —un fader arrastrado en grupo—,
+   * o no se sabe, que también es una respuesta.
+   */
+  private causaProbable(
+    cambioDeInstantanea: boolean,
+    rutas: ReadonlySet<string>,
+  ): BulkExternalChange['probableCausa'] {
+    if (cambioDeInstantanea) return 'SNAPSHOT_RECALL';
+    const sufijos = new Set([...rutas].map((r) => r.split('.').slice(2).join('.')));
+    if (sufijos.size === 1 && rutas.size > 1) return 'FADER_DRAG';
+    return 'DESCONOCIDA';
   }
 }

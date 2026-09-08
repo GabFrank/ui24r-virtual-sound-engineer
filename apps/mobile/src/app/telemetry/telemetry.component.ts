@@ -90,13 +90,12 @@ function db(v: number): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="pagina">
-      @if (masivo(); as ev) {
+      @if (avisoMasivo(); as aviso) {
         <div class="alerta" role="alert">
           <div>
-            <strong>Cambio masivo detectado en la consola.</strong>
-            {{ ev.rutasAfectadas }} parámetros cambiaron en menos de un segundo.
-            Probablemente alguien recuperó una instantánea. El estado local ya no
-            es confiable hasta releerlo.
+            <strong>{{ aviso.titulo }}</strong>
+            {{ aviso.detalle }}
+            El estado local ya no es confiable hasta releerlo.
           </div>
           <ui-button variante="secundario" (pulsado)="descartarMasivo()">Entendido</ui-button>
         </div>
@@ -269,6 +268,39 @@ export class TelemetryComponent {
     texto: `${describirRuta(e.parametro)} cambió`,
   })));
   readonly masivo = this.mixer.cambioMasivo;
+
+  /**
+   * Qué decirle al usuario que pasó.
+   *
+   * El texto decía siempre «probablemente alguien recuperó una instantánea»,
+   * también cuando no había ninguna instantánea de por medio. La causa la
+   * deduce ahora el almacén de estado, y es lo que decide qué conviene hacer:
+   * ante un recall hay que releer, ante un arrastre de faders puede que no
+   * haga falta.
+   */
+  readonly avisoMasivo = computed(() => {
+    const ev = this.masivo();
+    if (ev === null) return null;
+    switch (ev.probableCausa) {
+      case 'SNAPSHOT_RECALL':
+        return {
+          titulo: 'Alguien recuperó una instantánea en la consola.',
+          detalle: 'Cambió la instantánea activa, así que cualquier parámetro pudo moverse.',
+        };
+      case 'FADER_DRAG':
+        return {
+          titulo: 'Cambio masivo detectado en la consola.',
+          detalle: `${ev.rutasAfectadas} canales cambiaron el mismo parámetro en menos de un ` +
+            'segundo: parece un grupo de faders movido desde otro dispositivo.',
+        };
+      case 'DESCONOCIDA':
+        return {
+          titulo: 'Cambio masivo detectado en la consola.',
+          detalle: `${ev.rutasAfectadas} parámetros cambiaron en menos de un segundo, y no se ` +
+            'puede saber por qué desde el protocolo.',
+        };
+    }
+  });
   readonly error = this.mixer.ultimoError;
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');

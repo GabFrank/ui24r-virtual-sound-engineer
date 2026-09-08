@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ConfirmedStateStore } from '../src/confirmed-store.ts';
+import { ConfirmedStateStore, RUTA_INSTANTANEA_ACTIVA } from '../src/confirmed-store.ts';
+import type { BulkExternalChange } from '../src/api.ts';
 import { codificarSetd } from '../src/protocol.ts';
 
 /** Reloj controlado: probar tiempo esperándolo es lento y frágil. */
@@ -192,4 +193,134 @@ test('terminado el volcado, una avalancha real sí se detecta', () => {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
   assert.equal(rafagas.length, 1, 'ahora sí: alguien recuperó una instantánea');
+});
+
+// --- INV-021: "cambio masivo O cambio de currentSnapshot" ------------------
+//
+// Solo estaba la primera mitad. Un recall desde el navegador de la consola
+// cambia la instantanea activa y despues los parametros que difieran: si
+// difieren menos de diez, la avalancha no se detectaba y el estado local se
+// seguia dando por bueno. Es peor que la avalancha grande, porque un recall
+// chico es el que nadie nota.
+
+test('INV-021: cambiar la instantanea activa invalida, aunque cambie sola', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+
+  assert.equal(rafagas.length, 1, 'una sola ruta, pero es la que cuenta');
+  assert.equal(store.storeState, 'INVALID');
+});
+
+test('INV-021: un recall chico se detecta igual que uno grande', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  for (let canal = 1; canal <= 3; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+  }
+
+  assert.equal(rafagas.length, 1);
+  assert.equal(rafagas[0]?.probableCausa, 'SNAPSHOT_RECALL');
+});
+
+test('el volcado inicial incluye la instantanea activa y no es una avalancha', () => {
+  // Al conectar, la consola manda tambien `var.currentSnapshot`. Si eso
+  // disparara la invalidacion, cada conexion abriria una alerta.
+  const reloj = relojFalso();
+  const store = new ConfirmedStateStore({ ahora: reloj.ahora });
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.volcadoIniciado();
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.volcadoCompletoRecibido();
+
+  assert.equal(rafagas.length, 0);
+  assert.equal(store.storeState, 'VALID');
+});
+
+test('la causa no se inventa: sin instantanea de por medio no es un recall', () => {
+  // Estaba fija en SNAPSHOT_RECALL, y la causa se le muestra al usuario para
+  // que decida que hacer.
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let canal = 1; canal <= 12; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+  }
+
+  assert.equal(rafagas.length, 1);
+  assert.equal(rafagas[0]?.probableCausa, 'FADER_DRAG',
+    'doce canales, un solo parametro: alguien arrastro un grupo de faders');
+});
+
+test('rutas de distinto parametro dan causa desconocida', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let canal = 1; canal <= 6; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+    store.procesarLinea(codificarSetd(`i.${canal}.pan`, 0.6));
+  }
+
+  assert.equal(rafagas.length, 1);
+  assert.equal(rafagas[0]?.probableCausa, 'DESCONOCIDA');
+});
+
+test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
+  // La ventana de silencio evita que un recall que llega en varias tramas
+  // abra una alerta por trama.
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  reloj.avanzar(100);
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  assert.equal(rafagas.length, 1);
+
+  reloj.avanzar(2000);
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 4));
+  assert.equal(rafagas.length, 2, 'pasada la ventana, un recall nuevo sí avisa');
+});
+
+test('si la instantanea llega despues de los parametros, se corrige la causa', () => {
+  // La consola no promete un orden. El simulador manda primero los doce
+  // faders y despues `var.currentSnapshot`, que es un orden tan valido como el
+  // otro: sin esto, un recall se anunciaba como un arrastre de faders, y eso
+  // cambia lo que conviene hacer.
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let canal = 1; canal <= 12; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+  }
+  assert.equal(rafagas[0]?.probableCausa, 'FADER_DRAG', 'con lo visto hasta acá, eso parecía');
+
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  assert.equal(rafagas.length, 2);
+  assert.equal(rafagas[1]?.probableCausa, 'SNAPSHOT_RECALL');
+});
+
+test('la correccion de causa se avisa una sola vez', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let canal = 1; canal <= 12; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+  }
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  assert.equal(rafagas.length, 2);
 });

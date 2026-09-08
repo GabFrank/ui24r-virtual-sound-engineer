@@ -58,6 +58,16 @@ con INV-034:
   aviso se apaga en un `finally` — un aviso pegado dejaría la aplicación sin
   poder actualizarse nunca y nadie sabría que está pegado. `SafetyService`
   arma el ejecutor ya conectado, para que no se pueda armar uno que se olvide.
+- **INV-021**, cláusula del cambio de instantánea: la detección solo miraba el
+  conteo de rutas, y la invariante dice «cambio masivo **o** cambio de
+  `currentSnapshot`». Un recall desde el navegador de la consola cambia la
+  instantánea activa y después los parámetros que difieran: si difieren menos
+  de diez, no se detectaba nada y el estado local se seguía dando por bueno.
+  Es peor que la avalancha grande, porque un recall chico es el que nadie nota.
+  La causa probable, además, estaba fija en `SNAPSHOT_RECALL` —también cuando
+  no había ninguna instantánea de por medio—, y es lo que decide qué conviene
+  hacer. Ahora se deduce, y se corrige si la instantánea llega después de los
+  parámetros que movió: la consola no promete un orden.
 - **INV-003**, retención: `MAX_SNAPSHOTS_AUTOMATICAS = 20` estaba escrita y no
   la consultaba nadie, así que la retención existía como número en un archivo.
   Ahora `snapshotsABorrar` decide qué borrar y, sobre todo, qué no: nunca una
