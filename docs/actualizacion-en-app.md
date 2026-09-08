@@ -34,14 +34,14 @@ Pide una contraseña. Anotala donde se guarden las contraseñas de verdad, no en
 base64 -w 0 vse-release.jks > vse-release.jks.b64
 ```
 
-En GitHub, **Settings → Secrets and variables → Actions → New repository secret**, cuatro secretos:
+En GitHub, **Settings → Secrets and variables → Actions → New repository secret**, **dos** secretos:
 
 | Secreto | Contenido |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | el contenido de `vse-release.jks.b64` |
+| `ANDROID_KEYSTORE_BASE64` | el contenido de `vse-release.jks.b64`, en una sola línea |
 | `ANDROID_KEYSTORE_PASSWORD` | la contraseña del almacén |
-| `ANDROID_KEY_ALIAS` | `vse` |
-| `ANDROID_KEY_PASSWORD` | la contraseña de la clave (la misma, salvo que se haya puesto otra) |
+
+Eran cuatro. Los otros dos no eran secretos y se quitaron: el alias es `vse` y está escrito en este mismo documento, y en un almacén PKCS12 la clave comparte contraseña con el almacén, así que se pedía dos veces lo mismo. Cada secreto de más es una oportunidad de más de equivocarse en algo cuyo error no tiene arreglo.
 
 Desde acá, cada APK que publique la integración continua queda firmado con esa clave.
 

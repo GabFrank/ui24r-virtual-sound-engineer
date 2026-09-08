@@ -27,15 +27,14 @@ jobs:
 
       - run: npm ci
 
-      # Las mismas comprobaciones que la integración continua. Una publicación
-      # es más difícil de retirar que un cambio: no se firma nada que no haya
-      # pasado por acá.
-      - name: Validar identificadores de la documentación
-        run: npm run validate:docs
-      - name: Lint
-        run: npm run lint
-      - name: Tests unitarios
-        run: npm test
+      # Las mismas comprobaciones que la integración continua, y de verdad: esto
+      # decía «las mismas» y corría tres de las seis. Una publicación es más
+      # difícil de retirar que un cambio -- no se puede despublicar de una
+      # tablet que ya la instaló -- así que no se firma nada que no haya pasado
+      # por acá. `verificar` las encadena en el mismo orden, y llamarlo en vez
+      # de repetirlas evita que las dos listas vuelvan a separarse.
+      - name: Las comprobaciones completas
+        run: npm run verificar
 
       - name: Deducir la versión de la etiqueta
         id: version
@@ -56,18 +55,17 @@ jobs:
       - name: Restaurar el almacén de claves
         env:
           ALMACEN: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          CLAVE_ALMACEN: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          CLAVE_ALIAS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CLAVE: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          # Los cuatro secretos, no solo el almacén. Faltando la contraseña o
-          # el alias, Gradle fallaba con un error sin relación aparente con el
-          # secreto ausente. Acá se dicen todos los que faltan de una vez.
+          # Dos secretos, no cuatro. El alias no es secreto -- está publicado en
+          # docs/actualizacion-en-app.md -- y en un almacén PKCS12 la clave y el
+          # almacén comparten contraseña, así que pedir cuatro valores era pedir
+          # dos veces lo mismo y una cosa que no hacía falta esconder. Cada
+          # secreto de más es una oportunidad de más de equivocarse en algo cuyo
+          # error no tiene arreglo.
           faltan=""
           [ -z "$ALMACEN" ] && faltan="$faltan ANDROID_KEYSTORE_BASE64"
-          [ -z "$CLAVE_ALMACEN" ] && faltan="$faltan ANDROID_KEYSTORE_PASSWORD"
-          [ -z "$ALIAS" ] && faltan="$faltan ANDROID_KEY_ALIAS"
-          [ -z "$CLAVE_ALIAS" ] && faltan="$faltan ANDROID_KEY_PASSWORD"
+          [ -z "$CLAVE" ] && faltan="$faltan ANDROID_KEYSTORE_PASSWORD"
           if [ -n "$faltan" ]; then
             echo "Faltan secretos del repositorio:$faltan" >&2
             echo "Sin ellos el APK quedaría firmado con una clave de depuración" >&2
@@ -89,8 +87,9 @@ jobs:
         env:
           VSE_KEYSTORE_FILE: ${{ runner.temp }}/vse.jks
           VSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          VSE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          VSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # El alias es público y la contraseña de la clave es la del almacén.
+          VSE_KEY_ALIAS: vse
+          VSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease --no-daemon \
