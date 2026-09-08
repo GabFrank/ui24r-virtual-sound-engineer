@@ -5,8 +5,14 @@ Corre en escritorio, sin hardware. Genera los archivos de referencia, calcula la
 ```bash
 node src/generate-signals.mjs      # genera los 11 archivos de referencia en out/
 node src/report.mjs                # calcula métricas y escribe out/reference-values.json
-npm run test:dsp                   # ejecuta la comparación contra tolerancias
+npm run test:dsp                   # regenera las señales y ejecuta la comparación
 ```
+
+Los archivos de audio **no están en el repositorio**: son generados, y el
+generador es determinista, así que dos ejecuciones dan archivos idénticos byte
+a byte. Por eso `npm run test:dsp` los regenera antes de comparar: si no lo
+hiciera, funcionaría en una máquina donde ya existen y fallaría en integración
+continua, que es exactamente lo que pasó la primera vez.
 
 ## Por qué dos implementaciones
 

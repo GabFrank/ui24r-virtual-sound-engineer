@@ -12,6 +12,7 @@
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "pretest:dsp": "node tools/spikes/p0-10a-dsp/src/generate-signals.mjs",
     "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
     "validate:docs": "node tools/docs/validate-ids.mjs",
     "deps:graph": "node tools/docs/build-graph.mjs"
