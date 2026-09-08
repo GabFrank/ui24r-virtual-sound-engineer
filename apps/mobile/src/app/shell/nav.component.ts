@@ -110,7 +110,7 @@ interface Destino {
       }
       a.activo { background: transparent; color: var(--signal); }
       .etiqueta {
-        font-size: 11px; overflow: hidden; text-overflow: ellipsis;
+        font-size: var(--txt-xxs); overflow: hidden; text-overflow: ellipsis;
         white-space: nowrap; max-width: 100%;
       }
     }

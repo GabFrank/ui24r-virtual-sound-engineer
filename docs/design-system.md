@@ -90,12 +90,29 @@ aplicación funcione igual en una tablet dividida en dos que a pantalla completa
 - Los avisos usan `role="status"` con `aria-live="polite"`: no interrumpen lo
   que el lector de pantalla esté diciendo.
 
-## El paro de emergencia y el relleno inferior
+## El paro de emergencia
 
-El paro flota fijo en la esquina inferior derecha, en todas las pantallas
-(INV-019). Por eso `.pagina` reserva relleno inferior: sin él, en teléfono el
-paro se monta encima del último botón. Lo encontró una captura del sistema de
-diseño, donde tapaba justo el «Siguiente» de un asistente.
+Tres cosas, y las tres se aprendieron por defectos reales.
+
+**Flota fijo en la esquina inferior derecha, en todas las pantallas** (INV-019).
+Por eso `.pagina` reserva `--zona-inferior`: sin ella, en teléfono el paro se
+monta encima del último botón. Lo encontró una captura del sistema de diseño,
+donde tapaba justo el «Siguiente» de un asistente.
+
+**Y va además dentro de cada diálogo.** No es redundancia. Un `dialog` abierto
+con `showModal()` se pinta en la *capa superior* del navegador, por encima de
+cualquier `z-index`, y su velo intercepta los eventos de puntero: con un
+diálogo abierto, el botón flotante deja de existir para el usuario. Se
+comprobó midiendo, y `tools/visual/flujo.mjs` lo verifica en cada corrida —
+abre un diálogo y comprueba que `elementFromPoint` sobre el paro devuelve el
+paro—. Por eso `ui-dialog` monta `app-paro-boton` en su cabecera: un
+componente del sistema de diseño que puede esconder el paro de emergencia no
+es una primitiva neutral.
+
+**La banda de rearme empuja, no tapa.** Antes flotaba fija sobre la barra
+superior y la ocultaba entera: mientras el paro estaba activo desaparecía el
+estado de la conexión, que es justo el dato que hace falta para decidir si
+rearmar.
 
 ## Cómo se revisa
 

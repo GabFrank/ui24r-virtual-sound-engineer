@@ -171,6 +171,34 @@ async function recorrer(contexto, tamanio) {
   await esperar(400);
   await paso(21, 'detalle', 'detalle de la sesión cerrada, solo lectura');
 
+  // --- INV-019: el paro tiene que poder tocarse también con un diálogo abierto ---
+  //
+  // Un «dialog» abierto con showModal() se pinta en la capa superior del
+  // navegador, por encima de cualquier z-index, y su velo intercepta los
+  // eventos de puntero. El botón flotante del contenedor deja de existir para
+  // el usuario. Esta comprobación existe porque eso pasaba de verdad: con el
+  // diálogo de cerrar sesión abierto, un clic sobre el paro agotaba el tiempo
+  // de espera.
+  await p.goto(`http://localhost:${PUERTO_WEB}/#/perfiles`, { waitUntil: 'networkidle' });
+  await p.click('ui-page-header ui-button button');
+  await p.waitForSelector('#banda-nombre');
+  await p.click('ui-card[titulo="Integrantes"] ui-button button');
+  await p.waitForSelector('#int-nombre');
+
+  const paroAlcanzable = await p.evaluate(() => {
+    const dlg = document.querySelector('dialog[open]');
+    if (dlg === null) return 'no se abrió ningún diálogo';
+    const boton = dlg.querySelector('app-paro-boton button');
+    if (boton === null) return 'el diálogo no contiene el paro de emergencia';
+    const r = boton.getBoundingClientRect();
+    if (r.width < 44 || r.height < 44) return `el paro del diálogo mide ${r.width}x${r.height}`;
+    const encima = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return boton.contains(encima) ? null : `otro elemento tapa el paro: ${encima?.tagName}`;
+  });
+  if (paroAlcanzable !== null) fallos.push(`INV-019 en diálogo: ${paroAlcanzable}`);
+
+  await paso(22, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
+
   await p.close();
   return fallos;
 }

@@ -29,7 +29,12 @@ import { ToastService } from './toast.service';
       left: 50%; transform: translateX(-50%);
       bottom: calc(var(--sp-5) + var(--seguro-abajo));
       display: flex; flex-direction: column; gap: var(--sp-2);
-      width: min(520px, calc(100% - var(--sp-6)));
+      /* Se reserva el ancho del paro en todos los tamaños, no solo en
+         teléfono: entre 600 y 696 px el aviso se centraba y su botón de
+         descartar quedaba literalmente debajo del círculo del paro. El
+         objetivo que el usuario quiere tocar y el que jamás debe tocarse por
+         error compartían píxeles. */
+      width: min(520px, calc(100% - var(--sp-6) - var(--alto-paro)));
       pointer-events: none;
     }
     /* La clase base se llama «mensaje» y no «aviso» a propósito: uno de los

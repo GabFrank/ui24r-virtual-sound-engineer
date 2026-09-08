@@ -62,8 +62,8 @@ export type TamanioDeBoton = 'md' | 'lg';
     }
     button.lg { min-height: var(--tap-comodo); padding: 0 var(--sp-5); font-size: var(--txt-lg); }
 
-    button.primario { background: var(--signal); color: #06282b; }
-    button.primario:not(:disabled):active { background: #34a8b2; }
+    button.primario { background: var(--signal); color: var(--sobre-signal); }
+    button.primario:not(:disabled):active { background: var(--signal-pulsado); }
 
     button.secundario { border-color: var(--line-fuerte); color: var(--ink); }
     button.secundario:not(:disabled):active { background: var(--surface-2); }
@@ -74,7 +74,11 @@ export type TamanioDeBoton = 'md' | 'lg';
     button.peligro { border-color: var(--danger); color: var(--danger); }
     button.peligro:not(:disabled):active { background: var(--danger-tenue); }
 
-    button:disabled { opacity: 0.42; cursor: default; }
+    /* Deshabilitado: se atenúa el color, no toda la caja. Con opacidad al 42 %
+       el texto quedaba en 2,3:1 y a un metro no se podía leer qué decía el
+       botón que no responde, que es justo lo que hay que saber. */
+    button:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+    button.primario:disabled { background: var(--surface-3); color: var(--muted); }
 
     .girador {
       width: 16px; height: 16px; border-radius: 50%;

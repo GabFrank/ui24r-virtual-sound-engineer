@@ -28,6 +28,13 @@ INV-033.
 Ninguna invariante se marca como cerrada por pasar contra el simulador: el
 simulador reproduce nuestras hipótesis del protocolo, no la consola.
 
+**INV-019, parte de interfaz.** El bloqueo de escrituras y la lista blanca
+tienen test unitario. La *presencia* del botón la comprueba
+`tools/visual/flujo.mjs`, que abre un diálogo modal y verifica que el paro siga
+siendo alcanzable — la comprobación se agregó porque no lo era: un `dialog`
+abierto con `showModal()` tapaba el botón flotante. El tamaño y la presencia en
+las once pantallas todavía no se verifican automáticamente.
+
 | ID | Invariante | Test | Desde |
 |---|---|---|---|
 | INV-001 | Ninguna transacción pasa a APPLYING sin `snapshotRef` verificado en la lista de snapshots re-leída. Nombre `VSE_AUTO_<ts>` en show `VSE`. | Unit + HIL: aplicar sin snapshot → rechazado; borrar snapshot entre save y apply → abortada. | MVP4a |

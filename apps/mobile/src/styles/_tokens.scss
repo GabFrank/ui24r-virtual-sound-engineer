@@ -34,12 +34,20 @@
    * está haciendo; los otros tres son estado y nunca se usan por estética. */
   --signal: #3fc3ce;
   --signal-tenue: #1d4a4e;
+  /* Texto sobre un fondo de color pleno. Son los únicos dos colores oscuros
+   * del sistema, y existen como ficha porque estaban escritos a mano en tres
+   * componentes: el que más los usaba —el paro de emergencia— nunca pasó por
+   * la revisión de contraste que sí hicieron las fichas. */
+  --sobre-signal: #06282b;
+  --sobre-danger: #1a0a0a;
+  --signal-pulsado: #34a8b2;
   --ok: #7fb86a;
   --ok-tenue: #263a20;
   --warn: #dfa355;
   --warn-tenue: #40301a;
   --danger: #e07373;
   --danger-tenue: #45211f;
+  --danger-borde: #f0a0a0;
 
   /* El color nunca es el único portador de información: cada estado lleva
    * además texto y, donde hace falta, una forma distinta. Un ingeniero de
@@ -64,6 +72,9 @@
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Roboto Mono', 'SF Mono', Menlo, monospace;
 
+  /* Por debajo de --txt-xs solo la barra de navegación en teléfono, donde el
+   * rótulo acompaña a un icono y no es el único portador. */
+  --txt-xxs: 11px;
   --txt-xs: 12px;
   --txt-sm: 13px;
   --txt-md: 15px;
@@ -93,6 +104,8 @@
    * flota de verdad. */
   --sombra-flotante: 0 8px 24px rgb(0 0 0 / 0.5);
   --sombra-modal: 0 16px 48px rgb(0 0 0 / 0.6);
+  --velo-modal: rgb(0 0 0 / 0.62);
+  --pista-medidor: #0a1418;
 
   /* --- Tacto -------------------------------------------------------------
    * 48px es el mínimo de las guías de accesibilidad. 56 es el objetivo real
@@ -127,8 +140,10 @@
    *
    * En tablet solo está el paro; en teléfono, la barra de navegación y encima
    * el paro. */
+  /* INV-019 exige 64 px como mínimo. El valor de teléfono estaba en 60 y no
+   * cumplía: cuatro píxeles no valen debilitar una invariante de seguridad. */
   --alto-paro: 72px;
-  --alto-paro-telefono: 60px;
+  --alto-paro-telefono: 64px;
   --zona-inferior: calc(var(--alto-paro) + var(--sp-5) + var(--seguro-abajo));
   --zona-inferior-telefono: calc(
     var(--tap-comodo) + var(--sp-3) + var(--alto-paro-telefono) + var(--sp-5) + var(--seguro-abajo)
