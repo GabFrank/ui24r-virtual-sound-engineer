@@ -189,7 +189,7 @@ async function main() {
   await esperar(400);
   await capturar('10-canales-sin-asignar', 'canales de la consola, todavía sin asignar');
 
-  await pagina.click('.cabecera button');
+  await pagina.click('ui-page-header ui-button button');
   await esperar(600);
   await capturar('11-canales-propuestos', 'tipos propuestos desde el nombre que ya tiene cada canal');
 
@@ -198,7 +198,7 @@ async function main() {
   await capturar('12-ganancia-sin-medir', 'asistente de ganancia antes de medir');
 
   // La captura dura dieciocho segundos más tres de cuenta regresiva.
-  await pagina.click('table tbody tr:first-child button.medir');
+  await pagina.click('table tbody tr:first-child ui-button button');
   await esperar(1500);
   await capturar('13-cuenta-regresiva', 'cuenta regresiva antes de capturar');
   await esperar(4000);
@@ -256,7 +256,7 @@ async function main() {
   await esperar(300);
   await capturar('16-actualizacion-inicial', 'pestaña de actualización antes de consultar');
 
-  await pagina.click('.cabecera button');
+  await pagina.click('ui-page-header ui-button button');
   await pagina.waitForSelector('.bloqueos li', { timeout: 5000 });
   await esperar(300);
   await capturar('17-actualizacion-bloqueada', 'INV-034: conectado a la consola, no se actualiza');
@@ -270,7 +270,7 @@ async function main() {
   await esperar(300);
 
   await responderCatalogo([]);
-  await pagina.click('.cabecera button');
+  await pagina.click('ui-page-header ui-button button');
   await pagina.waitForSelector('.nota.ok, .nota.aviso', { timeout: 5000 });
   await esperar(300);
   await capturar('18-actualizacion-al-dia', 'no hay ninguna versión más nueva publicada');
@@ -278,14 +278,14 @@ async function main() {
   // Sin el permiso del sistema no hay botón de descargar, y es lo que se ve la
   // primera vez en la tablet.
   await responderCatalogo([publicacion('v0.2.0'), publicacion('v0.1.1')]);
-  await pagina.click('.cabecera button');
+  await pagina.click('ui-page-header ui-button button');
   await pagina.waitForSelector('.novedad', { timeout: 5000 });
   await esperar(300);
   await capturar('19-actualizacion-sin-permiso', 'versión disponible, falta el ajuste del sistema');
 
   await pagina.evaluate(() => localStorage.setItem('vse.web.permiso', 'si'));
-  await pagina.click('.cabecera button');
-  await pagina.waitForSelector('.novedad button.primario', { timeout: 5000 });
+  await pagina.click('ui-page-header ui-button button');
+  await pagina.waitForSelector('.novedad ui-button button.primario', { timeout: 5000 });
   await pagina.click('details summary');
   await esperar(300);
   await capturar('20-actualizacion-disponible', 'versión disponible, con sus novedades');
@@ -293,10 +293,45 @@ async function main() {
   // Una publicación con etiqueta de pre-lanzamiento se descarta aunque la
   // casilla de GitHub no esté marcada.
   await responderCatalogo([publicacion('v0.3.0-rc.1')]);
-  await pagina.click('.cabecera button');
+  await pagina.click('ui-page-header ui-button button');
   await pagina.waitForSelector('.nota.ok', { timeout: 5000 });
   await esperar(300);
   await capturar('21-prelanzamiento-descartado', 'una etiqueta rc no se ofrece como actualización');
+
+  // --- Las pantallas de la consola en teléfono ---
+  //
+  // Son las tres que muestran tablas densas, y son las que peor se llevan con
+  // un ancho de 390 píxeles: ahí la tabla se sustituye por una lista de
+  // tarjetas. Sin estas capturas, esa sustitución no se revisa nunca.
+  {
+    const tel = await contexto.newPage();
+    await tel.setViewportSize({ width: 390, height: 1400 });
+    await tel.goto(`http://localhost:${PUERTO_WEB}/#/ajustes`, { waitUntil: 'networkidle' });
+    await tel.fill('#aj-host', `ws://localhost:${PUERTO_SIM}`);
+    await tel.click('ui-card[titulo="Consola"] ui-button button');
+    await esperar(1500);
+
+    const capturarTel = async (nombre, descripcion) => {
+      await esperar(400);
+      await tel.screenshot({ path: join(OUT, `${nombre}.png`) });
+      console.log(`  ✓ ${nombre}.png — ${descripcion}`);
+    };
+
+    await tel.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
+    await esperar(1200);
+    await capturarTel('tel-01-consola', 'telemetría en teléfono: tarjetas en vez de tabla');
+
+    await tel.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
+    await tel.click('ui-page-header ui-button button');
+    await esperar(600);
+    await capturarTel('tel-02-canales', 'asignación de canales en teléfono');
+
+    await tel.goto(`http://localhost:${PUERTO_WEB}/#/sesion/ganancia`, { waitUntil: 'networkidle' });
+    await esperar(500);
+    await capturarTel('tel-03-ganancia', 'asistente de ganancia en teléfono');
+
+    await tel.close();
+  }
 
   // --- Sistema de diseño, en los tres anchos donde cambia la forma ---
   //
