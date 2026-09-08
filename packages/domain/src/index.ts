@@ -1,5 +1,6 @@
 export * from './ids.ts';
 export * from './entities/musical.ts';
+export * from './data/channel-profiles.ts';
 export * from './entities/measurement.ts';
 export * from './entities/recommendation.ts';
 export * from './entities/transaction.ts';

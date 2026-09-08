@@ -86,7 +86,10 @@ export class DatabaseService {
    * campo o a una consulta de soporte. Sin audio.
    */
   async exportar(): Promise<string> {
-    const r = await this.sqlite.exportToJson(NOMBRE_BASE, 'full');
+    // exportToJson vive en la conexión de la base, no en el gestor de
+    // conexiones. Es un detalle fácil de confundir porque el gestor expone
+    // métodos de nombre parecido.
+    const r = await this.conexion().exportToJson('full');
     return JSON.stringify(r.export ?? {});
   }
 }
