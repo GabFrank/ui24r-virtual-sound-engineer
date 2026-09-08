@@ -10,7 +10,7 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 | | |
 |---|---|
-| Tests en verde | 293, más 48 de validación DSP |
+| Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
 | Spikes cerrados | 0 de 22 |
 | Controles de paso aprobados | 0 de 5 |
 | Rutas crudas escribibles | 0, y así seguirá hasta que un spike verifique cada conversión |
@@ -68,7 +68,7 @@ EP-15 Post-MVP
 | `docs/field` | Informes de prueba de campo. |
 | `docs/backlog` | Plan final, auditorías, backlog y orden de implementación. |
 | `tools/spikes` | Código de spikes. No requiere tests ni entra en el producto. |
-| `tools/docs` | Cinco validadores: identificadores de la documentación, acentos graves y llamadas a función en plantillas, límites entre paquetes y convención de los commits. |
+| `tools/docs` | Seis validadores: identificadores de la documentación, cifras que la documentación afirma, acentos graves y llamadas a función en plantillas, límites entre paquetes y convención de los commits. |
 | `tools/mixer-sim` | Simulador del protocolo de la consola. Reproduce nuestras hipótesis, no la consola. |
 | `tools/visual` | Capturas contra el simulador y recorrido automático del camino de usuario. |
 

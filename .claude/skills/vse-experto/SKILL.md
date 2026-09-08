@@ -100,6 +100,8 @@ Cada una de estas costó tiempo. Están acá para que no vuelva a pasar.
 
 **Firma de Android.** El sistema solo reemplaza una aplicación por otra firmada con la **misma clave**. Sin un almacén de claves fijo guardado como secreto, ninguna actualización funciona y el mensaje que ve el usuario es «aplicación no instalada», que no explica nada.
 
+**Un número escrito a mano en la documentación se pudre.** La cuenta de tests estuvo en 220 cuando eran 283, se corrigió a 293, y dos PR después ya eran 298. La corrección dura hasta el siguiente PR que agregue un test. Cuando un dato cambia cada semana y nada lo comprueba, la respuesta no es corregirlo otra vez: es no afirmarlo, y decir dónde se consulta. Los números que sí valen la pena escribir son los que cambian con una decisión —cuántas invariantes hay, cuántos gates— porque cambiarlos es parte de tomar la decisión.
+
 **Una comprobación puede estar calibrada por debajo de la regla.** El recorrido medía el paro del diálogo con un umbral de 44 px cuando INV-019 exige 64, así que aprobaba un botón de 48. Se había corregido antes un caso de 60 px argumentando que «cuatro píxeles no valen debilitar una invariante», y se dejó pasar uno de dieciséis. Cuando escribas la comprobación, copiá el número de la regla, no uno parecido.
 
 **Una comprobación puede comprobar menos de lo que dice.** El validador de identificadores reconocía ocho familias como definición y comprobaba tres como referencia: spikes, epics, historias, riesgos y decisiones no se comparaban contra nada, y así sobrevivió una cita a EP-09 —que no existe— en un documento que el script daba por validado. Cuando agregues una comprobación, comprobá también su cobertura: no alcanza con que falle cuando debe, tiene que mirar todo lo que dice mirar.
@@ -113,7 +115,7 @@ npm run verificar          # todo lo que comprueba la integración continua
 npm run verificar:commits  # los mensajes de esta rama, contra main
 
 npm run lint          # chequeo de tipos completo + compilación de la app
-npm test              # 293 tests de los ocho paquetes
+npm test              # los tests de los ocho paquetes
 npm run test:dsp      # 48 de procesamiento de señal
 npm run validate:docs # identificadores de la documentación
 npm run validate:templates  # acentos graves y llamadas desde plantilla
