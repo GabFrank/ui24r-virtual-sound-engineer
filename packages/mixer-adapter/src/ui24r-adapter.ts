@@ -3,7 +3,8 @@ import type {
   ReadResult, WriteResult,
 } from './api.ts';
 import { ConfirmedStateStore } from './confirmed-store.ts';
-import { codificarSetd, decodificar, decodificarVu, faderADb } from './protocol.ts';
+import { codificarSetd, decodificar, decodificarVu } from './protocol.ts';
+import { GANANCIA_DB_MINIMA, faderADb, gananciaADb } from './conversiones.ts';
 import type { Transport } from './transport.ts';
 
 export interface OpcionesAdapter {
@@ -221,7 +222,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         indice: i,
         nombre: this.nombresCanal.get(i) ?? `CANAL ${i}`,
         faderDb: fader ? faderADb(fader.valor) : -Infinity,
-        gainDb: gain ? gain.valor * 63 - 6 : 0,
+        gainDb: gain ? gananciaADb(gain.valor) : GANANCIA_DB_MINIMA,
         silenciado: (mute?.valor ?? 0) > 0.5,
         nivelDb: this.nivelesVu.get(i) ?? -Infinity,
         picoDb: this.picosVu.get(i) ?? -Infinity,

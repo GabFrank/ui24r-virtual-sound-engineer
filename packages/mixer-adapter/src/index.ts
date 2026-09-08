@@ -1,6 +1,7 @@
 export * from './api.ts';
 export * from './raw-map.ts';
 export * from './protocol.ts';
+export * from './conversiones.ts';
 export * from './transport.ts';
 export * from './confirmed-store.ts';
 export * from './ui24r-adapter.ts';
