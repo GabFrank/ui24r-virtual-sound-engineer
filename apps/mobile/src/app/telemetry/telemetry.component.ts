@@ -116,6 +116,14 @@ function db(v: number): string {
         @if (error(); as e) { <p class="error">{{ e }}</p> }
       } @else {
         <ui-page-header titulo="Consola" [descripcion]="resumen()">
+          <!-- Si el estado confirmado vale o no decidía si se puede escribir
+               (INV-017) y no se veía en ninguna pantalla. Sin esto, tras una
+               avalancha el usuario quedaba sin poder escribir y sin nada que se
+               lo dijera; y la comprobación de la relectura no tenía a qué
+               mirar más que a la ausencia del cartel, que se apaga solo. -->
+          <ui-badge [tono]="estadoConfirmado() ? 'ok' : 'aviso'" data-estado-confirmado>
+            {{ estadoConfirmado() ? 'Estado confirmado' : 'Estado sin confirmar' }}
+          </ui-badge>
           <ui-button variante="secundario" icono="refrescar"
                      (pulsado)="reiniciarPicos()">Reiniciar picos</ui-button>
         </ui-page-header>
@@ -356,6 +364,9 @@ export class TelemetryComponent {
   descartarMasivo(): void { this.mixer.descartarCambioMasivo(); }
 
   readonly releyendo = this.mixer.releyendo;
+
+  /** Si el estado local refleja la consola. Lo que INV-017 exige para escribir. */
+  readonly estadoConfirmado = this.conexion.storeValido;
 
   releer(): void { void this.mixer.releerEstado(); }
 }

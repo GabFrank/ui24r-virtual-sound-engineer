@@ -39,7 +39,19 @@ export class SessionStateService {
    * olvide de avisar -- que es exactamente lo que pasaba antes, con esta señal
    * en `false` para siempre y la cláusula de INV-034 sin dispararse nunca.
    */
+  /**
+   * Cuántos ejecutores tienen una transacción abierta ahora mismo.
+   *
+   * Cuenta acá y no solo dentro del ejecutor porque `SafetyService.crearEjecutor`
+   * devuelve uno nuevo en cada llamada, y el contador del ejecutor es por
+   * instancia: con dos, el paso por cero del primero apagaba el aviso con el
+   * segundo todavía escribiendo. Es el mismo fallo que el contador arregló un
+   * nivel más abajo, reintroducido por el método fábrica.
+   */
+  private abiertas = 0;
+
   fijarTransaccionEnCurso(enCurso: boolean): void {
-    this._transaccionEnCurso.set(enCurso);
+    this.abiertas = Math.max(0, this.abiertas + (enCurso ? 1 : -1));
+    this._transaccionEnCurso.set(this.abiertas > 0);
   }
 }

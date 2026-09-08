@@ -183,17 +183,31 @@ async function main() {
   // cartel. Antes el boton decia "Entendido" y no habia ninguna relectura: un
   // recall dejaba el estado invalido -- y con el la posibilidad de escribir --
   // muerto por el resto del show.
+  // Antes de releer, el estado tiene que estar sin confirmar: si ya estuviera
+  // confirmado, lo de abajo no probaría nada.
+  const antes = await pagina.textContent('[data-estado-confirmado]');
+  if (!/sin confirmar/i.test(antes ?? '')) {
+    throw new Error(`la avalancha no invalidó el estado: la insignia dice "${antes?.trim()}"`);
+  }
+
   await pagina.click('.alerta ui-button:first-child button');
-  await esperar(2500);
+  await esperar(3000);
+
+  // Lo que se comprueba es que el estado **vuelva a estar confirmado**, no que
+  // el cartel desaparezca. El cartel lo apaga la propia función, sin mirar
+  // nada: con `releerEstado()` vaciado a `return;` la comprobación anterior
+  // pasaba igual, e imprimía su línea de éxito.
+  const despues = await pagina.textContent('[data-estado-confirmado]');
+  if (!/^\s*Estado confirmado/i.test(despues ?? '')) {
+    throw new Error(
+      `la relectura no devolvió el estado a confirmado: la insignia dice "${despues?.trim()}"`,
+    );
+  }
   const alertaSigue = await pagina.locator('.alerta').count();
   if (alertaSigue > 0) {
-    throw new Error('la relectura no despejó el cartel de cambio masivo');
+    throw new Error('el estado volvió a ser válido pero el cartel sigue puesto');
   }
-  const hayCanales = await pagina.locator('tbody tr, ui-card').count();
-  if (hayCanales === 0) {
-    throw new Error('tras la relectura no se recuperó ningún canal');
-  }
-  console.log('  · la relectura devuelve el estado y despeja el cartel');
+  console.log('  · la relectura devuelve el estado a confirmado y despeja el cartel');
   await esperar(300);
 
   await escenario('vu-gap');

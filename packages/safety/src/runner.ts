@@ -92,9 +92,13 @@ export class EjecutorDeTransacciones {
    * mitad de una escritura, que es exactamente lo que existe para impedir.
    */
   private async conActividad<T>(cuerpo: () => Promise<T>): Promise<T> {
-    this.enCurso += 1;
-    if (this.enCurso === 1) this.avisarActividad(true);
+    // El incremento va dentro del `try`: si `avisarActividad` lanzara, con el
+    // incremento afuera el `finally` no correría y el contador quedaría en uno
+    // para siempre — el aviso pegado que este método existe para evitar, movido
+    // dos líneas más arriba.
     try {
+      this.enCurso += 1;
+      if (this.enCurso === 1) this.avisarActividad(true);
       return await cuerpo();
     } finally {
       this.enCurso -= 1;

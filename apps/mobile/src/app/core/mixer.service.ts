@@ -18,6 +18,15 @@ export interface AvisoCambioExterno {
  * El adaptador no sabe nada de Angular y la interfaz no sabe nada del
  * protocolo. Este servicio traduce eventos a señales.
  */
+/**
+ * Cuánto se espera el volcado completo tras pedir una relectura.
+ *
+ * La consola manda su estado entero al abrir la conexión, y son cientos de
+ * mensajes. Cinco segundos es holgado para eso y corto para alguien parado
+ * delante de una consola que no contesta.
+ */
+const ESPERA_VOLCADO_MS = 5000;
+
 @Injectable({ providedIn: 'root' })
 export class MixerService {
   private readonly log = inject(Logger);
@@ -102,10 +111,33 @@ export class MixerService {
    */
   async releerEstado(): Promise<void> {
     const adapter = this.adapter;
-    if (adapter === null) return;
+    if (adapter === null) {
+      // Volvía en silencio y el botón quedaba inerte, sin registro de por qué.
+      this.ultimoError.set('No hay conexión con la consola: no hay estado que releer.');
+      this.log.warn('mixer', 'relectura_sin_conexion', {});
+      return;
+    }
     this.releyendo.set(true);
     try {
+      // Se espera el volcado completo, no la reconexión. `conectar()` resuelve
+      // cuando abre el socket, y lo que devuelve el estado a válido es el
+      // `DUMP_END` que llega después. Sin esperarlo, el cartel se despejaba
+      // porque alguien lo apagó y no porque se hubiera releído nada: si el
+      // volcado no llegaba, el usuario quedaba sin cartel, sin poder escribir y
+      // sin nada que se lo dijera.
+      const volcado = new Promise<boolean>((resolver) => {
+        const quitar = adapter.alVolcadoCompleto(() => { quitar(); resolver(true); });
+        setTimeout(() => { quitar(); resolver(false); }, ESPERA_VOLCADO_MS);
+      });
       await adapter.releerEstado();
+      if (!await volcado) {
+        this.ultimoError.set(
+          'La consola volvió a conectarse pero no mandó su estado. El cartel sigue ' +
+          'hasta que lo haga: no se puede escribir sobre un estado que no se leyó.',
+        );
+        this.log.warn('mixer', 'relectura_sin_volcado', { esperaMs: ESPERA_VOLCADO_MS });
+        return;
+      }
       this.cambioMasivo.set(null);
       this.canales.set(adapter.canales());
       this.log.info('mixer', 'estado_releido', {});
