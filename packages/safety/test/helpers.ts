@@ -62,7 +62,11 @@ export class MezcladoraFalsa implements MixerDomainAPI {
     };
   }
 
+  /** Gancho para observar o hacer fallar una escritura desde un test. */
+  alEscribir: ((parametro: string, valor: number) => void) | null = null;
+
   async escribir(parametro: string, valor: number, esperado: number): Promise<WriteResult> {
+    this.alEscribir?.(parametro, valor);
     if (this.caerEnEscrituraNumero !== null &&
         this.escrituras.length === this.caerEnEscrituraNumero) {
       throw new Error('caída simulada del proceso');

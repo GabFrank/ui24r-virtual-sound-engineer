@@ -51,6 +51,13 @@ con INV-034:
 - **INV-019**, lista blanca: estaba escrita y el motor rechazaba todo con el
   paro activo, incluido un retroceso. Funcionaba porque el retroceso no pasaba
   por el motor, que no es lo mismo que estar permitido.
+- **INV-034**, cláusula de transacción en curso: la señal existía en la
+  aplicación y **nadie la ponía en `true`**, así que la parte de la invariante
+  que impide actualizar en medio de una escritura no se disparaba nunca. Ahora
+  lo avisa el ejecutor de transacciones, que es quien sabe cuándo hay una, y el
+  aviso se apaga en un `finally` — un aviso pegado dejaría la aplicación sin
+  poder actualizarse nunca y nadie sabría que está pegado. `SafetyService`
+  arma el ejecutor ya conectado, para que no se pueda armar uno que se olvide.
 
 **INV-019, parte de interfaz.** El bloqueo de escrituras y la lista blanca
 tienen test unitario. La *presencia* del botón la comprueba
@@ -94,4 +101,4 @@ las once pantallas todavía no se verifican automáticamente.
 | INV-031 | CONTROLLED AUTO no envía writes sin app en foreground y pantalla desbloqueada. Si la pantalla se bloquea o la app pasa a background durante Apply/Verify, la transacción completa su verificación (o revierte por timeout) y el loop se detiene en STOPPED_BY_LOCK sin iniciar otra iteración. | Instrumentado: bloquear en la iteración 2 → 0 writes posteriores. | MVP4b |
 | INV-032 | Al conectar, la app publica un marcador de presencia (mecanismo validado en P0.9: `BMSG^SYNC` con id VSE o snapshot `VSE_LOCK_<deviceId>` renovado cada 60 s) y busca marcadores ajenos; si existe uno con antigüedad < 120 s, arranca en READ-ONLY (sin writes ni generador) y lo muestra. | HIL: dos tablets → exactamente una con writes; apagar la primera → la segunda obtiene writes tras ≤ 180 s con rearme explícito. | MVP0 |
 | INV-033 | Si `deviceInfo.firmware$` ≠ firmware listado en la Capability Matrix, todo write RAW queda deshabilitado (solo API tipada y solo en ASSISTED) hasta que el usuario acepte explícitamente "firmware no certificado" y quede registrado en la sesión. | Unit + HIL con matriz editada. | MVP1 |
-| INV-034 | La aplicación no se actualiza a sí misma mientras haya una sesión de sonido abierta (estado ≠ `CLOSED`), ni con una transacción en curso, ni mientras esté conectada a la consola. La conexión es el suplente de la sesión hasta que el modelo de sesión esté cableado a la interfaz: sin él, en MVP0 la invariante no se dispararía nunca. El contexto se vuelve a evaluar inmediatamente antes de empezar la descarga, no sólo al consultar el catálogo. Sólo se instalan publicaciones estables, descargadas por HTTPS desde servidores de GitHub, con SHA-256 verificado antes de abrir la sesión de instalación (ADR-020). | Unit: `packages/updater/test/decision.test.ts` y `manifest.test.ts`. | MVP0 |
+| INV-034 | La aplicación no se actualiza a sí misma mientras haya una sesión de sonido abierta (estado ≠ `CLOSED`), ni con una transacción en curso, ni mientras esté conectada a la consola. La conexión es el suplente de la sesión hasta que el modelo de sesión esté cableado a la interfaz: sin él, en MVP0 la invariante no se dispararía nunca. El contexto se vuelve a evaluar inmediatamente antes de empezar la descarga, no sólo al consultar el catálogo. Sólo se instalan publicaciones estables, descargadas por HTTPS desde servidores de GitHub, con SHA-256 verificado antes de abrir la sesión de instalación (ADR-020). | Unit: `packages/updater/test/decision.test.ts` y `manifest.test.ts`; el aviso de transacción en curso, en `packages/safety/test/runner.test.ts` -- incluido que se apague cuando la escritura lanza, porque un aviso pegado dejaría la aplicación sin poder actualizarse nunca. | MVP0 |

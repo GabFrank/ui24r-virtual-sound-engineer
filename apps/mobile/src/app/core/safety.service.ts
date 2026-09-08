@@ -1,7 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { EjecutorDeTransacciones, type Diario, type OpcionesEjecutor } from '@vse/safety';
 import { SafetyEngine } from '@vse/safety';
+import type { MixerDomainAPI } from '@vse/mixer-adapter';
 import { Logger } from './logger';
 import { ConnectionStateService } from './connection.state';
+import { SessionStateService } from './session.state';
 
 /**
  * Bloqueo de escrituras y paro de emergencia.
@@ -16,6 +19,7 @@ import { ConnectionStateService } from './connection.state';
 export class SafetyService {
   private readonly log = inject(Logger);
   private readonly conexion = inject(ConnectionStateService);
+  private readonly sesion = inject(SessionStateService);
 
   /**
    * El motor vive en su propio paquete, sin dependencias de framework, y es el
@@ -49,6 +53,30 @@ export class SafetyService {
       };
     }
     return { permitido: true };
+  }
+
+  /**
+   * Construye el ejecutor de transacciones ya conectado al estado de sesión.
+   *
+   * Es un método y no una constante porque el ejecutor necesita la consola,
+   * que puede no estar. Y existe para que **nadie pueda armar uno sin el
+   * aviso**: la cláusula de INV-034 que prohíbe actualizar en medio de una
+   * escritura dependía de una señal que ningún código ponía en `true`, y así
+   * estuvo desde que se escribió. Un ejecutor que se arma solo con el aviso
+   * puesto no se puede olvidar de avisar.
+   */
+  crearEjecutor(
+    mixer: MixerDomainAPI,
+    diario: Diario,
+    opciones: OpcionesEjecutor = {},
+  ): EjecutorDeTransacciones {
+    return new EjecutorDeTransacciones(mixer, this.engine, diario, {
+      ...opciones,
+      alCambiarActividad: (enCurso) => {
+        this.sesion.fijarTransaccionEnCurso(enCurso);
+        this.log.debug('transaction', enCurso ? 'transaccion_iniciada' : 'transaccion_terminada', {});
+      },
+    });
   }
 
   /**

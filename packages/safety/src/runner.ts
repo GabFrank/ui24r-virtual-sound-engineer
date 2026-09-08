@@ -9,6 +9,16 @@ export interface OpcionesEjecutor {
   /** Espera para reintentar la lectura del valor previo. */
   readonly ahora?: () => number;
   readonly dormir?: (ms: number) => Promise<void>;
+  /**
+   * Aviso de que hay una transacción en curso.
+   *
+   * Lo consulta INV-034 para no actualizar la aplicación en medio de una
+   * escritura. Estaba escrito como una señal en la aplicación que **nadie
+   * ponía nunca en `true`**: la cláusula existía, se probaba, y en producción
+   * no se disparaba jamás. Ahora lo avisa quien de verdad sabe cuándo hay una
+   * transacción, que es esta clase.
+   */
+  readonly alCambiarActividad?: (enCurso: boolean) => void;
 }
 
 export type ResultadoTransaccion =
@@ -39,6 +49,7 @@ export class EjecutorDeTransacciones {
   private readonly diario: Diario;
   private readonly pacingMs: number;
   private readonly dormir: (ms: number) => Promise<void>;
+  private readonly avisarActividad: (enCurso: boolean) => void;
 
   constructor(
     mixer: MixerDomainAPI,
@@ -51,6 +62,24 @@ export class EjecutorDeTransacciones {
     this.diario = diario;
     this.pacingMs = opciones.pacingMs ?? 100;
     this.dormir = opciones.dormir ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.avisarActividad = opciones.alCambiarActividad ?? (() => { /* nadie mira */ });
+  }
+
+  /**
+   * Marca la transacción como en curso mientras corre `cuerpo`.
+   *
+   * El `finally` es lo importante: si se avisara el fin solo en el camino
+   * feliz, una excepción dejaría la marca encendida para siempre y la
+   * aplicación no volvería a poder actualizarse nunca. Un aviso que se queda
+   * pegado es peor que no avisar, porque nadie sabe que está pegado.
+   */
+  private async conActividad<T>(cuerpo: () => Promise<T>): Promise<T> {
+    this.avisarActividad(true);
+    try {
+      return await cuerpo();
+    } finally {
+      this.avisarActividad(false);
+    }
   }
 
   /**
@@ -70,6 +99,23 @@ export class EjecutorDeTransacciones {
   }
 
   async ejecutar(
+    id: string,
+    sessionId: string,
+    razon: string,
+    cambios: readonly CambioPropuesto[],
+    ctx: ContextoSeguridad,
+    opciones: {
+      readonly conexionPermiteEscribir: boolean;
+      readonly snapshotRef: string | null;
+      readonly tipoDeOperacion?: string;
+    },
+  ): Promise<ResultadoTransaccion> {
+    return this.conActividad(() => this.ejecutarAhora(
+      id, sessionId, razon, cambios, ctx, opciones,
+    ));
+  }
+
+  private async ejecutarAhora(
     id: string,
     sessionId: string,
     razon: string,
@@ -191,6 +237,15 @@ export class EjecutorDeTransacciones {
    * en que se hicieron puede dejar un estado intermedio distinto del original.
    */
   async revertir(id: string): Promise<{ revertidos: number; fallidos: readonly string[] }> {
+    // Revertir escribe en la consola igual que aplicar, así que cuenta como
+    // transacción en curso: actualizar la aplicación a mitad de un retroceso
+    // es exactamente lo que INV-034 evita.
+    return this.conActividad(() => this.revertirAhora(id));
+  }
+
+  private async revertirAhora(
+    id: string,
+  ): Promise<{ revertidos: number; fallidos: readonly string[] }> {
     const entrada = await this.diario.leer(id);
     if (!entrada) throw new Error(`transacción desconocida: ${id}`);
 

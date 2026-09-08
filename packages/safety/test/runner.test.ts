@@ -281,3 +281,79 @@ test('INV-021: con el almacen invalido no se escribe', async () => {
   }
   assert.deepEqual(mixer.escrituras, []);
 });
+
+// --- INV-034: aviso de transacción en curso ------------------------------
+//
+// La cláusula "no actualizar durante una transacción" estaba escrita, probada
+// en el paquete de actualización, y muerta: la señal de la aplicación no la
+// ponía nadie en `true`. Estas pruebas fijan quién avisa y, sobre todo, que el
+// aviso siempre se apaga.
+
+function montarConAviso(iniciales?: Record<string, number>) {
+  const avisos: boolean[] = [];
+  const mixer = new MezcladoraFalsa(iniciales ?? { 'i.3.mix': -6 });
+  mixer.snapshots = ['VSE_AUTO_1'];
+  const safety = new SafetyEngine();
+  const diario = new DiarioEnMemoria();
+  const ejecutor = new EjecutorDeTransacciones(mixer, safety, diario, {
+    ...sinEspera,
+    alCambiarActividad: (enCurso) => avisos.push(enCurso),
+  });
+  return { avisos, mixer, safety, diario, ejecutor };
+}
+
+test('una transacción aplicada avisa que empieza y que termina', async () => {
+  const { avisos, ejecutor } = montarConAviso();
+  const r = await ejecutor.ejecutar(
+    'tx1', 's1', 'balance', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  assert.equal(r.estado, 'APLICADA');
+  assert.deepEqual(avisos, [true, false]);
+});
+
+test('el aviso está encendido mientras se escribe, no solo al final', async () => {
+  const { avisos, ejecutor, mixer } = montarConAviso();
+  let encendidoAlEscribir: boolean | null = null;
+  mixer.alEscribir = () => { encendidoAlEscribir = avisos[avisos.length - 1] ?? null; };
+  await ejecutor.ejecutar(
+    'tx1', 's1', 'balance', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  assert.equal(encendidoAlEscribir, true);
+});
+
+test('una transacción rechazada también apaga el aviso', async () => {
+  const { avisos, ejecutor } = montarConAviso();
+  const r = await ejecutor.ejecutar(
+    'tx1', 's1', 'sin conexión', [fader('i.3.mix', -4, -6)], contexto(),
+    { conexionPermiteEscribir: false, snapshotRef: 'VSE_AUTO_1' },
+  );
+  assert.equal(r.estado, 'RECHAZADA');
+  assert.deepEqual(avisos, [true, false]);
+});
+
+test('si la escritura lanza, el aviso se apaga igual', async () => {
+  // Es el caso que importa: un aviso que se queda encendido deja la aplicación
+  // sin poder actualizarse nunca más, y nadie sabe que está pegado.
+  const { avisos, ejecutor, mixer } = montarConAviso();
+  mixer.alEscribir = () => { throw new Error('la consola se cayó'); };
+  await assert.rejects(() => ejecutor.ejecutar(
+    'tx1', 's1', 'balance', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  ));
+  assert.deepEqual(avisos, [true, false]);
+});
+
+test('revertir también cuenta como transacción en curso', async () => {
+  const { avisos, ejecutor } = montarConAviso();
+  await ejecutor.ejecutar(
+    'tx1', 's1', 'balance', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  avisos.length = 0;
+  await ejecutor.revertir('tx1');
+  assert.deepEqual(avisos, [true, false]);
+});
+
+test('un fallo al revertir apaga el aviso', async () => {
+  const { avisos, ejecutor } = montarConAviso();
+  await assert.rejects(() => ejecutor.revertir('no-existe'));
+  assert.deepEqual(avisos, [true, false]);
+});

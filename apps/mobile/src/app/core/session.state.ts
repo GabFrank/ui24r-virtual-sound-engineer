@@ -30,6 +30,15 @@ export class SessionStateService {
     this._estado.set(e);
   }
 
+  /**
+   * Lo llama el ejecutor de transacciones, y solo él.
+   *
+   * No se llama a mano desde ninguna pantalla: quien sabe si hay una
+   * transacción en curso es quien la está corriendo. `SafetyService.crearEjecutor`
+   * conecta las dos puntas, para que no se pueda armar un ejecutor que se
+   * olvide de avisar -- que es exactamente lo que pasaba antes, con esta señal
+   * en `false` para siempre y la cláusula de INV-034 sin dispararse nunca.
+   */
   fijarTransaccionEnCurso(enCurso: boolean): void {
     this._transaccionEnCurso.set(enCurso);
   }
