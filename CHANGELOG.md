@@ -4,6 +4,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+## [0.1.1] - 2026-09-08
+
+Primera versión con APK instalable. El contenido es el mismo que describe
+0.1.0 —que no llegó a producir fichero—, más lo que sigue.
+
 ### Cambiado
 - **La versión la deciden los commits.** Cada fusión en `main` pasa por la
   publicación: `semantic-release` lee los commits desde la última etiqueta,

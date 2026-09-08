@@ -56,7 +56,13 @@ module.exports = {
         // Un comentario en cada incidencia y en cada pull request de la versión
         // es ruido en un repositorio de dos manos. El fallo sí abre incidencia:
         // una publicación rota que nadie mira es una tablet que se queda vieja.
-        successComment: false,
+        //
+        // `successComment: false` hacía lo mismo y sigue funcionando, pero la
+        // primera publicación avisó de que desaparece en la próxima versión
+        // mayor del complemento. Cambiarlo ahora, con el aviso a la vista,
+        // cuesta una línea; descubrirlo el día que deje de funcionar cuesta una
+        // publicación.
+        successCommentCondition: '<% return false; %>',
       },
     ],
   ],
