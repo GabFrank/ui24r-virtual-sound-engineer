@@ -168,10 +168,38 @@ test('el jsonl sale cronologico y una linea por evento', async () => {
   assert.deepEqual(lineas.map((l) => (JSON.parse(l) as LogEvent).event), ['e1', 'e2', 'e3']);
 });
 
+/** Almacén que tarda en guardar y delata dos escrituras solapadas. */
+class AlmacenLento extends AlmacenEnMemoria {
+  dentro = 0;
+  solapes = 0;
+
+  override async guardar(coleccion: Coleccion, doc: Documento): Promise<void> {
+    this.dentro += 1;
+    if (this.dentro > 1) this.solapes += 1;
+    // Cede el turno: sin esto ningún `await` puede intercalarse y el test
+    // pasaría aunque los volcados no estuvieran encadenados.
+    await new Promise((r) => setImmediate(r));
+    await super.guardar(coleccion, doc);
+    this.dentro -= 1;
+  }
+}
+
 test('dos volcados a la vez no se pisan', async () => {
-  const almacen = new AlmacenEnMemoria();
+  // La version anterior de esta prueba pasaba con el encadenado quitado:
+  // `volcarAhora` vacia la cola de forma sincrona al entrar, asi que tres
+  // llamadas seguidas nunca colisionaban. Lo que hay que observar es que dos
+  // guardados no se solapen, y para eso el almacen tiene que ceder el turno.
+  const almacen = new AlmacenLento();
   const s = new SumideroPersistente(almacen, { lote: 1000 });
-  for (let i = 1; i <= 40; i++) s.escribir(evento(i));
-  await Promise.all([s.volcar(), s.volcar(), s.volcar()]);
+
+  for (let i = 1; i <= 20; i++) s.escribir(evento(i));
+  const primero = s.volcar();
+  // Llegan mas eventos mientras el primer volcado esta a mitad, y alguien
+  // pide otro volcado: es el caso real, no tres llamadas seguidas.
+  for (let i = 21; i <= 40; i++) s.escribir(evento(i));
+  const segundo = s.volcar();
+  await Promise.all([primero, segundo]);
+
+  assert.equal(almacen.solapes, 0, 'hubo guardados solapados: los volcados no se encadenaron');
   assert.equal(await almacen.contar('log_event'), 40);
 });

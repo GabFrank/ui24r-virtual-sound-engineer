@@ -17,7 +17,7 @@
     "validate:docs": "node tools/docs/validate-ids.mjs",
     "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
     "validate:limites": "node tools/docs/validate-limites.mjs",
-    "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test",
+    "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test && npm run test:dsp",
     "verificar:commits": "node tools/docs/validate-commits.mjs"
   },
   "devDependencies": {

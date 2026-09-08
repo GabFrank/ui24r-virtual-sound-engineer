@@ -60,11 +60,25 @@ for (const ruta of ficheros(APP)) {
   if (tpl === null) continue;
 
   const validos = reactivos(texto);
-  // Interpolaciones y enlaces de propiedad: lo que se evalúa al pintar.
+  /**
+   * Todo lo que Angular evalúa al pintar.
+   *
+   * Faltaban `@else if`, `@switch`, `@case` y `@for`, que es donde el flujo de
+   * control moderno pone la mayor parte de las condiciones. La regla más cara
+   * de este repositorio no se comprobaba justo en la rama que las pantallas
+   * nuevas usan: `@else if (cargando())` no lo miraba nadie.
+   *
+   * `@else if` va primero porque `@if` también casa con él y se quedaría con
+   * la mitad de la expresión.
+   */
   const expresiones = [
     ...[...tpl.matchAll(/\{\{([^}]*)\}\}/g)].map((m) => m[1]),
     ...[...tpl.matchAll(/\[[\w.\-]+\]="([^"]*)"/g)].map((m) => m[1]),
+    ...[...tpl.matchAll(/@else\s+if\s*\(([^)]*)\)/g)].map((m) => m[1]),
     ...[...tpl.matchAll(/@if\s*\(([^)]*)\)/g)].map((m) => m[1]),
+    ...[...tpl.matchAll(/@switch\s*\(([^)]*)\)/g)].map((m) => m[1]),
+    ...[...tpl.matchAll(/@case\s*\(([^)]*)\)/g)].map((m) => m[1]),
+    ...[...tpl.matchAll(/@for\s*\(([^)]*)\)/g)].map((m) => m[1]),
   ];
 
   for (const expr of expresiones) {

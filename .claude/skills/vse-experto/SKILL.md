@@ -100,6 +100,8 @@ Cada una de estas costó tiempo. Están acá para que no vuelva a pasar.
 
 **Firma de Android.** El sistema solo reemplaza una aplicación por otra firmada con la **misma clave**. Sin un almacén de claves fijo guardado como secreto, ninguna actualización funciona y el mensaje que ve el usuario es «aplicación no instalada», que no explica nada.
 
+**Una comprobación puede estar calibrada por debajo de la regla.** El recorrido medía el paro del diálogo con un umbral de 44 px cuando INV-019 exige 64, así que aprobaba un botón de 48. Se había corregido antes un caso de 60 px argumentando que «cuatro píxeles no valen debilitar una invariante», y se dejó pasar uno de dieciséis. Cuando escribas la comprobación, copiá el número de la regla, no uno parecido.
+
 **Una comprobación puede comprobar menos de lo que dice.** El validador de identificadores reconocía ocho familias como definición y comprobaba tres como referencia: spikes, epics, historias, riesgos y decisiones no se comparaban contra nada, y así sobrevivió una cita a EP-09 —que no existe— en un documento que el script daba por validado. Cuando agregues una comprobación, comprobá también su cobertura: no alcanza con que falle cuando debe, tiene que mirar todo lo que dice mirar.
 
 **Los mapas de código de scripts rompen la compilación de desarrollo.** Con `allowImportingTsExtensions`, el compilador pierde `src/main.ts`. Están apagados a propósito en `angular.json`.
