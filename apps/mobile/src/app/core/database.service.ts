@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Logger } from './logger';
-import { MIGRACIONES, VERSION_ESQUEMA } from './migrations';
+import { MIGRACIONES, VERSION_ESQUEMA } from '@vse/store';
 
 const NOMBRE_BASE = 'vse';
 

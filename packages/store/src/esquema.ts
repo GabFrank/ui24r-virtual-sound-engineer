@@ -1,9 +1,19 @@
+import type { Coleccion } from './tipos.ts';
+
 /**
- * Migraciones de la base local. Versionadas y en orden: la versión 0 es una
- * base vacía, y cada migración lleva de N a N+1.
+ * Esquema de la base local: las migraciones y las columnas por las que se
+ * puede filtrar y ordenar.
  *
- * Nunca se edita una migración ya publicada: se agrega otra. Un show cancelado
- * por una base que no abre es peor que cualquier deuda de esquema.
+ * Vive en `@vse/store` y no en la aplicación porque es lo que hace posible
+ * probar el almacén de SQLite de verdad: los tests crean una base en memoria
+ * con estas mismas sentencias y corren contra ella el mismo SQL que corre en
+ * la tablet. Mientras el esquema estuvo del lado de Angular, la única forma de
+ * comprobar una consulta era leerla.
+ *
+ * Migraciones: versionadas y en orden, la versión 0 es una base vacía y cada
+ * migración lleva de N a N+1. Nunca se edita una ya publicada: se agrega otra.
+ * Un show cancelado por una base que no abre es peor que cualquier deuda de
+ * esquema.
  */
 
 export interface Migracion {
@@ -121,3 +131,27 @@ export const MIGRACIONES: readonly Migracion[] = [
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;
+
+/**
+ * Columnas indexadas por colección.
+ *
+ * Cada tabla guarda el documento entero en `datos` y repite en columnas propias
+ * solo lo que hace falta para filtrar y ordenar. Duplicar un dato es aceptable
+ * cuando el duplicado es un índice; deja de serlo si alguien empieza a leer de
+ * la columna en vez de del documento, así que las columnas nunca se devuelven:
+ * la lectura reconstruye el documento desde `datos`.
+ *
+ * Esta lista y el DDL de arriba tienen que decir lo mismo. No es una promesa:
+ * `test/sql.test.ts` crea la base con las migraciones y comprueba, columna por
+ * columna, que cada índice declarado existe en la tabla.
+ */
+export const INDICES: Readonly<Record<Coleccion, readonly string[]>> = {
+  band_profile: ['nombre', 'actualizado_el'],
+  venue_profile: ['nombre', 'tipo', 'actualizado_el'],
+  pa_profile: ['nombre', 'actualizado_el'],
+  sound_session: ['state', 'band_profile_id', 'venue_profile_id', 'iniciada_el', 'cerrada_el'],
+  measurement: ['session_id', 'timestamp', 'signal_type', 'channel_id', 'posicion',
+    'pa_component', 'calibration_state_id'],
+  finding: ['session_id', 'assistant', 'confidence'],
+  recommendation: ['session_id', 'finding_id', 'assistant', 'parameter', 'status', 'confidence'],
+};
