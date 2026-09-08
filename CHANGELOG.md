@@ -4,6 +4,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Agregado
+- **Los hallazgos de firmware y el contexto musical, como preguntas y no como
+  hechos.** Llegó un documento con capacidades de la consola que el manual base
+  no documenta —sidechain entre subgrupos, RTA compartido, pre-delay, canales DSP
+  adicionales— y con una propuesta de automatización por canción. Se guarda tal
+  como llegó, y sus doce afirmaciones entran en la matriz de capacidades como
+  DESCONOCIDO con el spike que las mide (SPK-FW3). Ninguna se implementa hasta
+  entonces.
+- **ADR-022**: qué canción se está tocando entra por un puerto y se referencia
+  por identificador externo, no por una lista de temas propia ni por la pantalla.
+  Sin código todavía: se implementa cuando exista su primer usuario real.
+- **R-21, R-22 y R-23**: el alcance crecería a automatización de show sin revisar
+  la matriz de autonomía; la recuperación de un CUE podría mover la mezcla
+  personal de un músico; y las transiciones graduales exigen un ritmo de
+  escritura que nadie midió.
+
 ## [0.1.1] - 2026-09-08
 
 Primera versión con APK instalable. El contenido es el mismo que describe

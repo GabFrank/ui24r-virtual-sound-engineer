@@ -25,3 +25,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [019](ADR-019-arquitectura-interfaz-audio.md) | Arquitectura con o sin interfaz de audio externa | Reservada, se decide en DEC-19 tras G-B |
 | [020](ADR-020-actualizacion-en-app.md) | La aplicación se actualiza a sí misma desde GitHub | Aceptada |
 | [021](ADR-021-publicacion-automatica.md) | La versión la deciden los commits, no una etiqueta a mano | Aceptada |
+| [022](ADR-022-contexto-musical-por-puerto.md) | Qué canción se está tocando entra por un puerto, no por la interfaz | Aceptada |

@@ -22,6 +22,7 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | [P0.2b](SPK-P0.2b-procesamiento-canal.md) Matriz de procesamiento de canal | G-C | 8 d | ⬜ |
 | [P0.2c](SPK-P0.2c-salidas.md) Matriz de salidas | G-C | 5 d | ⬜ |
 | [P0.3b](SPK-P0.3b-usb-b.md) Consola por USB directo a la tablet | G-B | 2 d | ⬜ |
+| [FW3](SPK-FW3-capacidades-firmware.md) Capacidades del firmware 3.x y contenido del CUE | G-B | 5 d | ⬜ |
 | [P0.3](SPK-P0.3-certificacion-tablet.md) Certificación de tablet e interfaz | G-B | 5 d | ⬜ |
 | [LIFE](SPK-LIFE-ciclo-vida.md) Ciclo de vida de Android con audio | G-B | 3 d | ⬜ |
 | [CAL](SPK-CAL-ganancia-interfaz.md) Calibración de ganancia de la interfaz | G-B | 1 d | ⬜ |
