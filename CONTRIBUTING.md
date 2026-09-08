@@ -83,3 +83,13 @@ Cada pull request responde estas preguntas en su descripción:
 - Texto centrado en tablas por defecto.
 - Nunca llamar funciones ni usar getters desde plantillas Angular: se reevalúan en cada ciclo de detección de cambios.
 - Números alineados con `font-variant-numeric: tabular-nums`.
+
+## Conocimiento del proyecto
+
+Hay una skill con el conocimiento consolidado del proyecto en
+[`.claude/skills/vse-experto/`](.claude/skills/vse-experto/SKILL.md): qué es,
+cómo está construido, por qué está construido así, cómo se usa y qué reglas no
+se pueden romper. El fichero `referencia.md` de esa misma carpeta guarda el
+detalle numérico —estados, invariantes, protocolo, DSP, publicación—.
+
+Si vas a tocar este repositorio por primera vez, empezá por ahí.
