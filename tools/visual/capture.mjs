@@ -134,12 +134,18 @@ async function main() {
 
   console.log('\nCapturando escenarios:\n');
 
-  await pagina.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
   await abrirControl();
   await esperar(500);
   await capturar('01-sin-conexion', 'pantalla inicial, sin conexión');
 
-  await pagina.click('button.primario');
+  // La dirección de la consola es un ajuste, no una acción de la pantalla de
+  // telemetría: se configura una vez y desde un solo sitio.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/ajustes`, { waitUntil: 'networkidle' });
+  await pagina.fill('#aj-host', `ws://localhost:${PUERTO_SIM}`);
+  await pagina.click('ui-card[titulo="Consola"] ui-button button');
+  await esperar(1200);
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
   await pagina.waitForSelector('table tbody tr', { timeout: 10000 });
   await esperar(1500);
   await capturar('02-telemetria', 'telemetría de doce canales con medidores en vivo');
@@ -179,7 +185,7 @@ async function main() {
 
   // --- Asignación de canales y asistente de ganancia ---
 
-  await pagina.click('[data-pestania="canales"]');
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
   await esperar(400);
   await capturar('10-canales-sin-asignar', 'canales de la consola, todavía sin asignar');
 
@@ -187,7 +193,7 @@ async function main() {
   await esperar(600);
   await capturar('11-canales-propuestos', 'tipos propuestos desde el nombre que ya tiene cada canal');
 
-  await pagina.click('[data-pestania="ganancia"]');
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/ganancia`, { waitUntil: 'networkidle' });
   await esperar(400);
   await capturar('12-ganancia-sin-medir', 'asistente de ganancia antes de medir');
 
@@ -246,7 +252,7 @@ async function main() {
 
   // Primero conectado, que es el caso que hay que ver: INV-034 no deja
   // actualizar mientras la aplicación está trabajando contra la consola.
-  await pagina.click('[data-pestania="actualizacion"]');
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/actualizacion`, { waitUntil: 'networkidle' });
   await esperar(300);
   await capturar('16-actualizacion-inicial', 'pestaña de actualización antes de consultar');
 
@@ -256,9 +262,11 @@ async function main() {
   await capturar('17-actualizacion-bloqueada', 'INV-034: conectado a la consola, no se actualiza');
 
   // Volver a cargar deja la aplicación desconectada, que es el momento en que
-  // corresponde actualizar.
-  await pagina.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
-  await pagina.click('[data-pestania="actualizacion"]');
+  // corresponde actualizar. Hace falta `reload` y no solo `goto`: cambiar el
+  // fragmento de la dirección no recarga el documento, así que la conexión con
+  // el simulador sobreviviría y el bloqueo de INV-034 seguiría activo.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/actualizacion`, { waitUntil: 'networkidle' });
+  await pagina.reload({ waitUntil: 'networkidle' });
   await esperar(300);
 
   await responderCatalogo([]);
@@ -298,8 +306,7 @@ async function main() {
   for (const t of TAMANIOS) {
     const p2 = await contexto.newPage();
     await p2.setViewportSize({ width: t.width, height: t.height });
-    await p2.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
-    await p2.click('[data-pestania="galeria"]');
+    await p2.goto(`http://localhost:${PUERTO_WEB}/#/diseno`, { waitUntil: 'networkidle' });
     await esperar(500);
     const ruta = join(OUT, `ds-${t.id}.png`);
     await p2.screenshot({ path: ruta, fullPage: true });

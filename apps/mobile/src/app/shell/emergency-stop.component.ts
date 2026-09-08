@@ -37,15 +37,27 @@ import { SafetyService } from '../core/safety.service';
     </button>
   `,
   styles: [`
+    @use 'tokens' as *;
+
     .stop {
-      position: fixed; right: 16px; bottom: 16px;
-      width: 72px; height: 72px; border-radius: 50%;
+      position: fixed; right: var(--sp-4); bottom: calc(var(--sp-4) + var(--seguro-abajo));
+      width: var(--alto-paro); height: var(--alto-paro); border-radius: 50%;
       background: var(--danger); color: #1a0a0a;
       border: 3px solid #f0a0a0;
       font-family: var(--mono); font-size: 13px; font-weight: 700;
       letter-spacing: 0.08em; cursor: pointer;
       box-shadow: 0 4px 16px rgba(0,0,0,.6);
       z-index: 1000;
+    }
+
+    /* En teléfono la barra de navegación vive abajo: sin esto el paro queda
+       encima de ella y tapa dos destinos. Se sube por encima de la barra, que
+       es donde además el pulgar llega sin cambiar el agarre. */
+    @include hasta($bp-telefono) {
+      .stop {
+        width: var(--alto-paro-telefono); height: var(--alto-paro-telefono);
+        bottom: calc(var(--tap-comodo) + var(--sp-3) + var(--seguro-abajo));
+      }
     }
     .stop.activo { background: var(--muted); border-color: var(--line); color: var(--ink); }
     .stop:active { transform: scale(0.96); }

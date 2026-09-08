@@ -118,6 +118,21 @@
    * barra inferior queda debajo del indicador de gestos. */
   --seguro-arriba: env(safe-area-inset-top, 0px);
   --seguro-abajo: env(safe-area-inset-bottom, 0px);
+
+  /* --- Franja inferior ocupada -------------------------------------------
+   * Lo que hay flotando sobre el contenido abajo. Cualquier página que
+   * termine en un botón tiene que reservarla, o ese botón queda debajo del
+   * paro de emergencia y no se puede tocar. Ya pasó: el recorrido automático
+   * del camino de usuario se quedó atascado en «Guardar» en teléfono.
+   *
+   * En tablet solo está el paro; en teléfono, la barra de navegación y encima
+   * el paro. */
+  --alto-paro: 72px;
+  --alto-paro-telefono: 60px;
+  --zona-inferior: calc(var(--alto-paro) + var(--sp-5) + var(--seguro-abajo));
+  --zona-inferior-telefono: calc(
+    var(--tap-comodo) + var(--sp-3) + var(--alto-paro-telefono) + var(--sp-5) + var(--seguro-abajo)
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -29,6 +29,8 @@ interfaz, no se editan a mano.
 | `ds-telefono.png` | Sistema de diseño completo a 390 px |
 | `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
 | `ds-tablet.png` | Sistema de diseño completo a 1280 px |
+| `flujo-tablet-*.png` | Los 21 pasos del camino de usuario en tablet |
+| `flujo-telefono-*.png` | Los mismos 21 pasos en teléfono |
 
 De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
 vez de salir a la red, igual que el simulador responde el protocolo de la
@@ -63,6 +65,11 @@ En la tanda siguiente encontraron dos más:
 4. **Doce botones rellenos competían con los números**, que son lo que hay que
    leer de un vistazo. Se pasaron a acción secundaria.
 
+Las capturas `flujo-*` las genera `tools/visual/flujo.mjs`, que además **falla
+si algún paso se atasca o si la consola del navegador registra un error**. No
+es solo documentación: es la prueba de que se puede ir de cero a una sesión
+cerrada sin quedarse trabado. Ver [docs/flujo-de-usuario.md](../flujo-de-usuario.md).
+
 Las tres capturas `ds-*` contestan otra pregunta que el resto: no si la
 aplicación entiende el protocolo, sino si se puede leer y tocar en el ancho de
 pantalla que haya. Ver [docs/design-system.md](../design-system.md).
@@ -89,3 +96,17 @@ Y en la del sistema de diseño, dos más:
    La captura del sistema de diseño lo muestra tapando el «Siguiente» de un
    asistente. De todos los controles de esta aplicación, el paro es el que
    menos puede taparse ni tapar; ahora la página reserva el sitio.
+
+Y el recorrido del camino de usuario, apenas se escribió, encontró tres más:
+
+8. **En teléfono, el botón «Guardar» era inalcanzable.** El paro de emergencia
+   lo tapaba y el recorrido se quedó atascado ahí, reintentando el clic. La
+   franja inferior ocupada pasó a ser una ficha del sistema de diseño, en vez
+   de un margen estimado a ojo en cada pantalla.
+9. **Todos los avisos salían en ámbar, incluidos los de éxito.** Uno de los
+   tonos se llama «aviso» y la clase base del componente también, así que el
+   selector `.aviso.aviso` coincidía con cualquier mensaje. La clase base pasó
+   a llamarse `.mensaje`.
+10. **El nombre de la aplicación se recortaba a «Virtual Sou…» en teléfono.**
+    Un nombre a medias es peor que una sigla entera; en pantallas angostas dice
+    «VSE».
