@@ -81,23 +81,34 @@ async function recorrer(contexto, tamanio) {
       for (const el of document.querySelectorAll('*')) {
         if (el.scrollWidth <= el.clientWidth + 1) continue;
         if (el.closest('.desplaza-x') !== null) continue;
-        // Solo cuentan los contenedores que de verdad se desplazan. Con
-        // `overflow-x: visible` el contenido se pinta fuera y no hay barra: un
-        // icono de 24 px en una caja de 22 no es una pantalla que se desplaza.
+        // Con `overflow-x: visible` el contenido se pinta fuera y no hay barra:
+        // un icono de 24 px en una caja de 22 no es una pantalla que se
+        // desplaza, y contarlo llenaba esto de ruido.
+        //
+        // `hidden` y `clip` sí cuentan, y ese era el punto ciego: `ui-card` los
+        // usa, y es «lo que reemplaza a las filas de una tabla» en teléfono.
+        // Ahí el contenido no se desplaza — se **pierde**, sin barra y sin
+        // aparecer en la captura. Es peor que desplazarse, no mejor.
+        // Los textos solo para lectores de pantalla miden un pixel y esconden
+        // su contenido a propósito: no le ocultan nada a nadie.
+        if (el.clientWidth <= 1 || el.clientHeight <= 1) continue;
         const estilo = getComputedStyle(el);
-        if (estilo.overflowX !== 'auto' && estilo.overflowX !== 'scroll') continue;
+        const desplaza = estilo.overflowX === 'auto' || estilo.overflowX === 'scroll';
+        const recorta = estilo.overflowX === 'hidden' || estilo.overflowX === 'clip';
+        if (!desplaza && !recorta) continue;
         const clase = String(el.className || '').split(' ')[0];
         return {
           donde: `${el.tagName.toLowerCase()}${clase ? '.' + clase : ''}`,
           ancho: el.scrollWidth,
           visible: el.clientWidth,
+          modo: desplaza ? 'se desplaza' : 'recorta contenido',
         };
       }
       return null;
     });
     if (desborde !== null) {
       fallos.push(
-        `paso ${n} (${nombre}): «${desborde.donde}» se desplaza en horizontal, ` +
+        `paso ${n} (${nombre}): «${desborde.donde}» ${desborde.modo} en horizontal, ` +
         `${desborde.ancho} px de contenido en ${desborde.visible} de ancho`,
       );
     }

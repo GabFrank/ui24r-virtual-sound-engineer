@@ -170,9 +170,15 @@ razón de que esto esté escrito:
   `overflow-y: auto`, y en CSS eso convierte el eje horizontal de `visible` a
   `auto`: el desbordamiento se lo queda él y el documento nunca crece. Una
   comprobación sobre el documento no podía fallar nunca.
-- **Solo cuentan los contenedores que se desplazan de verdad**, con `overflow-x`
-  en `auto` o `scroll`. Con `visible` el contenido se pinta fuera y no hay
-  barra: un icono de 24 px en una caja de 22 no es una pantalla que se desplaza.
+- **Con `overflow-x: visible` no hay nada que reportar**: el contenido se pinta
+  fuera y no hay barra. Un icono de 24 px en una caja de 22 no es una pantalla
+  que se desplaza, y contarlo llenaba la comprobación de ruido.
+- **Pero `hidden` y `clip` sí cuentan**, y ese fue el segundo punto ciego.
+  `ui-card` los usa, y es «lo que reemplaza a las filas de una tabla» en
+  teléfono: ahí el contenido no se desplaza, **se pierde** — sin barra, y sin
+  aparecer en la captura. Es peor que desplazarse, no mejor.
+- Los textos solo para lectores de pantalla miden un píxel y esconden su
+  contenido a propósito: se saltan.
 
 ## Accesibilidad
 
