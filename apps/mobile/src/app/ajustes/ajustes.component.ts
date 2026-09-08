@@ -146,6 +146,13 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
                        (pulsado)="copiarRegistro()">Copiar como JSONL</ui-button>
           </div>
 
+          @if (registroTruncado()) {
+            <p class="nota">
+              Puede haber más avisos y errores más atrás: la búsqueda mira los
+              últimos mil eventos y en esos no encontró más.
+            </p>
+          }
+
           @if (eventos().length === 0) {
             @if (registroPedido()) {
               <ui-empty icono="registro" titulo="No hay eventos"
@@ -233,6 +240,8 @@ export class AjustesComponent {
   readonly registroPedido = signal(false);
   readonly soloGraves = signal(false);
   readonly errorRegistro = signal<string | null>(null);
+  /** La búsqueda pudo quedarse corta: hay que decirlo, no dejarlo parecer vacío. */
+  readonly registroTruncado = signal(false);
 
   private readonly filtroRegistro = computed(() =>
     this.soloGraves() ? ({ desdeNivel: 'warn', limite: 100 } as const) : ({ limite: 100 } as const));
@@ -281,7 +290,9 @@ export class AjustesComponent {
     this.cargandoRegistro.set(true);
     this.registroPedido.set(true);
     try {
-      this.eventos.set((await this.registro.eventos(this.filtroRegistro())).map(aLinea));
+      const r = await this.registro.eventos(this.filtroRegistro());
+      this.eventos.set(r.eventos.map(aLinea));
+      this.registroTruncado.set(r.truncado);
       this.errorRegistro.set(this.registro.ultimoError());
     } finally {
       this.cargandoRegistro.set(false);

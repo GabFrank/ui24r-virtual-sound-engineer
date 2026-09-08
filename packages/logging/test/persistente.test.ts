@@ -49,7 +49,7 @@ test('vuelven en orden cronologico aunque compartan milisegundo', async () => {
   s.escribir({ ...mismoInstante, event: 'c' });
   await s.volcar();
   assert.equal(await almacen.contar('log_event'), 3);
-  const leidos = await leerEventos(almacen);
+  const { eventos: leidos } = await leerEventos(almacen);
   assert.deepEqual(leidos.map((e) => e.event), ['c', 'b', 'a']);
 });
 
@@ -59,7 +59,7 @@ test('la purga deja el maximo y borra los mas viejos', async () => {
   for (let i = 1; i <= 12; i++) s.escribir(evento(i));
   await s.volcar();
   assert.equal(await almacen.contar('log_event'), 5);
-  const quedan = await leerEventos(almacen);
+  const { eventos: quedan } = await leerEventos(almacen);
   assert.deepEqual(quedan.map((e) => e.event), ['e12', 'e11', 'e10', 'e9', 'e8']);
 });
 
@@ -142,9 +142,9 @@ test('se puede filtrar por nivel y por sesion', async () => {
   s.escribir({ ...evento(3), level: 'error' });
   s.escribir({ ...evento(4), level: 'info', sessionId: 'otra' });
   await s.volcar();
-  const graves = await leerEventos(almacen, { desdeNivel: 'warn' });
+  const { eventos: graves } = await leerEventos(almacen, { desdeNivel: 'warn' });
   assert.deepEqual(graves.map((e) => e.event), ['e3', 'e2']);
-  const deOtra = await leerEventos(almacen, { sesion: 'otra' });
+  const { eventos: deOtra } = await leerEventos(almacen, { sesion: 'otra' });
   assert.deepEqual(deOtra.map((e) => e.event), ['e4']);
 });
 
@@ -153,7 +153,7 @@ test('el limite se aplica despues de filtrar por nivel', async () => {
   const s = new SumideroPersistente(almacen, { lote: 1 });
   for (let i = 1; i <= 20; i++) s.escribir(evento(i, i % 5 === 0 ? 'error' : 'debug'));
   await s.volcar();
-  const graves = await leerEventos(almacen, { desdeNivel: 'error', limite: 2 });
+  const { eventos: graves } = await leerEventos(almacen, { desdeNivel: 'error', limite: 2 });
   assert.deepEqual(graves.map((e) => e.event), ['e20', 'e15']);
 });
 
@@ -162,7 +162,7 @@ test('el jsonl sale cronologico y una linea por evento', async () => {
   const s = new SumideroPersistente(almacen, { lote: 1 });
   for (let i = 1; i <= 3; i++) s.escribir(evento(i));
   await s.volcar();
-  const texto = aJsonl(await leerEventos(almacen));
+  const texto = aJsonl((await leerEventos(almacen)).eventos);
   const lineas = texto.split('\n');
   assert.equal(lineas.length, 3);
   assert.deepEqual(lineas.map((l) => (JSON.parse(l) as LogEvent).event), ['e1', 'e2', 'e3']);
@@ -202,4 +202,39 @@ test('dos volcados a la vez no se pisan', async () => {
 
   assert.equal(almacen.solapes, 0, 'hubo guardados solapados: los volcados no se encadenaron');
   assert.equal(await almacen.contar('log_event'), 40);
+});
+
+test('la lectura avisa cuando pudo quedarse corta', () => {
+  // Con filtro de gravedad la busqueda mira una ventana y despues descarta: si
+  // en esa ventana no habia suficientes graves, lo devuelto es "los que
+  // encontre" y no "los que hay". Sin avisar, la pantalla mostraba menos y no
+  // habia forma de distinguirlo de "no hay mas".
+  return (async () => {
+    const almacen = new AlmacenEnMemoria();
+    const s = new SumideroPersistente(almacen, { lote: 1 });
+    // Cien eventos, uno solo grave y al principio de todo: la ventana de
+    // diez por dos no llega hasta el.
+    s.escribir(evento(0, 'error'));
+    for (let i = 1; i <= 99; i++) s.escribir(evento(i));
+    await s.volcar();
+
+    const corto = await leerEventos(almacen, { desdeNivel: 'error', limite: 2 });
+    assert.equal(corto.eventos.length, 0);
+    assert.equal(corto.truncado, true);
+
+    const completo = await leerEventos(almacen, { limite: 5 });
+    assert.equal(completo.eventos.length, 5);
+    assert.equal(completo.truncado, false, 'sin filtro de nivel nunca se queda corta');
+  })();
+});
+
+test('la cola no crece sin limite con un almacen lento', () => {
+  // El lote que se pierde al fallar estaba razonado y probado. El almacen
+  // lento no: `escribir()` apilaba sin cota, y el argumento de la clase --que
+  // la memoria no puede crecer sin limite-- no cubria su propio caso.
+  const lento = new AlmacenLento();
+  const s = new SumideroPersistente(lento, { lote: 100000, maximoEnCola: 50 });
+  for (let i = 0; i < 500; i++) s.escribir(evento(i));
+  assert.equal(s.pendientes, 50);
+  assert.equal(s.descartados, 450);
 });

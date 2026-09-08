@@ -27,15 +27,25 @@ export interface OpcionesSumidero {
   readonly lote?: number;
   /** Cada cuántos eventos guardados se comprueba si hay que purgar. */
   readonly purgarCada?: number;
+  /**
+   * Tope de la cola en memoria.
+   *
+   * El lote que se pierde al **fallar** el almacén estaba razonado y probado.
+   * Lo que no estaba acotado es el almacén **lento**: `escribir()` seguía
+   * apilando sin cota, y el propio argumento de esta clase —que la memoria no
+   * puede crecer sin límite— no cubría su propio caso.
+   */
+  readonly maximoEnCola?: number;
 }
 
-const POR_DEFECTO = { maximo: 5000, lote: 25, purgarCada: 250 } as const;
+const POR_DEFECTO = { maximo: 5000, lote: 25, purgarCada: 250, maximoEnCola: 2000 } as const;
 
 export class SumideroPersistente implements LogSink {
   private readonly almacen: Almacen;
   private readonly maximo: number;
   private readonly lote: number;
   private readonly purgarCada: number;
+  private readonly maximoEnCola: number;
 
   private cola: LogEvent[] = [];
   /** Los volcados se encadenan: dos a la vez escribirían el mismo id. */
@@ -55,10 +65,22 @@ export class SumideroPersistente implements LogSink {
     this.maximo = opciones.maximo ?? POR_DEFECTO.maximo;
     this.lote = opciones.lote ?? POR_DEFECTO.lote;
     this.purgarCada = opciones.purgarCada ?? POR_DEFECTO.purgarCada;
+    this.maximoEnCola = opciones.maximoEnCola ?? POR_DEFECTO.maximoEnCola;
   }
+
+  private _descartados = 0;
+  /** Eventos que se tiraron por cola llena. Se informa, no se esconde. */
+  get descartados(): number { return this._descartados; }
 
   escribir(e: LogEvent): void {
     this.cola.push(e);
+    if (this.cola.length > this.maximoEnCola) {
+      // Se tiran los **más viejos**: si el almacén no da abasto, lo último que
+      // pasó es lo que hace falta para entender por qué.
+      const sobran = this.cola.length - this.maximoEnCola;
+      this.cola.splice(0, sobran);
+      this._descartados += sobran;
+    }
     if (this.cola.length >= this.lote) void this.volcar();
   }
 

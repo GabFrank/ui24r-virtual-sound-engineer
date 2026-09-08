@@ -1,6 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { SumideroPersistente, aJsonl, leerEventos, type FiltroRegistro, type LogEvent }
-  from '@vse/logging';
+import {
+  SumideroPersistente, aJsonl, leerEventos,
+  type FiltroRegistro, type ResultadoDeRegistro,
+} from '@vse/logging';
 import { ALMACEN } from './almacen/almacen';
 import { Logger } from './logger';
 
@@ -38,13 +40,13 @@ export class RegistroService {
     this.ultimoError.set(this.sumidero.ultimoError);
   }
 
-  async eventos(filtro: FiltroRegistro = {}): Promise<readonly LogEvent[]> {
+  async eventos(filtro: FiltroRegistro = {}): Promise<ResultadoDeRegistro> {
     await this.volcar();
     return leerEventos(this.almacen, filtro);
   }
 
   /** Los eventos como `events.jsonl`, que es lo que pide docs/logging.md. */
   async exportarJsonl(filtro: FiltroRegistro = {}): Promise<string> {
-    return aJsonl(await this.eventos(filtro));
+    return aJsonl((await this.eventos(filtro)).eventos);
   }
 }

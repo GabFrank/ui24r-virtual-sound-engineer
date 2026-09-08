@@ -16,11 +16,24 @@ export interface FiltroRegistro {
   readonly limite?: number;
 }
 
+export interface ResultadoDeRegistro {
+  readonly eventos: readonly LogEvent[];
+  /**
+   * Si puede haber más eventos que cumplan el filtro, más viejos que estos.
+   *
+   * Con filtro de gravedad la búsqueda mira una ventana de los últimos N y
+   * después descarta: si en esa ventana no había suficientes graves, lo que se
+   * devuelve es «los que encontré», no «los que hay». Sin este dato, la
+   * pantalla mostraba menos y no había forma de distinguirlo de «no hay más».
+   */
+  readonly truncado: boolean;
+}
+
 /** Los más recientes primero: un registro se lee empezando por lo último. */
 export async function leerEventos(
   almacen: Almacen,
   filtro: FiltroRegistro = {},
-): Promise<readonly LogEvent[]> {
+): Promise<ResultadoDeRegistro> {
   const donde = filtro.sesion === undefined ? undefined : { session_id: filtro.sesion };
   const docs = await almacen.listar('log_event', {
     ...(donde ? { donde } : {}),
@@ -31,12 +44,20 @@ export async function leerEventos(
     ...(filtro.limite === undefined ? {}
       : { limite: filtro.desdeNivel ? filtro.limite * 10 : filtro.limite }),
   });
+  const ventana = filtro.limite === undefined ? undefined
+    : (filtro.desdeNivel ? filtro.limite * 10 : filtro.limite);
+
   let eventos = docs.map((d) => d.datos as LogEvent);
   if (filtro.desdeNivel !== undefined) {
     const minimo = ORDEN_NIVEL[filtro.desdeNivel];
     eventos = eventos.filter((e) => ORDEN_NIVEL[e.level] >= minimo);
   }
-  return filtro.limite === undefined ? eventos : eventos.slice(0, filtro.limite);
+  const recortados = filtro.limite === undefined ? eventos : eventos.slice(0, filtro.limite);
+  // Truncado si la ventana se llenó y aun así no alcanzó para el límite: puede
+  // haber más graves más atrás, y decir que no los hay sería mentir.
+  const truncado = ventana !== undefined && docs.length === ventana
+    && recortados.length < filtro.limite!;
+  return { eventos: recortados, truncado };
 }
 
 /** Un evento por línea, en orden cronológico: así se lee un registro. */
