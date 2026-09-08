@@ -32,11 +32,29 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   puntos de corte puestos donde el contenido se rompe, no en tamaños de
   dispositivo.
 
+- Enrutador con rutas reales: el gesto de atrás de Android funciona, las
+  pantallas de edición reciben qué editan y al reanudar se vuelve donde estaba.
+- Persistencia con dos implementaciones del mismo puerto, SQLite en la tablet y
+  `localStorage` en el navegador, con la semántica de consulta en `@vse/store`
+  y probada.
+- Perfiles: altas, ediciones, listas y borrado de bandas, locales y sistemas de
+  amplificación, con validación en el dominio.
+- Sesión: crear, avanzar según la tabla de transiciones, cerrar y recuperar la
+  que hubiera quedado abierta al arrancar.
+- Historial de sesiones con detalle de solo lectura y exportación.
+- Ajustes: dirección de la consola, conexión, datos y acceso a la actualización.
+- `tools/visual/flujo.mjs`: recorre el camino de usuario completo en dos anchos
+  y falla si algún paso se atasca (`docs/flujo-de-usuario.md`).
+
 ### Corregido
 - La compilación de desarrollo no compilaba, y con ella `ng serve` tampoco:
   los mapas de código de scripts hacían que el compilador perdiera `main.ts`.
 - El paro de emergencia se montaba sobre el último botón de la pantalla en
-  teléfono.
+  teléfono, dejándolo inalcanzable.
+- Todos los avisos efímeros salían en ámbar, incluidos los de éxito: el tono
+  «aviso» colisionaba con la clase base del componente.
+- La dirección de la consola estaba en dos sitios, con valores por defecto
+  distintos y sin validación.
 - INV-034 quedaba inerte en MVP0: no existiendo todavía el modelo de sesión, la
   pantalla ofrecía actualizar con la consola conectada. Lo encontró una captura
   visual hecha para mostrar lo contrario.

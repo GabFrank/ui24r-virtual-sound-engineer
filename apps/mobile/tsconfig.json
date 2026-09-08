@@ -10,6 +10,7 @@
       "@vse/assistants": ["../../packages/assistants/src/index.ts"],
       "@vse/safety": ["../../packages/safety/src/index.ts"],
       "@vse/updater": ["../../packages/updater/src/index.ts"],
+      "@vse/store": ["../../packages/store/src/index.ts"],
       "@vse/dsp-contract": ["../../packages/dsp-contract/src/index.ts"]
     },
     "allowImportingTsExtensions": true,

@@ -28,19 +28,18 @@ import { LevelMeterComponent } from './level-meter.component';
     }
 
     @if (!conectado()) {
+      <!-- Conectarse es una acción y configurar dónde conectarse es un ajuste.
+           Tener el campo de la dirección también acá significaba dos sitios
+           donde cambiarlo y ninguna garantía de que dijeran lo mismo. -->
       <section class="conectar">
-        <h2>Conectar con la consola</h2>
-        <label for="host">Dirección</label>
-        <input id="host" type="text" [value]="host()" (input)="alEscribirHost($event)"
-               autocapitalize="off" autocorrect="off" spellcheck="false">
-        <button type="button" class="primario" [disabled]="conectando()" (click)="conectar()">
-          {{ conectando() ? 'Conectando…' : 'Conectar' }}
-        </button>
-        @if (error(); as e) { <p class="error">{{ e }}</p> }
+        <h2>Sin conexión con la consola</h2>
         <p class="ayuda">
-          Durante un show, la consola y la tablet van en un router dedicado. La red
-          del lugar no se usa.
+          La dirección de la consola y el botón de conectar están en Ajustes.
+          Durante un show, la consola y la tablet van en un router dedicado: la
+          red del lugar no se usa.
         </p>
+        <a class="primario" href="#/ajustes">Ir a Ajustes</a>
+        @if (error(); as e) { <p class="error">{{ e }}</p> }
       </section>
     } @else {
       <section class="cabecera">
@@ -174,7 +173,6 @@ export class TelemetryComponent {
   private readonly mixer = inject(MixerService);
   private readonly conexion = inject(ConnectionStateService);
 
-  readonly host = signal('ws://localhost:8765');
   readonly canales = this.mixer.canales;
   readonly externos = this.mixer.cambiosExternos;
   readonly masivo = this.mixer.cambioMasivo;
@@ -182,14 +180,6 @@ export class TelemetryComponent {
   readonly error = this.mixer.ultimoError;
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
-
-  alEscribirHost(e: Event): void {
-    this.host.set((e.target as HTMLInputElement).value);
-  }
-
-  conectar(): void {
-    void this.mixer.conectar(this.host()).catch(() => { /* el error ya está en la señal */ });
-  }
 
   reiniciarPicos(): void {
     this.mixer.reiniciarPicos();

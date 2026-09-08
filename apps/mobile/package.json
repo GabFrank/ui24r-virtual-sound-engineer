@@ -26,7 +26,8 @@
     "zone.js": "~0.14.10",
     "@vse/assistants": "*",
     "@vse/safety": "*",
-    "@vse/updater": "*"
+    "@vse/updater": "*",
+    "@vse/store": "*"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.21",

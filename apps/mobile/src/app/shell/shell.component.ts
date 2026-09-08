@@ -1,128 +1,95 @@
-import { Component, inject, signal, computed, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { ConnectionStateService } from '../core/connection.state';
+import { SessionStateService } from '../core/session.state';
+import { BadgeComponent, ToastsComponent } from '../ui';
 import { EmergencyStopComponent } from './emergency-stop.component';
-import { TelemetryComponent } from '../telemetry/telemetry.component';
-import { ChannelsComponent } from '../channels/channels.component';
-import { GainComponent } from '../gain/gain.component';
-import { UpdatesComponent } from '../updates/updates.component';
-import { GaleriaComponent } from '../galeria/galeria.component';
-import { ToastsComponent } from '../ui';
-
-type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion' | 'galeria';
+import { NavComponent } from './nav.component';
 
 /**
  * Contenedor de la aplicación.
  *
- * El paro de emergencia se monta acá y no dentro de cada pantalla, porque
- * INV-019 exige que esté visible en el cien por ciento de las pantallas y
- * diálogos. Montarlo en el contenedor es la forma de que no se pueda olvidar
- * en una pantalla nueva.
+ * Tres cosas viven acá y en ningún otro sitio: la barra de estado, la
+ * navegación y el paro de emergencia.
+ *
+ * El paro está acá porque INV-019 exige que esté visible en el cien por cien
+ * de las pantallas y diálogos. Montarlo en el contenedor es la única forma de
+ * que no se pueda olvidar en una pantalla nueva; si dependiera de que cada
+ * pantalla lo incluya, tarde o temprano alguna no lo haría, y sería
+ * justamente la que hiciera falta.
  */
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [
-    EmergencyStopComponent, TelemetryComponent, ChannelsComponent, GainComponent,
-    UpdatesComponent, GaleriaComponent, ToastsComponent,
-  ],
+  imports: [RouterOutlet, NavComponent, EmergencyStopComponent, ToastsComponent, BadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="barra">
-      <span class="marca">Virtual Sound Engineer</span>
-      <span class="estado" [class]="claseEstado()">{{ textoEstado() }}</span>
+      <span class="marca ancho">Virtual Sound Engineer</span>
+      <span class="marca angosto">VSE</span>
+      <div class="estados">
+        @if (sesionActiva()) {
+          <ui-badge tono="senal">Sesión en curso</ui-badge>
+        }
+        <ui-badge [tono]="tonoConexion()">{{ textoEstado() }}</ui-badge>
+      </div>
     </header>
 
-    <nav class="pestanias">
-      @for (p of pestaniasVisibles(); track p.id) {
-        <button type="button" [class.activa]="pestania() === p.id"
-                [attr.data-pestania]="p.id"
-                (click)="ir(p.id)">{{ p.etiqueta }}</button>
-      }
-    </nav>
-
-    <main class="contenido">
-      @switch (pestania()) {
-        @case ('canales') { <app-channels /> }
-        @case ('ganancia') { <app-gain /> }
-        @case ('actualizacion') { <app-updates /> }
-        @case ('galeria') { <app-galeria /> }
-        @default { <app-telemetry /> }
-      }
-    </main>
+    <div class="cuerpo">
+      <app-nav />
+      <main class="contenido">
+        <router-outlet />
+      </main>
+    </div>
 
     <app-emergency-stop />
     <ui-toasts />
   `,
   styles: [`
+    @use 'tokens' as *;
+
     :host { display: flex; flex-direction: column; height: 100%; }
 
     .barra {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-bottom: 1px solid var(--line);
-      background: var(--surface);
-    }
-    .marca { font-weight: 500; letter-spacing: -0.01em; }
-
-    .estado {
-      font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
-      text-transform: uppercase; padding: 4px 10px; border-radius: 3px;
-      border: 1px solid var(--line);
-    }
-    .estado.conectado { color: var(--ok); }
-    .estado.inestable { color: var(--warn); }
-    .estado.desconectado { color: var(--muted); }
-
-    .pestanias {
-      display: flex; gap: 2px; padding: 0 16px; background: var(--surface);
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      padding-top: calc(var(--sp-3) + var(--seguro-arriba));
       border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      flex: none;
     }
-    .pestanias button {
-      background: transparent; border: 0; color: var(--muted);
-      padding: 12px 18px; cursor: pointer; font-size: 15px;
-      border-bottom: 2px solid transparent;
+    .marca {
+      font-weight: var(--peso-medio); letter-spacing: -0.01em;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .pestanias button.activa { color: var(--ink); border-bottom-color: var(--signal); }
+    .estados { display: flex; gap: var(--sp-2); flex: none; }
+    .angosto { display: none; }
 
-    .contenido { flex: 1; padding: 24px 16px; overflow-y: auto; }
+    .cuerpo { display: flex; flex: 1; min-height: 0; }
+    .contenido { flex: 1; min-width: 0; overflow-y: auto; }
 
+    @include hasta($bp-telefono) {
+      .cuerpo { flex-direction: column; }
+      /* La barra de navegación es fija abajo, así que el contenido reserva su
+         alto por debajo; lo hace la utilidad .pagina, no acá. */
+      /* El nombre completo se recortaba a «Virtual Sou…», que no es un nombre.
+         Mejor la sigla entera que un nombre a medias. */
+      .ancho { display: none; }
+      .angosto { display: inline; font-weight: var(--peso-fuerte); letter-spacing: 0.04em; }
+    }
+    /* Teléfono en horizontal: la barra superior se come un tercio de la
+       pantalla útil si no se compacta. */
+    @include bajo {
+      .barra { padding-block: var(--sp-2); }
+    }
   `],
 })
 export class ShellComponent {
   private readonly conexion = inject(ConnectionStateService);
+  private readonly sesion = inject(SessionStateService);
 
-  readonly pestania = signal<Pestania>('telemetria');
-
-  /**
-   * La pestaña de actualización está siempre, incluso sin conexión con la
-   * consola: el momento natural para actualizar es justamente antes de
-   * conectarse, cuando todavía no hay nada en marcha.
-   */
-  private readonly pestanias: readonly {
-    id: Pestania; etiqueta: string; exigeConexion: boolean; soloDesarrollo?: boolean;
-  }[] = [
-    { id: 'telemetria', etiqueta: 'Telemetría', exigeConexion: true },
-    { id: 'canales', etiqueta: 'Canales', exigeConexion: true },
-    { id: 'ganancia', etiqueta: 'Ganancia', exigeConexion: true },
-    { id: 'actualizacion', etiqueta: 'Actualización', exigeConexion: false },
-    { id: 'galeria', etiqueta: 'Diseño', exigeConexion: false, soloDesarrollo: true },
-  ];
-
-  readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
-
-  readonly pestaniasVisibles = computed(() =>
-    this.pestanias.filter(
-      (p) => (!p.exigeConexion || this.conectado()) && (!p.soloDesarrollo || this.desarrollo),
-    ),
-  );
-
-  /**
-   * La galería del sistema de diseño no viaja en la compilación de
-   * publicación: es documentación para quien construye, no una pantalla del
-   * producto.
-   */
-  private readonly desarrollo = isDevMode();
-
-  ir(p: Pestania): void { this.pestania.set(p); }
+  readonly sesionActiva = this.sesion.sesionActiva;
 
   /**
    * Se calculan con `computed` y no con métodos: una función llamada desde la
@@ -138,12 +105,12 @@ export class ShellComponent {
     }
   });
 
-  readonly claseEstado = computed(() => {
+  readonly tonoConexion = computed(() => {
     switch (this.conexion.estado()) {
-      case 'CONNECTED': return 'conectado';
+      case 'CONNECTED': return 'ok' as const;
       case 'UNSTABLE':
-      case 'RECONNECTING': return 'inestable';
-      case 'DISCONNECTED': return 'desconectado';
+      case 'RECONNECTING': return 'aviso' as const;
+      case 'DISCONNECTED': return 'neutro' as const;
     }
   });
 }

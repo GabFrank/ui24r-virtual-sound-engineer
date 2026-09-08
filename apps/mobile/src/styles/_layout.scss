@@ -40,11 +40,11 @@
   max-width: var(--ancho-contenido);
   margin-inline: auto;
   padding: var(--sp-5) var(--sp-4);
-  padding-bottom: calc(var(--sp-8) + var(--seguro-abajo));
+  padding-bottom: var(--zona-inferior);
 
   @include hasta($bp-telefono) {
     padding: var(--sp-4) var(--sp-3);
-    padding-bottom: calc(var(--tap-comodo) + var(--sp-5) + var(--seguro-abajo));
+    padding-bottom: var(--zona-inferior-telefono);
   }
 }
 .pagina-angosta { max-width: var(--ancho-formulario); }

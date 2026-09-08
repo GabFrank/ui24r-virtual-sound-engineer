@@ -96,6 +96,28 @@ export const MIGRACIONES: readonly Migracion[] = [
       `CREATE INDEX IF NOT EXISTS idx_log_session ON log_event(session_id, ts);`,
     ],
   },
+  {
+    version: 2,
+    descripcion: 'perfiles de PA propios y columnas de indice que faltaban',
+    sentencias: [
+      // El perfil de PA vivia embebido en el perfil de local. Se separa porque
+      // una banda que toca en tres lugares con el mismo equipo propio tenia
+      // que describirlo tres veces, y porque al medir por componente hace
+      // falta poder responder "que sistema es este" sin abrir el local.
+      `CREATE TABLE IF NOT EXISTS pa_profile (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        actualizado_el TEXT NOT NULL,
+        datos TEXT NOT NULL
+      );`,
+      // El listado del historial ordena por fecha y filtra por banda o local.
+      `CREATE INDEX IF NOT EXISTS idx_sesion_inicio ON sound_session(iniciada_el);`,
+      `CREATE INDEX IF NOT EXISTS idx_sesion_banda ON sound_session(band_profile_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_sesion_local ON sound_session(venue_profile_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_banda_nombre ON band_profile(nombre);`,
+      `CREATE INDEX IF NOT EXISTS idx_local_nombre ON venue_profile(nombre);`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;

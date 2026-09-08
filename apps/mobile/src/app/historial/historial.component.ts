@@ -1,0 +1,157 @@
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import type { BandProfile, SoundSession, VenueProfile } from '@vse/domain';
+import { Repositorios } from '../core/repos/repositorios';
+import {
+  BadgeComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
+} from '../ui';
+import { ESTADOS } from '../sesion/estados';
+
+interface Fila {
+  readonly sesion: SoundSession;
+  readonly banda: string;
+  readonly local: string;
+  readonly fecha: string;
+  readonly abierta: boolean;
+  readonly estado: string;
+}
+
+/**
+ * Historial de sesiones.
+ *
+ * En tablet es una tabla; en teléfono, una lista de tarjetas. No es un capricho
+ * responsivo: seis columnas en 360 píxeles obligan a desplazar en horizontal
+ * para leer una fila, y una tabla que se lee en dos movimientos no es una
+ * tabla.
+ */
+@Component({
+  selector: 'app-historial',
+  standalone: true,
+  imports: [RouterLink, BadgeComponent, CardComponent, EmptyStateComponent, PageHeaderComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="pagina">
+      <ui-page-header titulo="Historial"
+        descripcion="Cada sesión guarda qué se midió, qué se propuso y qué se aplicó. Es lo que permite comparar una noche con la anterior en el mismo sitio." />
+
+      @if (filas().length === 0) {
+        <ui-empty icono="historial" titulo="Todavía no hay sesiones"
+                  detalle="Cuando cierres la primera, va a aparecer acá." />
+      } @else {
+        <div class="desplaza-x ancho">
+          <table>
+            <thead>
+              <tr>
+                <th class="izq">Fecha</th>
+                <th class="izq">Local</th>
+                <th class="izq">Banda</th>
+                <th>Estado</th>
+                <th>Sala</th>
+                <th>Mezcla</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of filas(); track f.sesion.id) {
+                <tr [routerLink]="['/historial', f.sesion.id]" tabindex="0">
+                  <td class="izq num">{{ f.fecha }}</td>
+                  <td class="izq">{{ f.local }}</td>
+                  <td class="izq">{{ f.banda }}</td>
+                  <td>
+                    @if (f.abierta) {
+                      <ui-badge tono="senal">En curso</ui-badge>
+                    } @else {
+                      <ui-badge tono="neutro">Cerrada</ui-badge>
+                    }
+                  </td>
+                  <td class="num">{{ f.sesion.roomScore ?? '—' }}</td>
+                  <td class="num">{{ f.sesion.mixScore ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="angosto pila">
+          @for (f of filas(); track f.sesion.id) {
+            <a class="tarjeta" [routerLink]="['/historial', f.sesion.id]">
+              <ui-card [titulo]="f.local" [subtitulo]="f.fecha + ' · ' + f.banda">
+                <div class="racimo">
+                  @if (f.abierta) {
+                    <ui-badge tono="senal">En curso</ui-badge>
+                  } @else {
+                    <ui-badge tono="neutro">{{ f.estado }}</ui-badge>
+                  }
+                  @if (f.sesion.roomScore !== null) {
+                    <span class="dato num">Sala {{ f.sesion.roomScore }}</span>
+                  }
+                  @if (f.sesion.mixScore !== null) {
+                    <span class="dato num">Mezcla {{ f.sesion.mixScore }}</span>
+                  }
+                </div>
+              </ui-card>
+            </a>
+          }
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    @use 'tokens' as *;
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: center; padding: var(--sp-3); border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: var(--peso-medio); font-size: var(--txt-sm); }
+    .izq { text-align: left; }
+    tbody tr { cursor: pointer; }
+    tbody tr:active { background: var(--surface-2); }
+
+    a.tarjeta { text-decoration: none; color: inherit; display: block; }
+    .dato { color: var(--muted); font-size: var(--txt-sm); }
+
+    .angosto { display: none; }
+    @include hasta($bp-telefono) {
+      .ancho { display: none; }
+      .angosto { display: flex; }
+    }
+  `],
+})
+export class HistorialComponent {
+  private readonly repos = inject(Repositorios);
+
+  private readonly sesiones = signal<readonly SoundSession[]>([]);
+  private readonly bandas = signal<readonly BandProfile[]>([]);
+  private readonly locales = signal<readonly VenueProfile[]>([]);
+
+  readonly filas = computed<readonly Fila[]>(() => {
+    const bandas = new Map(this.bandas().map((b) => [b.id as string, b.nombre]));
+    const locales = new Map(this.locales().map((l) => [l.id as string, l.nombre]));
+    return this.sesiones().map((s) => ({
+      sesion: s,
+      // Un perfil borrado no deja la fila ilegible: se dice que ya no está, en
+      // vez de mostrar un identificador o una celda vacía.
+      banda: bandas.get(s.bandProfileId) ?? 'Banda borrada',
+      local: locales.get(s.venueProfileId) ?? 'Local borrado',
+      fecha: new Date(s.iniciadaEl).toLocaleDateString('es', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+      }),
+      abierta: s.cerradaEl === null && s.state !== 'CLOSED',
+      estado: ESTADOS[s.state].etiqueta,
+    }));
+  });
+
+  constructor() {
+    effect(() => {
+      this.repos.revision();
+      void this.recargar();
+    });
+  }
+
+  private async recargar(): Promise<void> {
+    const [sesiones, bandas, locales] = await Promise.all([
+      this.repos.sesiones(), this.repos.bandas(), this.repos.locales(),
+    ]);
+    this.sesiones.set(sesiones);
+    this.bandas.set(bandas);
+    this.locales.set(locales);
+  }
+}

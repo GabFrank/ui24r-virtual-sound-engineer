@@ -13,7 +13,7 @@ import { ToastService } from './toast.service';
   template: `
     <div class="zona" role="status" aria-live="polite">
       @for (a of avisos(); track a.id) {
-        <div class="aviso" [class]="a.tono">
+        <div class="mensaje" [class]="a.tono">
           <span>{{ a.texto }}</span>
           <ui-button class="solo-icono" variante="sutil" icono="cerrar"
                      rotuloAccesible="Descartar" (pulsado)="descartar(a.id)">Descartar</ui-button>
@@ -32,7 +32,12 @@ import { ToastService } from './toast.service';
       width: min(520px, calc(100% - var(--sp-6)));
       pointer-events: none;
     }
-    .aviso {
+    /* La clase base se llama «mensaje» y no «aviso» a propósito: uno de los
+       tonos se llama «aviso», y con ambos nombres iguales el selector
+       .aviso.aviso coincidía con cualquier mensaje. El resultado era que todos
+       salían en ámbar, incluidos los de éxito. Lo mostró una captura del
+       recorrido del camino de usuario. */
+    .mensaje {
       pointer-events: auto;
       display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
       padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
@@ -45,17 +50,21 @@ import { ToastService } from './toast.service';
       animation: entra var(--mov-medio) var(--curva);
     }
     @keyframes entra { from { opacity: 0; transform: translateY(8px); } }
-    @media (prefers-reduced-motion: reduce) { .aviso { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .mensaje { animation: none; } }
 
-    .aviso.ok    { border-left-color: var(--ok); }
-    .aviso.aviso { border-left-color: var(--warn); }
-    .aviso.error { border-left-color: var(--danger); }
-    .aviso.info  { border-left-color: var(--signal); }
+    .mensaje.ok    { border-left-color: var(--ok); }
+    .mensaje.aviso { border-left-color: var(--warn); }
+    .mensaje.error { border-left-color: var(--danger); }
+    .mensaje.info  { border-left-color: var(--signal); }
 
-    /* En teléfono los avisos suben por encima de la barra de navegación
-       inferior; si no, tapan justo los botones de navegación. */
+    /* En teléfono los avisos suben por encima de todo lo que ya flota abajo:
+       la barra de navegación y el paro de emergencia. Sin esto se montaban
+       sobre el paro, que es el control que nunca puede quedar tapado. */
     @include hasta($bp-telefono) {
-      .zona { bottom: calc(var(--tap-comodo) + var(--sp-4) + var(--seguro-abajo)); }
+      .zona {
+        bottom: var(--zona-inferior-telefono);
+        width: calc(100% - var(--sp-4));
+      }
     }
   `],
 })
