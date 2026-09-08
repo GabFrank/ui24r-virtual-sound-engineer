@@ -4,7 +4,7 @@
  * Ningún asistente importa la biblioteca del protocolo ni construye comandos.
  * Hablan con esta interfaz, y solo a través del pipeline
  * `Assistant → Recommendation → Transaction → SafetyEngine → write()`.
- * Hay una regla de lint que verifica que nadie fuera de este paquete importe
+ * `npm run validate:limites` verifica que nadie fuera de este paquete importe
  * la biblioteca del protocolo (ADR-006, CONTRIBUTING.md).
  */
 

@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, viewChild,
+} from '@angular/core';
 
 let contador = 0;
 
@@ -23,7 +25,7 @@ let contador = 0;
       @if (opcional()) { <span class="opcional">opcional</span> }
     </label>
 
-    <div class="control" [class.con-error]="!!error()">
+    <div class="control" [class.con-error]="!!error()" #caja>
       <ng-content />
     </div>
 
@@ -93,4 +95,42 @@ export class FieldComponent {
 
   protected readonly idAyuda = computed(() => `${this.idControl()}-ayuda`);
   protected readonly idError = computed(() => `${this.idControl()}-error`);
+
+  /**
+   * `viewChild` y no `contentChild`: la caja es un elemento de la plantilla de
+   * este componente, no contenido proyectado. Lo proyectado es lo que va
+   * dentro. Con `contentChild.required` la consulta nunca encontraba nada y
+   * Angular lanzaba NG0951 en cada pintado — lo detectó el recorrido
+   * automático, que falla ante cualquier error de consola.
+   */
+  private readonly caja = viewChild.required<ElementRef<HTMLElement>>('caja');
+
+  constructor() {
+    /**
+     * Enlaza el control proyectado con su ayuda y su error.
+     *
+     * El componente ya generaba los dos identificadores y los ponía como «id»
+     * en los párrafos, pero ningún control los referenciaba: el error existía
+     * visualmente y no existía programáticamente. Un lector de pantalla lo
+     * anunciaba una vez al aparecer, por el «role=alert», y si el usuario
+     * volvía al campo después leía «Nombre, cuadro de edición» y nada más.
+     *
+     * Se hace desde acá y no desde quien usa el componente porque el control
+     * llega por proyección de contenido: pedirle a cada formulario que repita
+     * tres atributos es cómo se llega a que la mitad no los tenga.
+     */
+    effect(() => {
+      const control = this.caja().nativeElement.querySelector('input, select, textarea');
+      if (!(control instanceof HTMLElement)) return;
+
+      const hayError = this.error() !== null;
+      const descriptores = hayError ? this.idError() : (this.ayuda() === null ? null : this.idAyuda());
+
+      if (descriptores === null) control.removeAttribute('aria-describedby');
+      else control.setAttribute('aria-describedby', descriptores);
+
+      if (hayError) control.setAttribute('aria-invalid', 'true');
+      else control.removeAttribute('aria-invalid');
+    });
+  }
 }

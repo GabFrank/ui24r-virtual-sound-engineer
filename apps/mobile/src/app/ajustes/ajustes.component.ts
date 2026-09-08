@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ALMACEN } from '../core/almacen/almacen';
 import { validarUrlDeConsola } from '@vse/domain';
 import { ConnectionStateService } from '../core/connection.state';
@@ -27,7 +27,7 @@ import {
   selector: 'app-ajustes',
   standalone: true,
   imports: [
-    FormsModule, RouterLink, BadgeComponent, ButtonComponent, CardComponent,
+    FormsModule, BadgeComponent, ButtonComponent, CardComponent,
     FieldComponent, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,7 +58,14 @@ import {
               }
             </div>
 
-            @if (error(); as e) { <p class="error">{{ e }}</p> }
+            @if (error(); as e) {
+              <p class="error">{{ e }}</p>
+              <p class="nota">
+                Comprobá que la consola esté encendida y que la tablet esté en
+                su red. Si la Ui24R levanta su propia red, hay que conectarse a
+                ella desde los ajustes de wifi del sistema.
+              </p>
+            }
           </div>
         </ui-card>
 
@@ -68,7 +75,8 @@ import {
             Las versiones nuevas llegan desde las publicaciones del repositorio.
             No se actualiza durante una sesión ni con la consola conectada.
           </p>
-          <a routerLink="/ajustes/actualizacion" class="enlace">Buscar actualizaciones</a>
+          <ui-button variante="secundario" icono="descargar"
+                     (pulsado)="irAActualizacion()">Buscar actualizaciones</ui-button>
         </ui-card>
 
         <ui-card titulo="Datos" [subtitulo]="almacen.descripcion">
@@ -104,7 +112,7 @@ import {
   styles: [`
     .nota { color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea); }
     .error { color: var(--danger); font-size: var(--txt-sm); }
-    .enlace { display: inline-block; margin-top: var(--sp-3); color: var(--signal); }
+
     .conteos { list-style: none; margin: 0 0 var(--sp-3); padding: 0; }
     .conteos li {
       display: flex; justify-content: space-between;
@@ -119,6 +127,7 @@ export class AjustesComponent {
   private readonly conexion = inject(ConnectionStateService);
   private readonly repos = inject(Repositorios);
   private readonly avisos = inject(ToastService);
+  private readonly router = inject(Router);
 
   readonly prefs = inject(Preferencias);
   readonly almacen = inject(ALMACEN);
@@ -156,6 +165,8 @@ export class AjustesComponent {
       pas: pas.length, sesiones: sesiones.length,
     });
   }
+
+  irAActualizacion(): void { void this.router.navigate(['/ajustes/actualizacion']); }
 
   conectar(): void {
     void this.mixer.conectar(this.host()).catch(() => { /* el error ya está en la señal */ });

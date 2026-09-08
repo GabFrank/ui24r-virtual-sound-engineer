@@ -1,5 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import {
+  ChangeDetectionStrategy, Component, ElementRef, computed, inject, viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { ConnectionStateService } from '../core/connection.state';
 import { SessionStateService } from '../core/session.state';
 import { BadgeComponent, ToastsComponent } from '../ui';
@@ -43,7 +46,7 @@ import { NavComponent } from './nav.component';
 
     <div class="cuerpo">
       <app-nav />
-      <main class="contenido">
+      <main class="contenido" #contenido>
         <router-outlet />
       </main>
     </div>
@@ -96,6 +99,29 @@ export class ShellComponent {
   private readonly sesion = inject(SessionStateService);
 
   readonly sesionActiva = this.sesion.sesionActiva;
+
+  private readonly contenido = viewChild.required<ElementRef<HTMLElement>>('contenido');
+
+  constructor() {
+    /**
+     * Al terminar cada navegación, el foco pasa al título de la pantalla nueva.
+     *
+     * Sin esto el foco se quedaba en el enlace de la navegación: quien usa
+     * teclado tenía que volver a tabular por toda la barra en cada cambio de
+     * pantalla, y quien usa lector de pantalla no se enteraba de que había
+     * cambiado nada — el título del documento se actualiza, pero en una
+     * aplicación de una sola página eso no lo anuncia nadie.
+     */
+    const router = inject(Router);
+    // Se filtra dentro de la suscripción y no con un operador: hay dos copias
+    // de rxjs en el árbol de dependencias y sus tipos de evento no son el
+    // mismo, así que `filter` no acepta el predicado sin quejarse.
+    router.events.pipe(takeUntilDestroyed()).subscribe((e) => {
+      if (!(e instanceof NavigationEnd)) return;
+      const h1 = this.contenido().nativeElement.querySelector('h1');
+      if (h1 instanceof HTMLElement) h1.focus({ preventScroll: true });
+    });
+  }
 
   /**
    * Se calculan con `computed` y no con métodos: una función llamada desde la

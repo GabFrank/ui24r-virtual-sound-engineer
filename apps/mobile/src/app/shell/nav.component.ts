@@ -31,11 +31,11 @@ interface Destino {
   imports: [RouterLink, RouterLinkActive, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav [attr.aria-label]="'Navegación principal'">
+    <nav aria-label="Navegación principal">
       @for (d of destinos(); track d.ruta) {
         <a [routerLink]="d.ruta" routerLinkActive="activo"
            [routerLinkActiveOptions]="{ exact: false }"
-           [attr.data-destino]="d.ruta">
+           [attr.data-destino]="d.ruta" [title]="d.etiqueta">
           <span class="marca">
             <ui-icon [nombre]="d.icono" [tamanio]="22" />
             @if (d.ruta === 'consola' && !conectado()) { <i class="punto" aria-hidden="true"></i> }
@@ -86,11 +86,22 @@ interface Destino {
     }
 
     /* Tablet angosta y teléfono en horizontal: solo iconos, para no comerse
-       el ancho que necesitan las tablas. */
+       el ancho que necesitan las tablas.
+
+       El rótulo se saca de la vista, no del árbol de accesibilidad. Con
+       «display: none» los cinco enlaces se quedaban literalmente sin nombre:
+       un volcado del árbol a 700 px devolvía ["","","","",""]. Y no afecta
+       solo a los lectores de pantalla — un icono de barras para «Consola» no
+       es autoevidente para quien abre la aplicación una vez por semana, de ahí
+       también el «title». */
     @media (min-width: 600px) and (max-width: 899px) {
       :host { width: auto; }
       a { justify-content: center; padding: var(--sp-3); }
-      .etiqueta { display: none; }
+      .etiqueta {
+        position: absolute; width: 1px; height: 1px;
+        padding: 0; margin: -1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+      }
     }
 
     /* --- Teléfono: barra inferior --- */

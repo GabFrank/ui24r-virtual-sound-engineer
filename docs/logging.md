@@ -1,6 +1,6 @@
 # Registro estructurado
 
-Implementa INV-022. Todo se persiste en base de datos local, con rotación de treinta sesiones como mínimo, y se puede exportar desde la interfaz.
+Implementa INV-022. **Estado hoy: solo salida por consola.** El `Logger` tiene el formato y el método `escritura()` con los campos obligatorios, y la tabla `log_event` existe en el esquema, pero **todavía no hay ningún sumidero persistente registrado, ni rotación, ni exportación de eventos**. Lo que exporta hoy Ajustes es el volcado de las entidades en JSON al portapapeles. Lo de abajo es la especificación de destino.
 
 ## Formato
 

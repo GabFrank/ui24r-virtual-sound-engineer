@@ -49,7 +49,33 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 - Telemetría, canales, ganancia y actualización migradas al sistema de diseño,
   con lista de tarjetas en lugar de tabla en pantallas angostas.
 
+### Agregado
+- `npm run validate:limites`: verifica los límites entre paquetes que el
+  proyecto declara. Tres sitios afirmaban «hay una regla de lint que lo
+  verifica» y no hay ESLint en el repositorio.
+- Comprobación de funciones llamadas desde plantillas de Angular.
+- Test que **lee la tabla de `docs/channel-profiles.md`** y la compara fila por
+  fila con el código. El que había comprobaba ocho valores sueltos de trece
+  perfiles y no leía el documento; las dos tablas ya habían divergido en cinco
+  celdas.
+
 ### Corregido
+- Accesibilidad: la navegación perdía el nombre accesible entre 600 y 899 px;
+  `ui-field` generaba los identificadores de ayuda y error y no los enlazaba
+  nunca; el medidor no exponía valor; las filas del historial no se podían
+  navegar con teclado; las pestañas tenían un patrón ARIA a medias; el diálogo
+  no tenía nombre accesible; y al cambiar de pantalla el foco no se movía.
+- La casilla «en vivo», que decide si una fuente real se sustituye por una
+  pista grabada, medía 22 px.
+- `ui-stat` se usaba para texto en 28 px monoespaciado y los valores se
+  montaban unos sobre otros en la tarjeta de resumen de la sesión.
+- Jerga interna en pantalla: códigos de invariante, rutas crudas del protocolo,
+  «σ ± 3», markdown sin renderizar y estados del dominio en inglés.
+- Estados que se distinguían solo por color, sin refuerzo textual.
+- Las últimas seis funciones llamadas desde plantillas.
+- La documentación afirmaba cuatro coberturas de test que no existían, el
+  README llevaba tres entregas de retraso, y varios documentos citaban rutas y
+  cifras que ya no eran ciertas.
 - **Las asignaciones de canal vivían en dos sitios y el que se persistía estaba
   siempre vacío.** La pantalla de canales decía «12 de 12 asignados» mientras
   el tablero de la sesión decía «0 canales», y al reiniciar la aplicación se

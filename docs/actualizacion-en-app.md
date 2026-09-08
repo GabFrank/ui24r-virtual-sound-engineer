@@ -82,7 +82,7 @@ El usuario abre la pestaña Actualización
 
 El reparto es deliberado:
 
-- **`packages/updater`** decide. Es TypeScript puro, sin red y sin Android, con 30 tests. Toda la política está ahí: qué versión es más nueva, qué publicación es instalable, qué bloquea la actualización.
+- **`packages/updater`** decide. Es TypeScript puro, sin red y sin Android, con 32 tests. Toda la política está ahí: qué versión es más nueva, qué publicación es instalable, qué bloquea la actualización.
 - **`ActualizadorPlugin.java`** ejecuta. Permiso, descarga, instalación. No decide nada.
 
 Se eligió `PackageInstaller` en vez del intent clásico de abrir el APK porque devuelve un motivo cuando falla. El fallo más probable es el de la firma distinta, y el plugin lo traduce a una frase que explica qué pasó en vez de dejar el «aplicación no instalada» del sistema.

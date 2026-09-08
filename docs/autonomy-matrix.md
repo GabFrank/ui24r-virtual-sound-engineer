@@ -1,6 +1,6 @@
 # Propiedad de parámetros y nivel de autonomía
 
-Implementa ADR-010. El registro en código vive en `packages/domain/src/ownership.ts` y hay un test estático que verifica que estas dos tablas coinciden.
+Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ownership.ts`. `packages/domain/test/ownership.test.ts` verifica la coherencia interna de ese registro —ningún parámetro «solo del usuario» escribible, sin duplicados, sin tipos sin dueño—; **la correspondencia con la tabla de abajo se mantiene a mano**.
 
 ## Niveles
 

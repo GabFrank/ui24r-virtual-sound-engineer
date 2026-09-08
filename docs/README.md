@@ -13,7 +13,11 @@
 
 | Documento | Qué contiene | Se actualiza |
 |---|---|---|
-| [safety-invariants.md](safety-invariants.md) | Las 33 invariantes con su test | Solo por ADR |
+| [safety-invariants.md](safety-invariants.md) | Las 34 invariantes con su test |
+| [design-system.md](design-system.md) | Fichas, primitivas y puntos de corte de la interfaz |
+| [flujo-de-usuario.md](flujo-de-usuario.md) | Qué se puede hacer hoy con la aplicación, de punta a punta |
+| [actualizacion-en-app.md](actualizacion-en-app.md) | Actualización desde GitHub y ceremonia del almacén de claves |
+| [visual/](visual/) | Capturas contra el simulador y qué encontró cada tanda | Solo por ADR |
 | [capability-matrix.md](capability-matrix.md) | Qué expone el protocolo y qué está probado | En cada spike de capacidades |
 | [hardware-matrix.md](hardware-matrix.md) | Qué hardware está certificado | En cada certificación |
 | [risk-register.md](risk-register.md) | Riesgos, responsable y mitigación | En cada control de paso |

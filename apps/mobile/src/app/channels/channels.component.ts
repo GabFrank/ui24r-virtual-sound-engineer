@@ -78,11 +78,11 @@ interface FilaDeCanal {
           <table>
             <thead>
               <tr>
-                <th class="izq">Entrada</th>
-                <th class="izq">Nombre en consola</th>
-                <th class="izq">Tipo de fuente</th>
-                <th class="num">Margen objetivo</th>
-                <th>En vivo</th>
+                <th scope="col" class="izq">Entrada</th>
+                <th scope="col" class="izq">Nombre en consola</th>
+                <th scope="col" class="izq">Tipo de fuente</th>
+                <th scope="col" class="num">Margen objetivo</th>
+                <th scope="col">En vivo</th>
               </tr>
             </thead>
             <tbody>
@@ -107,9 +107,15 @@ interface FilaDeCanal {
                   </td>
                   <td class="num">{{ f.margen }}</td>
                   <td>
-                    <input type="checkbox" [checked]="f.enVivo" [disabled]="!f.asignado"
-                           (change)="cambiarEnVivo(f.indice, $event)"
-                           [attr.aria-label]="'canal ' + f.indice + ' en vivo'" />
+                    <!-- El area pulsable abarca la etiqueta, no solo la
+                         casilla: 22 pixeles es el objetivo mas dificil de
+                         acertar de toda la aplicacion, y decide si una fuente
+                         real se sustituye por una pista grabada. -->
+                    <label class="envivo-celda">
+                      <input type="checkbox" [checked]="f.enVivo" [disabled]="!f.asignado"
+                             (change)="cambiarEnVivo(f.indice, $event)"
+                             [attr.aria-label]="'canal ' + f.indice + ' en vivo'" />
+                    </label>
                   </td>
                 </tr>
               }
@@ -160,7 +166,12 @@ interface FilaDeCanal {
       padding: var(--sp-2) var(--sp-3); font: inherit;
       min-height: var(--tap-min); min-width: 190px; width: 100%;
     }
-    input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--signal); }
+    input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--signal); }
+    .envivo-celda {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: var(--tap-min); min-height: var(--tap-min);
+      cursor: pointer;
+    }
 
     .aviso {
       margin-bottom: var(--sp-4); padding: var(--sp-3);
@@ -168,7 +179,12 @@ interface FilaDeCanal {
       font-size: var(--txt-sm); line-height: var(--alto-linea);
     }
     .dato { color: var(--muted); font-size: var(--txt-sm); }
-    .envivo { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--txt-sm); }
+    .envivo {
+      display: flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--txt-sm);
+      min-height: var(--tap-min); padding: 0 var(--sp-2);
+      cursor: pointer;
+    }
 
     .angosto { display: none; }
     @include hasta($bp-telefono) {

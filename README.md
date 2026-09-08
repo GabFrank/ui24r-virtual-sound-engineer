@@ -6,11 +6,11 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 **Plataforma:** Angular + Capacitor + Android (tablet).
 **Filosofía:** offline-first, measurement-first, safe-by-design.
-**Estado:** Fase 0 en curso. Ninguna función de producto está implementada todavía.
+**Estado:** Fase 0 en curso. La aplicación **observa, propone y guarda**: perfiles, sesión, canales, ganancia, historial, ajustes y actualización propia. **No escribe nada en la consola y no reproduce audio** — todo lo que necesita el micrófono de medición, la interfaz de audio o el protocolo verificado sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md).
 
 | | |
 |---|---|
-| Tests en verde | 110 |
+| Tests en verde | 220, más 48 de validación DSP |
 | Spikes cerrados | 0 de 22 |
 | Controles de paso aprobados | 0 de 5 |
 | Rutas crudas escribibles | 0, y así seguirá hasta que un spike verifique cada conversión |
@@ -56,6 +56,10 @@ EP-15 Post-MVP
 | `apps/mobile` | Aplicación Angular + Capacitor. El plugin nativo de audio vive en `apps/mobile/android`. |
 | `packages/domain` | Entidades, reglas y tipos del dominio. Sin dependencias de framework. |
 | `packages/mixer-adapter` | `MixerDomainAPI` y el adaptador de Ui24R. Único punto que habla con la consola. |
+| `packages/safety` | Motor de seguridad, diario write-ahead y ejecutor de transacciones. Tiene autoridad sobre cualquier asistente. |
+| `packages/assistants` | Análisis y propuestas. Funciones puras: no tocan la consola ni la base. |
+| `packages/store` | Puerto del almacén de documentos y semántica de las consultas. |
+| `packages/updater` | Política de actualización de la aplicación. TypeScript puro, sin red ni Android. |
 | `packages/dsp-contract` | Tipos del puente entre el motor nativo de audio y la aplicación. |
 | `docs/adr` | Decisiones de arquitectura. |
 | `docs/spikes` | Charters de spikes con criterio de aprobación numérico, y su evidencia. |
@@ -63,8 +67,9 @@ EP-15 Post-MVP
 | `docs/field` | Informes de prueba de campo. |
 | `docs/backlog` | Plan final, auditorías, backlog y orden de implementación. |
 | `tools/spikes` | Código de spikes. No requiere tests ni entra en el producto. |
-| `tools/hil` | Harness de pruebas contra hardware real. |
-| `tools/docs` | Validador de identificadores y generador de dependencias inversas. |
+| `tools/docs` | Validadores: identificadores de la documentación, y plantillas de componente. |
+| `tools/mixer-sim` | Simulador del protocolo de la consola. Reproduce nuestras hipótesis, no la consola. |
+| `tools/visual` | Capturas contra el simulador y recorrido automático del camino de usuario. |
 
 ## Documentos de entrada
 
@@ -78,7 +83,7 @@ EP-15 Post-MVP
 
 ```bash
 npm install          # instala el workspace completo
-npm run lint         # eslint en todos los paquetes
+npm run lint         # chequeo de tipos (tsc --noEmit) en los paquetes y compilación de la app
 npm test             # tests unitarios
 npm run validate:docs  # verifica que todo ID referenciado en docs exista
 ```

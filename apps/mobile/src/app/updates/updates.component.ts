@@ -63,10 +63,11 @@ import { UpdateService } from './update.service';
           @if (bloqueos().length > 0) {
             <ul class="bloqueos">
               @for (b of bloqueos(); track b.motivo) {
-                <li>
-                  @if (b.invariante) { <span class="inv">{{ b.invariante }}</span> }
-                  {{ b.explicacion }}
-                </li>
+                <!-- El identificador de la invariante va en el título, no en
+                     el texto: sirve para rastrear el motivo en la
+                     documentación, pero «INV-034» no le dice nada a quien está
+                     de pie antes de un show. -->
+                <li [attr.title]="b.invariante">{{ b.explicacion }}</li>
               }
             </ul>
           } @else if (!permiso()) {
@@ -107,7 +108,10 @@ import { UpdateService } from './update.service';
           @if (notas()) {
             <details>
               <summary>Novedades de esta versión</summary>
-              <pre>{{ notas() }}</pre>
+              <!-- Las notas vienen en markdown desde GitHub. Sin motor de
+                   markdown, se limpian las marcas más ruidosas: mostrar
+                   «## Novedades» y guiones de lista es peor que no mostrarlas. -->
+              <pre>{{ notasLimpias() }}</pre>
             </details>
           }
         </ui-card>
@@ -192,6 +196,13 @@ export class UpdatesComponent {
   });
 
   readonly notas = computed(() => this.publicacion()?.notas ?? '');
+
+  readonly notasLimpias = computed(() => this.notas()
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^[-*]\s+/gm, '· ')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .trim());
 
   readonly tamanio = computed(() => {
     const p = this.publicacion();

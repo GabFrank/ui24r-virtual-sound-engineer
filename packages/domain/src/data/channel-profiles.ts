@@ -3,7 +3,7 @@ import type { ChannelProfileId } from '../ids.ts';
 
 /**
  * Perfiles de canal iniciales. Reflejan docs/channel-profiles.md, y hay un
- * test que verifica que sigan coincidiendo: si alguien ajusta un número aquí
+ * test que LEE esa tabla y la compara fila por fila: si alguien ajusta un número aquí
  * sin actualizar el documento, o al revés, el test avisa.
  *
  * **No son presets.** Un preset diría "filtro en 80 Hz". Un perfil dice "para

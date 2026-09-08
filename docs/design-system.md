@@ -1,7 +1,8 @@
 # Sistema de diseño
 
-La referencia viva está **dentro de la aplicación**, en la pestaña «Diseño» de
-la compilación de desarrollo (`npm run build:dev -w mobile`). Este documento
+La referencia viva está **dentro de la aplicación**, en la pestaña «Diseño», que
+el menú solo muestra en la compilación de desarrollo (`npm run build:dev -w
+mobile`). La ruta `/diseno` existe en las dos compilaciones. Este documento
 explica las decisiones; la galería muestra el resultado.
 
 ```

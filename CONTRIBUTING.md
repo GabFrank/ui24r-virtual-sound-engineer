@@ -29,7 +29,7 @@ Un spike no entrega producto. Un spike entrega una respuesta con un número.
 
 1. **Ningún write RAW fuera de tabla.** Todo parámetro escrito por ruta cruda pasa por `raw-map` con rango físico y test de ida y vuelta. Un valor sin entrada en la tabla se rechaza en tiempo de ejecución.
 2. **Ninguna versión con escrituras se libera sin su parte de EP-12 en verde.**
-3. **Ningún asistente importa el adaptador.** Los asistentes hablan con `MixerDomainAPI`. Hay una regla de lint que lo verifica.
+3. **Ningún asistente importa el adaptador.** Los asistentes hablan con `MixerDomainAPI`. Lo verifica `npm run validate:limites`.
 4. **Ninguna llamada a la consola fuera del pipeline.** `Assistant → Recommendation → Transaction → SafetyEngine.check() → MixerDomainAPI.write()`.
 5. **Ningún parámetro marcado USER-ONLY se escribe jamás.** Ver [docs/autonomy-matrix.md](docs/autonomy-matrix.md).
 

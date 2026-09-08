@@ -62,8 +62,9 @@ un registro de lo que pasó para ser una opinión sobre lo que pasó.
 | Tablet (Android) | SQLite | El del producto. |
 | Navegador | `localStorage` | Desarrollo y pruebas del camino de usuario. |
 
-Los dos implementan el mismo puerto, y la **semántica de las consultas vive en
-`@vse/store` con tests**, no en cada implementación. La razón es concreta: en
+Los dos implementan el mismo puerto. La semántica de las consultas está escrita
+y probada en `@vse/store`, y **la usa la implementación de navegador**; la de
+SQLite traduce el mismo filtro a SQL por su cuenta. La razón es concreta: en
 SQL, `columna = NULL` nunca es cierto y hay que escribir `IS NULL`; en
 JavaScript, `x === null` sí lo es. Como «la sesión abierta» se busca
 precisamente por `cerrada_el IS NULL`, resolverlo por separado en cada sitio

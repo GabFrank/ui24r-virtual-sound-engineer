@@ -55,7 +55,7 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
 
       @if (!permiteAjustar()) {
         <p class="aviso">
-          La ganancia está congelada en este estado de la sesión (INV-006). Se
+          La ganancia está congelada en este estado de la sesión. Se
           puede medir para ver cómo está, pero el ajuste corresponde a la
           configuración de canales: cambiarla después de grabar una toma haría
           que la toma dejara de representar al show.
@@ -135,7 +135,7 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
           }
         </div>
 
-        @for (r of resultados(); track r.indice) {
+        @for (r of recomendaciones(); track r.indice) {
           <ui-card class="recomendacion" [titulo]="r.nombre" subtitulo="Recomendación">
             <p class="razon">{{ r.propuesta.razon }}</p>
             @if (r.propuesta.avisos.length > 0) {
@@ -143,12 +143,7 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                 @for (av of r.propuesta.avisos; track av) { <li>{{ av }}</li> }
               </ul>
             }
-            <p class="evidencia num">
-              Ventana de {{ r.analisis.duracionS.toFixed(0) }} s ·
-              {{ r.analisis.muestras }} muestras con señal ·
-              variación de {{ r.analisis.rangoDinamicoDb.toFixed(0) }} dB ·
-              estabilidad {{ r.analisis.estabilidadDb.toFixed(1) }} dB
-            </p>
+            <p class="evidencia num">{{ r.evidencia }}</p>
             <p class="nota">
               Sin corrección de sala todavía: esta recomendación mira la señal
               del canal, no lo que se oye en el recinto. Aplicá el cambio a mano
@@ -210,6 +205,19 @@ export class GainComponent {
   private readonly sesion = inject(SesionService);
 
   readonly resultados = this.asistente.resultados;
+
+  /** La evidencia ya formateada: cuatro `toFixed` en la plantilla se
+   *  reevaluaban en cada ciclo, con la cuenta regresiva corriendo. */
+  readonly recomendaciones = computed(() => this.resultados().map((r) => ({
+    indice: r.indice,
+    nombre: r.nombre,
+    propuesta: r.propuesta,
+    evidencia:
+      `Ventana de ${r.analisis.duracionS.toFixed(0)} s · ` +
+      `${r.analisis.muestras} muestras con señal · ` +
+      `variación de ${r.analisis.rangoDinamicoDb.toFixed(0)} dB · ` +
+      `estabilidad ${r.analisis.estabilidadDb.toFixed(1)} dB`,
+  })));
   readonly capturando = this.asistente.capturando;
   readonly segundos = this.asistente.segundosRestantes;
 

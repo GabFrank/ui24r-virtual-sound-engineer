@@ -95,11 +95,11 @@ function textoDeBus(b: BusRef): string {
                        (pulsado)="abrirNuevo()">Agregar</ui-button>
 
             <ul class="lista">
-              @for (c of componentes(); track c.nombre) {
+              @for (c of componentesConTexto(); track c.nombre) {
                 <li>
                   <div class="quien">
                     <span class="nombre">{{ c.nombre }}</span>
-                    <span class="bus">{{ textoBus(c.bus) }}</span>
+                    <span class="bus">{{ c.bus }}</span>
                   </div>
                   @if (c.silenciable) {
                     <ui-badge tono="ok">Silenciable</ui-badge>
@@ -116,7 +116,7 @@ function textoDeBus(b: BusRef): string {
             @if (!hayAlgunSilenciable()) {
               <p class="nota aviso">
                 Ningún componente tiene silencio propio, así que no se va a
-                poder medir por componente (INV-028). Es lo normal en un
+                poder medir por componente. Es lo normal en un
                 general estéreo con un solo silencio; solo cambia si hay
                 auxiliares o matrices separadas por lado.
               </p>
@@ -200,7 +200,12 @@ export class PaEditComponent {
   readonly nuevoBus = signal('MASTER');
   readonly nuevoSilenciable = signal(false);
 
-  readonly textoBus = textoDeBus;
+  /** El texto del bus se calcula una vez, no en cada ciclo de detección. */
+  readonly componentesConTexto = computed(() => this.componentes().map((c) => ({
+    nombre: c.nombre,
+    bus: textoDeBus(c.bus),
+    silenciable: c.silenciable,
+  })));
 
   readonly nuevoSilenciableTexto = computed(() => (this.nuevoSilenciable() ? 'si' : 'no'));
 

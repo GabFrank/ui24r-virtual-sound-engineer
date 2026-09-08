@@ -42,18 +42,27 @@ interface Fila {
           <table>
             <thead>
               <tr>
-                <th class="izq">Fecha</th>
-                <th class="izq">Local</th>
-                <th class="izq">Banda</th>
-                <th>Estado</th>
-                <th>Sala</th>
-                <th>Mezcla</th>
+                <th scope="col" class="izq">Fecha</th>
+                <th scope="col" class="izq">Local</th>
+                <th scope="col" class="izq">Banda</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Sala</th>
+                <th scope="col">Mezcla</th>
               </tr>
             </thead>
             <tbody>
               @for (f of filas(); track f.sesion.id) {
-                <tr [routerLink]="['/historial', f.sesion.id]" tabindex="0">
-                  <td class="izq num">{{ f.fecha }}</td>
+                <!-- El enlace va dentro de la primera celda y se estira sobre
+                     toda la fila. Antes el routerLink estaba en el «tr», que
+                     solo escucha clics: con teclado la fila recibia el foco
+                     pero Intro no hacia nada, y el lector de pantalla anunciaba
+                     «fila», no «enlace». -->
+                <tr>
+                  <td class="izq num">
+                    <a [routerLink]="['/historial', f.sesion.id]" class="fila-enlace">
+                      {{ f.fecha }}
+                    </a>
+                  </td>
                   <td class="izq">{{ f.local }}</td>
                   <td class="izq">{{ f.banda }}</td>
                   <td>
@@ -102,8 +111,13 @@ interface Fila {
     th, td { text-align: center; padding: var(--sp-3); border-bottom: 1px solid var(--line); }
     th { color: var(--muted); font-weight: var(--peso-medio); font-size: var(--txt-sm); }
     .izq { text-align: left; }
-    tbody tr { cursor: pointer; }
+    tbody tr { position: relative; }
     tbody tr:active { background: var(--surface-2); }
+    tbody tr:focus-within { background: var(--surface-2); }
+    .fila-enlace { color: inherit; text-decoration: none; }
+    .fila-enlace::after {
+      content: ''; position: absolute; inset: 0;
+    }
 
     a.tarjeta { text-decoration: none; color: inherit; display: block; }
     .dato { color: var(--muted); font-size: var(--txt-sm); }
