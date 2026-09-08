@@ -76,11 +76,20 @@ con INV-034:
   y conservar de más es el error barato.
 
 **INV-019, parte de interfaz.** El bloqueo de escrituras y la lista blanca
-tienen test unitario. La *presencia* del botón la comprueba
+tienen test unitario. La *presencia* y el *tamaño* del botón los comprueba
 `tools/visual/flujo.mjs`, que abre un diálogo modal y verifica que el paro siga
-siendo alcanzable — la comprobación se agregó porque no lo era: un `dialog`
-abierto con `showModal()` tapaba el botón flotante. El tamaño y la presencia en
-las once pantallas todavía no se verifican automáticamente.
+siendo alcanzable y mida al menos 64 px — la comprobación se agregó porque no
+era alcanzable: un `dialog` abierto con `showModal()` tapaba el botón flotante.
+
+El umbral de esa comprobación estuvo en 44 px, **por debajo de la propia
+invariante**, y por eso aprobaba el paro del diálogo, que medía 48. Se había
+corregido un caso de 60 px argumentando que «cuatro píxeles no valen debilitar
+una invariante de seguridad» y se dejó pasar uno de dieciséis, en el único paro
+alcanzable con un modal abierto. Una comprobación más floja que la regla que
+dice comprobar no comprueba.
+
+La presencia en todas las pantallas todavía no se verifica automáticamente: el
+recorrido solo pasa por las que están en su camino.
 
 | ID | Invariante | Test | Desde |
 |---|---|---|---|
