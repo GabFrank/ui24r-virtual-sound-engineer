@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tráfico en claro permitido, y no es un descuido.
+
+  Desde Android 9 el tráfico sin cifrar está prohibido por defecto. Sin este
+  archivo, cualquier pedido a la consola muere antes de salir del teléfono:
+
+      net::ERR_CLEARTEXT_NOT_PERMITTED
+
+  Medido en el WebView del teléfono el 2026-09-08. Es el tercero de tres
+  bloqueos encadenados que impedían que la aplicación hablara con una Ui24R, y
+  ninguno se ve en el navegador de escritorio.
+
+  La Soundcraft Ui24R sirve su interfaz por `http://` y su protocolo por
+  `ws://`. **No tiene TLS ni forma de tenerlo**: es un aparato cerrado, con
+  firmware que no actualizamos nosotros. No hay una versión cifrada a la que
+  migrar, así que o se permite el tráfico en claro o la aplicación no funciona.
+
+  Por qué el permiso es general y no una lista de máquinas: la dirección de la
+  consola cambia según dónde esté. Levanta su propia red y responde en
+  10.10.1.1, o toma la que le dé el router de la sala —192.168.0.49 en las
+  pruebas—. Enumerar dominios daría una falsa sensación de precisión y rompería
+  en la primera sala distinta.
+
+  Qué se acepta al hacer esto, dicho claro: **cualquiera en la misma red puede
+  leer y alterar lo que la aplicación intercambia con la consola.** Es una red
+  local de escenario, el contenido son niveles de mezcla, y el atacante ya
+  tendría acceso directo a la consola por su propia interfaz web, que tampoco
+  cifra. El riesgo no lo agrega este archivo; ya estaba en el aparato.
+
+  Lo que sí conviene no perder de vista: esto también habilita tráfico en claro
+  hacia cualquier otro destino. Si algún día la aplicación habla con un servidor
+  propio —telemetría, actualizaciones—, ese destino tiene que ir por HTTPS por
+  su cuenta, y convendrá acotar esta configuración con un `domain-config`.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
