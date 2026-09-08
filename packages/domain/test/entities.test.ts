@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ui24rInput, makeId } from '../src/ids.ts';
 import { rolEfectivo, type ChannelAssignment, type MixScene } from '../src/entities/musical.ts';
-import { esSnapshotDeLaApp, puedeAplicarse, PREFIJO_SNAPSHOT_AUTOMATICA,
+import { esSnapshotDeLaApp, puedeAplicarse, PREFIJO_SNAPSHOT_AUTOMATICA, type Snapshot,
   type ChangeTransaction } from '../src/entities/transaction.ts';
 import { esAutoElegible, type Recommendation } from '../src/entities/recommendation.ts';
 import { sonComparables, type MixCandidate } from '../src/entities/soundcheck.ts';
@@ -82,14 +82,33 @@ const base: ChangeTransaction = {
   cerradoEl: null,
 };
 
-test('INV-001: sin instantánea verificada la transacción no se aplica', () => {
-  assert.equal(puedeAplicarse(base), true);
-  assert.equal(puedeAplicarse({ ...base, snapshotRef: null }), false);
+const instantanea: Snapshot = {
+  id: 'snap_1' as SnapshotId,
+  nombreEnConsola: 'snap_1',
+  show: 'VSE',
+  esAutomatica: true,
+  creadaEl: new Date().toISOString(),
+  transactionId: null,
+  existenciaVerificada: true,
+};
+
+test('INV-001: con la instantánea releída de la consola, se aplica', () => {
+  assert.equal(puedeAplicarse(base, instantanea), true);
+  assert.equal(puedeAplicarse({ ...base, snapshotRef: null }, instantanea), false);
+});
+
+test('INV-001: una referencia no nula no alcanza', () => {
+  // Es el defecto que la invariante describe: alguien pudo borrar la
+  // instantanea desde el navegador de la consola entre que se guardo y ahora.
+  // La comprobacion vieja daba `true` en los tres casos de abajo.
+  assert.equal(puedeAplicarse(base, null), false);
+  assert.equal(puedeAplicarse(base, { ...instantanea, existenciaVerificada: false }), false);
+  assert.equal(puedeAplicarse(base, { ...instantanea, nombreEnConsola: 'otra' }), false);
 });
 
 test('INV-001: una transacción que no pasó por la instantánea no se aplica', () => {
-  assert.equal(puedeAplicarse({ ...base, state: 'APPROVED' }), false);
-  assert.equal(puedeAplicarse({ ...base, state: 'DRAFT' }), false);
+  assert.equal(puedeAplicarse({ ...base, state: 'APPROVED' }, instantanea), false);
+  assert.equal(puedeAplicarse({ ...base, state: 'DRAFT' }, instantanea), false);
 });
 
 const recomendacion: Recommendation = {

@@ -80,7 +80,9 @@ export class GainAssistantService {
     const analisis = analizarVentana(this.muestras);
     const perfil = this.banda.perfilDe(asignacion);
     const canal = this.mixer.canales().find((c) => c.indice === indice);
-    const gainActual = canal?.gainDb ?? 0;
+    // `null` cuando la consola todavia no dijo la ganancia: proponer a partir
+    // de un numero inventado es peor que no dar el valor absoluto.
+    const gainActual = canal?.gainDb ?? null;
 
     // Segunda captura del mismo canal: es lo que permite subir la confianza,
     // porque un hallazgo que aparece una sola vez puede ser la interpretación

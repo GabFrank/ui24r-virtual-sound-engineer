@@ -333,7 +333,10 @@ export class TelemetryComponent {
       // entre 0 y 1 se supone. Mostrarlos como cifras exactas al lado del
       // nivel medido —que sí lo es— haría creer que tienen la misma
       // procedencia.
-      ganancia: `${MARCA_ESTIMADO}${c.gainDb.toFixed(0)}`,
+      // Sin lectura de la consola no hay ganancia que mostrar. Antes se
+      // imprimía «≈-6», que es el extremo del rango: el peor valor posible
+      // para equivocarse, y con la misma marca que una estimación real.
+      ganancia: c.gainDb === null ? '—' : `${MARCA_ESTIMADO}${c.gainDb.toFixed(0)}`,
       fader: `${MARCA_ESTIMADO}${db(c.faderDb)}`,
       clips: c.eventosSaturacion,
     })),

@@ -58,6 +58,27 @@ con INV-034:
   aviso se apaga en un `finally` — un aviso pegado dejaría la aplicación sin
   poder actualizarse nunca y nadie sabría que está pegado. `SafetyService`
   arma el ejecutor ya conectado, para que no se pueda armar uno que se olvide.
+**Lo que existe y todavía no tiene quien lo llame.** La auditoría señaló que
+arreglar «la constante que nadie consulta» agregando «la función que nadie
+llama» mueve el problema un nivel, no lo cierra. Es cierto, y hay tres casos
+vivos. Se listan acá en vez de dejarlos implícitos:
+
+| Qué | Quién debería llamarlo | Por qué todavía no |
+|---|---|---|
+| `snapshotsABorrar` (INV-003) | quien cree instantáneas | Nada las crea: depende de MVP4a y de SPK-P0.8 para listarlas. |
+| `SafetyService.crearEjecutor` (INV-034) | quien aplique una transacción | La aplicación no escribe en la consola. Mientras tanto `transaccionEnCurso` es `false` siempre, igual que antes del arreglo. |
+| `PACING_MS` y la exención System (INV-005) | el ejecutor | El ejecutor usa un 100 escrito a mano y no distingue System. Sin resolver. |
+
+La diferencia con el patrón anterior es que la política está escrita y probada
+en vez de ser un número suelto, y que este cuadro dice dónde falta el cable.
+
+- **INV-001**, la trampa que quedó: el arreglo puso la relectura en el ejecutor
+  y dejó vivas dos cosas que decían implementar la invariante y no lo hacían.
+  `Snapshot.existenciaVerificada` no lo escribía ni lo leía nadie, y
+  `puedeAplicarse` seguía comprobando que la referencia no fuera nula —
+  literalmente el defecto que el enunciado describe—, exportada y con test
+  propio. Ahora `puedeAplicarse` recibe la instantánea y exige que exista, que
+  se llame como la referencia y que su existencia esté verificada.
 - **INV-021**, la relectura: la invariante dice «store INVALID **hasta
   re-lectura**» y la segunda mitad de la frase no existía. Lo único que
   devolvía el estado a válido era el volcado completo, que la consola manda

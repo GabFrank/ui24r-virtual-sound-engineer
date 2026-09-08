@@ -4,7 +4,7 @@ import type {
 } from './api.ts';
 import { ConfirmedStateStore } from './confirmed-store.ts';
 import { codificarSetd, decodificar, decodificarVu } from './protocol.ts';
-import { GANANCIA_DB_MINIMA, faderADb, gananciaADb } from './conversiones.ts';
+import { faderADb, gananciaADb } from './conversiones.ts';
 import type { Transport } from './transport.ts';
 
 export interface OpcionesAdapter {
@@ -19,7 +19,17 @@ export interface EstadoCanal {
   readonly indice: number;
   readonly nombre: string;
   readonly faderDb: number;
-  readonly gainDb: number;
+  /**
+   * La ganancia de entrada, o `null` si la consola todavía no la dijo.
+   *
+   * Era `number`, y cuando el estado confirmado no tenía `hw.N.gain` se
+   * devolvía el extremo del rango como si fuera una lectura. La telemetría
+   * imprimía «≈-6» y el asistente proponía a partir de ese número. El «≈»
+   * distingue «estimado a partir de un valor crudo real» de «medido»; no
+   * distinguía ninguno de los dos de «inventado», que es peor que los otros
+   * dos juntos.
+   */
+  readonly gainDb: number | null;
   readonly silenciado: boolean;
   readonly nivelDb: number;
   readonly picoDb: number;
@@ -249,7 +259,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         indice: i,
         nombre: this.nombresCanal.get(i) ?? `CANAL ${i}`,
         faderDb: fader ? faderADb(fader.valor) : -Infinity,
-        gainDb: gain ? gananciaADb(gain.valor) : GANANCIA_DB_MINIMA,
+        gainDb: gain ? gananciaADb(gain.valor) : null,
         silenciado: (mute?.valor ?? 0) > 0.5,
         nivelDb: this.nivelesVu.get(i) ?? -Infinity,
         picoDb: this.picosVu.get(i) ?? -Infinity,

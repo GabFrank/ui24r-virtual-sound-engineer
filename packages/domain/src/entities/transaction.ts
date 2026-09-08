@@ -132,7 +132,22 @@ export function snapshotsABorrar(
   return sobran <= 0 ? [] : automaticas.slice(0, sobran).map((x) => x.nombre);
 }
 
-/** Una transacción no puede aplicarse sin instantánea verificada (INV-001). */
-export function puedeAplicarse(t: ChangeTransaction): boolean {
-  return t.state === 'SNAPSHOTTED' && t.snapshotRef !== null;
+/**
+ * Si una transacción puede pasar a APLICANDO (INV-001).
+ *
+ * Comprobaba que la referencia no fuera nula, que es literalmente el defecto
+ * que INV-001 describe: la instantánea puede haberse borrado desde el navegador
+ * de la consola entre que se guardó y ahora. El ejecutor ya relee la lista, así
+ * que la invariante se cumple; esta función se quedó atrás, exportada y con
+ * test propio, como una trampa para el próximo que la use creyendo que la
+ * implementa.
+ *
+ * Ahora exige `existenciaVerificada`, que es el campo que el modelo declaraba
+ * para esto y que tampoco escribía ni leía nadie. La comprobación pide la
+ * instantánea, no su referencia.
+ */
+export function puedeAplicarse(t: ChangeTransaction, snapshot: Snapshot | null): boolean {
+  if (t.state !== 'SNAPSHOTTED' || t.snapshotRef === null) return false;
+  if (snapshot === null) return false;
+  return snapshot.nombreEnConsola === t.snapshotRef && snapshot.existenciaVerificada;
 }

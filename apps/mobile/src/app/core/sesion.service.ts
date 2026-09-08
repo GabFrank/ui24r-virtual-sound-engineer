@@ -142,5 +142,11 @@ export class SesionService {
     // la aplicación en medio del trabajo (INV-034). Se mantiene acá para que
     // no haya dos fuentes de verdad sobre si hay una sesión abierta.
     this.estadoGlobal.fijarEstado(v?.sesion.state ?? null);
+    // Y el registro pasa a etiquetar cada evento con la sesión en curso.
+    // `fijarSesion` existía desde el primer día y no la llamaba nadie: todas
+    // las filas de `log_event` iban con `session_id` en nulo, el índice por
+    // sesión no servía para nada, y filtrar el registro por sesión —que es
+    // como se lee después de un show— no podía devolver nada.
+    this.log.fijarSesion(v?.sesion.id ?? null);
   }
 }

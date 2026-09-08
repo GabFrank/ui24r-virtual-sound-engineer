@@ -2,7 +2,7 @@
 
 Implementa INV-022. Vive en `packages/logging`: el registro, sus sumideros y la lectura del registro guardado.
 
-**Estado hoy:** hay salida por consola y salida persistente. Los eventos se guardan en `log_event` a través del mismo puerto de almacén que el resto, así que funcionan igual en la tablet y en el navegador. Ajustes muestra los últimos cien —con filtro de «avisos y errores»— y los copia como `events.jsonl`.
+**Estado hoy:** hay salida por consola y salida persistente, y cada evento lleva la sesión en curso — `fijarSesion` existía desde el primer día y no la llamaba nadie, así que todas las filas iban con `session_id` en nulo y filtrar por sesión no podía devolver nada. Los eventos se guardan en `log_event` a través del mismo puerto de almacén que el resto, así que funcionan igual en la tablet y en el navegador. Ajustes muestra los últimos cien —con filtro de «avisos y errores»— y los copia como `events.jsonl`.
 
 Lo que todavía no hay: el paquete completo de exportación (`session.json` + `events.jsonl` + `report.md` comprimidos). Hoy el JSONL se copia al portapapeles, que es lo que se puede hacer sin permisos de archivo.
 
