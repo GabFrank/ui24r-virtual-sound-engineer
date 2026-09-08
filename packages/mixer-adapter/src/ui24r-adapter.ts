@@ -56,10 +56,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private desuscribir: (() => void)[] = [];
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
 
-  constructor(
-    private readonly transporte: Transport,
-    opciones: OpcionesAdapter = {},
-  ) {
+  private readonly transporte: Transport;
+
+  constructor(transporte: Transport, opciones: OpcionesAdapter = {}) {
+    this.transporte = transporte;
     this.ahora = opciones.ahora ?? (() => Date.now());
     this.umbralHuecoVuMs = opciones.umbralHuecoVuMs ?? 300;
     this.timeoutMs = opciones.timeoutConfirmacionMs ?? 500;
