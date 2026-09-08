@@ -44,4 +44,20 @@ MVP0        MVP1-MVP3    MVP4a         MVP4b
                                         solo confianza alta
 ```
 
+
+## Qué falta para llegar a la automatización de show
+
+ADR-023 fijó el destino: la aplicación va a automatizar la mezcla. Lo que sigue son las condiciones de cada escalón, escritas antes de intentarlo. Ninguna se cumple hoy.
+
+| Para poder… | Hace falta | Estado |
+|---|---|---|
+| Escribir **cualquier** cosa | G-A cerrado: protocolo confirmado en hardware, política de confirmación de escrituras, concurrencia y alcance de la recuperación de instantáneas | ⬜ ningún spike cerrado |
+| Escribir **un** parámetro de canal (ASSISTED) | Lo anterior, más la máquina de reconexión y el retroceso transaccional verificado por lectura | ⬜ |
+| Escribir **un conjunto** —el balance de cuatro voces— | Una clase de transacción que garantice todo-o-nada sobre el conjunto, con verificación y reversión conjuntas. No alcanza con levantar el límite de cuatro de INV-005: el límite es lo que hoy hace que un fallo se pueda entender | ⬜ sin diseñar |
+| Escribir **efectos y subgrupos** | Rehacer la propiedad de ADR-010, que hoy los declara «solo del usuario, fuera de alcance», con el mismo cuidado con que se escribió | ⬜ decisión pendiente, ya no bloqueada por el alcance |
+| Apoyarse en el **CUE nativo** | SPK-FW3 criterio 5: que un CUE no toque los envíos de AUX, o que se puedan excluir. Si los toca y no se pueden excluir, este camino queda cerrado por INV-010 | ⬜ sin medir |
+| **Transiciones graduales** en vez de escalón | SPK-FW3 criterio 8: que la consola sostenga el ritmo de escritura que pide una rampa | ⬜ sin medir |
+
+**Lo que no está en la tabla porque no se mueve:** INV-010. Ningún envío de monitor recibe escrituras, en ningún nivel de autonomía y por ninguna versión. Un automatizador que puede alterar lo que oye un músico en el escenario no es un producto mejor.
+
 El primer parámetro que se automatiza es **uno de canal**, ganancia o fader, porque es el cambio de menor alcance y el más fácil de verificar. La ecualización de sistema, que afecta a todo el sistema de amplificación, viene después.

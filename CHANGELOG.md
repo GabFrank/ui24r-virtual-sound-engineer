@@ -4,6 +4,14 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Cambiado
+- **ADR-023: el destino del proyecto es la automatización**, y se llega por
+  niveles. No es un asistente de medición con automatización como extra: es un
+  automatizador que todavía no se ganó el derecho a escribir. Cada escalón tiene
+  condiciones escritas antes de intentarlo, en la matriz de autonomía. Hoy no
+  cambia nada —sigue en OBSERVE y sin escribir— y INV-010 no se mueve en ningún
+  nivel: ningún envío de monitor recibe escrituras, nunca.
+
 ### Agregado
 - **Prueba de conexión dentro de la aplicación** (Ajustes → Prueba de conexión).
   Cronometra la cadencia de los medidores —media, mediana, percentil 95,
