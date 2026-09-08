@@ -45,7 +45,11 @@ Eran cuatro. Los otros dos no eran secretos y se quitaron: el alias es `vse` y e
 
 Desde acá, cada APK que publique la integración continua queda firmado con esa clave.
 
-**Los cuatro, o ninguno.** Si falta uno, la publicación se detiene y dice cuál — antes, con solo comprobar el almacén, faltando la contraseña o el alias Gradle fallaba con un error sin relación aparente con el secreto ausente. Y antes de adjuntar el APK se lee su certificado: si dice `CN=Android Debug`, la publicación falla. Publicar uno así es irreversible **para quien lo instale**, porque la única salida es desinstalar y con eso se pierden las sesiones guardadas; que dependa de que los secretos estén bien puestos es demasiado poco para un error que no tiene vuelta atrás.
+**Los dos, o ninguno.** Si falta uno, la publicación se detiene y dice cuál — antes, con solo comprobar el almacén, faltando la contraseña Gradle fallaba con un error sin relación aparente con el secreto ausente.
+
+**En una sola línea y sin retornos de carro.** Es el error más fácil de cometer y el que rompió la primera publicación de este repositorio: el secreto estaba cargado, pero copiado desde Windows traía un `\r` por línea y `base64 -d` los rechaza con «invalid input». La corrida ahora los quita antes de decodificar, comprueba que lo decodificado sea un almacén y que se abra con la contraseña cargada, y dice cuál de las tres cosas falló.
+
+Y antes de adjuntar el APK se lee su certificado y **se compara su huella con la del almacén restaurado**: si no coinciden —o si dice `CN=Android Debug`— la publicación falla y no existe. Publicar uno mal firmado es irreversible **para quien lo instale**, porque la única salida es desinstalar y con eso se pierden las sesiones guardadas; que dependa de que alguien compare dos huellas a ojo es demasiado poco para un error que no tiene vuelta atrás.
 
 ### 3. Para compilar en la máquina propia con la misma firma
 
@@ -113,14 +117,31 @@ El contexto se vuelve a evaluar **justo antes de descargar**, no sólo al consul
 
 ## Publicar una versión
 
+Fusionar en `main`. Nada más (ADR-021).
+
+`release.yml` lee los commits desde la última etiqueta y decide:
+
+| Lo que dice el commit | Lo que publica |
+|---|---|
+| `fix:` | parche — `0.1.0` → `0.1.1` |
+| `feat:` | menor — `0.1.1` → `0.2.0` |
+| `feat!:` o `BREAKING CHANGE:` en el cuerpo | mayor — `0.2.0` → `1.0.0` |
+| `docs:`, `chore:`, `ci:`, `refactor:`, `test:` | nada, y no falla |
+
+Después compila, firma, calcula la suma y crea la etiqueta y la publicación con dos ficheros adjuntos: `vse-0.2.0.apk` y `vse-0.2.0.apk.sha256`. **Sin los dos, la publicación se descarta y la aplicación no la ofrece** — es a propósito: sin suma no hay nada que verificar.
+
+**Empujar una etiqueta a mano ya no publica nada.** El número sale de lo que dicen los commits; escribirlo a mano era poder publicar `v0.2.0` sobre un cambio de documentación.
+
+La etiqueta manda sobre la casilla de pre-lanzamiento. `v0.3.0-rc.1` se descarta aunque nadie haya marcado la casilla; por eso la publicación sólo produce versiones estables y se detiene si le llega otra cosa.
+
+Para compilar y firmar sin publicar —o para volver a intentar una publicación que falló por algo de fuera:
+
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+# el APK y su suma, con la firma comprobada, sin tocar GitHub
+tools/release/construir-apk.sh 0.2.0
+
+# reintentar la publicación entera: Actions → Publicación → Run workflow
 ```
-
-El flujo `release.yml` compila, firma, calcula la suma y crea la publicación con dos ficheros adjuntos: `vse-0.2.0.apk` y `vse-0.2.0.apk.sha256`. **Sin los dos, la publicación se descarta y la aplicación no la ofrece** — es a propósito: sin suma no hay nada que verificar.
-
-La etiqueta manda sobre la casilla de pre-lanzamiento. `v0.3.0-rc.1` se descarta aunque nadie haya marcado la casilla.
 
 ## Cuando algo falla
 

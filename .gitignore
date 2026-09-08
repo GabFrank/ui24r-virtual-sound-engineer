@@ -22,3 +22,7 @@ tools/spikes/p0-10a-dsp/out/*.wav
 apps/mobile/dist/
 apps/mobile/.angular/
 tools/visual/out/
+# Lo que deja tools/release/construir-apk.sh. Un APK son veinte megas que, en un
+# repositorio público, no se pueden quitar del historial.
+vse-*.apk
+vse-*.apk.sha256

@@ -4,7 +4,29 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Cambiado
+- **La versión la deciden los commits.** Cada fusión en `main` pasa por la
+  publicación: `semantic-release` lee los commits desde la última etiqueta,
+  decide el incremento, compila, firma y publica. Empujar una etiqueta a mano ya
+  no publica nada. ADR-021 dice por qué, y qué se pierde con eso.
+
+### Corregido
+- **La restauración del almacén de claves.** El secreto estaba bien cargado pero
+  traía retornos de carro, y `base64 -d` los rechaza: la publicación de 0.1.0
+  murió ahí, después de pasar las seis comprobaciones. Ahora se quitan los
+  espacios antes de decodificar, se comprueba que lo decodificado sea un almacén
+  y que abra con la contraseña cargada, y cada uno de los tres fallos dice cuál
+  fue.
+- **La firma del APK se comprueba contra el almacén, no a ojo.** La corrida
+  compara la huella SHA-256 del certificado del APK con la del almacén que
+  restauró y se detiene si difieren. Descartar la clave de depuración —lo único
+  que hacía antes— dejaba pasar cualquier otra clave equivocada.
+
 ## [0.1.0] - 2026-09-08
+
+**No llegó a producir un APK.** La etiqueta existe y la corrida falló al
+restaurar el almacén de claves; la primera versión con fichero instalable es la
+siguiente. Se deja anotada porque la etiqueta quedó publicada.
 
 Primera versión publicada. **No habla con la consola todavía**: sirve para
 cargar bandas, locales y sistemas de amplificación, abrir y cerrar sesiones, y
