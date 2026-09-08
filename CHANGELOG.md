@@ -12,6 +12,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   cambia nada —sigue en OBSERVE y sin escribir— y INV-010 no se mueve en ningún
   nivel: ningún envío de monitor recibe escrituras, nunca.
 
+## [0.2.0] - 2026-09-08
+
+Primera versión que trae algo para usar con la consola delante. Sigue sin
+escribir nada: mide, cronometra y exporta.
+
 ### Agregado
 - **Prueba de conexión dentro de la aplicación** (Ajustes → Prueba de conexión).
   Cronometra la cadencia de los medidores —media, mediana, percentil 95,
@@ -23,8 +28,6 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   medir por eso, y el informe lo dice en vez de callarlo. La cadencia se calcula
   por tramos entre cortes: el hueco de una caída no es cadencia de la consola, y
   contarlo subía la media de 50 a 66 ms en la prueba contra el simulador.
-
-### Agregado
 - **Los hallazgos de firmware y el contexto musical, como preguntas y no como
   hechos.** Llegó un documento con capacidades de la consola que el manual base
   no documenta —sidechain entre subgrupos, RTA compartido, pre-delay, canales DSP
