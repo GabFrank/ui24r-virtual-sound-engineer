@@ -29,7 +29,10 @@ test('clasifica la cadena de canal', () => {
   strictEqual(clasificarRuta('i.1.gate.thresh'), 'GATE');
   strictEqual(clasificarRuta('i.1.pan'), 'CHANNEL_PAN');
   strictEqual(clasificarRuta('i.1.mute'), 'CHANNEL_MUTE');
-  strictEqual(clasificarRuta('i.1.phantom'), 'PHANTOM');
+  // `hw.N.phantom` es la ruta que la matriz da como CONFIRMADA. La otra estaba
+  // inventada, y una ruta inventada hace que se cite la invariante equivocada.
+  strictEqual(clasificarRuta('hw.1.phantom'), 'PHANTOM');
+  strictEqual(clasificarRuta('i.1.phantom'), null);
 });
 
 test('clasifica el general y los buses de salida', () => {
@@ -77,15 +80,33 @@ test('toda clase que el clasificador produce existe en el registro de propiedad'
   const muestras = [
     'hw.1.gain', 'i.1.eq.hpf.freq', 'i.1.eq.b1.gain', 'i.1.dyn.ratio',
     'i.1.gate.thresh', 'i.1.deesser.amount', 'i.1.mix', 'i.1.pan', 'i.1.mute',
-    'i.1.phantom', 'i.1.aux.1.value', 'p.0.mute', 'p.0.mix', 'p.0.aux.1.value',
+    'hw.1.phantom', 'i.1.aux.1.value', 'p.0.mute', 'p.0.mix', 'p.0.aux.1.value',
     'm.eq.b1.gain', 'm.delay.time', 'm.polarity', 'm.dyn.threshold', 'm.mix',
     'm.mute', 'a.1.eq.b1.gain', 'a.1.delay.time', 'a.1.polarity', 'a.1.mute',
-    'a.1.mix', 'v.1.mix', 'f.1.type', 'var.mtk.soundcheck',
-    'var.currentSnapshot', 'afs2.enable',
+    'a.1.mix', 'v.1.mix', 'f.1.type', 'var.currentSnapshot', 'afs2.enable',
   ];
   const sinClasificar = muestras.filter((m) => clasificarRuta(m) === null);
   deepStrictEqual(sinClasificar, []);
   for (const m of muestras) {
     strictEqual(conocidas.has(clasificarRuta(m)!), true, m);
   }
+});
+
+test('INV-008: el envio al bus de analisis solo existe si se dice cual es el bus', () => {
+  // Es el unico routing escribible que admite la invariante, y era
+  // inexpresable: todo `i.N.aux.M.value` caia en MONITOR_AUX_SEND. Cual es el
+  // bus lo tiene que decir SPK-P0.5, asi que sin ese dato el lado seguro es que
+  // no haya ninguno escribible.
+  strictEqual(clasificarRuta('i.3.aux.6.value'), 'MONITOR_AUX_SEND');
+  strictEqual(clasificarRuta('i.3.aux.6.value', { busDeAnalisis: 6 }), 'ANALYSIS_BUS_SEND');
+  strictEqual(clasificarRuta('i.3.aux.5.value', { busDeAnalisis: 6 }), 'MONITOR_AUX_SEND');
+});
+
+test('el espacio de soundcheck no es un envio de bus', () => {
+  // `var.mtk.*` estaba clasificado como ANALYSIS_BUS_SEND, o sea como el unico
+  // routing escribible. La matriz lo da como soundcheck y multipista. Sin
+  // categoria propia, cae en desconocida y se rechaza, que es lo correcto
+  // mientras SPK-P0.7a no lo verifique.
+  strictEqual(clasificarRuta('var.mtk.soundcheck'), null);
+  strictEqual(clasificarRuta('i.1.mtkrec'), null);
 });
