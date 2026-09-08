@@ -303,12 +303,21 @@ export class LocalEditComponent implements PuedeSalir, OnDestroy {
     }, { allowSignalWrites: true });
   }
 
-  recargar(): void { void this.lectura.correr(() => this.cargar(this.id() as VenueProfileId)); }
+  recargar(): void {
+    const id = this.id() as VenueProfileId;
+    void this.lectura.correr(() => this.leer(id), (v) => this.aplicar(id, v));
+  }
 
-  private async cargar(id: VenueProfileId): Promise<void> {
-    const [l, todos, pas] = await Promise.all([
-      this.repos.local(id), this.repos.locales(), this.repos.pas(),
-    ]);
+  private leer(id: VenueProfileId): Promise<
+    [VenueProfile | null, readonly VenueProfile[], readonly PAProfile[]]
+  > {
+    return Promise.all([this.repos.local(id), this.repos.locales(), this.repos.pas()]);
+  }
+
+  private aplicar(
+    id: VenueProfileId,
+    [l, todos, pas]: [VenueProfile | null, readonly VenueProfile[], readonly PAProfile[]],
+  ): void {
     this.pas.set(pas);
     this.local.set(l);
     this.otrosNombres.set(todos.filter((x) => x.id !== id).map((x) => x.nombre));

@@ -32,6 +32,10 @@ import { ESTADOS } from '../sesion/estados';
 
       <!-- El orden importa: mientras cargaba, «sesion()» todavía era null y la
            pantalla decía «esa sesión ya no está» antes de haber mirado. -->
+      @if (recargando()) {
+        <p class="recargando" role="status">Actualizando…</p>
+      }
+
       @if (problema(); as p) {
         <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
       } @else if (cargando()) {
@@ -93,6 +97,9 @@ import { ESTADOS } from '../sesion/estados';
     </ui-dialog>
   `,
   styles: [`
+    .recargando {
+      color: var(--muted); font-size: var(--txt-sm); margin: 0 0 var(--sp-3);
+    }
     .resumen { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
     .conteos { list-style: none; margin: 0; padding: 0; }
     .conteos li {
@@ -126,6 +133,8 @@ export class SesionDetalleComponent {
 
   readonly cargando = this.datos.cargando;
   readonly problema = this.datos.problema;
+  /** Relee con algo ya en pantalla: se avisa sin tapar lo que hay. */
+  readonly recargando = this.datos.recargando;
   readonly sesion = computed(() => this.datos.valor().sesion);
   readonly banda = computed(() => this.datos.valor().banda);
   readonly local = computed(() => this.datos.valor().local);

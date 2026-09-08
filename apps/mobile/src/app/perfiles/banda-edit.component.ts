@@ -235,10 +235,16 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
     }, { allowSignalWrites: true });
   }
 
-  recargar(): void { void this.lectura.correr(() => this.cargar(this.id() as BandProfileId)); }
+  recargar(): void {
+    const id = this.id() as BandProfileId;
+    void this.lectura.correr(() => this.leer(id), (v) => this.aplicar(id, v));
+  }
 
-  private async cargar(id: BandProfileId): Promise<void> {
-    const [b, todas] = await Promise.all([this.repos.banda(id), this.repos.bandas()]);
+  private leer(id: BandProfileId): Promise<[BandProfile | null, readonly BandProfile[]]> {
+    return Promise.all([this.repos.banda(id), this.repos.bandas()]);
+  }
+
+  private aplicar(id: BandProfileId, [b, todas]: [BandProfile | null, readonly BandProfile[]]): void {
     this.banda.set(b);
     if (b !== null) {
       this.nombre.set(b.nombre);

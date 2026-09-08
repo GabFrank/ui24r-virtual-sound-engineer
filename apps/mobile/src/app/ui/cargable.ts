@@ -113,13 +113,29 @@ export class Lectura {
     () => this._cargando() && !this._leidoAlgunaVez());
   readonly problema: Signal<string | null> = this._problema.asReadonly();
 
-  async correr(leer: () => Promise<void>): Promise<void> {
+  /**
+   * Lee y, si la lectura sigue siendo la vigente, la aplica.
+   *
+   * Son dos funciones y no una a propósito. Con una sola —el closure que leía
+   * y escribía el formulario— el número de orden se comprobaba **después** de
+   * que las escrituras ya habían ocurrido: ordenaba las banderas de carga y no
+   * los datos. El caso concreto: ir de `/perfiles/bandas/A` a
+   * `/perfiles/bandas/B` con un almacén lento; si la lectura de A resolvía
+   * última, el formulario quedaba con los datos de A bajo la ruta de B, sin
+   * aviso de cambios sin guardar —porque la entidad de referencia también era
+   * A— y al guardar se escribía sobre A.
+   *
+   * Separadas, quien llama no puede equivocarse: las escrituras están dentro
+   * del guardia por construcción.
+   */
+  async correr<T>(leer: () => Promise<T>, aplicar: (valor: T) => void): Promise<void> {
     const mia = ++this.peticion;
     this._cargando.set(true);
     this._problema.set(null);
     try {
-      await leer();
+      const valor = await leer();
       if (mia !== this.peticion) return;
+      aplicar(valor);
       this._leidoAlgunaVez.set(true);
     } catch (e) {
       if (mia !== this.peticion) return;
@@ -151,7 +167,9 @@ export async function intentarGuardar(
     await accion();
     return true;
   } catch (e) {
-    avisar(`No se pudo ${queSeEstabaHaciendo}. ${mensajeDe(e)} Lo que escribiste sigue acá.`);
+    // Sin la coletilla de «lo que escribiste sigue acá»: esto también se usa
+    // para borrar y para cerrar una sesión, donde no dice nada cierto.
+    avisar(`No se pudo ${queSeEstabaHaciendo}. ${mensajeDe(e)}`);
     return false;
   }
 }
