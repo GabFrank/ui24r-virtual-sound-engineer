@@ -1,0 +1,112 @@
+apply plugin: 'com.android.application'
+
+/*
+ * Version del paquete.
+ *
+ * Se puede pasar por linea de comandos, que es lo que hace la publicacion:
+ *   ./gradlew assembleRelease -PvseVersionName=0.2.0 -PvseVersionCode=2
+ * Sin parametros queda la version de desarrollo, que nunca es mas alta que
+ * ninguna publicada y por eso no dispara una actualizacion a si misma.
+ */
+def vseVersionName = project.findProperty('vseVersionName') ?: '0.0.0'
+def vseVersionCode = (project.findProperty('vseVersionCode') ?: '1') as Integer
+
+/*
+ * Firma.
+ *
+ * Android solo reemplaza una aplicacion instalada por otra firmada con la MISMA
+ * clave. La clave de depuracion que genera cada maquina es distinta, asi que
+ * dos compilaciones cualesquiera quedarian firmadas diferente y toda
+ * actualizacion fallaria con "aplicacion no instalada", que no explica nada.
+ *
+ * Por eso hay un unico almacen de claves, el mismo para depuracion y para
+ * publicacion, guardado como secreto del repositorio. Cuando esta presente se
+ * usa en los dos tipos de compilacion: asi el APK que uno compila en su maquina
+ * y el que publica la integracion continua se pueden reemplazar entre si.
+ *
+ * Ver docs/actualizacion-en-app.md para generarlo. El fichero nunca se versiona
+ * (.gitignore excluye *.keystore y *.jks).
+ */
+def vseAlmacen = project.findProperty('vseKeystoreFile') ?: System.getenv('VSE_KEYSTORE_FILE')
+def vseAlmacenClave = project.findProperty('vseKeystorePassword') ?: System.getenv('VSE_KEYSTORE_PASSWORD')
+def vseAlias = project.findProperty('vseKeyAlias') ?: System.getenv('VSE_KEY_ALIAS')
+def vseAliasClave = project.findProperty('vseKeyPassword') ?: System.getenv('VSE_KEY_PASSWORD')
+def vseFirmaDisponible = vseAlmacen != null && file(vseAlmacen).exists()
+
+if (!vseFirmaDisponible) {
+    logger.warn('VSE: sin almacen de claves propio. El APK quedara firmado con la ' +
+                'clave de depuracion local y NO podra actualizar a una instalacion ' +
+                'firmada con otra. Ver docs/actualizacion-en-app.md.')
+}
+
+android {
+    namespace "ar.frc.vse"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "ar.frc.vse"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode vseVersionCode
+        versionName vseVersionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    if (vseFirmaDisponible) {
+        signingConfigs {
+            vse {
+                storeFile file(vseAlmacen)
+                storePassword vseAlmacenClave
+                keyAlias vseAlias
+                keyPassword vseAliasClave
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (vseFirmaDisponible) {
+                signingConfig signingConfigs.vse
+            }
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (vseFirmaDisponible) {
+                signingConfig signingConfigs.vse
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
