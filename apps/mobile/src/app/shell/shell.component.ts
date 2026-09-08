@@ -1,6 +1,7 @@
 import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { ConnectionStateService } from '../core/connection.state';
 import { EmergencyStopComponent } from './emergency-stop.component';
+import { TelemetryComponent } from '../telemetry/telemetry.component';
 
 /**
  * Contenedor de la aplicación.
@@ -13,7 +14,7 @@ import { EmergencyStopComponent } from './emergency-stop.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [EmergencyStopComponent],
+  imports: [EmergencyStopComponent, TelemetryComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="barra">
@@ -22,18 +23,7 @@ import { EmergencyStopComponent } from './emergency-stop.component';
     </header>
 
     <main class="contenido">
-      <section class="aviso">
-        <h1>Fase 0</h1>
-        <p>
-          Todavía no hay funciones de producto. El proyecto está ejecutando los
-          spikes que verifican qué expone realmente el protocolo de la consola y
-          si el hardware de captura es certificable.
-        </p>
-        <p class="nota">
-          Ninguna versión con capacidad de escritura se libera sin su parte de la
-          suite de seguridad en verde.
-        </p>
-      </section>
+      <app-telemetry />
     </main>
 
     <app-emergency-stop />
@@ -59,13 +49,6 @@ import { EmergencyStopComponent } from './emergency-stop.component';
 
     .contenido { flex: 1; padding: 24px 16px; overflow-y: auto; }
 
-    .aviso { max-width: 60ch; }
-    h1 { font-size: 22px; margin: 0 0 12px; font-weight: 500; }
-    p { color: var(--ink-2); margin: 0 0 12px; }
-    .nota {
-      color: var(--muted); font-size: 14px;
-      border-left: 2px solid var(--line); padding-left: 12px;
-    }
   `],
 })
 export class ShellComponent {

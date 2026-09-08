@@ -21,3 +21,4 @@ docs/spikes/**/evidence/*.bin
 tools/spikes/p0-10a-dsp/out/*.wav
 apps/mobile/dist/
 apps/mobile/.angular/
+tools/visual/out/

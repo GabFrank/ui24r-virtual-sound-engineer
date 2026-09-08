@@ -4,7 +4,7 @@
   "scripts": {
     "build": "ng build",
     "start": "ng serve",
-    "lint": "ng build --configuration development --output-path=dist/lintcheck",
+    "lint": "ng build",
     "sync": "cap sync android"
   },
   "private": true,

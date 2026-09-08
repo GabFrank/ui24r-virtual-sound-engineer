@@ -3,6 +3,13 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@vse/domain": ["../../packages/domain/src/index.ts"],
+      "@vse/mixer-adapter": ["../../packages/mixer-adapter/src/index.ts"],
+      "@vse/dsp-contract": ["../../packages/dsp-contract/src/index.ts"]
+    },
+    "allowImportingTsExtensions": true,
     "outDir": "./dist/out-tsc",
     "strict": true,
     "noImplicitOverride": true,
