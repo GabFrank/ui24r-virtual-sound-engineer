@@ -100,6 +100,8 @@ Cada una de estas costó tiempo. Están acá para que no vuelva a pasar.
 
 **Firma de Android.** El sistema solo reemplaza una aplicación por otra firmada con la **misma clave**. Sin un almacén de claves fijo guardado como secreto, ninguna actualización funciona y el mensaje que ve el usuario es «aplicación no instalada», que no explica nada.
 
+**Una comprobación puede comprobar menos de lo que dice.** El validador de identificadores reconocía ocho familias como definición y comprobaba tres como referencia: spikes, epics, historias, riesgos y decisiones no se comparaban contra nada, y así sobrevivió una cita a EP-09 —que no existe— en un documento que el script daba por validado. Cuando agregues una comprobación, comprobá también su cobertura: no alcanza con que falle cuando debe, tiene que mirar todo lo que dice mirar.
+
 **Los mapas de código de scripts rompen la compilación de desarrollo.** Con `allowImportingTsExtensions`, el compilador pierde `src/main.ts`. Están apagados a propósito en `angular.json`.
 
 ## Cómo se trabaja

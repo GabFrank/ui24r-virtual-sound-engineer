@@ -4,6 +4,8 @@
 **Fuentes:** Auditoría A (feasibilidad técnica y arquitectura, 34 hallazgos, verificada contra `soundcraft-ui-connection` v7.0.3, AOSP, Oboe, HARMAN, Focusrite) y Auditoría B (producto, alcance, proceso, seguridad operativa y UX, 46 hallazgos, 27 invariantes de seguridad). Ambas se adjuntan completas como anexos.
 **Propósito:** consolidar hallazgos, resolver divergencias entre auditores y fijar las decisiones que gobiernan el backlog técnico.
 
+> **Este documento no se edita.** Es el registro de lo que la auditoría dijo el 2026-09-07, y su numeración de epics es la que la auditoría propuso, anterior al backlog v1.1. Un caso concreto: **EP-09 no existe en el backlog** — los spikes de audio de fase 0b terminaron consolidados en EP-04, y la numeración se cerró saltando del EP-08 al EP-10. Corregir la cita para que cuadre con el backlog de hoy falsificaría el registro, así que se deja como está y se anota acá. El validador de identificadores trata este archivo y los anexos como registros congelados por el mismo motivo.
+
 ---
 
 ## 1. Veredicto
