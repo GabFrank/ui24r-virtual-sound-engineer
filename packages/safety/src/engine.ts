@@ -1,6 +1,6 @@
 import {
   ownership, esEscribible, verificarLimite,
-  MAX_PARAMETROS_POR_TRANSACCION, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
+  maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
 import { clasificarRuta } from '@vse/mixer-adapter';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
@@ -125,7 +125,7 @@ export class SafetyEngine {
       });
     }
 
-    const maximo = MAX_PARAMETROS_POR_TRANSACCION[ctx.nivelAutonomia];
+    const maximo = maximoDeParametros(ctx.nivelAutonomia, opciones.tipoDeOperacion);
     if (cambios.length > maximo) {
       rechazos.push({
         codigo: 'DEMASIADOS_PARAMETROS',

@@ -67,11 +67,22 @@ vivos. Se listan acá en vez de dejarlos implícitos:
 |---|---|---|
 | `snapshotsABorrar` (INV-003) | quien cree instantáneas | Nada las crea: depende de MVP4a y de SPK-P0.8 para listarlas. |
 | `SafetyService.crearEjecutor` (INV-034) | quien aplique una transacción | La aplicación no escribe en la consola. Mientras tanto `transaccionEnCurso` es `false` siempre, igual que antes del arreglo. |
-| `PACING_MS` y la exención System (INV-005) | el ejecutor | El ejecutor usa un 100 escrito a mano y no distingue System. Sin resolver. |
 
 La diferencia con el patrón anterior es que la política está escrita y probada
 en vez de ser un número suelto, y que este cuadro dice dónde falta el cable.
 
+- **INV-005**, el ritmo y la exención de las transacciones de sistema: octavo
+  caso del patrón. `PACING_MS` estaba escrita en el dominio y **no la importaba
+  ningún código de producción** —el ejecutor llevaba un 100 a mano y nunca
+  bajaba a 20—, y el único test que la usaba comprobaba que dos literales del
+  mismo archivo guardaran entre sí la relación que el propio archivo escribió,
+  que es una tautología y no una conducta. La exención del límite de cuatro
+  parámetros ni siquiera se podía expresar: el máximo se resolvía solo por nivel
+  de autonomía, así que una selección de bus de análisis —veinticuatro envíos—
+  se rechazaba entera. Ahora las dos salen de `pacingMs()` y
+  `maximoDeParametros()`, que derivan la condición **del tipo de operación** y no
+  de una bandera que quien propone pueda encender: pedir la exención no puede
+  ser tan fácil como decir que se la merece.
 - **INV-001**, la trampa que quedó: el arreglo puso la relectura en el ejecutor
   y dejó vivas dos cosas que decían implementar la invariante y no lo hacían.
   `Snapshot.existenciaVerificada` no lo escribía ni lo leía nadie, y

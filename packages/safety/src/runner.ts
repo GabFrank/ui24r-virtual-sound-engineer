@@ -1,10 +1,18 @@
 import type { MixerDomainAPI } from '@vse/mixer-adapter';
+import { pacingMs } from '@vse/domain';
 import { SafetyEngine } from './engine.ts';
 import { entradaDesdeCambios, type Diario, type CambioRegistrado } from './journal.ts';
 import type { CambioPropuesto, ContextoSeguridad } from './types.ts';
 
 export interface OpcionesEjecutor {
-  /** Milisegundos entre escrituras consecutivas (INV-005). */
+  /**
+   * Milisegundos entre escrituras consecutivas (INV-005).
+   *
+   * Si no se da, sale de `pacingMs()` del dominio, que distingue una
+   * transacción de sistema —veinte milisegundos— de una normal —cien—. Estaba
+   * escrito a mano como 100 y nunca bajaba a 20, así que la exención de la
+   * invariante no existía en el código.
+   */
   readonly pacingMs?: number;
   /** Espera para reintentar la lectura del valor previo. */
   readonly ahora?: () => number;
@@ -47,7 +55,7 @@ export class EjecutorDeTransacciones {
   private readonly mixer: MixerDomainAPI;
   private readonly safety: SafetyEngine;
   private readonly diario: Diario;
-  private readonly pacingMs: number;
+  private readonly pacingOverride: number | null;
   private readonly dormir: (ms: number) => Promise<void>;
   private readonly avisarActividad: (enCurso: boolean) => void;
   /** Transacciones abiertas ahora mismo. El aviso mira el paso por cero. */
@@ -62,7 +70,7 @@ export class EjecutorDeTransacciones {
     this.mixer = mixer;
     this.safety = safety;
     this.diario = diario;
-    this.pacingMs = opciones.pacingMs ?? 100;
+    this.pacingOverride = opciones.pacingMs ?? null;
     this.dormir = opciones.dormir ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.avisarActividad = opciones.alCambiarActividad ?? (() => { /* nadie mira */ });
   }
@@ -187,7 +195,10 @@ export class EjecutorDeTransacciones {
     let aplicados = 0;
     for (let i = 0; i < cambios.length; i++) {
       const c = cambios[i]!;
-      if (i > 0) await this.dormir(this.pacingMs);
+      if (i > 0) {
+        await this.dormir(this.pacingOverride
+          ?? pacingMs(ctx.nivelAutonomia, opciones.tipoDeOperacion));
+      }
 
       const resultado = await this.mixer.escribir(c.path, c.valorPropuesto, c.valorEsperado);
 
