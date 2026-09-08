@@ -69,6 +69,10 @@ const CITAS_DELIBERADAS = new Map([
   ['S-02.9', 'Nombre previo a la división en S-02.9a y S-02.9b, citado en el registro de ' +
     'cambios que la describe.'],
   ['S-02.10', 'Nombre previo a la división en S-02.10a y S-02.10b, ídem.'],
+  ['S-02.5', 'Nombre previo a la división en S-02.5a, S-02.5b y S-02.5c, ídem.'],
+  ['S-05.1', 'Nombre previo a la división en S-05.1a y S-05.1b. Se cita en el registro de ' +
+    'cambios y en la decisión DEC-19, que habla de la historia entera, no de una mitad.'],
+  ['S-06.1', 'Nombre previo a la división en S-06.1a y S-06.1b, ídem.'],
 ]);
 
 /**
@@ -102,7 +106,17 @@ for (const f of files) {
   const m = base.match(new RegExp(`^(${ALTERNATIVA})${DER}`));
   if (m) defined.add(m[1]);
 }
-for (const [, text] of contents) {
+for (const [f, text] of contents) {
+  // Un registro congelado no define nada.
+  //
+  // Se excluía de las referencias y no de las definiciones, y esa asimetría
+  // resucitaba identificadores muertos: `S-05.1` no tiene sección en ningún
+  // documento vivo —el backlog la dividió en `S-05.1a` y `S-05.1b`— pero
+  // aparece como fila de tabla en un anexo de auditoría, así que el backlog
+  // podía seguir citándola sin que nada lo notara. Es exactamente el caso que
+  // en `S-02.9` y `S-02.10` obligó a anotar una cita deliberada; ahí se veía
+  // porque el anexo no las nombraba, acá no se veía porque sí.
+  if (REGISTROS_CONGELADOS.test(relative(ROOT, f))) continue;
   for (const m of text.matchAll(new RegExp(`^#{1,6}\\s+(${ALTERNATIVA})${DER}`, 'gm'))) {
     defined.add(m[1]);
   }
