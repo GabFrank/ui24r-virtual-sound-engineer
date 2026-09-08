@@ -4,8 +4,9 @@ import { EmergencyStopComponent } from './emergency-stop.component';
 import { TelemetryComponent } from '../telemetry/telemetry.component';
 import { ChannelsComponent } from '../channels/channels.component';
 import { GainComponent } from '../gain/gain.component';
+import { UpdatesComponent } from '../updates/updates.component';
 
-type Pestania = 'telemetria' | 'canales' | 'ganancia';
+type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion';
 
 /**
  * Contenedor de la aplicación.
@@ -18,7 +19,10 @@ type Pestania = 'telemetria' | 'canales' | 'ganancia';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [EmergencyStopComponent, TelemetryComponent, ChannelsComponent, GainComponent],
+  imports: [
+    EmergencyStopComponent, TelemetryComponent, ChannelsComponent, GainComponent,
+    UpdatesComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="barra">
@@ -26,19 +30,18 @@ type Pestania = 'telemetria' | 'canales' | 'ganancia';
       <span class="estado" [class]="claseEstado()">{{ textoEstado() }}</span>
     </header>
 
-    @if (conectado()) {
-      <nav class="pestanias">
-        @for (p of pestanias; track p.id) {
-          <button type="button" [class.activa]="pestania() === p.id"
-                  (click)="ir(p.id)">{{ p.etiqueta }}</button>
-        }
-      </nav>
-    }
+    <nav class="pestanias">
+      @for (p of pestaniasVisibles(); track p.id) {
+        <button type="button" [class.activa]="pestania() === p.id"
+                (click)="ir(p.id)">{{ p.etiqueta }}</button>
+      }
+    </nav>
 
     <main class="contenido">
       @switch (pestania()) {
         @case ('canales') { <app-channels /> }
         @case ('ganancia') { <app-gain /> }
+        @case ('actualizacion') { <app-updates /> }
         @default { <app-telemetry /> }
       }
     </main>
@@ -83,13 +86,24 @@ export class ShellComponent {
   private readonly conexion = inject(ConnectionStateService);
 
   readonly pestania = signal<Pestania>('telemetria');
-  readonly pestanias: readonly { id: Pestania; etiqueta: string }[] = [
-    { id: 'telemetria', etiqueta: 'Telemetría' },
-    { id: 'canales', etiqueta: 'Canales' },
-    { id: 'ganancia', etiqueta: 'Ganancia' },
+
+  /**
+   * La pestaña de actualización está siempre, incluso sin conexión con la
+   * consola: el momento natural para actualizar es justamente antes de
+   * conectarse, cuando todavía no hay nada en marcha.
+   */
+  private readonly pestanias: readonly { id: Pestania; etiqueta: string; exigeConexion: boolean }[] = [
+    { id: 'telemetria', etiqueta: 'Telemetría', exigeConexion: true },
+    { id: 'canales', etiqueta: 'Canales', exigeConexion: true },
+    { id: 'ganancia', etiqueta: 'Ganancia', exigeConexion: true },
+    { id: 'actualizacion', etiqueta: 'Actualización', exigeConexion: false },
   ];
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
+
+  readonly pestaniasVisibles = computed(() =>
+    this.pestanias.filter((p) => !p.exigeConexion || this.conectado()),
+  );
 
   ir(p: Pestania): void { this.pestania.set(p); }
 

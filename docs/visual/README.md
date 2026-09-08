@@ -20,6 +20,17 @@ interfaz, no se editan a mano.
 | `13-cuenta-regresiva.png` | Cuenta regresiva antes de capturar |
 | `14-capturando.png` | Capturando la ventana del canal |
 | `15-recomendacion.png` | Recomendación con su porqué, su evidencia y sus límites |
+| `16-actualizacion-inicial.png` | Pestaña de actualización antes de consultar |
+| `17-actualizacion-bloqueada.png` | INV-034: conectado a la consola, no se actualiza |
+| `18-actualizacion-al-dia.png` | No hay ninguna versión más nueva publicada |
+| `19-actualizacion-sin-permiso.png` | Versión disponible, falta el ajuste del sistema |
+| `20-actualizacion-disponible.png` | Versión disponible, con sus novedades |
+| `21-prelanzamiento-descartado.png` | Una etiqueta `rc` no se ofrece como actualización |
+
+De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
+vez de salir a la red, igual que el simulador responde el protocolo de la
+consola. Vale la misma advertencia: prueban la aplicación, no que GitHub
+conteste lo que suponemos.
 
 ## Lo que estas capturas no demuestran
 
@@ -48,3 +59,13 @@ En la tanda siguiente encontraron dos más:
    consola.
 4. **Doce botones rellenos competían con los números**, que son lo que hay que
    leer de un vistazo. Se pasaron a acción secundaria.
+
+Y en la tanda de la actualización, uno más:
+
+5. **INV-034 estaba escrita, probada y muerta.** La invariante prohíbe
+   actualizar durante una sesión, pero en MVP0 no hay forma de abrir una
+   sesión: el campo era siempre falso y la pantalla ofrecía actualizar en
+   pleno ensayo, con la consola conectada y los medidores en movimiento. Se ve
+   en la captura que se hizo para mostrar lo contrario. Ahora la conexión con
+   la consola cuenta como suplente declarado hasta que exista el modelo de
+   sesión.

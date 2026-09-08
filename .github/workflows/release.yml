@@ -1,0 +1,112 @@
+name: Publicación
+
+# La aplicación no se publica en ninguna tienda (ADR-020): esta es la única vía
+# por la que una versión nueva llega a la tablet.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      # Las mismas comprobaciones que la integración continua. Una publicación
+      # es más difícil de retirar que un cambio: no se firma nada que no haya
+      # pasado por acá.
+      - name: Validar identificadores de la documentación
+        run: npm run validate:docs
+      - name: Lint
+        run: npm run lint
+      - name: Tests unitarios
+        run: npm test
+
+      - name: Deducir la versión de la etiqueta
+        id: version
+        run: |
+          nombre="${GITHUB_REF_NAME#v}"
+          if ! printf '%s' "$nombre" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "La etiqueta '$GITHUB_REF_NAME' no es una versión estable." >&2
+            echo "Este flujo solo publica versiones estables (ADR-020)." >&2
+            exit 1
+          fi
+          # El código de versión tiene que crecer siempre y ser un entero.
+          # 1.2.3 da 10203; deja mil versiones de margen por componente.
+          IFS=. read -r mayor menor parche <<< "$nombre"
+          codigo=$(( mayor * 10000 + menor * 100 + parche ))
+          echo "nombre=$nombre" >> "$GITHUB_OUTPUT"
+          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
+
+      - name: Restaurar el almacén de claves
+        env:
+          ALMACEN: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ALMACEN" ]; then
+            echo "Falta el secreto ANDROID_KEYSTORE_BASE64." >&2
+            echo "Sin él el APK quedaría firmado con una clave de depuración" >&2
+            echo "distinta en cada corrida y NINGUNA actualización funcionaría." >&2
+            echo "Ver docs/actualizacion-en-app.md." >&2
+            exit 1
+          fi
+          printf '%s' "$ALMACEN" | base64 -d > "$RUNNER_TEMP/vse.jks"
+
+      - name: Compilar el contenido web
+        run: npm run build --workspace mobile
+
+      - name: Sincronizar Capacitor
+        working-directory: apps/mobile
+        run: npx cap sync android
+
+      - name: Compilar y firmar el APK
+        working-directory: apps/mobile/android
+        env:
+          VSE_KEYSTORE_FILE: ${{ runner.temp }}/vse.jks
+          VSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VSE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          VSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -PvseVersionName=${{ steps.version.outputs.nombre }} \
+            -PvseVersionCode=${{ steps.version.outputs.codigo }}
+
+      - name: Preparar los adjuntos
+        id: adjuntos
+        run: |
+          origen=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          destino="vse-${{ steps.version.outputs.nombre }}.apk"
+          cp "$origen" "$destino"
+          # El nombre dentro del fichero de suma queda relativo a propósito:
+          # así `sha256sum -c` funciona desde el directorio de la descarga.
+          sha256sum "$destino" > "$destino.sha256"
+          echo "apk=$destino" >> "$GITHUB_OUTPUT"
+          echo "--- huella del certificado ---"
+          keytool -printcert -jarfile "$destino" | grep -i 'SHA256:' || true
+
+      - name: Publicar
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.nombre }}
+          # Sin los DOS adjuntos la aplicación descarta la publicación: la
+          # suma es obligatoria y no hay actualización sin verificar.
+          files: |
+            ${{ steps.adjuntos.outputs.apk }}
+            ${{ steps.adjuntos.outputs.apk }}.sha256
+          fail_on_unmatched_files: true
+          generate_release_notes: true

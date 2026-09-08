@@ -191,6 +191,90 @@ async function main() {
   await esperar(400);
   await capturar('15-recomendacion', 'recomendación de ganancia con su porqué y su evidencia');
 
+  // --- Actualización dentro de la aplicación (ADR-020) ---
+  //
+  // El catálogo de GitHub se responde desde acá en vez de salir a la red: así
+  // la captura es la misma todos los días y se puede provocar el caso que se
+  // quiere ver. Es exactamente lo mismo que hace el simulador con el
+  // protocolo de la consola, y vale la misma advertencia: esto prueba la
+  // aplicación, no que GitHub conteste lo que suponemos.
+  const RELEASES = /api\.github\.com\/repos\/.*\/releases/;
+  const publicacion = (tag) => ({
+    tag_name: tag,
+    name: tag,
+    body: `## Novedades\n\n- Asistente de ganancia con promedio energético.\n- Corrección del signo en la propuesta.`,
+    draft: false,
+    prerelease: false,
+    published_at: '2026-09-08T12:00:00Z',
+    assets: [
+      {
+        name: `vse-${tag.slice(1)}.apk`,
+        size: 27_500_000,
+        browser_download_url: `https://github.com/GabFrank/ui24r-virtual-sound-engineer/releases/download/${tag}/vse.apk`,
+      },
+      {
+        name: `vse-${tag.slice(1)}.apk.sha256`,
+        size: 82,
+        browser_download_url: `https://github.com/GabFrank/ui24r-virtual-sound-engineer/releases/download/${tag}/vse.apk.sha256`,
+      },
+    ],
+  });
+
+  const responderCatalogo = async (cuerpo, estado = 200) => {
+    await pagina.unroute(RELEASES).catch(() => {});
+    await pagina.route(RELEASES, (ruta) =>
+      ruta.fulfill({ status: estado, contentType: 'application/json', body: JSON.stringify(cuerpo) }),
+    );
+  };
+
+  await responderCatalogo([publicacion('v0.2.0'), publicacion('v0.1.1')]);
+
+  // Primero conectado, que es el caso que hay que ver: INV-034 no deja
+  // actualizar mientras la aplicación está trabajando contra la consola.
+  await pagina.click('nav.pestanias button:last-child');
+  await esperar(300);
+  await capturar('16-actualizacion-inicial', 'pestaña de actualización antes de consultar');
+
+  await pagina.click('.cabecera button');
+  await pagina.waitForSelector('.bloqueos li', { timeout: 5000 });
+  await esperar(300);
+  await capturar('17-actualizacion-bloqueada', 'INV-034: conectado a la consola, no se actualiza');
+
+  // Volver a cargar deja la aplicación desconectada, que es el momento en que
+  // corresponde actualizar.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
+  await pagina.click('nav.pestanias button:last-child');
+  await esperar(300);
+
+  await responderCatalogo([]);
+  await pagina.click('.cabecera button');
+  await pagina.waitForSelector('.nota.ok, .nota.aviso', { timeout: 5000 });
+  await esperar(300);
+  await capturar('18-actualizacion-al-dia', 'no hay ninguna versión más nueva publicada');
+
+  // Sin el permiso del sistema no hay botón de descargar, y es lo que se ve la
+  // primera vez en la tablet.
+  await responderCatalogo([publicacion('v0.2.0'), publicacion('v0.1.1')]);
+  await pagina.click('.cabecera button');
+  await pagina.waitForSelector('.novedad', { timeout: 5000 });
+  await esperar(300);
+  await capturar('19-actualizacion-sin-permiso', 'versión disponible, falta el ajuste del sistema');
+
+  await pagina.evaluate(() => localStorage.setItem('vse.web.permiso', 'si'));
+  await pagina.click('.cabecera button');
+  await pagina.waitForSelector('.novedad button.primario', { timeout: 5000 });
+  await pagina.click('details summary');
+  await esperar(300);
+  await capturar('20-actualizacion-disponible', 'versión disponible, con sus novedades');
+
+  // Una publicación con etiqueta de pre-lanzamiento se descarta aunque la
+  // casilla de GitHub no esté marcada.
+  await responderCatalogo([publicacion('v0.3.0-rc.1')]);
+  await pagina.click('.cabecera button');
+  await pagina.waitForSelector('.nota.ok', { timeout: 5000 });
+  await esperar(300);
+  await capturar('21-prelanzamiento-descartado', 'una etiqueta rc no se ofrece como actualización');
+
   await navegador.close();
   console.log(`\nCapturas en ${OUT}\n`);
 }
