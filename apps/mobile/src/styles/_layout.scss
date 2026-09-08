@@ -1,0 +1,61 @@
+@use 'tokens' as *;
+
+/* Utilidades de composición.
+ *
+ * Son pocas y hacen una cosa cada una. La alternativa —una clase por cada
+ * combinación de margen y dirección— produce plantillas donde el nombre de la
+ * clase es más largo que el contenido. */
+
+/* Pila vertical con separación uniforme. */
+.pila { display: flex; flex-direction: column; gap: var(--sp-4); }
+.pila-sm { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pila-lg { display: flex; flex-direction: column; gap: var(--sp-6); }
+
+/* Fila que se envuelve sola. Se llama así y no "fila" porque envolver es su
+ * comportamiento normal, no la excepción. */
+.racimo {
+  display: flex; flex-wrap: wrap;
+  gap: var(--sp-3); align-items: center;
+}
+.racimo-fin { justify-content: flex-end; }
+.racimo-entre { justify-content: space-between; }
+
+/* Rejilla que decide sola cuántas columnas entran. Sin consultas de medios:
+ * el número de columnas depende del ancho disponible, no del dispositivo. */
+.rejilla {
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Contenedor de página.
+ *
+ * El relleno inferior reserva sitio para el paro de emergencia, que flota
+ * fijo en la esquina. Sin él, en teléfono el paro se monta encima del último
+ * botón de la pantalla: una captura del sistema de diseño lo mostró tapando
+ * justo el «Siguiente» de un asistente. Y de todos los controles de esta
+ * aplicación, el paro es el que menos puede taparse ni tapar. */
+.pagina {
+  width: 100%;
+  max-width: var(--ancho-contenido);
+  margin-inline: auto;
+  padding: var(--sp-5) var(--sp-4);
+  padding-bottom: calc(var(--sp-8) + var(--seguro-abajo));
+
+  @include hasta($bp-telefono) {
+    padding: var(--sp-4) var(--sp-3);
+    padding-bottom: calc(var(--tap-comodo) + var(--sp-5) + var(--seguro-abajo));
+  }
+}
+.pagina-angosta { max-width: var(--ancho-formulario); }
+.lectura { max-width: var(--ancho-lectura); }
+
+/* Cualquier cosa ancha —una tabla, un diagrama— se desplaza dentro de su
+ * propia caja. El cuerpo de la página nunca se desplaza en horizontal. */
+.desplaza-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.crece { flex: 1; }
+.centrado { display: flex; align-items: center; justify-content: center; }

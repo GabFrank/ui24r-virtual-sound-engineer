@@ -5,7 +5,8 @@
     "build": "ng build",
     "start": "ng serve",
     "lint": "tsc -p tsconfig.json --noEmit && ng build",
-    "sync": "cap sync android"
+    "sync": "cap sync android",
+    "build:dev": "ng build --configuration development"
   },
   "private": true,
   "dependencies": {

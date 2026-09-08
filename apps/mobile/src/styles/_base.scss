@@ -1,0 +1,60 @@
+@use 'tokens' as *;
+
+/* Base del documento. Solo lo que no puede vivir en un componente. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--txt-md);
+  line-height: var(--alto-linea);
+  overscroll-behavior: none;
+  /* Sin esto, un toque sostenido sobre un número abre el menú de selección
+   * del sistema en mitad de un ajuste. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Donde el usuario sí escribe o copia, la selección vuelve. */
+input, textarea, [contenteditable], .seleccionable { user-select: text; -webkit-user-select: text; }
+
+h1, h2, h3, h4, p, figure { margin: 0; }
+
+/* Foco visible siempre. La aplicación se puede operar con un teclado externo
+ * conectado a la tablet, y sin anillo de foco eso es imposible. */
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: var(--radio-sm);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* Los números se comparan en columna: tienen que alinearse dígito con dígito. */
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Solo para lectores de pantalla. */
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Barras de desplazamiento discretas: en oscuro, la barra por defecto de
+ * Chromium es un bloque claro que llama más la atención que el contenido. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-fuerte) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line-fuerte); border-radius: var(--radio-full); }
+*::-webkit-scrollbar-track { background: transparent; }

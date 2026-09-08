@@ -1,12 +1,14 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { ConnectionStateService } from '../core/connection.state';
 import { EmergencyStopComponent } from './emergency-stop.component';
 import { TelemetryComponent } from '../telemetry/telemetry.component';
 import { ChannelsComponent } from '../channels/channels.component';
 import { GainComponent } from '../gain/gain.component';
 import { UpdatesComponent } from '../updates/updates.component';
+import { GaleriaComponent } from '../galeria/galeria.component';
+import { ToastsComponent } from '../ui';
 
-type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion';
+type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion' | 'galeria';
 
 /**
  * Contenedor de la aplicación.
@@ -21,7 +23,7 @@ type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion';
   standalone: true,
   imports: [
     EmergencyStopComponent, TelemetryComponent, ChannelsComponent, GainComponent,
-    UpdatesComponent,
+    UpdatesComponent, GaleriaComponent, ToastsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -33,6 +35,7 @@ type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion';
     <nav class="pestanias">
       @for (p of pestaniasVisibles(); track p.id) {
         <button type="button" [class.activa]="pestania() === p.id"
+                [attr.data-pestania]="p.id"
                 (click)="ir(p.id)">{{ p.etiqueta }}</button>
       }
     </nav>
@@ -42,11 +45,13 @@ type Pestania = 'telemetria' | 'canales' | 'ganancia' | 'actualizacion';
         @case ('canales') { <app-channels /> }
         @case ('ganancia') { <app-gain /> }
         @case ('actualizacion') { <app-updates /> }
+        @case ('galeria') { <app-galeria /> }
         @default { <app-telemetry /> }
       }
     </main>
 
     <app-emergency-stop />
+    <ui-toasts />
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
@@ -92,18 +97,30 @@ export class ShellComponent {
    * consola: el momento natural para actualizar es justamente antes de
    * conectarse, cuando todavía no hay nada en marcha.
    */
-  private readonly pestanias: readonly { id: Pestania; etiqueta: string; exigeConexion: boolean }[] = [
+  private readonly pestanias: readonly {
+    id: Pestania; etiqueta: string; exigeConexion: boolean; soloDesarrollo?: boolean;
+  }[] = [
     { id: 'telemetria', etiqueta: 'Telemetría', exigeConexion: true },
     { id: 'canales', etiqueta: 'Canales', exigeConexion: true },
     { id: 'ganancia', etiqueta: 'Ganancia', exigeConexion: true },
     { id: 'actualizacion', etiqueta: 'Actualización', exigeConexion: false },
+    { id: 'galeria', etiqueta: 'Diseño', exigeConexion: false, soloDesarrollo: true },
   ];
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
 
   readonly pestaniasVisibles = computed(() =>
-    this.pestanias.filter((p) => !p.exigeConexion || this.conectado()),
+    this.pestanias.filter(
+      (p) => (!p.exigeConexion || this.conectado()) && (!p.soloDesarrollo || this.desarrollo),
+    ),
   );
+
+  /**
+   * La galería del sistema de diseño no viaja en la compilación de
+   * publicación: es documentación para quien construye, no una pantalla del
+   * producto.
+   */
+  private readonly desarrollo = isDevMode();
 
   ir(p: Pestania): void { this.pestania.set(p); }
 

@@ -25,7 +25,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 - `docs/actualizacion-en-app.md`: la ceremonia del almacén de claves, que hay
   que hacer **antes** de la primera instalación en la tablet.
 
+- Sistema de diseño: fichas de color, espaciado, tipografía y tacto; once
+  primitivas de componente; galería viva en la compilación de desarrollo
+  (`docs/design-system.md`).
+- Interfaz responsiva de verdad en teléfono, optimizada para tablet: tres
+  puntos de corte puestos donde el contenido se rompe, no en tamaños de
+  dispositivo.
+
 ### Corregido
+- La compilación de desarrollo no compilaba, y con ella `ng serve` tampoco:
+  los mapas de código de scripts hacían que el compilador perdiera `main.ts`.
+- El paro de emergencia se montaba sobre el último botón de la pantalla en
+  teléfono.
 - INV-034 quedaba inerte en MVP0: no existiendo todavía el modelo de sesión, la
   pantalla ofrecía actualizar con la consola conectada. Lo encontró una captura
   visual hecha para mostrar lo contrario.

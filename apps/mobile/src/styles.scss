@@ -1,52 +1,5 @@
-/* Modo oscuro único. Esto se usa en escenario, con poca luz y a un metro de
-   distancia: un fondo claro deslumbra y una tipografía chica no se lee. */
-
-:root {
-  --bg: #0d1113;
-  --surface: #141a1c;
-  --surface-2: #1a2124;
-  --ink: #e3e9ea;
-  --ink-2: #b3bdbf;
-  --muted: #7d8a8d;
-  --line: #2a3336;
-  --signal: #3fc3ce;
-  --warn: #dfa355;
-  --danger: #e07373;
-  --ok: #7fb86a;
-
-  --tap-min: 48px;
-  --font: 'Roboto', system-ui, -apple-system, sans-serif;
-  --mono: 'Roboto Mono', ui-monospace, monospace;
-}
-
-* { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font);
-  font-size: 16px;
-  line-height: 1.5;
-  overscroll-behavior: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Los números se leen en columna: tienen que alinearse. */
-.num, td.num {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Los objetivos táctiles se operan con una mano y a veces sin mirar. */
-button, .tap {
-  min-height: var(--tap-min);
-  min-width: var(--tap-min);
-}
-
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-weight: 500; font-size: 13px; }
+/* Hoja global. Solo fichas, base y utilidades: todo lo demás vive en su
+ * componente, encapsulado. */
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/layout';
