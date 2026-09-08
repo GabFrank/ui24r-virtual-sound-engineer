@@ -42,6 +42,10 @@ interface Fila {
         <ui-fallo [mensaje]="a" [compacto]="true" (reintentar)="recargar()" />
       }
 
+      @if (recargando()) {
+        <p class="recargando" role="status">Actualizando…</p>
+      }
+
       @if (problema(); as p) {
         <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
       } @else if (cargando()) {
@@ -119,6 +123,10 @@ interface Fila {
   styles: [`
     @use 'tokens' as *;
 
+    .recargando {
+      color: var(--muted); font-size: var(--txt-sm); margin: 0 0 var(--sp-3);
+    }
+
     table { border-collapse: collapse; width: 100%; }
     th, td { text-align: center; padding: var(--sp-3); border-bottom: 1px solid var(--line); }
     th { color: var(--muted); font-weight: var(--peso-medio); font-size: var(--txt-sm); }
@@ -157,6 +165,8 @@ export class HistorialComponent {
 
   readonly cargando = this.datos.cargando;
   readonly problema = this.datos.problema;
+  /** Relee con algo ya en pantalla: se avisa sin tapar lo que hay. */
+  readonly recargando = this.datos.recargando;
   readonly avisoDeRecarga = this.datos.avisoDeRecarga;
   private readonly sesiones = computed(() => this.datos.valor().sesiones);
   private readonly bandas = computed(() => this.datos.valor().bandas);

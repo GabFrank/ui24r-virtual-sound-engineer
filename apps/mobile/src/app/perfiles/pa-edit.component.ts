@@ -327,7 +327,10 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
     }, { allowSignalWrites: true });
   }
 
-  recargar(): void { void this.lectura.correr(() => this.cargar(this.id() as PAProfileId)); }
+  recargar(): void {
+    const id = this.id() as PAProfileId;
+    void this.lectura.correr(() => this.leer(id), (v) => this.aplicar(id, v));
+  }
 
   /**
    * Se consulta al abrir el diálogo y no al pintar la pantalla: la respuesta
@@ -357,8 +360,14 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
     await this.volver();
   }
 
-  private async cargar(id: PAProfileId): Promise<void> {
-    const [p, todos] = await Promise.all([this.repos.pa(id), this.repos.pas()]);
+  private leer(id: PAProfileId): Promise<[PAProfile | null, readonly PAProfile[]]> {
+    return Promise.all([this.repos.pa(id), this.repos.pas()]);
+  }
+
+  private aplicar(
+    id: PAProfileId,
+    [p, todos]: [PAProfile | null, readonly PAProfile[]],
+  ): void {
     this.pa.set(p);
     this.otrosNombres.set(todos.filter((x) => x.id !== id).map((x) => x.nombre));
     if (p === null) return;

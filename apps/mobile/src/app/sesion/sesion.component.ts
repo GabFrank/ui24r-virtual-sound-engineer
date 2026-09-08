@@ -6,7 +6,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import { SesionService } from '../core/sesion.service';
 import {
   BadgeComponent, ButtonComponent, CardComponent, DialogComponent, EmptyStateComponent,
-  FieldComponent, PageHeaderComponent, StatComponent, ToastService,
+  FieldComponent, PageHeaderComponent, StatComponent, ToastService, intentarGuardar,
 } from '../ui';
 import { ESTADOS, ESTADOS_EN_VIVO } from './estados';
 
@@ -243,12 +243,28 @@ export class SesionComponent {
   }
 
   async avanzar(s: SessionState): Promise<void> {
-    const motivo = await this.servicio.transicionar(s);
-    this.motivoRechazo.set(motivo);
+    // `transicionar` devuelve el motivo cuando la **política** rechaza. Cuando
+    // falla el **almacén**, la promesa se rechaza, y sin captura eso no
+    // mostraba nada: ni aviso, ni error, ni cambio de estado.
+    let motivo: string | null = null;
+    const ok = await intentarGuardar(
+      async () => { motivo = await this.servicio.transicionar(s); },
+      (m) => this.avisos.error(m),
+      'cambiar el estado de la sesión',
+    );
+    if (ok) this.motivoRechazo.set(motivo);
   }
 
   async cerrar(): Promise<void> {
-    await this.servicio.transicionar('CLOSED');
+    // Es la escritura más cara de la aplicación: irreversible y al final del
+    // show. Sin captura, un fallo del almacén dejaba el diálogo abierto, sin
+    // aviso, y la sesión sin cerrar -- pareciendo que el botón no hizo nada.
+    const ok = await intentarGuardar(
+      () => this.servicio.transicionar('CLOSED').then(() => undefined),
+      (m) => this.avisos.error(m),
+      'cerrar la sesión',
+    );
+    if (!ok) return;
     this.confirmarCierre.set(false);
     this.avisos.ok('Sesión cerrada. Queda en el historial.');
   }

@@ -50,6 +50,10 @@ type Pestania = 'bandas' | 'locales' | 'pa';
         <ui-fallo [mensaje]="a" [compacto]="true" (reintentar)="recargar()" />
       }
 
+      @if (recargando()) {
+        <p class="recargando" role="status">Actualizando…</p>
+      }
+
       @if (problema(); as p) {
         <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
       } @else if (cargando()) {
@@ -136,6 +140,10 @@ type Pestania = 'bandas' | 'locales' | 'pa';
   styles: [`
     @use 'tokens' as *;
 
+    .recargando {
+      color: var(--muted); font-size: var(--txt-sm); margin: 0 0 var(--sp-3);
+    }
+
     .pestanias {
       display: flex; gap: var(--sp-1);
       margin-bottom: var(--sp-5);
@@ -179,6 +187,8 @@ export class PerfilesComponent {
 
   readonly cargando = this.datos.cargando;
   readonly problema = this.datos.problema;
+  /** Relee con algo ya en pantalla: se avisa sin tapar lo que hay. */
+  readonly recargando = this.datos.recargando;
   readonly avisoDeRecarga = this.datos.avisoDeRecarga;
   readonly bandas = computed(() => this.datos.valor().bandas);
   readonly locales = computed(() => this.datos.valor().locales);

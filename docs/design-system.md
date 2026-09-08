@@ -118,6 +118,18 @@ Cada lectura lleva número de orden y descarta las respuestas viejas. Sin eso,
 navegar de una banda a otra podía terminar mostrando la primera con estado
 «listo», si su lectura contestaba última.
 
+Por eso `Lectura.correr()` recibe **dos** funciones: una lee y otra aplica. Con
+una sola —el closure que leía y escribía el formulario— el número se comprobaba
+después de que las escrituras ya habían ocurrido: ordenaba las banderas de carga
+y no los datos. El formulario quedaba con los datos de la banda A bajo la ruta de
+la B, sin aviso de cambios sin guardar (porque la entidad de referencia también
+era A) y al guardar se escribía sobre A. Separadas, quien llama no puede
+equivocarse: las escrituras están dentro del guardia por construcción.
+
+Mientras se relee con algo ya en pantalla se dice «Actualizando…» en una línea.
+El esqueleto tapaba lo que había, y quitarlo sin poner nada dejaba las recargas
+largas sin ninguna señal.
+
 Y escribir tiene su propia red: `intentarGuardar()`. Las pantallas hacían
 `await repos.guardarX(...)` sin captura, así que un fallo del almacén no mostraba
 error, no navegaba y dejaba a quien escribía creyendo que el botón no hizo nada,
