@@ -44,7 +44,12 @@ const PATRONES: readonly Patron[] = [
   { re: /^i\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
   { re: /^i\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
   { re: /^i\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
-  { re: /^i\.\d+\.phantom$/, kind: 'PHANTOM' },
+  // `hw.N.phantom`, no `i.N.phantom`: es la ruta que la matriz de capacidades
+  // da como CONFIRMADA. Con la ruta inventada, un intento de escribir
+  // alimentación fantasma se rechazaba por RUTA_DESCONOCIDA (INV-008) en vez de
+  // por PARAMETRO_DEL_USUARIO (INV-007). Se rechaza igual, pero citando la
+  // invariante equivocada, y el registro es lo que se lee después.
+  { re: /^hw\.\d+\.phantom$/, kind: 'PHANTOM' },
   { re: /^hw\.\d+\.gain$/, kind: 'PREAMP_GAIN' },
 
   // --- Reproductor: solo dentro de la reserva ---
@@ -70,12 +75,37 @@ const PATRONES: readonly Patron[] = [
 
   // --- Efectos y sistema ---
   { re: /^f\.\d+\./, kind: 'FX' },
-  { re: /^var\.mtk\./, kind: 'ANALYSIS_BUS_SEND' },
+  // `var.mtk.*` es el espacio de soundcheck y multipista, no un envío de bus:
+  // lo decía la matriz de capacidades y acá estaba clasificado como el **único
+  // routing escribible** que admite INV-008. No hay categoría para soundcheck
+  // todavía, así que cae en RUTA_DESCONOCIDA y se rechaza, que es la respuesta
+  // correcta mientras SPK-P0.7a no lo verifique.
   { re: /^var\.currentSnapshot$/, kind: 'SNAPSHOT' },
   { re: /^afs2\./, kind: 'AFS2' },
 ];
 
-export function clasificarRuta(path: string): ParameterKind | null {
+export interface OpcionesDeClasificacion {
+  /**
+   * Qué auxiliar es el bus de análisis.
+   *
+   * INV-008 admite un solo routing escribible: los envíos hacia ese bus. Cuál
+   * es lo tiene que decir SPK-P0.5, así que no se puede escribir un número acá.
+   * Sin este dato **todo** `i.N.aux.M.value` es un envío de monitor y no se
+   * escribe nunca, que es el lado seguro: el caso permitido por la invariante
+   * era hasta ahora inexpresable, y el patrón que decía cubrirlo cubría otra
+   * cosa.
+   */
+  readonly busDeAnalisis?: number;
+}
+
+export function clasificarRuta(
+  path: string,
+  opciones: OpcionesDeClasificacion = {},
+): ParameterKind | null {
+  const bus = opciones.busDeAnalisis;
+  if (bus !== undefined && new RegExp(`^i\\.\\d+\\.aux\\.${bus}\\.value$`).test(path)) {
+    return 'ANALYSIS_BUS_SEND';
+  }
   for (const p of PATRONES) {
     if (p.re.test(path)) return p.kind;
   }

@@ -94,7 +94,7 @@ Se eligió `PackageInstaller` en vez del intent clásico de abrir el APK porque 
 | Hay una sesión de sonido abierta | INV-034 | Actualizar reinicia la aplicación y corta la conexión con la consola en medio del trabajo. |
 | La aplicación está conectada a la consola | INV-034 | Suplente de lo anterior mientras el modelo de sesión no esté cableado a la interfaz. Sin él, en MVP0 la invariante no se dispararía nunca y la pantalla ofrecería actualizar en pleno ensayo. |
 | Hay una transacción escribiendo | INV-034 | Quedaría a medio aplicar y sin nadie que la revierta. |
-| No hay red | — | No hay de dónde descargar. |
+| No hay red (`navigator.onLine`) | — | No hay de dónde descargar. El dato es flojo —el navegador dice si hay interfaz, no si hay internet— pero distingue el caso; estuvo fijo en «sí hay» y este bloqueo era inalcanzable. |
 | Batería por debajo del 30 % sin cargador | — | La instalación es atómica y no rompe nada, pero una tablet apagada media hora antes de un show sí. |
 
 El contexto se vuelve a evaluar **justo antes de descargar**, no sólo al consultar: entre una cosa y la otra el usuario puede haber abierto una sesión.

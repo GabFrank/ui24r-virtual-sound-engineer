@@ -80,7 +80,12 @@ export class UpdateService {
         sesionActiva: this.sesion.sesionActiva(),
         transaccionEnCurso: this.sesion.transaccionEnCurso(),
         conectadoAConsola: this.conexion.estado() !== 'DISCONNECTED',
-        redDisponible: true,
+        // `navigator.onLine` y no un `true` escrito a mano. Estaba fijo, así
+        // que el bloqueo SIN_RED era inalcanzable: la tabla de «cuándo NO se
+        // actualiza» listaba un caso que no podía darse. El dato es flojo -- el
+        // navegador dice si hay interfaz, no si hay internet -- pero un dato
+        // flojo distingue el caso; una constante no distingue ninguno.
+        redDisponible: navigator.onLine,
         bateriaPorcentaje: bateria.porcentaje,
         enCargador: bateria.enCargador,
       };
@@ -123,7 +128,8 @@ export class UpdateService {
     if (
       this.sesion.sesionActiva() ||
       this.sesion.transaccionEnCurso() ||
-      this.conexion.estado() !== 'DISCONNECTED'
+      this.conexion.estado() !== 'DISCONNECTED' ||
+      !navigator.onLine
     ) {
       this._error.set('Cambió el estado mientras tanto. La actualización queda para después.');
       await this.buscar();

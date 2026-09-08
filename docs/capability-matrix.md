@@ -15,6 +15,8 @@
 
 > **El rango no es la curva.** Varias filas están CONFIRMADAS en cuanto a que el parámetro existe y hasta dónde llega, y aun así la aplicación no sabe traducir su valor a unidades físicas: la *forma* del recorrido entre 0 y 1 la mide SPK-P0.2a. Mientras tanto, `packages/mixer-adapter/src/conversiones.ts` usa suposiciones —logarítmica para el fader, lineal para la ganancia—, están todas juntas y marcadas con `VERIFICADO_CONTRA_CONSOLA = false`, y la interfaz antepone «≈» a lo que sale de ellas. El nivel y el pico no llevan esa marca: vienen de los medidores y son medidas. Y cuando la consola todavía no dijo un valor, la pantalla escribe «—» en vez de un número: antes se devolvía el extremo del rango como si fuera una lectura, que es el peor valor posible para equivocarse y llevaba la misma marca que una estimación real.
 
+> **La ruta manda sobre la clase declarada.** `clasificarRuta` deriva de la ruta a qué categoría de propiedad pertenece, y el motor rechaza si no coincide con la que declaró quien propone (INV-008/INV-010). Dos correcciones que salieron de comparar el clasificador con esta tabla: la alimentación fantasma es `hw.N.phantom` y no `i.N.phantom`, y `var.mtk.*` —soundcheck y multipista— estaba clasificado como envío al bus de análisis, o sea como el **único routing escribible** que admite INV-008. El envío al bus de análisis solo se reconoce si se dice qué auxiliar es ese bus, que lo tiene que decir SPK-P0.5: sin ese dato, todos los `i.N.aux.M.value` son envíos de monitor y no se escribe ninguno.
+
 ## Entradas y canales
 
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |
