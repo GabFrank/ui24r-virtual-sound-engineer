@@ -1,4 +1,5 @@
 import type { Routes } from '@angular/router';
+import { guardaDeSalida } from './ui';
 
 /**
  * Rutas.
@@ -47,16 +48,19 @@ export const RUTAS: Routes = [
     path: 'perfiles/bandas/:id',
     title: 'Banda',
     loadComponent: () => import('./perfiles/banda-edit.component').then((m) => m.BandaEditComponent),
+    canDeactivate: [guardaDeSalida],
   },
   {
     path: 'perfiles/locales/:id',
     title: 'Local',
     loadComponent: () => import('./perfiles/local-edit.component').then((m) => m.LocalEditComponent),
+    canDeactivate: [guardaDeSalida],
   },
   {
     path: 'perfiles/pa/:id',
     title: 'Sistema de amplificación',
     loadComponent: () => import('./perfiles/pa-edit.component').then((m) => m.PaEditComponent),
+    canDeactivate: [guardaDeSalida],
   },
 
   {

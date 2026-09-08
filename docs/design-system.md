@@ -80,6 +80,7 @@ aplicación funcione igual en una tablet dividida en dos que a pantalla completa
 | `ui-icon` | Iconografía | Trazados en el código, no tipografía de iconos. Una tipografía que no carga deja cuadrados vacíos donde debería estar el paro de emergencia. |
 | `ui-cargando` | Que algo se está leyendo | Barras del alto del contenido que va a llegar, no un disco que gira: así la pantalla no salta. El texto va en `aria-live`. |
 | `ui-fallo` | Que algo no se pudo leer | **Siempre con reintentar.** Casi todos estos fallos son transitorios, y sin el botón la única salida es cerrar la aplicación. |
+| `ui-salir-sin-guardar` | Confirmar que se pierde lo escrito | Uno solo para las tres pantallas de edición. No se cierra tocando fuera: cerrarlo por descuido tendría que significar una de las dos respuestas y ninguna es obvia. |
 | `ui-toasts` | Avisos efímeros | **Nunca para nada de lo que dependa la seguridad.** Un rechazo del motor de seguridad se muestra en la pantalla, con su invariante, no en un mensaje que se desvanece. |
 
 ### Las tres respuestas de una pantalla que lee
@@ -103,6 +104,24 @@ la reacción de quien lo lee es crear una banda que ya existía.
 reparte lo leído en un campo por control, como los formularios. Los dos
 conservan el último valor bueno mientras recargan: vaciar una lista que ya
 estaba en pantalla pierde información que todavía servía.
+
+### Salir de una edición con cambios sin guardar
+
+Los formularios **no guardan en cada tecla**: un nombre a medio escribir no debe
+quedar guardado. La consecuencia es que salir sin tocar «Guardar» pierde todo lo
+escrito, y no hace falta un descuido para llegar ahí — el botón «Volver» y el
+gesto de atrás de Android hacen exactamente eso.
+
+`guardaDeSalida` (un `canDeactivate` en la ruta) le pregunta al componente, que
+compara **la entidad que se guardaría contra la que se leyó**. No una bandera
+que se marque al escribir —escribir una letra y borrarla no es un cambio, y
+preguntar ahí enseña a contestar que sí sin leer— y tampoco campo por campo, que
+se olvida en silencio del campo que se agregue mañana.
+
+Se pregunta, no se impide: quien abrió un perfil por error tiene que poder
+salir, y la respuesta por defecto es quedarse. Después de guardar y después de
+borrar, la entidad de referencia se actualiza, para no preguntar por cambios que
+acaban de guardarse o por un perfil que ya no existe.
 
 ## Accesibilidad
 
