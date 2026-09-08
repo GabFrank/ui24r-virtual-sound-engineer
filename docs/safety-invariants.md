@@ -1,6 +1,6 @@
 # Invariantes de seguridad
 
-**Versión 1.2.** Estas 34 invariantes son la suite de aceptación de seguridad del proyecto (ADR-011). Cada una tiene enunciado verificable, test unitario, test contra hardware real y la versión desde la que aplica.
+**Versión 1.2.** Estas 34 invariantes son la suite de aceptación de seguridad del proyecto (ADR-011). Cada una tiene enunciado verificable y la versión desde la que aplica. El objetivo es que todas tengan además test unitario y test contra hardware real: la sección de abajo lleva la cuenta de dónde estamos, y ningún test contra hardware existe todavía.
 
 **Ninguna historia que escriba en la consola o reproduzca audio se cierra sin su rebanada de la suite en verde.** Cada test lleva el identificador de su invariante en el nombre.
 
@@ -14,16 +14,21 @@ El generador de señal es el reproductor de la consola (ADR-002); las invariante
 
 ## Estado de implementación
 
-Cubiertas por test unitario, en `packages/safety`, `packages/domain` y
-`packages/updater`:
+Cubiertas por test unitario, en `packages/safety`, `packages/domain`,
+`packages/mixer-adapter`, `packages/logging` y `packages/updater`:
 INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008,
-INV-009, INV-010, INV-017, INV-019 (parte de bloqueo), INV-020, INV-021,
-INV-024, INV-025, INV-034.
+INV-009, INV-010, INV-017 (solo la cláusula del hueco entre tramas; la del
+percentil 95 depende de SPK-P0.1), INV-019 (bloqueo, lista blanca, y presencia
+y tamaño del botón en el recorrido automático), INV-020 (**solo contra un
+diario en memoria**: no hay implementación persistente), INV-021, INV-022
+(formato, sumidero persistente y rotación; la rotación se acota por número de
+eventos y no por sesiones, ver `docs/logging.md`), INV-024, INV-025, INV-034
+(con la cláusula de transacción en curso todavía sin llamador, ver el cuadro
+de abajo).
 
 Pendientes de hardware, se cierran con su spike: INV-011 (política de
 confirmación, depende de SPK-P0.1), INV-012 a INV-016 y INV-026 (generador,
-dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-022, INV-023, INV-027 a
-INV-033.
+dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-023, INV-027 a INV-033.
 
 Ninguna invariante se marca como cerrada por pasar contra el simulador: el
 simulador reproduce nuestras hipótesis del protocolo, no la consola.
@@ -158,9 +163,9 @@ recorrido solo pasa por las que están en su camino.
 | INV-017 | En UNSTABLE/RECONNECTING/DISCONNECTED: cola de writes vaciada, transacciones APPLYING → SUSPENDED, generador detenido (INV-014). UNSTABLE = gap entre frames VU2 > 3× el intervalo medio medido en P0.1, **o** p95 del intervalo VU2 en 30 s > 2× la mediana. | HIL: `tc netem loss 10%` y `delay 200ms` en el router → UNSTABLE ≤ 5 s en 10/10. | MVP0 |
 | INV-018 | Al reconectar: cola vacía (assert), estado completo re-leído, diff mostrado, transacciones SUSPENDED requieren decisión humana. | HIL: 20 ciclos. | MVP0 |
 | INV-019 | Emergency Stop: local ≤ 200 ms sin red (detener generador local, cancelar automatización, bloquear writes salvo lista blanca {MEDIA_STOP, MTK_STOP, mute Player L/R, ROLLBACK, restauración PLAYER_RESERVE/mutes de componente}); remoto con confirmación/reintento (MEDIA_STOP, MTK_STOP, mute Player); rearme explícito con re-lectura total; botón ≥ 64 px visible en el 100 % de pantallas y modales; no mutea master ni canales. | UI test automatizado que recorre todas las rutas + HIL cronometrado. | MVP0 |
-| INV-020 | Journal write-ahead persistido antes de cada write. Al reiniciar: transacciones APPLYING/VERIFYING detectadas, estado real leído, diff mostrado, opciones rollback/aceptar. Nunca reaplicar. | Kill de proceso durante apply ×20. | MVP4a |
+| INV-020 | Journal write-ahead persistido antes de cada write. Al reiniciar: transacciones APPLYING/VERIFYING detectadas, estado real leído, diff mostrado, opciones rollback/aceptar. Nunca reaplicar. | Kill de proceso durante apply ×20. | MVP4a — hoy solo contra `DiarioEnMemoria`: no hay implementación persistente, así que lo que la invariante protege (sobrevivir a una caída) no está probado. |
 | INV-021 | Cambio masivo (> 10 paths distintos en < 1 s) o cambio de `currentSnapshot` → invalidación global: abortar transacciones, invalidar Measurements "before" no cerradas, store INVALID hasta re-lectura, avisar. Rollback por change deshabilitado si la base cambió; solo por snapshot con confirmación. | HIL: recall desde web durante transacción. | MVP0 (detección), MVP4a (abortar) |
-| INV-022 | Cada write registra ts, transacción, parámetro, expected, previous, sent, ack, verified. Log en SQLite, rotación ≥ 30 sesiones, export desde la UI. | Unit + inspección. | MVP0 |
+| INV-022 | Cada write registra ts, transacción, parámetro, expected, previous, sent, ack, verified. Log en el almacén, export desde la interfaz. **La rotación se acota por número de eventos (5000) y no por sesiones**: lo que hay que acotar es el espacio en la tablet, y «30 sesiones» no dice cuánto ocupa. Nada relaciona todavía las dos cifras — ver `docs/logging.md`. | Unit + inspección. | MVP0 |
 | INV-023 | Ninguna transacción CONTROLLED AUTO se cierra como KEEP sin `measurementAfterId`. Tolerancia = max(2·σ_roomScore medida en SPK-REPEAT para ese `VenueProfile`, 2 puntos); KEEP requiere además que la desviación RMS al target baje ≥ 0,5 dB; si no, REVERT automático y verificado. Sin SPK-REPEAT para la sala, el closed loop no está disponible. | Unit con σ sintética. | MVP4b |
 | INV-024 | Solo `confidence == HIGH` (definición por dominio en S-02.4) es `autoEligible`. LOW/INSUFFICIENT → solo Observation. | Unit. | MVP4b |
 | INV-025 | Todo apply en ASSISTED requiere acción explícita (hold 1 s o doble confirmación); sin auto-aceptación por timeout. | UI test. | MVP4a |

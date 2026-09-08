@@ -10,7 +10,7 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 | | |
 |---|---|
-| Tests en verde | 220, más 48 de validación DSP |
+| Tests en verde | 293, más 48 de validación DSP |
 | Spikes cerrados | 0 de 22 |
 | Controles de paso aprobados | 0 de 5 |
 | Rutas crudas escribibles | 0, y así seguirá hasta que un spike verifique cada conversión |
@@ -58,7 +58,8 @@ EP-15 Post-MVP
 | `packages/mixer-adapter` | `MixerDomainAPI` y el adaptador de Ui24R. Único punto que habla con la consola. |
 | `packages/safety` | Motor de seguridad, diario write-ahead y ejecutor de transacciones. Tiene autoridad sobre cualquier asistente. |
 | `packages/assistants` | Análisis y propuestas. Funciones puras: no tocan la consola ni la base. |
-| `packages/store` | Puerto del almacén de documentos y semántica de las consultas. |
+| `packages/store` | Puerto del almacén, esquema de la base y semántica de las consultas, con su SQL para poder probarlo. |
+| `packages/logging` | Registro estructurado, sus sumideros y la lectura del registro guardado. |
 | `packages/updater` | Política de actualización de la aplicación. TypeScript puro, sin red ni Android. |
 | `packages/dsp-contract` | Tipos del puente entre el motor nativo de audio y la aplicación. |
 | `docs/adr` | Decisiones de arquitectura. |
@@ -67,7 +68,7 @@ EP-15 Post-MVP
 | `docs/field` | Informes de prueba de campo. |
 | `docs/backlog` | Plan final, auditorías, backlog y orden de implementación. |
 | `tools/spikes` | Código de spikes. No requiere tests ni entra en el producto. |
-| `tools/docs` | Validadores: identificadores de la documentación, y plantillas de componente. |
+| `tools/docs` | Cinco validadores: identificadores de la documentación, acentos graves y llamadas a función en plantillas, límites entre paquetes y convención de los commits. |
 | `tools/mixer-sim` | Simulador del protocolo de la consola. Reproduce nuestras hipótesis, no la consola. |
 | `tools/visual` | Capturas contra el simulador y recorrido automático del camino de usuario. |
 
@@ -83,6 +84,7 @@ EP-15 Post-MVP
 
 ```bash
 npm install          # instala el workspace completo
+npm run verificar    # lo mismo que corre la integración continua. Antes de empujar, siempre
 npm run lint         # chequeo de tipos (tsc --noEmit) en los paquetes y compilación de la app
 npm test             # tests unitarios
 npm run validate:docs  # verifica que todo ID referenciado en docs exista

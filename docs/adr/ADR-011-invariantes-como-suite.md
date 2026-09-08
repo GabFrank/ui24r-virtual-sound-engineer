@@ -14,7 +14,9 @@ La segunda ronda de auditoría encontró que, ya escritas, **una invariante era 
 
 ## Decisión
 
-Las 33 invariantes de [docs/safety-invariants.md](../safety-invariants.md) son **la suite de aceptación de seguridad**. Cada una tiene identificador, enunciado verificable, test unitario, test contra hardware real y la versión desde la que aplica.
+Las invariantes de [docs/safety-invariants.md](../safety-invariants.md) son **la suite de aceptación de seguridad**. Cada una tiene identificador, enunciado verificable, y la versión desde la que aplica; el objetivo es que cada una tenga además test unitario y test contra hardware real.
+
+> Nota posterior: eran 33 al escribir este ADR y hoy son 34 —INV-034 llegó con la actualización dentro de la aplicación—. Los ADR se agregan y no se editan, pero el número era comprobable y ya no era cierto. Y la frase original decía «cada una tiene test unitario y test contra hardware real» en presente: es el objetivo, no el estado. Ningún test contra hardware existe todavía, y `docs/safety-invariants.md` lleva la cuenta de cuáles tienen test unitario.
 
 La suite está **rebanada por versión** y cableada como dependencia: ninguna historia que escriba en la consola o reproduzca audio se cierra sin su rebanada en verde. No se agrupa toda al final.
 
