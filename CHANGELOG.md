@@ -6,6 +6,48 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Tres bloqueos encadenados impedían que la aplicación hablara con una Ui24R, y
+  ninguno se ve en el navegador de escritorio.** Los tres se encontraron en el
+  WebView del teléfono el 2026-09-08 y son anteriores a cualquier defecto del
+  adaptador: mientras estuvieran, **ninguna versión de la aplicación podía
+  conectarse a una consola real**.
+
+  1. **La aplicación se servía por `https://localhost`**, y desde un origen
+     https el navegador prohíbe abrir un `ws://`:
+     `SecurityError: Failed to construct 'WebSocket'`. La Ui24R no tiene TLS ni
+     forma de tenerlo. Se resolvió con `server.androidScheme: 'http'`.
+  2. **`allowMixedContent: true` no alcanzaba.** Destraba la construcción del
+     socket pero `fetch()` es contenido mixto activo y Blink lo bloquea igual, y
+     el apretón de manos de socket.io es un `fetch`. Se probó y se descartó.
+  3. **Android prohíbe el tráfico en claro desde la versión 9**, así que todo
+     pedido moría con `net::ERR_CLEARTEXT_NOT_PERMITTED`. Se agregó
+     `network_security_config.xml`, con el porqué y el costo escritos ahí.
+
+  Costo del cambio de esquema, que es real: **cambia el origen y se vacía el
+  almacenamiento web**. Las preferencias de `localStorage` se pierden una vez.
+  La base de datos no: es SQLite nativa.
+
+- **La marca «≈» decía que la ganancia y el fader eran estimaciones**, y desde
+  que las curvas se tomaron de la consola dejaron de serlo. Ahora depende de
+  `VERIFICADO_CONTRA_CONSOLA`, así que desaparece sola y reaparece sola si
+  alguien vuelve la bandera a falso. Una marca que miente enseña a ignorarla.
+
+### Agregado
+
+- **[docs/guia-de-pruebas-manuales.md](docs/guia-de-pruebas-manuales.md)**: qué
+  hay que probar a mano contra hardware, con lo ya probado marcado y lo que
+  falta separado de lo que **no se puede** probar en nivel OBSERVE. Cierra con
+  las cinco trampas que costaron esta sesión.
+- **[docs/entorno-de-desarrollo.md](docs/entorno-de-desarrollo.md)**: cómo dejar
+  una máquina nueva en condiciones de compilar, firmar con la clave buena,
+  instalar sin desinstalar y depurar el WebView sin depender de
+  `chrome://inspect`.
+- Resultados medidos en los charters de **SPK-P0.1** y **SPK-P0.2a**, con su
+  evidencia en `docs/spikes/<id>/evidence/`. Ninguno de los dos se da por
+  cerrado, y cada uno dice qué le falta.
+
+### Corregido
+
 - **El adaptador no podía hablar con una Ui24R real.** La sesión con hardware del
   2026-09-08 encontró cinco defectos, y los tres primeros bastaban para que no
   llegara ni un mensaje. Ninguno se había visto antes porque el simulador

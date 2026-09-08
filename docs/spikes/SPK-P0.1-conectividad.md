@@ -1,6 +1,6 @@
 # SPK-P0.1 — Conectividad, reconexión, eco y cadencia de medidores
 
-**Estado:** Pendiente · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial, medido el 2026-09-08 · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** S-00.3 · **Bloquea a:** SPK-ACK-POLICY, SPK-P0.2a, SPK-P0.9, S-02.5b, S-02.7
 **Montaje:** Ui24R, router dedicado, laptop con Node. No hace falta interfaz de audio.
 
@@ -22,11 +22,11 @@ La respuesta al eco determina cómo se confirma cada escritura, y la cadencia de
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | | ⬜ |
-| 2 | Volcado completo recibido tras cada reconexión | bloqueante | 20 de 20 | | ⬜ |
-| 3 | La consola devuelve eco al emisor de su propia escritura | informativo | sí o no, con captura | | ⬜ |
-| 4 | Cadencia de medidores: intervalo medio, mediana, percentil 95 | bloqueante | los tres valores registrados; umbral de inestabilidad = 3 veces el intervalo medio | | ⬜ |
-| 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | | ⬜ |
+| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | 20 de 20 ciclos de apretón a volcado, 112–158 ms, **desde una laptop por cable y sin cortar la red** | ⬜ |
+| 2 | Volcado completo recibido tras cada reconexión | bloqueante | 20 de 20 | 20 de 20, 6 665 claves cada vez | ⬜ |
+| 3 | La consola devuelve eco al emisor de su propia escritura | informativo | sí o no, con captura | sin medir: exige escribir, y el nivel es OBSERVE | ⬜ |
+| 4 | Cadencia de medidores: intervalo medio, mediana, percentil 95 | bloqueante | los tres valores registrados; umbral de inestabilidad = 3 veces el intervalo medio | `VU2` con señal: media 44,3 ms, mediana 34 ms, p95 68 ms → umbral 133 ms. **`RTA`: media 33,3 ms, mediana 33, p95 37.** Desde laptop | ⬜ |
+| 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | 3 clientes, 120 s, misma huella SHA-256 y mismas 6 665 claves — **con el estado quieto, así que no prueba lo que el criterio pregunta** | ⬜ |
 
 ## Quién mide
 
@@ -50,3 +50,56 @@ El criterio 5 se contesta a medias: la aplicación da la huella de su estado con
 Si la reconexión falla, revisar la configuración del router antes de culpar al protocolo, y repetir una vez. Si sigue fallando, es un hallazgo de infraestructura de red y entra en el registro de riesgos: la topología recomendada cambia.
 
 Si no hay eco, no es un fallo: dispara SPK-ACK-POLICY, que define cómo se confirma cada parámetro sin él.
+
+---
+
+## Resultado parcial — 2026-09-08
+
+Ningún criterio se da por cerrado: los cinco se midieron desde una laptop por cable, y el
+charter pide expresamente los números **de la tablet**, «porque cuánto tarda en reconectar y
+con qué cadencia llegan las tramas son propiedades del aparato en esa red». Lo que sigue es el
+piso del protocolo, útil para diseñar y para saber qué esperar.
+
+### Lo que sí quedó resuelto, y no estaba en la lista de criterios
+
+**La dirección del WebSocket, que bloqueaba todo lo demás.** La consola habla socket.io 0.9:
+
+```
+$ curl -sS "http://192.168.0.49/socket.io/1/"
+10454688205293084044:5:5:websocket
+
+ws://<máquina>/socket.io/1/websocket/<sesión>
+```
+
+**El identificador de sesión es de un solo uso.** Eso obliga a que la aplicación guarde la
+máquina y no una URL, y a rehacer el apretón de manos en cada reconexión.
+
+**`ALIVE` es obligatorio.** El cliente oficial lo manda cada segundo; sin él la consola deja de
+emitir sin cerrar el socket. Medido: 148 tramas de analizador en 20 s sin `ALIVE`, 905 en 30 s
+con él.
+
+**El latido declarado es falso.** El apretón dice 5 s y la consola manda `2::` cada ~66 ms. No
+sirve para el detector de caída. Tampoco hay que contestarlo: probado con eco y sin eco, el
+flujo entrante es idéntico.
+
+### El hallazgo que cambia el criterio 4
+
+**La consola deja de emitir `VU2` cuando no hay señal.** Una trama en 30 s de silencio; 1 932
+en 90 s con música. Un detector de conexión caída basado en medidores da falso positivo en cada
+silencio, o sea entre tema y tema y en toda la prueba de sonido.
+
+`RTA` no hace esa supresión: 30,2 Hz en silencio y 30,0 Hz con señal, con percentil 95 de 37 ms.
+**El adaptador pasó a vigilar `RTA`.** El umbral de inestabilidad del criterio 4 debería
+calcularse sobre `RTA`, no sobre `VU2`; sobre `VU2` no hay cadencia que medir cuando no hay
+audio, que es la mitad del tiempo.
+
+### Qué falta para cerrar el spike
+
+Los sesenta ciclos con cortes de red reales y la cadencia, **medidos desde la tablet con
+Ajustes → Diagnóstico**. La aplicación ya conecta con la consola real desde el 2026-09-08, así
+que esa medición ya es posible; no lo era antes.
+
+### Evidencia
+
+`evidence/` — volcados crudos, inventario de claves, capturas de medidores con y sin señal,
+ciclos de reconexión y huellas de los tres clientes.
