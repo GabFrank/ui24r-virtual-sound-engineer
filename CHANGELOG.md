@@ -4,6 +4,14 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+## [0.1.0] - 2026-09-08
+
+Primera versión publicada. **No habla con la consola todavía**: sirve para
+cargar bandas, locales y sistemas de amplificación, abrir y cerrar sesiones, y
+para dejar funcionando el camino de actualización antes de la fase de pruebas
+con hardware. Medir y escribir en la Ui24R depende de los spikes de la puerta
+G-A, ninguno de los cuales está cerrado.
+
 ### Corregido
 - **INV-019**: el paro de emergencia dentro de un diálogo medía 48 px cuando la
   invariante exige 64, y la comprobación que lo cubría estaba calibrada en 44 —
