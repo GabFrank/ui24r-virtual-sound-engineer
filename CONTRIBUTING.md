@@ -43,14 +43,27 @@ Un spike no entrega producto. Un spike entrega una respuesta con un número.
 
 Conventional Commits, en español, sujeto de 72 caracteres como máximo.
 
+**El tipo** sale de la lista estándar: `feat`, `fix`, `docs`, `refactor`,
+`test`, `perf`, `build`, `ci`, `chore`, `style`, `revert`. No se inventan tipos
+nuevos.
+
+**El ámbito nombra el módulo afectado**, no el hito ni la versión. `feat(mvp0)`
+está mal: dentro de seis meses "mvp0" no le dice a nadie qué parte del sistema
+cambió. Ámbitos permitidos en `commitlint.config.js`.
+
 ```
 feat(domain): agrega ChannelAssignment con enlace a BandProfile
-fix(safety): rechaza delta acumulado por sesión en INV-04
-spike(P0.1): registra cadencia de VU2 y resultado de echo
+fix(safety): rechaza delta acumulado por sesión en INV-004
+chore(spike): registra cadencia de medidores y resultado de eco en P0.1
 docs(adr): ADR-019 decisión con o sin interfaz externa
 ```
 
-Ámbitos permitidos: ver `commitlint.config.js`.
+El trabajo de spike va como `chore(spike)` o `docs(spike)` según lo que
+entregue. Un spike no entrega funcionalidad, así que no lleva `feat`.
+
+Hay un commit en la historia, anterior a esta regla, que usa `spike` como tipo.
+Está mergeado y no se reescribe: la verificación solo mira los commits que trae
+cada pull request.
 
 ## Checklist de pull request
 
