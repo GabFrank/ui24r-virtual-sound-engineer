@@ -8,10 +8,38 @@ import { faderADb, gananciaADb } from './conversiones.ts';
 import type { Transport } from './transport.ts';
 
 export interface OpcionesAdapter {
-  /** Hueco entre tramas de medidores que declara la conexión inestable. */
-  readonly umbralHuecoVuMs?: number;
+  /**
+   * Hueco sin tramas del analizador que declara la conexión inestable.
+   *
+   * **Antes esto miraba las tramas de medidores, y estaba mal.** Medido el
+   * 2026-09-08: la consola **deja de emitir `VU2` cuando no hay señal**. En
+   * treinta segundos de silencio llegó una sola trama; con música, 1932 en
+   * noventa segundos. Un vigilante sobre `VU2` declara la conexión inestable
+   * en cada silencio, o sea entre tema y tema y en toda la prueba de sonido:
+   * justo cuando el operador mira la pantalla.
+   *
+   * El analizador no hace esa supresión: 30,0 Hz medidos con señal y 30,2 Hz
+   * en silencio absoluto, con percentil 95 de 37 ms. Es el latido honesto de
+   * este aparato, y es lo que se vigila ahora.
+   */
+  readonly umbralHuecoRtaMs?: number;
   /** Espera máxima por la confirmación de una escritura. */
   readonly timeoutConfirmacionMs?: number;
+  /**
+   * Quietud sin líneas de estado que da por terminado el volcado inicial.
+   *
+   * **Existe porque la Ui24R no manda ninguna marca de fin de volcado.** El
+   * adaptador esperaba una línea `DUMP_END` que el simulador sí emite y la
+   * consola real no: contra el aparato, el estado confirmado se quedaba en
+   * INVALID para siempre y ninguna lectura era confiable.
+   *
+   * El volcado son ~6 665 claves en unos 220 mensajes seguidos, y entra
+   * completo entre 112 y 158 ms (20 de 20 ciclos medidos el 2026-09-08). Un
+   * cuarto de segundo sin una sola línea de estado es holgado para ese ritmo y
+   * corto para el operador. Las tramas de medidores y de analizador no cuentan:
+   * llegan siempre y no dirían nada.
+   */
+  readonly quietudVolcadoMs?: number;
   readonly ahora?: () => number;
 }
 
@@ -52,7 +80,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly store: ConfirmedStateStore;
   private _estadoConexion: ConnectionState = 'DISCONNECTED';
   private ultimaTramaVuMs: number | null = null;
-  private readonly umbralHuecoVuMs: number;
+  private ultimaTramaRtaMs: number | null = null;
+  private readonly umbralHuecoRtaMs: number;
   private readonly timeoutMs: number;
   private readonly ahora: () => number;
 
@@ -66,6 +95,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private oyentesTelemetria: (() => void)[] = [];
   private desuscribir: (() => void)[] = [];
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
+  private temporizadorVolcado: ReturnType<typeof setTimeout> | null = null;
+  private readonly quietudVolcadoMs: number;
   /** La última dirección conectada, para poder releer el estado. */
   private url: string | null = null;
 
@@ -74,8 +105,12 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   constructor(transporte: Transport, opciones: OpcionesAdapter = {}) {
     this.transporte = transporte;
     this.ahora = opciones.ahora ?? (() => Date.now());
-    this.umbralHuecoVuMs = opciones.umbralHuecoVuMs ?? 300;
+    // 300 ms serian ocho tramas perdidas del analizador, que va a 30 Hz con
+    // percentil 95 de 37 ms. Se mantiene el valor: sobre RTA es holgado y
+    // ademas es un flujo que no se apaga solo.
+    this.umbralHuecoRtaMs = opciones.umbralHuecoRtaMs ?? 300;
     this.timeoutMs = opciones.timeoutConfirmacionMs ?? 500;
+    this.quietudVolcadoMs = opciones.quietudVolcadoMs ?? 250;
     this.store = new ConfirmedStateStore({ ahora: this.ahora });
   }
 
@@ -103,7 +138,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     // Vigila el hueco entre tramas de medidores: si la consola deja de
     // emitirlas, la conexión está en problemas aunque el socket siga abierto.
-    this.vigilanteVu = setInterval(() => this.revisarCadenciaVu(), 100);
+    this.vigilanteVu = setInterval(() => this.revisarCadenciaRta(), 100);
   }
 
   /**
@@ -133,6 +168,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   async desconectar(): Promise<void> {
     if (this.vigilanteVu) clearInterval(this.vigilanteVu);
     this.vigilanteVu = null;
+    if (this.temporizadorVolcado !== null) clearTimeout(this.temporizadorVolcado);
+    this.temporizadorVolcado = null;
     for (const f of this.desuscribir) f();
     this.desuscribir = [];
     await this.transporte.desconectar();
@@ -285,10 +322,12 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETD') {
       this.store.procesarLinea(linea);
+      this.reiniciarQuietudDeVolcado();
       return;
     }
 
     if (m.tipo === 'SETS') {
+      this.reiniciarQuietudDeVolcado();
       const coincidencia = /^i\.(\d+)\.name$/.exec(m.path);
       if (coincidencia) this.nombresCanal.set(Number(coincidencia[1]), m.texto);
       return;
@@ -299,17 +338,26 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       return;
     }
 
-    if (m.linea === 'DUMP_END') {
-      this.store.volcadoCompletoRecibido();
-      this.cambiarEstado('CONNECTED');
-      for (const cb of this.oyentesVolcado) cb();
+    // El analizador es la señal de vida: llega pase lo que pase, con señal y en
+    // silencio. No se decodifica su contenido, solo se anota que llegó.
+    if (m.tipo === 'RTA') {
+      this.ultimaTramaRtaMs = this.ahora();
+      if (this._estadoConexion === 'UNSTABLE') this.cambiarEstado('CONNECTED');
+      return;
+    }
+
+    // El simulador sí manda un centinela. Se respeta: cuando está, no hace
+    // falta esperar la quietud.
+    if (m.tipo === 'OTRO' && m.linea === 'DUMP_END') {
+      this.completarVolcado();
     }
   }
 
   private procesarVu(base64: string): void {
-    const ahora = this.ahora();
-    this.ultimaTramaVuMs = ahora;
-    if (this._estadoConexion === 'UNSTABLE') this.cambiarEstado('CONNECTED');
+    // Se anota la marca de tiempo para la estadistica de cadencia, pero **no**
+    // se toca el estado de la conexion: la ausencia de VU2 significa silencio,
+    // no caida. Quien decide sobre la conexion es el analizador.
+    this.ultimaTramaVuMs = this.ahora();
 
     const niveles = decodificarVu(base64);
     for (let i = 0; i < niveles.length; i++) {
@@ -330,11 +378,37 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     for (const cb of this.oyentesTelemetria) cb();
   }
 
-  private revisarCadenciaVu(): void {
+  /**
+   * Reinicia la cuenta de quietud mientras siguen llegando líneas de estado.
+   *
+   * Solo actúa durante el volcado inicial. Después de eso las líneas de estado
+   * son cambios normales y no tienen que reabrir nada.
+   */
+  private reiniciarQuietudDeVolcado(): void {
+    if (this.store.storeState === 'VALID') return;
+    if (this.temporizadorVolcado !== null) clearTimeout(this.temporizadorVolcado);
+    this.temporizadorVolcado = setTimeout(
+      () => this.completarVolcado(), this.quietudVolcadoMs,
+    );
+  }
+
+  /** Da el volcado por terminado. Es idempotente a propósito. */
+  private completarVolcado(): void {
+    if (this.temporizadorVolcado !== null) {
+      clearTimeout(this.temporizadorVolcado);
+      this.temporizadorVolcado = null;
+    }
+    if (this.store.storeState === 'VALID') return;
+    this.store.volcadoCompletoRecibido();
+    this.cambiarEstado('CONNECTED');
+    for (const cb of this.oyentesVolcado) cb();
+  }
+
+  private revisarCadenciaRta(): void {
     if (this._estadoConexion === 'DISCONNECTED') return;
-    if (this.ultimaTramaVuMs === null) return;
-    const hueco = this.ahora() - this.ultimaTramaVuMs;
-    if (hueco > this.umbralHuecoVuMs && this._estadoConexion === 'CONNECTED') {
+    if (this.ultimaTramaRtaMs === null) return;
+    const hueco = this.ahora() - this.ultimaTramaRtaMs;
+    if (hueco > this.umbralHuecoRtaMs && this._estadoConexion === 'CONNECTED') {
       this.cambiarEstado('UNSTABLE');
     }
   }
