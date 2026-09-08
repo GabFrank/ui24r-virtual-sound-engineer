@@ -4,6 +4,84 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Corregido
+
+- **El adaptador no podía hablar con una Ui24R real.** La sesión con hardware del
+  2026-09-08 encontró cinco defectos, y los tres primeros bastaban para que no
+  llegara ni un mensaje. Ninguno se había visto antes porque el simulador
+  reproduce nuestras suposiciones, que es exactamente lo que su propio comentario
+  advertía.
+
+  1. **Faltaba el apretón de manos.** La consola habla socket.io 0.9: hay que
+     pedir un identificador de sesión por HTTP antes de abrir el socket, y **es
+     de un solo uso**. Por eso el campo «Dirección» de Ajustes no puede guardar
+     una URL: ahora hay `resolverDireccionUi24r()`, que la deriva de la máquina.
+     Lo anticipaba el comentario de `validarUrlDeConsola`.
+  2. **No se quitaba el envoltorio de socket.io.** Las líneas llegan como
+     `3:::SETD^i.0.mix^0.41`, y `decodificar()` comparaba `'3:::SETD'` contra
+     `'SETD'`: **todos** los mensajes caían en `OTRO` y el estado confirmado
+     quedaba vacío. Lo resuelve `despojarSocketIo()`.
+  3. **No se mandaba `ALIVE`.** El cliente oficial lo manda cada segundo y sin él
+     la consola deja de emitir, sin cerrar el socket: en 20 s sin `ALIVE`
+     llegaron 148 tramas de analizador; en 30 s con él, 905.
+  4. **`decodificarVu()` decodificaba otro formato.** Asumía un byte por canal
+     mapeado de −80 a 0 dB. El real tiene **cabecera de 8 bytes y 6 bytes por
+     canal**, y el byte es una posición normalizada, no decibeles. Con la lectura
+     vieja el canal 1 devolvía el byte de la cabecera —la cuenta de entradas, 24—
+     informado como −72,5 dB. Comprobado contra una fuente conocida: con música
+     solo por las RCA, la señal cae en los canales 21 y 22 y en ningún otro.
+  5. **El estado confirmado se quedaba en INVALID para siempre.** El adaptador
+     esperaba una línea `DUMP_END` que el simulador emite y **la consola real no
+     manda**. Ahora el volcado se da por terminado tras un cuarto de segundo sin
+     líneas de estado; el centinela se sigue respetando cuando está.
+
+- **La conexión se declaraba inestable en cada silencio.** El vigilante miraba el
+  hueco entre tramas de medidores, y **la consola deja de emitir `VU2` cuando no
+  hay señal**: 1 trama en 30 s de silencio contra 1932 en 90 s con música. Eso
+  marcaba la conexión como inestable entre tema y tema y durante toda la prueba
+  de sonido, justo cuando el operador mira la pantalla. Ahora se vigila el
+  analizador, que no hace esa supresión: 30,0 Hz con señal y 30,2 Hz en silencio,
+  con percentil 95 de 37 ms. La opción pasó de `umbralHuecoVuMs` a
+  `umbralHuecoRtaMs`.
+
+### Cambiado
+
+- **Las conversiones del fader y de la ganancia dejaron de ser suposiciones.** Se
+  extrajeron de `mixer.html`, que sirve la propia consola —el paso 2 que preveía
+  SPK-P0.2b— y `VERIFICADO_CONTRA_CONSOLA` pasó a `true`, con
+  `ORIGEN_DE_LAS_CURVAS` diciendo de qué firmware salieron. Dos números cambiaron
+  al medirlos:
+
+  - **El fader llega a +10 dB, no a 0.** 0 dB está en la posición 0,764706. Dar
+    por sentado que 1,0 es 0 dB erraba diez decibeles justo en el extremo
+    peligroso. La curva anterior tenía una pendiente inventada de 2,2.
+  - **La ganancia de entrada es escalonada.** La consola indexa una tabla de 64
+    entradas: solo puede tomar **48 valores**, de 2 en 2 dB hasta +26 y de 1 en 1
+    desde +27. La recta que se suponía erraba más de un decibel. Una
+    recomendación de «subí 1,5 dB» en la mitad baja **no se puede ejecutar**, y
+    ahora hay `rawParaGananciaMasCercana()` para elegir el escalón que sí existe.
+    Encadenar las dos conversiones de la consola desvía hasta 1,97 dB por debajo
+    y 0,98 por encima, así que no sirve para elegir.
+
+  Lo que esto garantiza es que nuestra lectura coincide con la que ve el operador
+  en la consola. **Que corresponda a un nivel digital real sigue sin medirse**: lo
+  mide SPK-P0.10b con tonos y bucle físico.
+
+### Agregado
+
+- **`docs/protocol-spec.md` versión 1**, que estaba vacío esperando este spike:
+  transporte, envoltorio, volcado, formato de medidores, rutas confirmadas y
+  curvas, cada cosa con lo que se midió y con una sección final de lo que no.
+- **Matriz de capacidades versión 1**, con firmware `3.4.8318-ui24` registrado y
+  **siete filas probadas contra el aparato** — fader de canal y general, silencio,
+  panorama, nombre, ganancia de entrada y nivel de envío auxiliar. Se separaron
+  las filas que agrupaban parámetros probados con otros que no: el solo de canal
+  y el silencio de envío auxiliar siguen sin probar y ahora se ve.
+- Aviso en la matriz sobre **INV-033**: el firmware **no está expuesto por HTTP**
+  —siete rutas probadas, todas `301`— y solo aparece en el volcado del socket, o
+  sea después de conectarse. Si INV-033 tiene que decidir antes de conectar, no
+  hay dato con el que decidir.
+
 ### Cambiado
 - **ADR-023: el destino del proyecto es la automatización**, y se llega por
   niveles. No es un asistente de medición con automatización como extra: es un
