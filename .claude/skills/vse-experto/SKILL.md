@@ -48,7 +48,7 @@ Más: telemetría en vivo contra la consola o el simulador, paro de emergencia, 
 | `packages/mixer-adapter` | Protocolo, estado confirmado, adaptador | **Único** punto que habla con la consola. |
 | `packages/safety` | Motor de seguridad, diario, ejecutor de transacciones | Tiene autoridad sobre cualquier asistente. |
 | `packages/assistants` | Análisis y propuestas | Funciones puras. No tocan la consola ni la base. |
-| `packages/store` | Puerto de almacén y semántica de consulta | La verdad sobre qué contesta una consulta. |
+| `packages/store` | Puerto de almacén, esquema de la base y semántica de consulta | La verdad sobre qué contesta una consulta. Incluye el SQL, para poder probarlo. |
 | `packages/updater` | Política de actualización | TypeScript puro, sin red ni Android. |
 | `packages/dsp-contract` | Tipos del puente con el motor de audio nativo | Todavía sin implementación. |
 | `apps/mobile/src/app/core` | Servicios transversales | Base, registro, conexión, sesión, repositorios. |
@@ -85,7 +85,7 @@ Cada una de estas costó tiempo. Están acá para que no vuelva a pasar.
 
 **El signo de la propuesta de ganancia.** Con el pico a −4 dBFS proponía *subir* la ganancia, empujando hacia la saturación el canal que ya estaba cerca. La resta estaba invertida. Hay un test que exige bajar cuando el pico está alto, y un comentario junto a la línea.
 
-**`null` en SQL contra `null` en JavaScript.** `columna = NULL` nunca es cierto en SQL; `x === null` sí lo es en JavaScript. «La sesión abierta» se busca por `cerrada_el IS NULL`. Por eso la semántica de consulta vive en `packages/store` con tests, y las dos implementaciones del almacén la comparten.
+**`null` en SQL contra `null` en JavaScript.** `columna = NULL` nunca es cierto en SQL; `x === null` sí lo es en JavaScript. «La sesión abierta» se busca por `cerrada_el IS NULL`. Y al ordenar, SQLite trata `NULL` como el valor más bajo mientras que la referencia lo manda al final en los dos sentidos. Por eso el esquema **y el SQL** viven en `packages/store`: `test/sql.test.ts` los corre contra SQLite real y compara resultado a resultado con el almacén en memoria. El almacén de Android solo ejecuta el texto.
 
 **Invariantes vivas pero inertes.** INV-034 estaba escrita, probada y no se disparaba nunca, porque el campo del que dependía no lo poblaba nadie. Cuando agregues una invariante, verificá que algo real la active.
 

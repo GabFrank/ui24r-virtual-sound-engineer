@@ -62,13 +62,29 @@ un registro de lo que pasó para ser una opinión sobre lo que pasó.
 | Tablet (Android) | SQLite | El del producto. |
 | Navegador | `localStorage` | Desarrollo y pruebas del camino de usuario. |
 
-Los dos implementan el mismo puerto. La semántica de las consultas está escrita
-y probada en `@vse/store`, y **la usa la implementación de navegador**; la de
-SQLite traduce el mismo filtro a SQL por su cuenta. La razón es concreta: en
-SQL, `columna = NULL` nunca es cierto y hay que escribir `IS NULL`; en
-JavaScript, `x === null` sí lo es. Como «la sesión abierta» se busca
-precisamente por `cerrada_el IS NULL`, resolverlo por separado en cada sitio
-habría hecho que funcionara en el navegador y fallara en la tablet.
+Los dos implementan el mismo puerto y **los dos toman la semántica de
+`@vse/store`**: la de navegador usa `consultar()`, y la de SQLite arma sus
+sentencias con `sentenciaListar()` y compañía. La clase de Android no decide
+nada, solo ejecuta el texto.
+
+La razón es concreta. En SQL, `columna = NULL` nunca es cierto y hay que
+escribir `IS NULL`; en JavaScript, `x === null` sí lo es. Y al ordenar, SQLite
+trata `NULL` como el valor más bajo, mientras que en estas listas un documento
+sin el dato por el que se ordena tiene que quedar último en los dos sentidos.
+Mientras cada implementación resolvía eso por su cuenta, la segunda diferencia
+existía de verdad y no la veía nadie: la única forma de comprobar una consulta
+de la tablet era leerla.
+
+Ahora `packages/store/test/sql.test.ts` crea una base SQLite real con las
+mismas migraciones, corre el mismo SQL y compara resultado a resultado con el
+almacén en memoria, que es la implementación de referencia. También comprueba
+que cada columna de índice declarada exista en su tabla: el DDL y la lista de
+índices son dos textos separados que tienen que decir lo mismo.
+
+Lo que todavía no se aplica: el esquema declara claves foráneas, pero en la
+tablet nadie ejecuta `PRAGMA foreign_keys = ON`, así que no se cumplen. Las
+pruebas sí las aplican —`node:sqlite` las trae encendidas— de modo que los
+datos de prueba siempre tienen padre.
 
 ## Lo que todavía no hace
 
