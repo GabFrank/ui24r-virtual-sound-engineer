@@ -111,7 +111,10 @@ async function recorrer(contexto, tamanio) {
   await paso(7, 'local-nuevo', 'alta de local, con coma decimal');
 
   await p.fill('#loc-alto', '0');
-  await paso(8, 'local-error', 'validación: una dimensión fuera de rango');
+  // Los errores aparecen al abandonar el campo, no en cada pulsación: un
+  // formulario recién abierto no debe estar ya en rojo.
+  await p.locator('#loc-alto').blur();
+  await paso(8, 'local-error', 'validación: aparece al abandonar el campo, no al teclear');
   await p.fill('#loc-alto', '3,2');
 
   await p.click('.racimo-entre ui-button:last-child button');
