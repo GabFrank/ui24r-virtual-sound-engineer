@@ -185,6 +185,27 @@ async function main() {
 
   // --- Asignación de canales y asistente de ganancia ---
 
+  // La asignación pertenece a la banda de la sesión, así que hace falta una
+  // sesión abierta. Se crean los perfiles mínimos y se abre.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/perfiles`, { waitUntil: 'networkidle' });
+  await pagina.click('ui-page-header ui-button button');
+  await pagina.waitForSelector('#banda-nombre');
+  await pagina.fill('#banda-nombre', 'Los del Fondo');
+  await pagina.click('.racimo-entre ui-button:last-child button');
+  await pagina.waitForSelector('[data-perfil="bandas"]');
+  await pagina.click('[data-perfil="locales"]');
+  await pagina.click('ui-page-header ui-button button');
+  await pagina.waitForSelector('#loc-nombre');
+  await pagina.fill('#loc-nombre', 'Bar Central');
+  await pagina.click('.racimo-entre ui-button:last-child button');
+  await pagina.waitForSelector('[data-perfil="bandas"]');
+
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion`, { waitUntil: 'networkidle' });
+  await pagina.click('ui-empty ui-button button');
+  await pagina.waitForSelector('#ses-banda');
+  await pagina.click('ui-dialog [pie] ui-button:last-child button');
+  await pagina.waitForSelector('[data-estado]');
+
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
   await esperar(400);
   await capturar('10-canales-sin-asignar', 'canales de la consola, todavía sin asignar');
@@ -192,6 +213,26 @@ async function main() {
   await pagina.click('ui-page-header ui-button button');
   await esperar(600);
   await capturar('11-canales-propuestos', 'tipos propuestos desde el nombre que ya tiene cada canal');
+
+  // Las asignaciones tienen que sobrevivir a salir de la pantalla: viven en el
+  // perfil de banda persistido, no en una señal suelta en memoria. Antes había
+  // dos fuentes de verdad y la de la sesión estaba siempre vacía.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
+  await esperar(400);
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
+  await esperar(600);
+  const sobreviven = await pagina.evaluate(() => {
+    const primero = document.querySelector('tbody tr select');
+    const encabezado = document.querySelector('ui-page-header p')?.textContent ?? '';
+    return { valor: primero?.value ?? '(sin select)', encabezado: encabezado.trim().slice(0, 30) };
+  });
+  if (sobreviven.valor === '' || sobreviven.valor === '(sin select)') {
+    throw new Error(
+      `la asignación no sobrevivió a salir de la pantalla: el desplegable dice ` +
+      `"${sobreviven.valor}" mientras el encabezado dice "${sobreviven.encabezado}"`,
+    );
+  }
+  console.log(`  · la asignación sobrevive a salir de la pantalla (${sobreviven.valor})`);
 
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/ganancia`, { waitUntil: 'networkidle' });
   await esperar(400);
@@ -261,6 +302,15 @@ async function main() {
   await esperar(300);
   await capturar('17-actualizacion-bloqueada', 'INV-034: conectado a la consola, no se actualiza');
 
+  // Se cierra la sesión antes de seguir: con una abierta, INV-034 bloquea la
+  // actualización y las capturas siguientes mostrarían el bloqueo en vez de lo
+  // que quieren mostrar. Es el comportamiento correcto, no un estorbo.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion`, { waitUntil: 'networkidle' });
+  await pagina.click('ui-page-header ui-button button');
+  await pagina.waitForSelector('ui-dialog[titulo="Cerrar la sesión"] [open]');
+  await pagina.click('ui-dialog[titulo="Cerrar la sesión"] [pie] ui-button:last-child button');
+  await esperar(600);
+
   // Volver a cargar deja la aplicación desconectada, que es el momento en que
   // corresponde actualizar. Hace falta `reload` y no solo `goto`: cambiar el
   // fragmento de la dirección no recarga el documento, así que la conexión con
@@ -320,6 +370,14 @@ async function main() {
     await tel.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
     await esperar(1200);
     await capturarTel('tel-01-consola', 'telemetría en teléfono: tarjetas en vez de tabla');
+
+    // La asignación pertenece a la banda de la sesión, así que hace falta
+    // abrir una: los perfiles ya existen de la parte anterior.
+    await tel.goto(`http://localhost:${PUERTO_WEB}/#/sesion`, { waitUntil: 'networkidle' });
+    await tel.click('ui-empty ui-button button');
+    await tel.waitForSelector('#ses-banda');
+    await tel.click('ui-dialog [pie] ui-button:last-child button');
+    await tel.waitForSelector('[data-estado]');
 
     await tel.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
     await tel.click('ui-page-header ui-button button');

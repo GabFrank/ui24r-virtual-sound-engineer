@@ -4,6 +4,7 @@ import {
   type BandProfile, type BandProfileId, type SessionState, type SoundSession,
   type VenueProfile, type VenueProfileId,
 } from '@vse/domain';
+import { BandService } from './band.service';
 import { Logger } from './logger';
 import { Repositorios } from './repos/repositorios';
 import { SessionStateService } from './session.state';
@@ -26,6 +27,7 @@ export interface SesionEnCurso {
 export class SesionService {
   private readonly repos = inject(Repositorios);
   private readonly estadoGlobal = inject(SessionStateService);
+  private readonly banda = inject(BandService);
   private readonly log = inject(Logger);
 
   private readonly _actual = signal<SesionEnCurso | null>(null);
@@ -60,6 +62,7 @@ export class SesionService {
     const s = await this.repos.sesionAbierta();
     if (s === null) {
       this.publicar(null);
+      await this.banda.cargar(null);
       return;
     }
     await this.cargar(s);
@@ -103,6 +106,7 @@ export class SesionService {
     await this.repos.guardarSesion(actualizada);
     if (hacia === 'CLOSED') {
       this.publicar(null);
+      await this.banda.cargar(null);
       this.log.info('system', 'sesion_cerrada', { id: s.id });
     } else {
       await this.cargar(actualizada);
@@ -121,6 +125,10 @@ export class SesionService {
   }
 
   private async cargar(s: SoundSession): Promise<void> {
+    // La banda se carga en su servicio, que es el único que escribe las
+    // asignaciones. Así el tablero de la sesión y la pantalla de canales leen
+    // exactamente el mismo dato.
+    await this.banda.cargar(s.bandProfileId);
     const [banda, local] = await Promise.all([
       this.repos.banda(s.bandProfileId),
       this.repos.local(s.venueProfileId),

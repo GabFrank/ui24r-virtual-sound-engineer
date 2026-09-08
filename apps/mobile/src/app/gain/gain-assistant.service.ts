@@ -46,6 +46,10 @@ export class GainAssistantService {
 
   private muestras: MuestraVu[] = [];
   private temporizador: ReturnType<typeof setInterval> | null = null;
+  /** El muestreo de niveles, cada 50 ms. Vive aparte de la cuenta atrás. */
+  private muestreo: ReturnType<typeof setInterval> | null = null;
+  /** Para poder terminar la cuenta atrás al cancelar, y no dejarla colgada. */
+  private resolverCuenta: (() => void) | null = null;
 
   resultadoDe(indice: number): ResultadoCaptura | undefined {
     return this.resultados().find((r) => r.indice === indice);
@@ -120,13 +124,35 @@ export class GainAssistantService {
     return resultado;
   }
 
+  /**
+   * Cancela la captura en curso.
+   *
+   * Limpia **los dos** temporizadores y resuelve la promesa de la cuenta
+   * atrás. Antes solo limpiaba el de la cuenta: el muestreo, que corre cada
+   * 50 ms, se limpiaba en el `finally` de esa promesa, y como la promesa
+   * nunca se resolvía, el `finally` no se ejecutaba. El muestreo seguía vivo
+   * y, como `capturar()` reasigna el arreglo de muestras al empezar la
+   * siguiente, **el muestreo huérfano del canal cancelado empujaba muestras
+   * dentro de la ventana del canal nuevo**. Quien cancelaba porque se
+   * equivocó de canal y medía el correcto obtenía una recomendación calculada
+   * sobre dos canales mezclados, presentada con su confianza y su evidencia
+   * como si fuera fiable.
+   */
   cancelar(): void {
-    if (this.temporizador) clearInterval(this.temporizador);
-    this.temporizador = null;
+    this.detenerTemporizadores();
     this.estado.set('INACTIVA');
     this.canalEnCurso.set(null);
     this.muestras = [];
+    this.resolverCuenta?.();
+    this.resolverCuenta = null;
     this.log.info('audio', 'captura_cancelada');
+  }
+
+  private detenerTemporizadores(): void {
+    if (this.temporizador !== null) clearInterval(this.temporizador);
+    this.temporizador = null;
+    if (this.muestreo !== null) clearInterval(this.muestreo);
+    this.muestreo = null;
   }
 
   limpiar(): void {
@@ -146,19 +172,24 @@ export class GainAssistantService {
       const canal = this.mixer.canales().find((c) => c.indice === indice);
       if (canal) this.muestras.push({ tMs: Date.now() - inicio, db: canal.nivelDb });
     };
-    const muestreo = setInterval(recoger, 50);
-    return this.cuentaAtras(DURACION_CAPTURA_S).finally(() => clearInterval(muestreo));
+    this.muestreo = setInterval(recoger, 50);
+    return this.cuentaAtras(DURACION_CAPTURA_S).finally(() => {
+      if (this.muestreo !== null) clearInterval(this.muestreo);
+      this.muestreo = null;
+    });
   }
 
   private cuentaAtras(segundos: number): Promise<void> {
     return new Promise((resolve) => {
+      this.resolverCuenta = resolve;
       this.segundosRestantes.set(segundos);
       this.temporizador = setInterval(() => {
         const quedan = this.segundosRestantes() - 1;
         this.segundosRestantes.set(quedan);
         if (quedan <= 0) {
-          if (this.temporizador) clearInterval(this.temporizador);
+          if (this.temporizador !== null) clearInterval(this.temporizador);
           this.temporizador = null;
+          this.resolverCuenta = null;
           resolve();
         }
       }, 1000);

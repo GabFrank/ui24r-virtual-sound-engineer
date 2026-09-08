@@ -10,3 +10,4 @@ export * from './stat.component';
 export * from './stepper.component';
 export * from './toast.service';
 export * from './toast.component';
+export * from './tocado';

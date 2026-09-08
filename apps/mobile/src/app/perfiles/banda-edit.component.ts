@@ -7,7 +7,7 @@ import {
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  ButtonComponent, CardComponent, DialogComponent, EmptyStateComponent,
+  ButtonComponent, CamposTocados, CardComponent, DialogComponent, EmptyStateComponent,
   FieldComponent, PageHeaderComponent, ToastService,
 } from '../ui';
 
@@ -41,9 +41,10 @@ import {
         <div class="pila-lg">
           <ui-card titulo="Identidad">
             <ui-field rotulo="Nombre" idControl="banda-nombre"
-                      [error]="errorNombre()"
+                      [error]="errorNombreVisible()"
                       ayuda="Se usa para agrupar las sesiones en el historial.">
-              <input id="banda-nombre" type="text" [(ngModel)]="nombre" />
+              <input id="banda-nombre" type="text" [(ngModel)]="nombre"
+                     (blur)="tocados.marcar('nombre')" />
             </ui-field>
           </ui-card>
 
@@ -88,8 +89,9 @@ import {
     <ui-dialog titulo="Nuevo integrante" [abierto]="nuevoAbierto()"
                (cerrado)="nuevoAbierto.set(false)">
       <div class="pila">
-        <ui-field rotulo="Nombre" idControl="int-nombre" [error]="errorNuevo()">
-          <input id="int-nombre" type="text" [(ngModel)]="nuevoNombre" />
+        <ui-field rotulo="Nombre" idControl="int-nombre" [error]="errorNuevoVisible()">
+          <input id="int-nombre" type="text" [(ngModel)]="nuevoNombre"
+                 (blur)="tocadosDialogo.marcar('nombre')" />
         </ui-field>
         <ui-field rotulo="Instrumentos" idControl="int-instr" [opcional]="true"
                   ayuda="Separados por comas: voz, guitarra acústica.">
@@ -161,6 +163,16 @@ export class BandaEditComponent {
 
   readonly errorNuevo = computed(() => validarNombre(this.nuevoNombre(), 'El nombre'));
 
+  /**
+   * Los errores no se muestran hasta que el campo se abandona o se intenta
+   * guardar. Siguen decidiendo si se puede guardar; lo que cambia es cuándo se
+   * ven.
+   */
+  readonly tocados = new CamposTocados();
+  readonly tocadosDialogo = new CamposTocados();
+  readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
+  readonly errorNuevoVisible = this.tocadosDialogo.visible('nombre', this.errorNuevo);
+
   constructor() {
     effect(() => {
       const id = this.id();
@@ -181,6 +193,7 @@ export class BandaEditComponent {
   abrirNuevo(): void {
     this.nuevoNombre.set('');
     this.nuevoInstrumentos.set('');
+    this.tocadosDialogo.reiniciar();
     this.nuevoAbierto.set(true);
   }
 
@@ -195,6 +208,7 @@ export class BandaEditComponent {
   }
 
   async guardar(): Promise<void> {
+    this.tocados.intentarGuardar();
     const b = this.banda();
     if (b === null) return;
     await this.repos.guardarBanda({

@@ -1,34 +1,58 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   PERFILES_DE_CANAL, perfilPorTipo, ui24rInput, makeId,
-  type ChannelAssignment, type ChannelProfileType, type MusicalRole,
+  type BandProfile, type BandProfileId, type ChannelAssignment,
+  type ChannelProfileType, type MusicalRole,
 } from '@vse/domain';
 import type { ChannelAssignmentId, BandMemberId } from '@vse/domain';
+import { Logger } from './logger';
+import { Repositorios } from './repos/repositorios';
 
 /**
  * Asignación de canales: qué entrada de la consola es qué instrumento.
  *
- * Sin esto no se puede persistir nada de lo demás. El plan original tenía
- * tipos de canal, perfiles y roles sueltos, pero nada que los uniera con la
- * entrada real de la mesa.
+ * **Escribe sobre el perfil de banda persistido**, no sobre una señal suelta en
+ * memoria. Antes había dos fuentes de verdad para el mismo dato: este servicio
+ * y `BandProfile.asignaciones`, que nadie escribía nunca. Las consecuencias
+ * eran visibles y confusas: la pantalla de canales decía «12 de 12 asignados»
+ * mientras el tablero de la sesión —la pantalla de inicio, la que se mira de un
+ * vistazo entre canción y canción— decía «0 canales», y al reiniciar la
+ * aplicación se perdía la asignación entera sin ningún aviso, incluida la marca
+ * de canal en vivo de la que depende INV-029.
  */
 @Injectable({ providedIn: 'root' })
 export class BandService {
+  private readonly repos = inject(Repositorios);
+  private readonly log = inject(Logger);
+
   readonly perfiles = PERFILES_DE_CANAL;
 
-  private readonly _asignaciones = signal<readonly ChannelAssignment[]>([]);
-  readonly asignaciones = this._asignaciones.asReadonly();
+  private readonly _banda = signal<BandProfile | null>(null);
+  readonly banda = this._banda.asReadonly();
 
-  readonly asignados = computed(() => this._asignaciones().length);
+  readonly asignaciones = computed<readonly ChannelAssignment[]>(
+    () => this._banda()?.asignaciones ?? [],
+  );
+
+  readonly asignados = computed(() => this.asignaciones().length);
 
   /** Canales marcados como fuente en vivo durante el show. */
-  readonly enVivo = computed(() => this._asignaciones().filter((a) => a.isLive));
+  readonly enVivo = computed(() => this.asignaciones().filter((a) => a.isLive));
 
-  asignacionDe(indice: number): ChannelAssignment | undefined {
-    return this._asignaciones().find((a) => a.ui24rInputIndex === indice);
+  /** Carga la banda con la que se está trabajando. `null` la descarga. */
+  async cargar(id: BandProfileId | null): Promise<void> {
+    if (id === null) {
+      this._banda.set(null);
+      return;
+    }
+    this._banda.set(await this.repos.banda(id));
   }
 
-  asignar(
+  asignacionDe(indice: number): ChannelAssignment | undefined {
+    return this.asignaciones().find((a) => a.ui24rInputIndex === indice);
+  }
+
+  async asignar(
     indice: number,
     datos: {
       instrumento: string;
@@ -39,7 +63,15 @@ export class BandService {
       micModelo?: string | null;
       rol?: MusicalRole;
     },
-  ): ChannelAssignment {
+  ): Promise<ChannelAssignment | null> {
+    const banda = this._banda();
+    if (banda === null) {
+      // Sin banda cargada no hay dónde guardar. Antes se guardaba en memoria y
+      // parecía que funcionaba.
+      this.log.warn('system', 'asignacion_sin_banda', { indice });
+      return null;
+    }
+
     const perfil = perfilPorTipo(datos.tipo);
     const previa = this.asignacionDe(indice);
 
@@ -55,16 +87,28 @@ export class BandService {
       isLive: datos.isLive,
     };
 
-    this._asignaciones.update((prev) => {
-      const resto = prev.filter((a) => a.ui24rInputIndex !== indice);
-      return [...resto, asignacion].sort((a, b) => a.ui24rInputIndex - b.ui24rInputIndex);
-    });
-
+    const resto = banda.asignaciones.filter((a) => a.ui24rInputIndex !== indice);
+    await this.guardar(banda, [...resto, asignacion]);
     return asignacion;
   }
 
-  quitar(indice: number): void {
-    this._asignaciones.update((prev) => prev.filter((a) => a.ui24rInputIndex !== indice));
+  async quitar(indice: number): Promise<void> {
+    const banda = this._banda();
+    if (banda === null) return;
+    await this.guardar(
+      banda,
+      banda.asignaciones.filter((a) => a.ui24rInputIndex !== indice),
+    );
+  }
+
+  private async guardar(
+    banda: BandProfile,
+    asignaciones: readonly ChannelAssignment[],
+  ): Promise<void> {
+    const ordenadas = [...asignaciones].sort((a, b) => a.ui24rInputIndex - b.ui24rInputIndex);
+    const actualizada: BandProfile = { ...banda, asignaciones: ordenadas };
+    await this.repos.guardarBanda(actualizada);
+    this._banda.set(actualizada);
   }
 
   perfilDe(asignacion: ChannelAssignment) {
@@ -75,8 +119,13 @@ export class BandService {
    * Propone una asignación a partir del nombre que ya tiene el canal en la
    * consola. Ahorra la mayor parte del trabajo cuando el usuario ya nombró sus
    * canales, que es lo habitual.
+   *
+   * Devuelve `null` cuando no reconoce el nombre. Antes devolvía `CUSTOM`, que
+   * no es una propuesta sino un relleno: dejaba doce canales asignados a un
+   * perfil genérico y al usuario convencido de que la aplicación había
+   * entendido algo.
    */
-  sugerirTipo(nombreEnConsola: string): ChannelProfileType {
+  sugerirTipo(nombreEnConsola: string): ChannelProfileType | null {
     const n = nombreEnConsola.toUpperCase();
     const reglas: readonly [RegExp, ChannelProfileType][] = [
       [/VOZ PRINCIPAL|LEAD|VOCAL PPAL/, 'LEAD_VOCAL'],
@@ -93,6 +142,6 @@ export class BandService {
       [/CHARLA|SPEECH|LOCUTOR/, 'SPEECH'],
     ];
     for (const [re, tipo] of reglas) if (re.test(n)) return tipo;
-    return 'CUSTOM';
+    return null;
   }
 }

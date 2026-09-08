@@ -50,6 +50,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   con lista de tarjetas en lugar de tabla en pantallas angostas.
 
 ### Corregido
+- **Las asignaciones de canal vivían en dos sitios y el que se persistía estaba
+  siempre vacío.** La pantalla de canales decía «12 de 12 asignados» mientras
+  el tablero de la sesión decía «0 canales», y al reiniciar la aplicación se
+  perdía la asignación entera en silencio, incluida la marca de canal en vivo
+  de la que depende INV-029. Ahora hay una sola fuente: el perfil de banda.
+- La pantalla de canales mostraba «Sin asignar» sobre canales que sí lo
+  estaban: el enlace de propiedad sobre el desplegable se aplicaba antes de que
+  existieran sus opciones.
+- Guardar dos de las tres dimensiones de un local descartaba las dos en
+  silencio y mostraba un aviso de éxito.
+- Los errores de validación aparecían al primer carácter, y un formulario
+  recién abierto ya estaba en rojo antes de que el usuario escribiera nada.
+- «Cancelar» durante la captura de ganancia no detenía el muestreo, que seguía
+  vivo y empujaba muestras dentro de la ventana del canal siguiente.
+- «Proponer todos» podía no hacer nada sin decirlo, y proponía el perfil
+  genérico para nombres que no reconocía.
+- Los avisos efímeros se apilaban sin límite y tapaban el contenido.
 - **Cinco invariantes estaban escritas, probadas y muertas**, el mismo patrón
   que ya se había visto con INV-034. Todas corregidas con su test:
   INV-001 comprobaba que la referencia a la instantánea no fuera nula, no que

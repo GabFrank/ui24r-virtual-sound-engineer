@@ -7,7 +7,7 @@ import {
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  ButtonComponent, CardComponent, DialogComponent, EmptyStateComponent,
+  ButtonComponent, CamposTocados, CardComponent, DialogComponent, EmptyStateComponent,
   FieldComponent, PageHeaderComponent, ToastService,
 } from '../ui';
 
@@ -59,8 +59,8 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
         <div class="pila-lg">
           <ui-card titulo="Identidad">
             <div class="pila">
-              <ui-field rotulo="Nombre" idControl="loc-nombre" [error]="errorNombre()">
-                <input id="loc-nombre" type="text" [(ngModel)]="nombre" />
+              <ui-field rotulo="Nombre" idControl="loc-nombre" [error]="errorNombreVisible()">
+                <input id="loc-nombre" type="text" [(ngModel)]="nombre" (blur)="tocados.marcar('nombre')" />
               </ui-field>
 
               <ui-field rotulo="Tipo" idControl="loc-tipo">
@@ -98,21 +98,28 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
           <ui-card titulo="Dimensiones" subtitulo="Opcionales, y conviene dejarlas vacías antes que inventarlas">
             <div class="dims">
               <ui-field rotulo="Largo" idControl="loc-largo" [opcional]="true"
-                        [error]="errorLargo()">
-                <input id="loc-largo" inputmode="decimal" [(ngModel)]="largo" />
+                        [error]="errorLargoVisible()">
+                <input id="loc-largo" inputmode="decimal" [(ngModel)]="largo"
+                       (blur)="tocados.marcar('largo')" />
               </ui-field>
               <ui-field rotulo="Ancho" idControl="loc-ancho" [opcional]="true"
-                        [error]="errorAncho()">
-                <input id="loc-ancho" inputmode="decimal" [(ngModel)]="ancho" />
+                        [error]="errorAnchoVisible()">
+                <input id="loc-ancho" inputmode="decimal" [(ngModel)]="ancho"
+                       (blur)="tocados.marcar('ancho')" />
               </ui-field>
               <ui-field rotulo="Alto" idControl="loc-alto" [opcional]="true"
-                        [error]="errorAlto()">
-                <input id="loc-alto" inputmode="decimal" [(ngModel)]="alto" />
+                        [error]="errorAltoVisible()">
+                <input id="loc-alto" inputmode="decimal" [(ngModel)]="alto"
+                       (blur)="tocados.marcar('alto')" />
               </ui-field>
             </div>
+            @if (errorDimensionesParciales(); as e) {
+              <p class="error">{{ e }}</p>
+            }
             <p class="nota">
-              En metros. Con las tres, la aplicación puede anticipar dónde
-              esperar problemas de modos propios; sin ellas, mide igual pero no
+              En metros, y <strong>las tres o ninguna</strong>: con dos no se
+              calcula ningún modo propio. Con las tres, la aplicación puede
+              anticipar dónde esperar problemas; sin ellas, mide igual pero no
               los explica.
             </p>
           </ui-card>
@@ -164,6 +171,8 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
     .dims { display: grid; gap: var(--sp-3); grid-template-columns: repeat(3, 1fr); }
     @include hasta($bp-telefono) { .dims { grid-template-columns: 1fr; } }
     .nota { margin-top: var(--sp-3); color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea); }
+    .nota strong { color: var(--ink-2); }
+    .error { margin-top: var(--sp-3); color: var(--danger); font-size: var(--txt-sm); }
   `],
 })
 export class LocalEditComponent {
@@ -214,10 +223,31 @@ export class LocalEditComponent {
   readonly errorAncho = computed(() => this.validarDimension(this.ancho(), 'El ancho'));
   readonly errorAlto = computed(() => this.validarDimension(this.alto(), 'El alto'));
 
-  readonly sePuedeGuardar = computed(() => Object.keys(reunirErrores({
-    nombre: this.errorNombre(), largo: this.errorLargo(),
-    ancho: this.errorAncho(), alto: this.errorAlto(),
-  })).length === 0);
+  /**
+   * Las dimensiones son opcionales, pero se piden **las tres o ninguna**: con
+   * dos de tres no se calcula ningún modo propio. Antes, guardar dos las
+   * descartaba las dos en silencio y mostraba un aviso verde de éxito. Alguien
+   * medía el local con una cinta, cargaba dos números, se distraía, guardaba y
+   * se iba convencido de que había quedado.
+   */
+  readonly errorDimensionesParciales = computed(() => {
+    const vacias = [this.largo(), this.ancho(), this.alto()].filter((v) => v.trim() === '').length;
+    return vacias === 0 || vacias === 3
+      ? null
+      : 'Hacen falta las tres para calcular modos propios, o ninguna.';
+  });
+
+  readonly tocados = new CamposTocados();
+  readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
+  readonly errorLargoVisible = this.tocados.visible('largo', this.errorLargo);
+  readonly errorAnchoVisible = this.tocados.visible('ancho', this.errorAncho);
+  readonly errorAltoVisible = this.tocados.visible('alto', this.errorAlto);
+
+  readonly sePuedeGuardar = computed(() => this.errorDimensionesParciales() === null
+    && Object.keys(reunirErrores({
+      nombre: this.errorNombre(), largo: this.errorLargo(),
+      ancho: this.errorAncho(), alto: this.errorAlto(),
+    })).length === 0);
 
   constructor() {
     effect(() => {
@@ -257,6 +287,7 @@ export class LocalEditComponent {
   }
 
   async guardar(): Promise<void> {
+    this.tocados.intentarGuardar();
     const l = this.local();
     if (l === null) return;
     await this.repos.guardarLocal({

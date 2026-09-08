@@ -8,6 +8,16 @@ export interface Aviso {
   readonly tono: TonoDeAviso;
 }
 
+/**
+ * Cuántos avisos se ven a la vez.
+ *
+ * Dos. Con más, la pila tapa el contenido: una captura mostró cinco avisos
+ * apilados sobre la tabla de canales, incluido el botón principal de la
+ * pantalla. Los más viejos se descartan primero, que es lo que el usuario
+ * espera y además lo que menos información pierde.
+ */
+const MAXIMO_VISIBLES = 2;
+
 const DURACION_MS: Readonly<Record<TonoDeAviso, number>> = {
   info: 3200,
   ok: 3200,
@@ -32,7 +42,7 @@ export class ToastService {
 
   mostrar(texto: string, tono: TonoDeAviso = 'info'): void {
     const id = this.siguienteId++;
-    this._avisos.update((a) => [...a, { id, texto, tono }]);
+    this._avisos.update((a) => [...a, { id, texto, tono }].slice(-MAXIMO_VISIBLES));
     const ms = DURACION_MS[tono];
     if (ms > 0) setTimeout(() => this.descartar(id), ms);
   }

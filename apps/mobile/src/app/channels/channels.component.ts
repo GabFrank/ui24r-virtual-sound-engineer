@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import type { ChannelProfileType } from '@vse/domain';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { BandService } from '../core/band.service';
 import { MixerService } from '../core/mixer.service';
 import { SesionService } from '../core/sesion.service';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
+  BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
+  PageHeaderComponent, ToastService,
 } from '../ui';
 
 /** Una fila ya resuelta: la plantilla no calcula nada. */
@@ -36,7 +39,8 @@ interface FilaDeCanal {
   selector: 'app-channels',
   standalone: true,
   imports: [
-    BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
+    FormsModule, BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
+    PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -44,11 +48,21 @@ interface FilaDeCanal {
       <ui-page-header titulo="Canales"
         [descripcion]="resumen()">
         <ui-button variante="secundario" icono="canales"
-                   [deshabilitado]="filas().length === 0"
+                   [deshabilitado]="filas().length === 0 || !hayBanda()"
                    (pulsado)="autoasignar()">Proponer todos</ui-button>
       </ui-page-header>
 
-      @if (filas().length === 0) {
+      @if (!hayBanda()) {
+        <!-- La asignación pertenece a la banda de la sesión: sin sesión abierta
+             no hay dónde guardarla. Antes la pantalla dejaba asignar igual y
+             se perdía todo en silencio. -->
+        <ui-empty icono="sesion" titulo="No hay ninguna sesión abierta"
+          detalle="La asignación de canales pertenece a la banda de la sesión. Abrí una sesión y la asignación queda guardada con ella.">
+          <ui-button variante="primario" icono="adelante" (pulsado)="irASesion()">
+            Ir a Sesión
+          </ui-button>
+        </ui-empty>
+      } @else if (filas().length === 0) {
         <ui-empty icono="conectar" titulo="Sin canales que asignar"
           detalle="Los canales se leen de la consola. Conectate desde Ajustes y van a aparecer acá con el nombre que ya tienen." />
       } @else {
@@ -77,8 +91,14 @@ interface FilaDeCanal {
                   <td class="izq"><span class="idx num">{{ f.indice }}</span></td>
                   <td class="izq">{{ f.nombre }}</td>
                   <td class="izq">
-                    <select [value]="f.tipo" [attr.aria-label]="'tipo del canal ' + f.indice"
-                            (change)="cambiarTipo(f.indice, f.nombre, $event)">
+                    <!-- ngModel y no [value]: el enlace de propiedad sobre el
+                         select se aplica antes de que existan las opciones que
+                         genera el @for de dentro, así que no hacía nada y no
+                         se reintentaba nunca. La pantalla mostraba «Sin
+                         asignar» sobre canales que sí estaban asignados,
+                         contradiciendo a su propio encabezado. -->
+                    <select [ngModel]="f.tipo" [attr.aria-label]="'tipo del canal ' + f.indice"
+                            (ngModelChange)="cambiarTipo(f.indice, f.nombre, $event)">
                       <option value="">Sin asignar</option>
                       @for (p of perfiles; track p.id) {
                         <option [value]="p.type">{{ p.nombre }}</option>
@@ -101,8 +121,8 @@ interface FilaDeCanal {
           @for (f of filas(); track f.indice) {
             <ui-card [titulo]="f.nombre" [subtitulo]="'Entrada ' + f.indice">
               <div class="pila-sm">
-                <select [value]="f.tipo" [attr.aria-label]="'tipo del canal ' + f.indice"
-                        (change)="cambiarTipo(f.indice, f.nombre, $event)">
+                <select [ngModel]="f.tipo" [attr.aria-label]="'tipo del canal ' + f.indice"
+                        (ngModelChange)="cambiarTipo(f.indice, f.nombre, $event)">
                   <option value="">Sin asignar</option>
                   @for (p of perfiles; track p.id) {
                     <option [value]="p.type">{{ p.nombre }}</option>
@@ -161,6 +181,11 @@ export class ChannelsComponent {
   private readonly mixer = inject(MixerService);
   private readonly banda = inject(BandService);
   private readonly sesion = inject(SesionService);
+  private readonly avisos = inject(ToastService);
+  private readonly router = inject(Router);
+
+  /** Sin banda cargada no hay dónde guardar la asignación. */
+  readonly hayBanda = computed(() => this.banda.banda() !== null);
 
   readonly perfiles = this.banda.perfiles;
 
@@ -206,14 +231,15 @@ export class ChannelsComponent {
       + 'que sustituye las entradas por pistas grabadas.';
   });
 
-  cambiarTipo(indice: number, nombre: string, ev: Event): void {
-    const valor = (ev.target as HTMLSelectElement).value;
+  irASesion(): void { void this.router.navigate(['/sesion']); }
+
+  cambiarTipo(indice: number, nombre: string, valor: string): void {
     if (valor === '') {
-      this.banda.quitar(indice);
+      void this.banda.quitar(indice);
       return;
     }
     const previa = this.filas().find((f) => f.indice === indice);
-    this.banda.asignar(indice, {
+    void this.banda.asignar(indice, {
       instrumento: nombre,
       tipo: valor as ChannelProfileType,
       nombreEnConsola: nombre,
@@ -224,7 +250,7 @@ export class ChannelsComponent {
   cambiarEnVivo(indice: number, ev: Event): void {
     const a = this.banda.asignacionDe(indice);
     if (a === undefined) return;
-    this.banda.asignar(indice, {
+    void this.banda.asignar(indice, {
       instrumento: a.instrumento,
       tipo: this.banda.perfilDe(a).type,
       nombreEnConsola: a.nombreEnConsola,
@@ -232,14 +258,40 @@ export class ChannelsComponent {
     });
   }
 
-  autoasignar(): void {
-    for (const f of this.filas()) {
-      if (f.asignado) continue;
+  /**
+   * Propone un tipo para cada canal sin asignar, a partir del nombre que ya
+   * tiene en la consola.
+   *
+   * Informa el resultado siempre. Antes, si no reconocía ningún nombre, el
+   * botón principal de la pantalla no hacía nada visible y no había forma de
+   * saber si había funcionado.
+   */
+  async autoasignar(): Promise<void> {
+    const pendientes = this.filas().filter((f) => !f.asignado);
+    let puestos = 0;
+    for (const f of pendientes) {
       const tipo = this.banda.sugerirTipo(f.nombre);
       if (tipo === null) continue;
-      this.banda.asignar(f.indice, {
+      await this.banda.asignar(f.indice, {
         instrumento: f.nombre, tipo, nombreEnConsola: f.nombre, isLive: false,
       });
+      puestos++;
+    }
+
+    if (pendientes.length === 0) {
+      this.avisos.mostrar('Todos los canales ya estaban asignados.');
+    } else if (puestos === 0) {
+      this.avisos.mostrar(
+        `No se reconoció ninguno de los ${pendientes.length} nombres. Asignalos a mano.`,
+        'aviso',
+      );
+    } else if (puestos < pendientes.length) {
+      this.avisos.ok(
+        `Se propusieron ${puestos} de ${pendientes.length}. ` +
+        'Los demás no se reconocieron por el nombre.',
+      );
+    } else {
+      this.avisos.ok(`Se propusieron los ${puestos} canales pendientes.`);
     }
   }
 }

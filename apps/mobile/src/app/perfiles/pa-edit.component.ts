@@ -7,7 +7,7 @@ import {
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, DialogComponent,
+  BadgeComponent, ButtonComponent, CamposTocados, CardComponent, DialogComponent,
   FieldComponent, PageHeaderComponent, ToastService,
 } from '../ui';
 
@@ -54,8 +54,8 @@ function textoDeBus(b: BusRef): string {
         <div class="pila-lg">
           <ui-card titulo="Identidad">
             <div class="pila">
-              <ui-field rotulo="Nombre" idControl="pa-nombre" [error]="errorNombre()">
-                <input id="pa-nombre" type="text" [(ngModel)]="nombre" />
+              <ui-field rotulo="Nombre" idControl="pa-nombre" [error]="errorNombreVisible()">
+                <input id="pa-nombre" type="text" [(ngModel)]="nombre" (blur)="tocados.marcar('nombre')" />
               </ui-field>
               <ui-field rotulo="Cajas principales" idControl="pa-cajas"
                         ayuda="Marca y modelo, o una descripción que sirva para reconocerlas.">
@@ -70,13 +70,15 @@ function textoDeBus(b: BusRef): string {
           <ui-card titulo="Rango útil">
             <div class="rango">
               <ui-field rotulo="Desde" idControl="pa-desde">
-                <input id="pa-desde" inputmode="numeric" [(ngModel)]="desde" />
+                <input id="pa-desde" inputmode="numeric" [(ngModel)]="desde"
+                       (blur)="tocados.marcar('rango')" />
               </ui-field>
               <ui-field rotulo="Hasta" idControl="pa-hasta">
-                <input id="pa-hasta" inputmode="numeric" [(ngModel)]="hasta" />
+                <input id="pa-hasta" inputmode="numeric" [(ngModel)]="hasta"
+                       (blur)="tocados.marcar('rango')" />
               </ui-field>
             </div>
-            @if (errorRango(); as e) {
+            @if (errorRangoVisible(); as e) {
               <p class="error">{{ e }}</p>
             }
             <p class="nota">
@@ -132,9 +134,10 @@ function textoDeBus(b: BusRef): string {
     <ui-dialog titulo="Nuevo componente" [abierto]="nuevoAbierto()"
                (cerrado)="nuevoAbierto.set(false)">
       <div class="pila">
-        <ui-field rotulo="Nombre" idControl="comp-nombre" [error]="errorNuevo()"
+        <ui-field rotulo="Nombre" idControl="comp-nombre" [error]="errorNuevoVisible()"
                   ayuda="Por ejemplo: lado izquierdo, subgraves, refuerzo de fondo.">
-          <input id="comp-nombre" type="text" [(ngModel)]="nuevoNombre" />
+          <input id="comp-nombre" type="text" [(ngModel)]="nuevoNombre"
+                 (blur)="tocadosDialogo.marcar('nombre')" />
         </ui-field>
         <ui-field rotulo="Sale por" idControl="comp-bus">
           <select id="comp-bus" [(ngModel)]="nuevoBus">
@@ -224,6 +227,12 @@ export class PaEditComponent {
     );
   });
 
+  readonly tocados = new CamposTocados();
+  readonly tocadosDialogo = new CamposTocados();
+  readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
+  readonly errorRangoVisible = this.tocados.visible('rango', this.errorRango);
+  readonly errorNuevoVisible = this.tocadosDialogo.visible('nombre', this.errorNuevo);
+
   constructor() {
     effect(() => {
       const id = this.id();
@@ -245,6 +254,7 @@ export class PaEditComponent {
   }
 
   abrirNuevo(): void {
+    this.tocadosDialogo.reiniciar();
     this.nuevoNombre.set('');
     this.nuevoBus.set('MASTER');
     this.nuevoSilenciable.set(false);
@@ -273,6 +283,7 @@ export class PaEditComponent {
   }
 
   async guardar(): Promise<void> {
+    this.tocados.intentarGuardar();
     const p = this.pa();
     if (p === null) return;
     // Los buses sobre los que se permite escribir ecualización se derivan de
