@@ -37,10 +37,38 @@ fi
 # copiar el secreto desde Windows mete un \r por línea que hace fallar a
 # `base64 -d` con «invalid input», que fue exactamente cómo murió la primera
 # publicación de este repositorio.
-if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$destino" 2>/dev/null; then
+limpio=$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]')
+
+if printf '%s' "$limpio" | base64 -d > "$destino" 2>/dev/null; then
+  :
+# Segundo intento, ignorando todo lo que no sea del alfabeto: una marca de orden
+# de bytes que agregó el editor, unas comillas que se colaron al copiar. Salvar
+# el caso no es adivinar: lo que salga de acá tiene que abrirse como almacén y,
+# más tarde, su huella tiene que coincidir con la del APK firmado. Si el rescate
+# produjera cualquier otra cosa, no llega a publicarse nada.
+elif printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -di > "$destino" 2>/dev/null && [ -s "$destino" ]; then
+  echo "AVISO: el secreto ANDROID_KEYSTORE_BASE64 traía caracteres que no son" >&2
+  echo "base64 y se ignoraron. Se pudo restaurar igual, pero conviene volver a" >&2
+  echo "cargarlo limpio: base64 -w 0 vse-release.jks" >&2
+else
+  # Qué tiene de malo, sin enseñar el secreto. El largo y cuántos caracteres se
+  # salen del alfabeto no lo revelan, y son justo lo que distingue las tres
+  # causas: pegar el .jks binario da miles de caracteres fuera; copiar de menos
+  # da un largo corto o no múltiplo de cuatro; y el resto es otra cosa.
+  largo=$(printf '%s' "$limpio" | wc -c)
+  fuera=$(printf '%s' "$limpio" | tr -d 'A-Za-z0-9+/=' | wc -c)
+  resto=$(( largo % 4 ))
   echo "El secreto ANDROID_KEYSTORE_BASE64 no es base64 válido." >&2
-  echo "Causas habituales: se pegó el .jks binario en vez del .b64, se copió" >&2
-  echo "solo una parte, o el portapapeles metió caracteres de más." >&2
+  echo "  caracteres útiles: $largo" >&2
+  echo "  fuera del alfabeto base64: $fuera" >&2
+  echo "  largo múltiplo de 4: $([ "$resto" -eq 0 ] && echo sí || echo "no, sobran $resto")" >&2
+  if [ "$fuera" -gt 0 ]; then
+    echo "Hay caracteres que no son base64: lo más probable es que se haya pegado" >&2
+    echo "el fichero .jks binario en vez del .b64." >&2
+  else
+    echo "Todos los caracteres son del alfabeto pero el largo no cierra: lo más" >&2
+    echo "probable es que se haya copiado solo una parte." >&2
+  fi
   echo "Regenerarlo con: base64 -w 0 vse-release.jks" >&2
   exit 1
 fi

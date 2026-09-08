@@ -16,7 +16,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   murió ahí, después de pasar las seis comprobaciones. Ahora se quitan los
   espacios antes de decodificar, se comprueba que lo decodificado sea un almacén
   y que abra con la contraseña cargada, y cada uno de los tres fallos dice cuál
-  fue.
+  fue. Si aun así no es base64, dice cuánto mide, cuántos caracteres se
+  salen del alfabeto y si el largo cierra en múltiplo de cuatro: eso distingue
+  haber pegado el `.jks` binario de haber copiado solo una parte. Y hace un
+  segundo intento ignorando lo que no sea del alfabeto —una marca de orden de
+  bytes, unas comillas—, que igual tiene que abrirse como almacén y coincidir
+  con la huella del APK.
 - **La firma del APK se comprueba contra el almacén, no a ojo.** La corrida
   compara la huella SHA-256 del certificado del APK con la del almacén que
   restauró y se detiene si difieren. Descartar la clave de depuración —lo único
