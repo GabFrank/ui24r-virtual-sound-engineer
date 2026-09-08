@@ -20,8 +20,20 @@ const DIST = join(RAIZ, 'apps', 'mobile', 'dist', 'mobile', 'browser');
 const PUERTO_SIM = 8765;
 const PUERTO_WEB = 4321;
 
-// Tablet en horizontal: es como se usa en escenario.
+// Tablet en horizontal: es como se usa en escenario, y es el tamaño con el
+// que se capturan los escenarios de la consola.
 const VIEWPORT = { width: 1280, height: 800 };
+
+// Tamaños con los que se revisa que la interfaz responda. No son modelos
+// concretos: son los anchos donde el diseño cambia de forma.
+// El alto es deliberadamente grande: el contenido de la aplicación se
+// desplaza dentro de su propia caja, no en el cuerpo de la página, así que la
+// captura de página completa no lo alcanza. Se agranda la ventana en su lugar.
+const TAMANIOS = [
+  { id: 'telefono', width: 390, height: 2600 },
+  { id: 'tablet-vertical', width: 834, height: 2400 },
+  { id: 'tablet', width: 1280, height: 2200 },
+];
 
 const procesos = [];
 
@@ -57,8 +69,11 @@ function puertoOcupado(puerto) {
 }
 
 async function main() {
+  // La galería del sistema de diseño solo existe en la compilación de
+  // desarrollo, así que las capturas se hacen sobre esa. Es el mismo código:
+  // lo único que cambia es que no se optimiza y que `isDevMode()` es cierto.
   if (!existsSync(DIST)) {
-    console.error(`No existe ${DIST}. Ejecutar primero: npm run build -w mobile`);
+    console.error(`No existe ${DIST}. Ejecutar primero: npm run build:dev -w mobile`);
     process.exit(1);
   }
   mkdirSync(OUT, { recursive: true });
@@ -164,7 +179,7 @@ async function main() {
 
   // --- Asignación de canales y asistente de ganancia ---
 
-  await pagina.click('nav.pestanias button:nth-child(2)');
+  await pagina.click('[data-pestania="canales"]');
   await esperar(400);
   await capturar('10-canales-sin-asignar', 'canales de la consola, todavía sin asignar');
 
@@ -172,7 +187,7 @@ async function main() {
   await esperar(600);
   await capturar('11-canales-propuestos', 'tipos propuestos desde el nombre que ya tiene cada canal');
 
-  await pagina.click('nav.pestanias button:nth-child(3)');
+  await pagina.click('[data-pestania="ganancia"]');
   await esperar(400);
   await capturar('12-ganancia-sin-medir', 'asistente de ganancia antes de medir');
 
@@ -231,7 +246,7 @@ async function main() {
 
   // Primero conectado, que es el caso que hay que ver: INV-034 no deja
   // actualizar mientras la aplicación está trabajando contra la consola.
-  await pagina.click('nav.pestanias button:last-child');
+  await pagina.click('[data-pestania="actualizacion"]');
   await esperar(300);
   await capturar('16-actualizacion-inicial', 'pestaña de actualización antes de consultar');
 
@@ -243,7 +258,7 @@ async function main() {
   // Volver a cargar deja la aplicación desconectada, que es el momento en que
   // corresponde actualizar.
   await pagina.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
-  await pagina.click('nav.pestanias button:last-child');
+  await pagina.click('[data-pestania="actualizacion"]');
   await esperar(300);
 
   await responderCatalogo([]);
@@ -274,6 +289,23 @@ async function main() {
   await pagina.waitForSelector('.nota.ok', { timeout: 5000 });
   await esperar(300);
   await capturar('21-prelanzamiento-descartado', 'una etiqueta rc no se ofrece como actualización');
+
+  // --- Sistema de diseño, en los tres anchos donde cambia la forma ---
+  //
+  // Se capturan aparte de los escenarios de la consola porque contestan otra
+  // pregunta: no si la aplicación entiende el protocolo, sino si se puede
+  // leer y tocar en el tamaño de pantalla que haya.
+  for (const t of TAMANIOS) {
+    const p2 = await contexto.newPage();
+    await p2.setViewportSize({ width: t.width, height: t.height });
+    await p2.goto(`http://localhost:${PUERTO_WEB}/`, { waitUntil: 'networkidle' });
+    await p2.click('[data-pestania="galeria"]');
+    await esperar(500);
+    const ruta = join(OUT, `ds-${t.id}.png`);
+    await p2.screenshot({ path: ruta, fullPage: true });
+    console.log(`  ✓ ds-${t.id}.png — sistema de diseño a ${t.width} px`);
+    await p2.close();
+  }
 
   await navegador.close();
   console.log(`\nCapturas en ${OUT}\n`);

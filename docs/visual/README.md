@@ -26,6 +26,9 @@ interfaz, no se editan a mano.
 | `19-actualizacion-sin-permiso.png` | Versión disponible, falta el ajuste del sistema |
 | `20-actualizacion-disponible.png` | Versión disponible, con sus novedades |
 | `21-prelanzamiento-descartado.png` | Una etiqueta `rc` no se ofrece como actualización |
+| `ds-telefono.png` | Sistema de diseño completo a 390 px |
+| `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
+| `ds-tablet.png` | Sistema de diseño completo a 1280 px |
 
 De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
 vez de salir a la red, igual que el simulador responde el protocolo de la
@@ -60,6 +63,10 @@ En la tanda siguiente encontraron dos más:
 4. **Doce botones rellenos competían con los números**, que son lo que hay que
    leer de un vistazo. Se pasaron a acción secundaria.
 
+Las tres capturas `ds-*` contestan otra pregunta que el resto: no si la
+aplicación entiende el protocolo, sino si se puede leer y tocar en el ancho de
+pantalla que haya. Ver [docs/design-system.md](../design-system.md).
+
 Y en la tanda de la actualización, uno más:
 
 5. **INV-034 estaba escrita, probada y muerta.** La invariante prohíbe
@@ -69,3 +76,16 @@ Y en la tanda de la actualización, uno más:
    en la captura que se hizo para mostrar lo contrario. Ahora la conexión con
    la consola cuenta como suplente declarado hasta que exista el modelo de
    sesión.
+
+Y en la del sistema de diseño, dos más:
+
+6. **La compilación de desarrollo no compilaba**, y con ella `ng serve`
+   tampoco. Los mapas de código de scripts, junto con la importación de los
+   paquetes por sus fuentes en TypeScript, hacen que el compilador de Angular
+   pierda `src/main.ts`. Se apagaron los mapas de scripts, quedaron los de
+   estilos, y está explicado en `apps/mobile/README.md`. No se había notado
+   porque todo el trabajo hasta ahora se compiló en modo publicación.
+7. **El paro de emergencia se montaba sobre el último botón en teléfono.**
+   La captura del sistema de diseño lo muestra tapando el «Siguiente» de un
+   asistente. De todos los controles de esta aplicación, el paro es el que
+   menos puede taparse ni tapar; ahora la página reserva el sitio.

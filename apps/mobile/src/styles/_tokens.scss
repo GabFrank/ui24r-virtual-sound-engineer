@@ -1,0 +1,150 @@
+/* Fichas de diseño.
+ *
+ * Todo valor visual de la aplicación sale de acá. La regla es simple: si un
+ * componente escribe un color, un espacio o un tamaño literal, es un error —
+ * salvo el cero y el uno.
+ *
+ * El contexto manda sobre el gusto. Esto se opera de pie, a un metro de
+ * distancia, con poca luz, a veces con una mano y casi siempre con prisa. De
+ * ahí salen las tres decisiones que atraviesan todo lo demás: fondo oscuro
+ * siempre, objetivos táctiles grandes, y números en tipografía de ancho fijo
+ * para que se puedan comparar en columna de un vistazo. */
+
+:root {
+  /* --- Superficies -------------------------------------------------------
+   * Cuatro niveles, no más. Con más niveles nadie recuerda cuál usar y el
+   * resultado es un degradado accidental. */
+  --bg: #0d1113;
+  --surface: #141a1c;
+  --surface-2: #1a2124;
+  --surface-3: #212a2d;
+
+  /* --- Texto -------------------------------------------------------------
+   * Tres niveles de énfasis. `--muted` es el mínimo que todavía cumple 4.5:1
+   * sobre `--surface`; por debajo de eso no se pone texto, se quita. */
+  --ink: #e3e9ea;
+  --ink-2: #b3bdbf;
+  --muted: #8b989b;
+
+  --line: #2a3336;
+  --line-fuerte: #3a4548;
+
+  /* --- Color con significado ---------------------------------------------
+   * Ninguno es decorativo. `--signal` marca lo que la aplicación propone o
+   * está haciendo; los otros tres son estado y nunca se usan por estética. */
+  --signal: #3fc3ce;
+  --signal-tenue: #1d4a4e;
+  --ok: #7fb86a;
+  --ok-tenue: #263a20;
+  --warn: #dfa355;
+  --warn-tenue: #40301a;
+  --danger: #e07373;
+  --danger-tenue: #45211f;
+
+  /* El color nunca es el único portador de información: cada estado lleva
+   * además texto y, donde hace falta, una forma distinta. Un ingeniero de
+   * sonido daltónico tiene que poder usar esto. */
+
+  /* --- Espaciado ---------------------------------------------------------
+   * Escala de base 4. Los saltos son deliberadamente pocos: elegir entre
+   * doce valores es elegir mal. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* --- Tipografía --------------------------------------------------------
+   * Las fuentes son de sistema a propósito: la aplicación funciona sin
+   * internet y descargar una tipografía sería una dependencia de red en el
+   * peor momento posible. */
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'Roboto Mono', 'SF Mono', Menlo, monospace;
+
+  --txt-xs: 12px;
+  --txt-sm: 13px;
+  --txt-md: 15px;
+  --txt-lg: 18px;
+  --txt-xl: 22px;
+  --txt-2xl: 28px;
+  --txt-3xl: 40px;
+
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-fuerte: 600;
+
+  --alto-linea-apretado: 1.25;
+  --alto-linea: 1.55;
+
+  /* --- Forma -------------------------------------------------------------
+   * Radios chicos. Un radio grande en una tabla de números hace perder el
+   * alineamiento visual de las columnas. */
+  --radio-sm: 3px;
+  --radio-md: 6px;
+  --radio-lg: 12px;
+  --radio-full: 999px;
+
+  /* --- Elevación ---------------------------------------------------------
+   * En oscuro la sombra casi no se ve: la elevación se comunica con el
+   * cambio de superficie y con el borde. La sombra solo separa lo que
+   * flota de verdad. */
+  --sombra-flotante: 0 8px 24px rgb(0 0 0 / 0.5);
+  --sombra-modal: 0 16px 48px rgb(0 0 0 / 0.6);
+
+  /* --- Tacto -------------------------------------------------------------
+   * 48px es el mínimo de las guías de accesibilidad. 56 es el objetivo real
+   * para las acciones que se tocan sin mirar, con el instrumento en la mano. */
+  --tap-min: 48px;
+  --tap-comodo: 56px;
+
+  /* --- Movimiento --------------------------------------------------------
+   * Corto y funcional. Una animación larga en una pantalla que hay que leer
+   * rápido es una pausa impuesta. */
+  --mov-rapido: 120ms;
+  --mov-medio: 200ms;
+  --curva: cubic-bezier(0.2, 0, 0, 1);
+
+  /* --- Trazado -----------------------------------------------------------
+   * Ancho máximo de una columna de texto. Más ancho que esto y el ojo pierde
+   * el renglón al volver. */
+  --ancho-lectura: 68ch;
+  --ancho-formulario: 560px;
+  --ancho-contenido: 1100px;
+
+  /* Zonas seguras del dispositivo: sin esto, en un teléfono con muesca la
+   * barra inferior queda debajo del indicador de gestos. */
+  --seguro-arriba: env(safe-area-inset-top, 0px);
+  --seguro-abajo: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mov-rapido: 1ms;
+    --mov-medio: 1ms;
+  }
+}
+
+/* Puntos de corte.
+ *
+ * No se pueden expresar como variables CSS dentro de una consulta de medios,
+ * así que viven acá como valores de Sass y se usan con el mixin `hasta` /
+ * `desde`. Están puestos donde el contenido se rompe, no en tamaños de
+ * dispositivos concretos. */
+$bp-telefono: 600px;   // por debajo: una sola columna, acciones al alcance del pulgar
+$bp-tablet: 900px;     // por encima: dos columnas y tabla completa
+$bp-ancho: 1240px;     // por encima: se limita el ancho, no se estira
+
+@mixin hasta($bp) {
+  @media (max-width: #{$bp - 1px}) { @content; }
+}
+@mixin desde($bp) {
+  @media (min-width: #{$bp}) { @content; }
+}
+/* Alto reducido: teléfono en horizontal. La barra superior y la inferior se
+ * comen la pantalla si no se compactan. */
+@mixin bajo {
+  @media (max-height: 480px) { @content; }
+}
