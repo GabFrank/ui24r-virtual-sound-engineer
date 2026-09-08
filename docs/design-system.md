@@ -185,5 +185,6 @@ node tools/visual/capture.mjs
 ```
 
 Genera `ds-telefono.png`, `ds-tablet-vertical.png` y `ds-tablet.png` en
-`docs/visual/`: la galería completa en los tres anchos donde el diseño cambia
-de forma.
+`tools/visual/out/`: la galería completa en los tres anchos donde el diseño
+cambia de forma. Lo que hay en `docs/visual/` es una copia manual de esa
+carpeta, que no está versionada.

@@ -48,7 +48,16 @@ export interface EntradaDiario {
   readonly cambios: readonly CambioRegistrado[];
 }
 
-/** Puerto de persistencia. La implementación sobre base local vive en la app. */
+/**
+ * Puerto del diario.
+ *
+ * **La única implementación es `DiarioEnMemoria`.** El comentario anterior decía
+ * que la persistente «vive en la app» y no vive en ninguna parte: la tabla
+ * `transaction_journal` está en el esquema y no la escribe nadie, así que lo
+ * que INV-020 protege —sobrevivir a una caída a mitad de una transacción— está
+ * probado solo contra un `Map`. Se escribe con el primer llamador del ejecutor,
+ * que es también lo que le falta a la cláusula de INV-034.
+ */
 export interface Diario {
   abrir(entrada: EntradaDiario): Promise<void>;
   actualizar(id: string, cambios: Partial<EntradaDiario>): Promise<void>;

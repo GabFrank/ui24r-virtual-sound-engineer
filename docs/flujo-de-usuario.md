@@ -2,7 +2,7 @@
 
 Qué se puede hacer hoy con la aplicación, de principio a fin, sin hardware de
 medición. Está verificado automáticamente: `tools/visual/flujo.mjs` recorre
-estos veintiún pasos en dos anchos de pantalla y falla si alguno se atasca o si
+estos veinticuatro pasos en dos anchos de pantalla y falla si alguno se atasca o si
 la consola del navegador registra un error.
 
 ```
@@ -99,4 +99,4 @@ npm run build:dev -w mobile
 node tools/visual/flujo.mjs
 ```
 
-Deja en `docs/visual/` las capturas `flujo-tablet-*` y `flujo-telefono-*`.
+Deja las capturas `flujo-tablet-*` y `flujo-telefono-*` en `tools/visual/out/`, que no está versionado. Lo que hay en `docs/visual/` es una copia manual: al cambiar el recorrido hay que volver a copiarlas, o quedan describiendo pasos que ya no existen.

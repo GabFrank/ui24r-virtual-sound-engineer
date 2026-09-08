@@ -1,7 +1,10 @@
 # Capturas contra el simulador
 
-Generadas por `node tools/visual/capture.mjs`. Se regeneran en cada cambio de
-interfaz, no se editan a mano.
+Generadas por `node tools/visual/capture.mjs` y `node tools/visual/flujo.mjs`,
+que escriben en `tools/visual/out/` — esa carpeta no está versionada, y lo que
+hay acá es una copia manual. Se regeneran en cada cambio de interfaz y no se
+editan a mano; al cambiar el recorrido hay que volver a copiarlas, o quedan
+describiendo pasos que ya no existen.
 
 | Captura | Qué muestra |
 |---|---|
@@ -32,8 +35,8 @@ interfaz, no se editan a mano.
 | `ds-telefono.png` | Sistema de diseño completo a 390 px |
 | `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
 | `ds-tablet.png` | Sistema de diseño completo a 1280 px |
-| `flujo-tablet-*.png` | Los 21 pasos del camino de usuario en tablet |
-| `flujo-telefono-*.png` | Los mismos 21 pasos en teléfono |
+| `flujo-tablet-*.png` | Los 24 pasos del camino de usuario en tablet |
+| `flujo-telefono-*.png` | Los mismos 24 pasos en teléfono |
 
 De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
 vez de salir a la red, igual que el simulador responde el protocolo de la

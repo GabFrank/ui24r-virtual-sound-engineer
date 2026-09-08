@@ -4,14 +4,61 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Corregido
+- **INV-019**: el paro de emergencia dentro de un diálogo medía 48 px cuando la
+  invariante exige 64, y la comprobación que lo cubría estaba calibrada en 44 —
+  por debajo de la propia regla.
+- **INV-021**: un cambio de la instantánea activa no invalidaba el estado si
+  venía con menos de diez parámetros, y la causa probable estaba fija en
+  «recuperación de instantánea» también cuando no lo era.
+- **INV-034**: la señal de transacción en curso no la ponía nadie en `true`, y
+  al conectarla se apagaba antes de tiempo con dos transacciones solapadas.
+- **INV-005**: `PACING_MS` no la importaba ningún código de producción, y la
+  exención del límite de cuatro parámetros para las transacciones de sistema no
+  se podía ni expresar.
+- **INV-003**: la retención de veinte instantáneas automáticas existía como un
+  número y no la consultaba nadie.
+- **INV-001**: `puedeAplicarse` comprobaba que la referencia no fuera nula, que
+  es el defecto que la invariante describe.
+- El orden de los documentos sin el índice por el que se ordena divergía entre
+  SQLite y el navegador; ordenar por `id` funcionaba en uno y no en el otro.
+- El fader tenía un salto de 47 dB por debajo de 0,0625, y la ganancia se
+  calculaba con una conversión inventada.
+- El validador de identificadores comprobaba tres de las ocho familias que
+  reconocía; el de plantillas no miraba `@else if`, `@switch` ni `@for`;
+  `verificar` no corría los tests de DSP.
+
 ### Agregado
 - `npm run verificar` y `npm run verificar:commits`: lo mismo que comprueba la
   integración continua, en un comando, antes de empujar.
+- `packages/logging`: el registro, el sumidero de consola y uno **persistente**
+  sobre el puerto de almacén, así que funciona igual en la tablet y en el
+  navegador. Encola y vuelca por lotes, purga por número contando sin traer, y
+  no lanza nunca: si el almacén falla, anota el error y sigue. Ajustes lista los
+  últimos cien eventos, filtra por avisos y errores, y los copia como
+  `events.jsonl`.
+- `Cargable` y `Lectura`, con `ui-cargando` y `ui-fallo`: una pantalla que lee
+  distingue cargando, error y vacío, en ese orden. El esqueleto solo aparece la
+  primera vez; una recarga que falla no vacía lo que ya estaba en pantalla.
+- `intentarGuardar()`: escribir en el almacén y fallar ahora se ve. Antes no
+  aparecía ni el aviso de éxito ni ningún error, y lo escrito se perdía.
+- Aviso antes de salir de una edición con cambios sin guardar
+  (`guardaDeSalida`, `ui-salir-sin-guardar`), en las tres pantallas de perfiles.
+- Borrado de un sistema de amplificación, con la comprobación de que no lo use
+  ningún local.
+- `packages/mixer-adapter/src/conversiones.ts`: las cuatro conversiones entre el
+  valor crudo y unidades físicas, juntas y marcadas con
+  `VERIFICADO_CONTRA_CONSOLA = false`. La interfaz antepone «≈» a lo que sale de
+  ellas, y «—» cuando la consola todavía no dijo el valor.
+- `releerEstado()`: la relectura que INV-021 exigía y no existía. El estado
+  invalidado por una avalancha se quedaba inválido hasta desconectar a mano.
+- `contar()` en el puerto de almacén, y el esquema de la base mudado a
+  `@vse/store` para poder probar su SQL contra SQLite real.
 - Estructura de monorepo, integración continua y convenciones de contribución (S-00.1, S-00.5).
 - 18 decisiones de arquitectura, de ADR-001 a ADR-018 (S-00.2).
 - Charters de los 22 spikes de fase 0 con criterio de aprobación numérico (S-00.3).
 - Matriz de capacidades del protocolo, matriz de hardware y registro de riesgos (S-00.4).
-- 33 invariantes de seguridad con su test y la versión desde la que aplican (S-00.6).
+- 33 invariantes de seguridad con su test y la versión desde la que aplican (S-00.6). Hoy son 34: INV-034 se agregó con la actualización dentro de la aplicación.
 - Actas de gate en blanco para G-A a G-E, y plantilla de informe de prueba de campo.
 - Actualización dentro de la aplicación, sin tienda: consulta las publicaciones
   del repositorio, descarga el APK, verifica su SHA-256 e instala con
@@ -27,7 +74,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 - `docs/actualizacion-en-app.md`: la ceremonia del almacén de claves, que hay
   que hacer **antes** de la primera instalación en la tablet.
 
-- Sistema de diseño: fichas de color, espaciado, tipografía y tacto; once
+- Sistema de diseño: fichas de color, espaciado, tipografía y tacto; catorce
   primitivas de componente; galería viva en la compilación de desarrollo
   (`docs/design-system.md`).
 - Interfaz responsiva de verdad en teléfono, optimizada para tablet: tres

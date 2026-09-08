@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  BadgeComponent, ButtonComponent, CardComponent, DialogComponent, EmptyStateComponent,
-  FieldComponent, IconComponent, PageHeaderComponent, StatComponent, StepperComponent,
-  ToastService, type NombreDeIcono, type PasoDeAsistente,
+  BadgeComponent, ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
+  EmptyStateComponent, FalloComponent, FieldComponent, IconComponent, PageHeaderComponent,
+  SalirSinGuardarComponent, StatComponent, StepperComponent, ToastService, type NombreDeIcono,
+  type PasoDeAsistente,
 } from '../ui';
 
 const ICONOS: readonly NombreDeIcono[] = [
@@ -34,8 +35,9 @@ const PASOS: readonly PasoDeAsistente[] = [
   selector: 'app-galeria',
   standalone: true,
   imports: [
-    BadgeComponent, ButtonComponent, CardComponent, DialogComponent, EmptyStateComponent,
-    FieldComponent, IconComponent, PageHeaderComponent, StatComponent, StepperComponent,
+    BadgeComponent, ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
+    EmptyStateComponent, FalloComponent, FieldComponent, IconComponent, PageHeaderComponent,
+    SalirSinGuardarComponent, StatComponent, StepperComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -124,6 +126,28 @@ const PASOS: readonly PasoDeAsistente[] = [
           </div>
         </ui-card>
 
+        <!-- Faltaban acá: las cuatro primitivas de lectura y salida no estaban
+             en la galería, que es justo donde se revisan en los tres anchos. -->
+        <ui-card titulo="Mientras se lee" subtitulo="Barras del alto del contenido que va a llegar">
+          <ui-cargando texto="Leyendo los perfiles guardados" />
+        </ui-card>
+
+        <ui-card titulo="Cuando no se pudo leer" class="sin-relleno">
+          <ui-fallo mensaje="No se pudieron leer los datos guardados." />
+        </ui-card>
+
+        <ui-card titulo="Cuando falla una recarga" subtitulo="Compacto: ya hay algo en pantalla">
+          <ui-fallo mensaje="No se pudo actualizar la lista." [compacto]="true" />
+        </ui-card>
+
+        <ui-card titulo="Salir con cambios sin guardar">
+          <ui-button variante="secundario" (pulsado)="salidaAbierta.set(true)">
+            Ver el aviso de salida
+          </ui-button>
+          <ui-salir-sin-guardar que="Lo que cambiaste del local" [abierto]="salidaAbierta()"
+                                (respuesta)="salidaAbierta.set(false)" />
+        </ui-card>
+
         <ui-card titulo="Estados vacíos" class="sin-relleno">
           <ui-empty icono="sesion" titulo="Todavía no hay sesiones"
                     detalle="Una sesión agrupa todo lo que pasa en un lugar y una fecha: mediciones, recomendaciones y lo que se aplicó.">
@@ -182,6 +206,7 @@ export class GaleriaComponent {
   readonly iconos = ICONOS;
   readonly pasos = PASOS;
   readonly abierto = signal(false);
+  readonly salidaAbierta = signal(false);
 
   readonly superficies = [
     { nombre: 'fondo', ficha: '--bg' },
