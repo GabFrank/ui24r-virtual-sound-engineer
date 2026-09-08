@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { VERIFICADO_CONTRA_CONSOLA } from '@vse/mixer-adapter';
 import { ConnectionStateService } from '../core/connection.state';
 import { MixerService } from '../core/mixer.service';
 import {
@@ -14,6 +15,16 @@ import { LevelMeterComponent } from './level-meter.component';
  * esperado no llegue al fondo de escala. Es un umbral de aviso, no de rechazo:
  * la aplicación no escribe nada acá.
  */
+/**
+ * Lo que precede a un número que sale de una curva sin medir.
+ *
+ * El nivel y el pico vienen de los medidores de la consola: son medidas. La
+ * ganancia y el fader salen de convertir un valor de 0 a 1 con una curva que
+ * ningún spike verificó. Van en la misma tabla, así que sin distinguirlos se
+ * leen como si tuvieran la misma procedencia.
+ */
+const MARCA_ESTIMADO = '≈';
+
 const MARGEN_ESCASO_DB = -6;
 
 /**
@@ -171,6 +182,14 @@ function db(v: number): string {
           }
         </div>
 
+        @if (hayEstimaciones) {
+          <p class="nota-estimado">
+            La ganancia y el fader llevan «≈»: el rango de esos parámetros está
+            confirmado, pero la curva que traduce el valor de la consola a
+            decibeles todavía no se midió. El nivel y el pico sí son medidas.
+          </p>
+        }
+
         @if (externos().length > 0) {
           <ui-card class="externos" titulo="Cambios hechos desde otro dispositivo"
                    subtitulo="El protocolo no dice qué cliente los hizo: solo se puede distinguir un cambio propio de uno ajeno">
@@ -186,6 +205,11 @@ function db(v: number): string {
   `,
   styles: [`
     @use 'tokens' as *;
+
+    .nota-estimado {
+      color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea);
+      margin: var(--sp-4) 0 0;
+    }
 
     .alerta {
       display: flex; align-items: center; justify-content: space-between;
@@ -268,8 +292,13 @@ export class TelemetryComponent {
       pico: db(c.picoDb),
       margen: !Number.isFinite(c.picoDb) || c.picoDb <= -80 ? '—' : (-c.picoDb).toFixed(1),
       margenEscaso: Number.isFinite(c.picoDb) && c.picoDb > MARGEN_ESCASO_DB,
-      ganancia: c.gainDb.toFixed(0),
-      fader: db(c.faderDb),
+      // El «≈» no es decoración. La ganancia y el fader salen de curvas que
+      // ningún spike midió: el rango está confirmado, la forma del recorrido
+      // entre 0 y 1 se supone. Mostrarlos como cifras exactas al lado del
+      // nivel medido —que sí lo es— haría creer que tienen la misma
+      // procedencia.
+      ganancia: `${MARCA_ESTIMADO}${c.gainDb.toFixed(0)}`,
+      fader: `${MARCA_ESTIMADO}${db(c.faderDb)}`,
       clips: c.eventosSaturacion,
     })),
   );
@@ -277,6 +306,9 @@ export class TelemetryComponent {
   readonly resumen = computed(
     () => `${this.filas().length} canales · solo lectura · esta versión no escribe nada en la consola`,
   );
+
+  /** Se apaga solo el día que SPK-P0.2a mida las curvas. */
+  readonly hayEstimaciones = !VERIFICADO_CONTRA_CONSOLA;
 
   irAAjustes(): void { void this.router.navigate(['/ajustes']); }
 

@@ -13,6 +13,8 @@
 - **INFERIDO**: la clave existe en el modelo de estado, pero el escalado del valor es desconocido.
 - **DESCONOCIDO**: no se encontró fuente; requiere spike con hardware.
 
+> **El rango no es la curva.** Varias filas están CONFIRMADAS en cuanto a que el parámetro existe y hasta dónde llega, y aun así la aplicación no sabe traducir su valor a unidades físicas: la *forma* del recorrido entre 0 y 1 la mide SPK-P0.2a. Mientras tanto, `packages/mixer-adapter/src/conversiones.ts` usa suposiciones —logarítmica para el fader, lineal para la ganancia—, están todas juntas y marcadas con `VERIFICADO_CONTRA_CONSOLA = false`, y la interfaz antepone «≈» a lo que sale de ellas. El nivel y el pico no llevan esa marca: vienen de los medidores y son medidas.
+
 ## Entradas y canales
 
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |

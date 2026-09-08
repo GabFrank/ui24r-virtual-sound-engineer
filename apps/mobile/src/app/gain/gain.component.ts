@@ -7,6 +7,7 @@ import {
   PageHeaderComponent, StatComponent, type TonoDeInsignia,
 } from '../ui';
 import { DURACION_CAPTURA_S, GainAssistantService } from './gain-assistant.service';
+import { VERIFICADO_CONTRA_CONSOLA } from '@vse/mixer-adapter';
 
 /** Una fila ya resuelta: la plantilla no calcula ni formatea nada. */
 interface FilaDeGanancia {
@@ -135,6 +136,15 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
           }
         </div>
 
+        @if (gananciaEsEstimada) {
+          <p class="nota-estimado">
+            La ganancia actual que se lee de la consola es una estimación: su
+            rango está confirmado, pero la curva que traduce el valor a
+            decibeles todavía no se midió. La propuesta hereda esa suposición,
+            así que conviene comprobar en la consola dónde queda la perilla.
+          </p>
+        }
+
         @for (r of recomendaciones(); track r.indice) {
           <ui-card class="recomendacion" [titulo]="r.nombre" subtitulo="Recomendación">
             <p class="razon">{{ r.propuesta.razon }}</p>
@@ -175,6 +185,10 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
     .idx { color: var(--signal); font-size: var(--txt-xs); margin-right: var(--sp-2); }
     .sin { color: var(--muted); font-size: var(--txt-sm); }
 
+    .nota-estimado {
+      color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea);
+      margin: var(--sp-4) 0 0;
+    }
     .propuesta.sube { color: var(--ok); }
     .propuesta.baja { color: var(--warn); }
 
@@ -208,6 +222,9 @@ export class GainComponent {
 
   /** La evidencia ya formateada: cuatro `toFixed` en la plantilla se
    *  reevaluaban en cada ciclo, con la cuenta regresiva corriendo. */
+  /** Se apaga solo el día que SPK-P0.2a mida la curva de la ganancia. */
+  readonly gananciaEsEstimada = !VERIFICADO_CONTRA_CONSOLA;
+
   readonly recomendaciones = computed(() => this.resultados().map((r) => ({
     indice: r.indice,
     nombre: r.nombre,

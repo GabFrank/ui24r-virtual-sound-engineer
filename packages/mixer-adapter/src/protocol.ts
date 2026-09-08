@@ -55,30 +55,6 @@ export function codificarSets(path: string, texto: string): string {
 }
 
 /**
- * Conversión del valor del fader.
- *
- * La consola trabaja en un rango de 0 a 1 con una curva no lineal. Esta es
- * una aproximación razonable hasta que el spike de capacidades mida la curva
- * real: por eso el estado de la fila en la matriz es CONFIRMADO para la
- * existencia del parámetro pero la curva exacta se verifica aparte.
- */
-export function faderADb(valor: number): number {
-  if (valor <= 0) return -Infinity;
-  if (valor >= 1) return 10;
-  // Aproximación por tramos: la zona útil entre -20 y +10 dB ocupa la mayor
-  // parte del recorrido, como en cualquier fader de mezcladora.
-  if (valor < 0.0625) return -Infinity + 0; // por debajo del primer tramo
-  const db = 20 * Math.log10(valor) * 2.2 + 10;
-  return Math.max(-90, Math.min(10, db));
-}
-
-export function dbAFader(db: number): number {
-  if (db <= -90) return 0;
-  const v = Math.pow(10, (Math.min(10, db) - 10) / (20 * 2.2));
-  return Math.max(0, Math.min(1, v));
-}
-
-/**
  * Base64 sin depender de `Buffer` ni de `atob`.
  *
  * El mismo código corre en el navegador, en el WebView de Android y en Node
