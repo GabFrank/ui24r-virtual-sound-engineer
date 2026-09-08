@@ -1,3 +1,8 @@
+/**
+ * El ámbito nombra el módulo afectado, no el hito ni la versión. `feat(mvp0)`
+ * fue rechazado por eso, y con razón: dentro de seis meses "mvp0" no le dice
+ * a nadie qué parte del sistema cambió, mientras que "assistants" sí.
+ */
 module.exports = {
   extends: ['@commitlint/config-conventional'],
   rules: {
@@ -7,9 +12,14 @@ module.exports = {
       2,
       'always',
       [
-        'docs', 'adr', 'spike', 'gate', 'field',
-        'domain', 'adapter', 'dsp', 'safety', 'audio',
-        'mobile', 'ui', 'tools', 'ci', 'deps',
+        // Documentación y proceso
+        'docs', 'adr', 'gate', 'field',
+        // Paquetes
+        'domain', 'adapter', 'assistants', 'safety', 'dsp',
+        // Aplicación
+        'mobile', 'ui', 'audio',
+        // Herramientas e infraestructura
+        'spike', 'sim', 'visual', 'tools', 'ci', 'deps',
       ],
     ],
   },

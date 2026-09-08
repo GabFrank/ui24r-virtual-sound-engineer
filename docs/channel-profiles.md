@@ -37,6 +37,12 @@ El perfil define **rangos y objetivos**; la recomendación concreta sale de la m
 | Palabra | LEAD | 100 – 12000 | 100 – 150 | 14 | 14 | 30 | 3:1 | sí | sí |
 | Personalizado | por definir | 20 – 20000 | 20 – 200 | 12 | 15 | 25 | 2:1 | opcional | opcional |
 
+## Sincronización con el código
+
+Estos valores viven además en `packages/domain/src/data/channel-profiles.ts`, y
+hay un test que verifica que coincidan. Si alguien ajusta un número en un lado
+y no en el otro, la integración continua avisa.
+
 ## Revisión
 
 Estos valores son un punto de partida informado, **no están validados con la banda todavía**. La historia del asistente de ganancia exige que el usuario los revise y firme:

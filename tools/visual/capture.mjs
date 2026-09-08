@@ -162,6 +162,35 @@ async function main() {
   await esperar(500);
   await capturar('09-rearmado', 'rearmado tras el paro');
 
+  // --- Asignación de canales y asistente de ganancia ---
+
+  await pagina.click('nav.pestanias button:nth-child(2)');
+  await esperar(400);
+  await capturar('10-canales-sin-asignar', 'canales de la consola, todavía sin asignar');
+
+  await pagina.click('.cabecera button');
+  await esperar(600);
+  await capturar('11-canales-propuestos', 'tipos propuestos desde el nombre que ya tiene cada canal');
+
+  await pagina.click('nav.pestanias button:nth-child(3)');
+  await esperar(400);
+  await capturar('12-ganancia-sin-medir', 'asistente de ganancia antes de medir');
+
+  // La captura dura dieciocho segundos más tres de cuenta regresiva.
+  await pagina.click('table tbody tr:first-child button.medir');
+  await esperar(1500);
+  await capturar('13-cuenta-regresiva', 'cuenta regresiva antes de capturar');
+  await esperar(4000);
+  await capturar('14-capturando', 'capturando la ventana del canal');
+  await esperar(17000);
+  // La explicación queda debajo de la tabla de doce canales: sin bajar, la
+  // captura mostraría solo los números y no el porqué, que es lo importante.
+  await pagina.evaluate(() => {
+    document.querySelector('.recomendacion')?.scrollIntoView({ block: 'center' });
+  });
+  await esperar(400);
+  await capturar('15-recomendacion', 'recomendación de ganancia con su porqué y su evidencia');
+
   await navegador.close();
   console.log(`\nCapturas en ${OUT}\n`);
 }

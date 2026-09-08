@@ -4,7 +4,7 @@
   "scripts": {
     "build": "ng build",
     "start": "ng serve",
-    "lint": "ng build",
+    "lint": "tsc -p tsconfig.json --noEmit && ng build",
     "sync": "cap sync android"
   },
   "private": true,
@@ -23,6 +23,7 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.10",
+    "@vse/assistants": "*",
     "@vse/safety": "*"
   },
   "devDependencies": {

@@ -7,6 +7,7 @@
     "paths": {
       "@vse/domain": ["../../packages/domain/src/index.ts"],
       "@vse/mixer-adapter": ["../../packages/mixer-adapter/src/index.ts"],
+      "@vse/assistants": ["../../packages/assistants/src/index.ts"],
       "@vse/safety": ["../../packages/safety/src/index.ts"],
       "@vse/dsp-contract": ["../../packages/dsp-contract/src/index.ts"]
     },
