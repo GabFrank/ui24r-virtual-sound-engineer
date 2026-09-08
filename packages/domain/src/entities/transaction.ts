@@ -78,6 +78,60 @@ export function esSnapshotDeLaApp(nombre: string): boolean {
   return nombre.startsWith('VSE_');
 }
 
+/**
+ * Nombre de una instantánea automática. Una sola definición del formato.
+ *
+ * `nombreSnapshotAutomatica` y `fechaDeSnapshotAutomatica` son inversas, y hay
+ * un test que lo comprueba. Importa porque la retención decide **qué borrar**
+ * a partir de la fecha que lee del nombre: si el que escribe y el que lee no
+ * coincidieran, la aplicación borraría la instantánea equivocada, que es
+ * justamente el punto al que se vuelve cuando algo sale mal.
+ */
+export function nombreSnapshotAutomatica(fecha: Date): string {
+  return `${PREFIJO_SNAPSHOT_AUTOMATICA}${fecha.getTime()}`;
+}
+
+/** La fecha que lleva el nombre, o `null` si no se puede leer. */
+export function fechaDeSnapshotAutomatica(nombre: string): Date | null {
+  if (!nombre.startsWith(PREFIJO_SNAPSHOT_AUTOMATICA)) return null;
+  const resto = nombre.slice(PREFIJO_SNAPSHOT_AUTOMATICA.length);
+  if (!/^\d+$/.test(resto)) return null;
+  const ms = Number(resto);
+  return Number.isFinite(ms) ? new Date(ms) : null;
+}
+
+/**
+ * Qué instantáneas automáticas hay que borrar para respetar la retención.
+ *
+ * INV-003 fija un máximo de veinte automáticas. La constante estaba escrita y
+ * no la consultaba nadie: la retención existía como número en un archivo.
+ *
+ * Tres cosas que esta función **no** hace, y que son la mitad de la invariante:
+ *
+ * - No devuelve jamás un nombre ajeno. Una instantánea que el usuario guardó a
+ *   mano es suya, y borrarla sería el peor fallo posible de esta aplicación.
+ * - No devuelve una `VSE_` que no sea automática. El prefijo propio no alcanza:
+ *   la retención habla de las que crea la aplicación sola.
+ * - No devuelve una cuyo nombre no se pueda fechar. Sin poder ordenarla no se
+ *   sabe si es la más vieja, y borrar a ciegas pierde un punto de retorno.
+ *   Se prefiere conservar de más.
+ *
+ * Devuelve las más viejas primero, que es el orden en que conviene borrarlas:
+ * si el borrado se corta a la mitad, lo que quedó eliminado es lo que menos
+ * falta.
+ */
+export function snapshotsABorrar(
+  nombres: readonly string[],
+  maximo: number = MAX_SNAPSHOTS_AUTOMATICAS,
+): readonly string[] {
+  const automaticas = nombres
+    .map((nombre) => ({ nombre, fecha: fechaDeSnapshotAutomatica(nombre) }))
+    .filter((x): x is { nombre: string; fecha: Date } => x.fecha !== null)
+    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+  const sobran = automaticas.length - Math.max(0, maximo);
+  return sobran <= 0 ? [] : automaticas.slice(0, sobran).map((x) => x.nombre);
+}
+
 /** Una transacción no puede aplicarse sin instantánea verificada (INV-001). */
 export function puedeAplicarse(t: ChangeTransaction): boolean {
   return t.state === 'SNAPSHOTTED' && t.snapshotRef !== null;

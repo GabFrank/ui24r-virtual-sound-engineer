@@ -58,6 +58,12 @@ con INV-034:
   aviso se apaga en un `finally` — un aviso pegado dejaría la aplicación sin
   poder actualizarse nunca y nadie sabría que está pegado. `SafetyService`
   arma el ejecutor ya conectado, para que no se pueda armar uno que se olvide.
+- **INV-003**, retención: `MAX_SNAPSHOTS_AUTOMATICAS = 20` estaba escrita y no
+  la consultaba nadie, así que la retención existía como número en un archivo.
+  Ahora `snapshotsABorrar` decide qué borrar y, sobre todo, qué no: nunca una
+  instantánea ajena, nunca una `VSE_` que no sea automática, y nunca una cuyo
+  nombre no se pueda fechar —sin poder ordenarla no se sabe si es la más vieja,
+  y conservar de más es el error barato.
 
 **INV-019, parte de interfaz.** El bloqueo de escrituras y la lista blanca
 tienen test unitario. La *presencia* del botón la comprueba
@@ -70,7 +76,7 @@ las once pantallas todavía no se verifican automáticamente.
 |---|---|---|---|
 | INV-001 | Ninguna transacción pasa a APPLYING sin `snapshotRef` verificado en la lista de snapshots re-leída. Nombre `VSE_AUTO_<ts>` en show `VSE`. | Unit + HIL: aplicar sin snapshot → rechazado; borrar snapshot entre save y apply → abortada. | MVP4a |
 | INV-002 | Cada `Change` guarda `previousValue` leído de consola. Rollback restaura ese valor exacto y lo verifica por lectura. | HIL: 100 writes aleatorios + rollback → 100/100. | MVP4a |
-| INV-003 | La app solo crea/borra nombres con prefijo `VSE_`. Retención máx. 20 automáticos. Snapshots no-VSE nunca se modifican. | Unit + HIL: hash de snapshots no-VSE idéntico tras 200 operaciones. | MVP0 |
+| INV-003 | La app solo crea/borra nombres con prefijo `VSE_`. Retención máx. 20 automáticos. Snapshots no-VSE nunca se modifican. | Unit: `packages/domain/test/snapshots.test.ts` -- la política de retención decide qué borrar y nunca devuelve una instantánea ajena, una `VSE_` no automática, ni una que no se pueda fechar. HIL pendiente: hash de snapshots no-VSE idéntico tras 200 operaciones, cuando SPK-P0.8 permita listarlas. | MVP0 |
 | INV-004 | Delta máximo por transacción: fader ±3 dB; gain ±3 dB; EQ ±3 dB (salida) / ±4 dB (entrada), Q ≥ 0,7 en salidas; HPF ≤ 1 octava; delay ≤ 5 ms; master ±1 dB y nunca por encima del máximo previo de la sesión. **Tope acumulado por parámetro y sesión** respecto al valor inicial: fader ±6, gain ±6, EQ ±6 por banda, HPF ≤ 2 octavas, delay ≤ 10 ms. Una nueva transacción sobre el mismo parámetro solo es elegible si existe una `Measurement` posterior a la anterior. | Unit: 3 transacciones consecutivas de +3 dB sin Measurement intermedia → la tercera rechazada con `CUMULATIVE_CAP`; HIL: asserts sobre comandos. | MVP0 (recomendaciones), MVP4a (writes) |
 | INV-005 | ASSISTED ≤ 4 parámetros por transacción; CONTROLLED AUTO ≤ 1; writes secuenciales ≥ 100 ms con confirmación del anterior. **Transacciones System** (Analysis Bus, PLAYER_RESERVE, mutes de componente, calibración) están exentas del límite de 4, con pacing ≥ 20 ms y verificación por lectura del conjunto completo ≤ 1 s tras el último write. | Unit + log; SPK-P0.5 mide el tiempo real. | MVP1 |
 | INV-006 | Preamp gain solo escribible en `SessionState = CHANNEL_SETUP`; bloqueado en FULL_BAND, SHOW, ROOM_*, MIX, SOUNDCHECK_* y mientras exista un `VirtualSoundcheckTake` activo. | Unit: matriz estado × parámetro. | MVP4a |
