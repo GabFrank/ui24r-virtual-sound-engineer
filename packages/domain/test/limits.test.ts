@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MAX_PARAMETROS_POR_TRANSACCION, PACING_MS, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
-  esOperacionDeSistema, maximoDeParametros, pacingMs, verificarLimite,
+  correspondeExencionDeSistema, esOperacionDeSistema, maximoDeParametros, pacingMs,
+  verificarLimite,
 } from '../src/rules/limits.ts';
 
 test('INV-004: un cambio dentro del límite se permite', () => {
@@ -81,10 +82,10 @@ test('INV-005: el modo automático permite un solo parámetro por transacción',
 test('INV-005: las transacciones de sistema tienen un ritmo más rápido', () => {
   // Seleccionar un canal en el bus exige 24 escrituras: a 100 ms cada una no
   // entra en el tiempo de conmutación exigido.
-  assert.equal(pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT'), 20);
+  assert.equal(pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT', ['ANALYSIS_BUS_SEND']), 20);
   assert.equal(pacingMs('ASSISTED'), 100);
   assert.equal(pacingMs('AUTO'), 100);
-  assert.ok(24 * pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT') < 1000,
+  assert.ok(24 * pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT', ['ANALYSIS_BUS_SEND']) < 1000,
     'veinticuatro envíos entran en un segundo');
 });
 
@@ -103,8 +104,12 @@ test('INV-005: las de sistema quedan exentas del límite de cuatro', () => {
   // envíos se rechazaba entera.
   assert.equal(maximoDeParametros('ASSISTED'), 4);
   assert.equal(maximoDeParametros('AUTO'), 1);
-  assert.equal(maximoDeParametros('ASSISTED', 'ANALYSIS_BUS_SELECT'), Number.POSITIVE_INFINITY);
-  assert.equal(maximoDeParametros('AUTO', 'MUTE_COMPONENTE'), Number.POSITIVE_INFINITY);
+  assert.equal(
+    maximoDeParametros('ASSISTED', 'ANALYSIS_BUS_SELECT', ['ANALYSIS_BUS_SEND']),
+    Number.POSITIVE_INFINITY);
+  assert.equal(
+    maximoDeParametros('AUTO', 'MUTE_COMPONENTE', ['PA_BUS_MUTE']),
+    Number.POSITIVE_INFINITY);
 });
 
 test('los límites de ecualización de sala favorecen atenuar sobre realzar', () => {
@@ -147,4 +152,35 @@ test('INV-004: el tope es simetrico', () => {
     verificarLimite({ ...base, deltaSolicitado: 3, acumuladoEnSesion: -6 }).permitido,
     true,
   );
+});
+
+test('INV-005: la exencion se decide por lo que se toca, no por como se llama', () => {
+  // `tipoDeOperacion` es una cadena libre que provee quien propone la
+  // transaccion. Sin cruzarla con las clases reales -- las que salen de la
+  // ruta -- pedir la exencion era tan facil como escribir su nombre.
+  assert.equal(correspondeExencionDeSistema('MUTE_COMPONENTE', ['PA_BUS_MUTE']), true);
+  assert.equal(correspondeExencionDeSistema('MUTE_COMPONENTE', ['CHANNEL_FADER']), false);
+  assert.equal(correspondeExencionDeSistema('ANALYSIS_BUS_SELECT', ['ANALYSIS_BUS_SEND']), true);
+  assert.equal(correspondeExencionDeSistema('ANALYSIS_BUS_SELECT', ['CHANNEL_FADER']), false);
+  // Mezclar uno permitido con uno que no: no alcanza con que haya alguno.
+  assert.equal(
+    correspondeExencionDeSistema('MUTE_COMPONENTE', ['PA_BUS_MUTE', 'CHANNEL_FADER']), false);
+});
+
+test('INV-005: sin cambios no hay exencion, y una etiqueta inventada tampoco', () => {
+  assert.equal(correspondeExencionDeSistema('MUTE_COMPONENTE', []), false);
+  assert.equal(correspondeExencionDeSistema('NO_EXISTE', ['PA_BUS_MUTE']), false);
+  assert.equal(correspondeExencionDeSistema(undefined, ['PA_BUS_MUTE']), false);
+  // La calibracion no declara todavia que parametro de consola toca, asi que
+  // su etiqueta no concede nada.
+  assert.equal(correspondeExencionDeSistema('CALIBRACION', ['PA_BUS_MUTE']), false);
+});
+
+test('INV-005: el ritmo y el maximo siguen a la exencion', () => {
+  assert.equal(pacingMs('ASSISTED', 'MUTE_COMPONENTE', ['PA_BUS_MUTE']), 20);
+  assert.equal(pacingMs('ASSISTED', 'MUTE_COMPONENTE', ['CHANNEL_FADER']), 100);
+  assert.equal(
+    maximoDeParametros('ASSISTED', 'MUTE_COMPONENTE', ['PA_BUS_MUTE']),
+    Number.POSITIVE_INFINITY);
+  assert.equal(maximoDeParametros('ASSISTED', 'MUTE_COMPONENTE', ['CHANNEL_FADER']), 4);
 });

@@ -3,6 +3,7 @@ import {
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
 import { clasificarRuta } from '@vse/mixer-adapter';
+import type { ParameterKind } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
 /**
@@ -125,7 +126,16 @@ export class SafetyEngine {
       });
     }
 
-    const maximo = maximoDeParametros(ctx.nivelAutonomia, opciones.tipoDeOperacion);
+    // Las clases **reales**, derivadas de la ruta, no las declaradas. La
+    // exención de sistema se concede por lo que la transacción toca y no por
+    // cómo se llama a sí misma: `tipoDeOperacion` es una cadena libre que
+    // provee quien propone.
+    const clasesReales = cambios
+      .map((c) => clasificarRuta(c.path))
+      .filter((k): k is ParameterKind => k !== null);
+    const maximo = maximoDeParametros(
+      ctx.nivelAutonomia, opciones.tipoDeOperacion, clasesReales,
+    );
     if (cambios.length > maximo) {
       rechazos.push({
         codigo: 'DEMASIADOS_PARAMETROS',

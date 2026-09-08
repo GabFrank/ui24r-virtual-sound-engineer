@@ -71,6 +71,49 @@ export function esOperacionDeSistema(tipoDeOperacion: string | undefined): boole
 }
 
 /**
+ * Qué parámetros puede tocar cada operación de sistema.
+ *
+ * Sin esto, la exención se pedía diciendo que se la merecía:
+ * `tipoDeOperacion` es una cadena libre que provee quien propone la
+ * transacción, y nada la cruzaba con lo que la transacción de verdad tocaba.
+ * Poner `'ANALYSIS_BUS_SELECT'` subía el máximo a infinito y bajaba el ritmo a
+ * veinte milisegundos aunque los cambios fueran ocho faders de canal — y el
+ * propio test que agregué para la exención hacía exactamente eso.
+ *
+ * La clase real sale de la ruta, que es lo que el motor ya deriva para
+ * INV-008/INV-010. La declaración no se cree: se comprueba.
+ */
+export const PARAMETROS_DE_OPERACION_DE_SISTEMA:
+  Readonly<Record<string, readonly ParameterKind[]>> = {
+  ANALYSIS_BUS_SELECT: ['ANALYSIS_BUS_SEND'],
+  PLAYER_RESERVE: ['PLAYER_MUTE', 'PLAYER_FADER', 'PLAYER_SEND'],
+  RESTAURAR_RESERVA: ['PLAYER_MUTE', 'PLAYER_FADER', 'PLAYER_SEND'],
+  MUTE_COMPONENTE: ['PA_BUS_MUTE'],
+  RESTAURAR_MUTES: ['PA_BUS_MUTE'],
+  // Vacío a propósito: la calibración es de la interfaz de audio y todavía no
+  // se sabe qué parámetro de consola tocaría, si alguno. Hasta que un spike lo
+  // diga, la etiqueta no concede exención.
+  CALIBRACION: [],
+};
+
+/**
+ * Si corresponde la exención de sistema para estos cambios.
+ *
+ * Se exige que la operación esté declarada **y** que cada cambio toque un
+ * parámetro que esa operación puede tocar. Una transacción vacía no la obtiene:
+ * no hay nada que la justifique.
+ */
+export function correspondeExencionDeSistema(
+  tipoDeOperacion: string | undefined,
+  clasesReales: readonly ParameterKind[],
+): boolean {
+  if (!esOperacionDeSistema(tipoDeOperacion)) return false;
+  const permitidas = PARAMETROS_DE_OPERACION_DE_SISTEMA[tipoDeOperacion!] ?? [];
+  if (permitidas.length === 0 || clasesReales.length === 0) return false;
+  return clasesReales.every((k) => permitidas.includes(k));
+}
+
+/**
  * Cuántos parámetros admite una transacción.
  *
  * Las de sistema están exentas del límite de cuatro (INV-005): seleccionar un
@@ -82,8 +125,9 @@ export function esOperacionDeSistema(tipoDeOperacion: string | undefined): boole
 export function maximoDeParametros(
   nivel: AutonomyLevel,
   tipoDeOperacion?: string,
+  clasesReales: readonly ParameterKind[] = [],
 ): number {
-  return esOperacionDeSistema(tipoDeOperacion)
+  return correspondeExencionDeSistema(tipoDeOperacion, clasesReales)
     ? Number.POSITIVE_INFINITY
     : MAX_PARAMETROS_POR_TRANSACCION[nivel];
 }
@@ -97,8 +141,12 @@ export function maximoDeParametros(
  * guardaran entre sí la relación que el propio archivo escribió, que es una
  * tautología y no una conducta.
  */
-export function pacingMs(nivel: AutonomyLevel, tipoDeOperacion?: string): number {
-  if (esOperacionDeSistema(tipoDeOperacion)) return PACING_MS.SYSTEM;
+export function pacingMs(
+  nivel: AutonomyLevel,
+  tipoDeOperacion?: string,
+  clasesReales: readonly ParameterKind[] = [],
+): number {
+  if (correspondeExencionDeSistema(tipoDeOperacion, clasesReales)) return PACING_MS.SYSTEM;
   return nivel === 'AUTO' ? PACING_MS.AUTO : PACING_MS.ASSISTED;
 }
 

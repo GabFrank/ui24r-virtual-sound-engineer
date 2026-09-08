@@ -419,17 +419,31 @@ test('INV-005: sin tipo de operacion se espera cien milisegundos', async () => {
   assert.deepEqual(esperas, [100]);
 });
 
-test('INV-005: una transaccion de sistema va a veinte', async () => {
+/**
+ * Ninguna transaccion de sistema puede pasar el motor todavia.
+ *
+ * INV-004 rechaza cualquier parametro sin limite declarado, y ninguno de los
+ * que tocan las operaciones de sistema -- envio al bus de analisis, mutes de
+ * componente, reserva del reproductor -- tiene uno. Inventarles un tope para
+ * que estas pruebas pasen seria la misma falta que inventar una conversion a
+ * decibeles: un numero sin evidencia con forma de regla. Asi que la exencion
+ * se prueba donde es decidible, en el dominio (`limits.test.ts`), y aca se
+ * prueba lo que si importa: que declararla no alcance.
+ */
+
+test('INV-005: la exencion no se concede por declararla', async () => {
+  // Era el agujero: `tipoDeOperacion` es una cadena libre que provee quien
+  // propone, y nada la cruzaba con lo que la transaccion tocaba. Este mismo
+  // test, en su version anterior, aplicaba ocho faders de canal declarando
+  // ANALYSIS_BUS_SELECT y esperaba APLICADA.
   const { esperas, ejecutor } = montarConRitmo({ 'i.3.mix': -6, 'i.4.mix': -8 });
-  await ejecutor.ejecutar('tx1', 's1', 'bus de analisis',
+  await ejecutor.ejecutar('tx1', 's1', 'faders disfrazados',
     [fader('i.3.mix', -4, -6), fader('i.4.mix', -6, -8)], contexto(),
-    { ...conSnapshot, tipoDeOperacion: 'ANALYSIS_BUS_SELECT' });
-  assert.deepEqual(esperas, [20]);
+    { ...conSnapshot, tipoDeOperacion: 'MUTE_COMPONENTE' });
+  assert.deepEqual(esperas, [100], 'faders de canal no son una operacion de sistema');
 });
 
-test('INV-005: una transaccion de sistema pasa del limite de cuatro', async () => {
-  // Con el maximo resuelto solo por nivel de autonomia, esta transaccion se
-  // rechazaba entera: la exencion estaba enunciada y no se podia expresar.
+test('INV-005: ocho faders declarados como sistema siguen rechazandose', async () => {
   const iniciales: Record<string, number> = {};
   const cambios = [];
   for (let i = 1; i <= 8; i++) {
@@ -437,14 +451,24 @@ test('INV-005: una transaccion de sistema pasa del limite de cuatro', async () =
     cambios.push(fader(`i.${i}.mix`, -4, -6));
   }
   const { ejecutor } = montarConRitmo(iniciales);
-
-  const rechazada = await ejecutor.ejecutar('tx1', 's1', 'ocho de golpe',
-    cambios, contexto(), conSnapshot);
-  assert.equal(rechazada.estado, 'RECHAZADA');
-  assert.ok(rechazada.estado === 'RECHAZADA'
-    && rechazada.motivos.some((m) => m.includes('INV-005')));
-
-  const aceptada = await ejecutor.ejecutar('tx2', 's1', 'bus de analisis',
+  const r = await ejecutor.ejecutar('tx1', 's1', 'faders disfrazados',
     cambios, contexto(), { ...conSnapshot, tipoDeOperacion: 'ANALYSIS_BUS_SELECT' });
-  assert.equal(aceptada.estado, 'APLICADA');
+  assert.equal(r.estado, 'RECHAZADA');
+  assert.ok(r.estado === 'RECHAZADA' && r.motivos.some((m) => m.includes('INV-005')));
+});
+
+test('INV-005: sin tipo de operacion, cuatro faders pasan y ocho no', async () => {
+  const iniciales: Record<string, number> = {};
+  const cambios = [];
+  for (let i = 1; i <= 8; i++) {
+    iniciales[`i.${i}.mix`] = -6;
+    cambios.push(fader(`i.${i}.mix`, -4, -6));
+  }
+  const { ejecutor } = montarConRitmo(iniciales);
+  const cuatro = await ejecutor.ejecutar('tx1', 's1', 'cuatro',
+    cambios.slice(0, 4), contexto(), conSnapshot);
+  assert.equal(cuatro.estado, 'APLICADA');
+  const ocho = await ejecutor.ejecutar('tx2', 's1', 'ocho',
+    cambios, contexto(), conSnapshot);
+  assert.equal(ocho.estado, 'RECHAZADA');
 });
