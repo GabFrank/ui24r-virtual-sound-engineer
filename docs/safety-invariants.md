@@ -71,11 +71,21 @@ vivos. Se listan acá en vez de dejarlos implícitos:
 | Qué | Quién debería llamarlo | Por qué todavía no |
 |---|---|---|
 | `snapshotsABorrar` (INV-003) | quien cree instantáneas | Nada las crea: depende de MVP4a y de SPK-P0.8 para listarlas. |
+| `busDeAnalisis` de `clasificarRuta` (INV-008) | el motor de seguridad | Cuál auxiliar es el bus de análisis lo dice SPK-P0.5. Sin ese dato, `ANALYSIS_BUS_SEND` no es derivable y ningún envío es escribible — el lado seguro. |
+| Un límite de INV-004 para los parámetros de sistema | — | Ninguna transacción de sistema puede pasar el motor: INV-004 rechaza todo parámetro sin límite declarado, y ni el mute de bus, ni la reserva del reproductor, ni el envío al bus de análisis tienen uno. Inventarles un tope para que la exención de INV-005 «funcione» sería un número sin evidencia con forma de regla. Lo fija el spike que caracterice cada uno. |
 | `SafetyService.crearEjecutor` (INV-034) | quien aplique una transacción | La aplicación no escribe en la consola. Mientras tanto `transaccionEnCurso` es `false` siempre, igual que antes del arreglo. |
 
 La diferencia con el patrón anterior es que la política está escrita y probada
 en vez de ser un número suelto, y que este cuadro dice dónde falta el cable.
 
+- **INV-005**, la exención que se pedía diciendo que se la merecía:
+  `tipoDeOperacion` es una cadena libre que provee quien propone la
+  transacción, y nada la cruzaba con lo que la transacción de verdad tocaba.
+  Poner `'ANALYSIS_BUS_SELECT'` subía el máximo a infinito y bajaba el ritmo a
+  veinte milisegundos aunque los cambios fueran ocho faders de canal — y el
+  propio test que se escribió para la exención hacía exactamente eso. Ahora la
+  concesión se deriva de las clases **reales**, las que salen de la ruta, y la
+  declaración se comprueba en vez de creerse.
 - **INV-005**, el ritmo y la exención de las transacciones de sistema: octavo
   caso del patrón. `PACING_MS` estaba escrita en el dominio y **no la importaba
   ningún código de producción** —el ejecutor llevaba un 100 a mano y nunca

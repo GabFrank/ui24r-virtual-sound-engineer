@@ -1,5 +1,6 @@
 import type { MixerDomainAPI } from '@vse/mixer-adapter';
-import { pacingMs } from '@vse/domain';
+import { pacingMs, type ParameterKind } from '@vse/domain';
+import { clasificarRuta } from '@vse/mixer-adapter';
 import { SafetyEngine } from './engine.ts';
 import { entradaDesdeCambios, type Diario, type CambioRegistrado } from './journal.ts';
 import type { CambioPropuesto, ContextoSeguridad } from './types.ts';
@@ -175,6 +176,12 @@ export class EjecutorDeTransacciones {
     // Los valores previos salen del estado confirmado, que se alimenta solo de
     // mensajes entrantes. Si un parámetro no está ahí, no se escribe: no
     // sabríamos a qué revertir.
+    // Igual que el motor: la exención del ritmo se decide por lo que la
+    // transacción toca, no por cómo se declara.
+    const clasesReales = cambios
+      .map((c) => clasificarRuta(c.path))
+      .filter((k): k is ParameterKind => k !== null);
+
     const previos = new Map<string, number>();
     for (const c of cambios) {
       const lectura = this.mixer.leer(c.path);
@@ -201,7 +208,7 @@ export class EjecutorDeTransacciones {
       const c = cambios[i]!;
       if (i > 0) {
         await this.dormir(this.pacingOverride
-          ?? pacingMs(ctx.nivelAutonomia, opciones.tipoDeOperacion));
+          ?? pacingMs(ctx.nivelAutonomia, opciones.tipoDeOperacion, clasesReales));
       }
 
       const resultado = await this.mixer.escribir(c.path, c.valorPropuesto, c.valorEsperado);
