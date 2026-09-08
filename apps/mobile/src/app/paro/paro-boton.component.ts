@@ -72,9 +72,13 @@ import { ParoService } from './paro.service';
       }
     }
 
-    /* --- En diálogo: más chico, en la cabecera, sin sombra --- */
+    /* --- En diálogo: en la cabecera y sin sombra, pero del mismo tamaño ---
+       Estuvo en 48 px, que es el mínimo táctil general y no lo que pide
+       INV-019: 64 px como mínimo, en todas las pantallas «y modales». Con un
+       diálogo abierto este es el único paro alcanzable, así que es justo el que
+       no puede ser el más chico. */
     :host(.en-dialogo) button {
-      width: var(--tap-min); height: var(--tap-min);
+      width: var(--alto-paro-telefono); height: var(--alto-paro-telefono);
       font-size: var(--txt-xxs);
     }
   `],

@@ -252,7 +252,15 @@ async function recorrer(contexto, tamanio) {
     const boton = dlg.querySelector('app-paro-boton button');
     if (boton === null) return 'el diálogo no contiene el paro de emergencia';
     const r = boton.getBoundingClientRect();
-    if (r.width < 44 || r.height < 44) return `el paro del diálogo mide ${r.width}x${r.height}`;
+    // 64, no 44. El umbral estaba por debajo de la propia invariante, así que
+    // la comprobación aprobaba un botón de 48 px que INV-019 prohíbe: se
+    // corrigió un caso de 60 px «por cuatro píxeles» y se dejó pasar uno de 16.
+    // Una comprobación más floja que la regla que dice comprobar no comprueba.
+    const MINIMO_INV_019 = 64;
+    if (r.width < MINIMO_INV_019 || r.height < MINIMO_INV_019) {
+      return `el paro del diálogo mide ${Math.round(r.width)}x${Math.round(r.height)}, ` +
+        `y INV-019 exige ${MINIMO_INV_019}`;
+    }
     const encima = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
     return boton.contains(encima) ? null : `otro elemento tapa el paro: ${encima?.tagName}`;
   });
