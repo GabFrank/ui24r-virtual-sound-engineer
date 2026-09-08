@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { SafetyEngine } from '@vse/safety';
 import { Logger } from './logger';
 import { ConnectionStateService } from './connection.state';
 
@@ -11,24 +12,18 @@ import { ConnectionStateService } from './connection.state';
  * garantía de tiempo.
  */
 
-/** Escrituras permitidas incluso con el paro activo (INV-019). */
-export type EscrituraDeSeguridad =
-  | 'MEDIA_STOP'
-  | 'MTK_STOP'
-  | 'MUTE_PLAYER'
-  | 'ROLLBACK'
-  | 'RESTAURAR_RESERVA'
-  | 'RESTAURAR_MUTES';
-
-const LISTA_BLANCA: ReadonlySet<string> = new Set<EscrituraDeSeguridad>([
-  'MEDIA_STOP', 'MTK_STOP', 'MUTE_PLAYER', 'ROLLBACK',
-  'RESTAURAR_RESERVA', 'RESTAURAR_MUTES',
-]);
-
 @Injectable({ providedIn: 'root' })
 export class SafetyService {
   private readonly log = inject(Logger);
   private readonly conexion = inject(ConnectionStateService);
+
+  /**
+   * El motor vive en su propio paquete, sin dependencias de framework, y es el
+   * mismo que ejercitan los tests. La aplicación no reimplementa ninguna regla:
+   * tener la misma regla en dos lugares ya nos costó un error real con la
+   * detección de conexión inestable.
+   */
+  readonly engine = new SafetyEngine();
 
   private readonly _bloqueado = signal(false);
   readonly bloqueado = this._bloqueado.asReadonly();
@@ -41,7 +36,7 @@ export class SafetyService {
    * en curso, no seguir intentando.
    */
   permiteEscritura(tipo: string): { permitido: boolean; motivo?: string } {
-    if (this._bloqueado() && !LISTA_BLANCA.has(tipo)) {
+    if (this._bloqueado() && !this.engine.esDeSeguridad(tipo)) {
       return {
         permitido: false,
         motivo: 'el paro de emergencia está activo: solo pasan las escrituras de seguridad',
@@ -62,6 +57,7 @@ export class SafetyService {
    */
   pararTodoLocal(): void {
     this._bloqueado.set(true);
+    this.engine.bloquear();
     // Detener el generador local, cancelar la automatización y vaciar la cola
     // se enganchan acá cuando existan esos servicios. El bloqueo ya impide que
     // cualquier escritura nueva salga.
@@ -82,6 +78,7 @@ export class SafetyService {
   /** El rearme relee el estado completo antes de volver a permitir escrituras. */
   async rearmar(): Promise<void> {
     this.conexion.invalidarPorCambioMasivo();
+    this.engine.desbloquear();
     this._bloqueado.set(false);
     this.log.info('safety', 'rearme_solicitado', {
       nota: 'el estado queda inválido hasta el volcado completo',

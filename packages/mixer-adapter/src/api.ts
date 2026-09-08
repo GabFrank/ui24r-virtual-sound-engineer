@@ -93,11 +93,13 @@ export interface MixerDomainAPI {
  * Es un tipo propio para que el Safety Engine lo distinga de un fallo de red.
  */
 export class EscrituraProhibida extends Error {
-  constructor(
-    readonly parametro: string,
-    readonly motivo: string,
-  ) {
+  readonly parametro: string;
+  readonly motivo: string;
+
+  constructor(parametro: string, motivo: string) {
     super(`escritura prohibida en ${parametro}: ${motivo}`);
     this.name = 'EscrituraProhibida';
+    this.parametro = parametro;
+    this.motivo = motivo;
   }
 }
