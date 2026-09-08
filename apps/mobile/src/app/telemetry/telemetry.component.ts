@@ -1,10 +1,46 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { MixerService } from '../core/mixer.service';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { ConnectionStateService } from '../core/connection.state';
+import { MixerService } from '../core/mixer.service';
+import {
+  BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
+} from '../ui';
 import { LevelMeterComponent } from './level-meter.component';
 
 /**
- * Vista de telemetría por canal. Es la primera pantalla del primer entregable.
+ * Por debajo de este pico el margen se marca como escaso.
+ *
+ * Seis decibeles es lo que hace falta para que un golpe más fuerte de lo
+ * esperado no llegue al fondo de escala. Es un umbral de aviso, no de rechazo:
+ * la aplicación no escribe nada acá.
+ */
+const MARGEN_ESCASO_DB = -6;
+
+/** Una fila ya formateada: la plantilla no calcula nada. */
+interface FilaDeTelemetria {
+  readonly indice: number;
+  readonly nombre: string;
+  readonly silenciado: boolean;
+  readonly nivelDb: number;
+  readonly picoDb: number;
+  readonly nivel: string;
+  readonly pico: string;
+  readonly margen: string;
+  readonly margenEscaso: boolean;
+  readonly ganancia: string;
+  readonly fader: string;
+  readonly clips: number;
+}
+
+function db(v: number): string {
+  // Por debajo de −80 dB el medidor de la consola ya no distingue señal de
+  // silencio, así que se dice «−∞» en vez de un número que no significa nada.
+  if (!Number.isFinite(v) || v <= -80) return '−∞';
+  return v.toFixed(1);
+}
+
+/**
+ * Telemetría por canal.
  *
  * Solo lectura: en esta versión la aplicación no escribe absolutamente nada en
  * la consola, y hay un test que lo verifica.
@@ -12,199 +48,194 @@ import { LevelMeterComponent } from './level-meter.component';
 @Component({
   selector: 'app-telemetry',
   standalone: true,
-  imports: [LevelMeterComponent],
+  imports: [
+    RouterLink, LevelMeterComponent, BadgeComponent, ButtonComponent,
+    CardComponent, EmptyStateComponent, PageHeaderComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (masivo(); as ev) {
-      <div class="alerta">
-        <div>
-          <strong>Cambio masivo detectado en la consola.</strong>
-          {{ ev.rutasAfectadas }} parámetros cambiaron en menos de un segundo.
-          Probablemente alguien recuperó una instantánea. El estado local ya no
-          es confiable hasta releerlo.
+    <div class="pagina">
+      @if (masivo(); as ev) {
+        <div class="alerta" role="alert">
+          <div>
+            <strong>Cambio masivo detectado en la consola.</strong>
+            {{ ev.rutasAfectadas }} parámetros cambiaron en menos de un segundo.
+            Probablemente alguien recuperó una instantánea. El estado local ya no
+            es confiable hasta releerlo.
+          </div>
+          <ui-button variante="secundario" (pulsado)="descartarMasivo()">Entendido</ui-button>
         </div>
-        <button type="button" (click)="descartarMasivo()">Entendido</button>
-      </div>
-    }
-
-    @if (!conectado()) {
-      <!-- Conectarse es una acción y configurar dónde conectarse es un ajuste.
-           Tener el campo de la dirección también acá significaba dos sitios
-           donde cambiarlo y ninguna garantía de que dijeran lo mismo. -->
-      <section class="conectar">
-        <h2>Sin conexión con la consola</h2>
-        <p class="ayuda">
-          La dirección de la consola y el botón de conectar están en Ajustes.
-          Durante un show, la consola y la tablet van en un router dedicado: la
-          red del lugar no se usa.
-        </p>
-        <a class="primario" href="#/ajustes">Ir a Ajustes</a>
-        @if (error(); as e) { <p class="error">{{ e }}</p> }
-      </section>
-    } @else {
-      <section class="cabecera">
-        <div>
-          <h2>Telemetría</h2>
-          <p class="sub">
-            {{ canales().length }} canales · solo lectura · esta versión no escribe
-            nada en la consola
-          </p>
-        </div>
-        <button type="button" (click)="reiniciarPicos()">Reiniciar picos</button>
-      </section>
-
-      <table>
-        <thead>
-          <tr>
-            <th class="izq">Canal</th>
-            <th class="ancho">Nivel</th>
-            <th class="num">Actual</th>
-            <th class="num">Pico</th>
-            <th class="num">Margen</th>
-            <th class="num">Ganancia</th>
-            <th class="num">Fader</th>
-            <th class="num">Clips</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (c of canales(); track c.indice) {
-            <tr [class.silenciado]="c.silenciado">
-              <td class="izq">
-                <span class="idx">{{ c.indice }}</span>
-                {{ c.nombre }}
-                @if (c.silenciado) { <span class="mute">MUTE</span> }
-              </td>
-              <td>
-                <app-level-meter [nivelDb]="c.nivelDb" [picoDb]="c.picoDb"
-                                 [etiqueta]="'nivel de ' + c.nombre" />
-              </td>
-              <td class="num">{{ formatearDb(c.nivelDb) }}</td>
-              <td class="num">{{ formatearDb(c.picoDb) }}</td>
-              <td class="num" [class.escaso]="margenEscaso(c.picoDb)">
-                {{ formatearMargen(c.picoDb) }}
-              </td>
-              <td class="num">{{ c.gainDb.toFixed(0) }}</td>
-              <td class="num">{{ formatearDb(c.faderDb) }}</td>
-              <td class="num" [class.hay]="c.eventosSaturacion > 0">
-                {{ c.eventosSaturacion }}
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-
-      @if (externos().length > 0) {
-        <section class="externos">
-          <h3>Cambios hechos desde otro dispositivo</h3>
-          <p class="sub">
-            El protocolo no dice qué cliente los hizo: solo se puede distinguir
-            un cambio propio de uno ajeno.
-          </p>
-          <ul>
-            @for (e of externos(); track e.cuando) {
-              <li><code>{{ e.parametro }}</code> pasó a {{ e.valor.toFixed(3) }}</li>
-            }
-          </ul>
-        </section>
       }
-    }
+
+      @if (!conectado()) {
+        <ui-page-header titulo="Consola"
+          descripcion="Los medidores en vivo de la consola. Solo lectura." />
+        <ui-empty icono="conectar" titulo="Sin conexión con la consola"
+          detalle="La dirección y el botón de conectar están en Ajustes. Durante un show, la consola y la tablet van en un router dedicado: la red del lugar no se usa.">
+          <a routerLink="/ajustes" class="enlace">Ir a Ajustes</a>
+        </ui-empty>
+        @if (error(); as e) { <p class="error">{{ e }}</p> }
+      } @else {
+        <ui-page-header titulo="Consola" [descripcion]="resumen()">
+          <ui-button variante="secundario" icono="refrescar"
+                     (pulsado)="reiniciarPicos()">Reiniciar picos</ui-button>
+        </ui-page-header>
+
+        <div class="desplaza-x ancho">
+          <table>
+            <thead>
+              <tr>
+                <th class="izq">Canal</th>
+                <th class="medidor">Nivel</th>
+                <th class="num">Actual</th>
+                <th class="num">Pico</th>
+                <th class="num">Margen</th>
+                <th class="num">Ganancia</th>
+                <th class="num">Fader</th>
+                <th class="num">Clips</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of filas(); track f.indice) {
+                <tr [class.silenciado]="f.silenciado">
+                  <td class="izq">
+                    <span class="idx num">{{ f.indice }}</span>
+                    {{ f.nombre }}
+                    @if (f.silenciado) { <ui-badge tono="neutro">Mute</ui-badge> }
+                  </td>
+                  <td>
+                    <app-level-meter [nivelDb]="f.nivelDb" [picoDb]="f.picoDb"
+                                     [etiqueta]="'nivel de ' + f.nombre" />
+                  </td>
+                  <td class="num">{{ f.nivel }}</td>
+                  <td class="num">{{ f.pico }}</td>
+                  <td class="num" [class.escaso]="f.margenEscaso">{{ f.margen }}</td>
+                  <td class="num">{{ f.ganancia }}</td>
+                  <td class="num">{{ f.fader }}</td>
+                  <td class="num" [class.hay]="f.clips > 0">{{ f.clips }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="angosto pila-sm">
+          @for (f of filas(); track f.indice) {
+            <ui-card class="sin-relleno">
+              <div class="tarjeta-canal">
+                <div class="fila1">
+                  <span class="nombre"><span class="idx num">{{ f.indice }}</span> {{ f.nombre }}</span>
+                  @if (f.silenciado) { <ui-badge tono="neutro">Mute</ui-badge> }
+                  @if (f.clips > 0) { <ui-badge tono="peligro">{{ f.clips }} clips</ui-badge> }
+                </div>
+                <app-level-meter [nivelDb]="f.nivelDb" [picoDb]="f.picoDb"
+                                 [etiqueta]="'nivel de ' + f.nombre" />
+                <div class="fila2 num">
+                  <span>Pico {{ f.pico }}</span>
+                  <span [class.escaso]="f.margenEscaso">Margen {{ f.margen }}</span>
+                  <span>Gan {{ f.ganancia }}</span>
+                </div>
+              </div>
+            </ui-card>
+          }
+        </div>
+
+        @if (externos().length > 0) {
+          <ui-card class="externos" titulo="Cambios hechos desde otro dispositivo"
+                   subtitulo="El protocolo no dice qué cliente los hizo: solo se puede distinguir un cambio propio de uno ajeno">
+            <ul>
+              @for (e of externos(); track e.cuando) {
+                <li><code>{{ e.parametro }}</code> pasó a {{ e.valor.toFixed(3) }}</li>
+              }
+            </ul>
+          </ui-card>
+        }
+      }
+    </div>
   `,
   styles: [`
-    :host { display: block; }
+    @use 'tokens' as *;
 
     .alerta {
-      display: flex; gap: 16px; align-items: flex-start; justify-content: space-between;
-      background: #3a2a12; border: 1px solid var(--warn); border-radius: 3px;
-      padding: 14px 16px; margin-bottom: 20px; color: #f0dcc0;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--sp-4); margin-bottom: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--warn-tenue);
+      border: 1px solid var(--warn); border-radius: var(--radio-md);
+      line-height: var(--alto-linea);
     }
-    .alerta button {
-      background: var(--warn); color: #241708; border: 0; border-radius: 3px;
-      padding: 8px 16px; cursor: pointer; white-space: nowrap;
-    }
+    @include hasta($bp-telefono) { .alerta { flex-direction: column; align-items: flex-start; } }
 
-    .conectar { max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
-    .conectar label { color: var(--muted); font-size: 13px; }
-    .conectar input {
-      background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
-      border-radius: 3px; padding: 12px 14px; font-family: var(--mono); font-size: 15px;
-    }
-    .primario {
-      background: var(--signal); color: #06181a; border: 0; border-radius: 3px;
-      padding: 12px 20px; font-size: 15px; font-weight: 500; cursor: pointer;
-    }
-    .primario:disabled { opacity: .5; }
-    .error { color: var(--danger); font-size: 14px; }
-    .ayuda { color: var(--muted); font-size: 13px; }
+    .enlace { color: var(--signal); }
+    .error { color: var(--danger); }
 
-    .cabecera {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 16px; margin-bottom: 16px;
-    }
-    .cabecera button {
-      background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
-      border-radius: 3px; padding: 10px 16px; cursor: pointer; white-space: nowrap;
-    }
-    h2 { font-size: 20px; margin: 0 0 4px; font-weight: 500; }
-    h3 { font-size: 15px; margin: 0 0 4px; font-weight: 500; }
-    .sub { color: var(--muted); font-size: 13px; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: center; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: var(--peso-medio); font-size: var(--txt-sm); }
+    .izq { text-align: left; }
+    .medidor { width: 30%; min-width: 160px; }
+    .idx { color: var(--signal); font-size: var(--txt-xs); margin-right: var(--sp-2); }
+    tr.silenciado { color: var(--muted); }
+    .escaso { color: var(--warn); }
+    .hay { color: var(--danger); }
 
-    table { font-size: 14px; }
-    th.izq, td.izq { text-align: left; }
-    th.ancho { width: 34%; }
-    tr.silenciado { opacity: .45; }
-    .idx {
-      display: inline-block; min-width: 22px; color: var(--muted);
-      font-family: var(--mono); font-size: 12px;
-    }
-    .mute {
-      margin-left: 8px; font-size: 10px; letter-spacing: .1em;
-      color: var(--danger); border: 1px solid var(--danger);
-      padding: 1px 5px; border-radius: 2px;
-    }
-    td.num.escaso { color: var(--warn); }
-    td.num.hay { color: var(--danger); font-weight: 600; }
+    .tarjeta-canal { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); }
+    .fila1 { display: flex; align-items: center; gap: var(--sp-2); }
+    .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fila2 { display: flex; gap: var(--sp-4); color: var(--muted); font-size: var(--txt-sm); }
 
-    .externos { margin-top: 24px; }
-    .externos ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
-    .externos code { font-family: var(--mono); color: var(--signal); }
+    .externos { margin-top: var(--sp-5); }
+    .externos ul { margin: 0; padding-left: var(--sp-4); }
+    .externos li { font-size: var(--txt-sm); color: var(--ink-2); line-height: var(--alto-linea); }
+    code { font-family: var(--mono); color: var(--muted); }
+
+    .angosto { display: none; }
+    @include hasta($bp-telefono) {
+      .ancho { display: none; }
+      .angosto { display: flex; }
+    }
   `],
 })
 export class TelemetryComponent {
   private readonly mixer = inject(MixerService);
   private readonly conexion = inject(ConnectionStateService);
 
-  readonly canales = this.mixer.canales;
   readonly externos = this.mixer.cambiosExternos;
   readonly masivo = this.mixer.cambioMasivo;
-  readonly conectando = this.mixer.conectando;
   readonly error = this.mixer.ultimoError;
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
 
-  reiniciarPicos(): void {
-    this.mixer.reiniciarPicos();
-  }
-
-  descartarMasivo(): void {
-    this.mixer.descartarCambioMasivo();
-  }
-
   /**
-   * Se llaman desde la plantilla, pero son funciones puras sobre un argumento
-   * y no leen señales: no arrastran estado ni disparan trabajo extra en cada
-   * ciclo de detección de cambios.
+   * Una sola señal calculada con todo formateado.
+   *
+   * Antes la plantilla llamaba a `formatearDb` dos veces por fila, más
+   * `formatearMargen` y `margenEscaso`. Con doce canales y medidores que
+   * llegan varias veces por segundo, eran cuarenta y ocho llamadas por ciclo
+   * de detección de cambios, en la pantalla que más ciclos genera.
    */
-  formatearDb(db: number): string {
-    if (!Number.isFinite(db) || db <= -80) return '−∞';
-    return db.toFixed(1);
-  }
+  readonly filas = computed<readonly FilaDeTelemetria[]>(() =>
+    this.mixer.canales().map((c) => ({
+      indice: c.indice,
+      nombre: c.nombre,
+      silenciado: c.silenciado,
+      nivelDb: c.nivelDb,
+      picoDb: c.picoDb,
+      nivel: db(c.nivelDb),
+      pico: db(c.picoDb),
+      margen: !Number.isFinite(c.picoDb) || c.picoDb <= -80 ? '—' : (-c.picoDb).toFixed(1),
+      margenEscaso: Number.isFinite(c.picoDb) && c.picoDb > MARGEN_ESCASO_DB,
+      ganancia: c.gainDb.toFixed(0),
+      fader: db(c.faderDb),
+      clips: c.eventosSaturacion,
+    })),
+  );
 
-  formatearMargen(picoDb: number): string {
-    if (!Number.isFinite(picoDb) || picoDb <= -80) return '—';
-    return (-picoDb).toFixed(1);
-  }
+  readonly resumen = computed(
+    () => `${this.filas().length} canales · solo lectura · esta versión no escribe nada en la consola`,
+  );
 
-  margenEscaso(picoDb: number): boolean {
-    return Number.isFinite(picoDb) && picoDb > -6;
-  }
+  reiniciarPicos(): void { this.mixer.reiniciarPicos(); }
+
+  descartarMasivo(): void { this.mixer.descartarCambioMasivo(); }
 }

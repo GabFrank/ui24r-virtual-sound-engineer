@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { formatearVersion } from '@vse/updater';
+import {
+  ButtonComponent, CardComponent, PageHeaderComponent, StatComponent,
+} from '../ui';
 import { UpdateService } from './update.service';
 
 /**
@@ -14,21 +17,25 @@ import { UpdateService } from './update.service';
 @Component({
   selector: 'app-updates',
   standalone: true,
+  imports: [ButtonComponent, CardComponent, PageHeaderComponent, StatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="cabecera">
-      <div>
-        <p class="etiqueta">Versión instalada</p>
-        <p class="version">{{ instalada() }}</p>
-      </div>
-      <button type="button" [disabled]="ocupado()" (click)="buscar()">
-        {{ textoBuscar() }}
-      </button>
-    </section>
+    <div class="pagina pagina-angosta">
+      <ui-page-header titulo="Actualización"
+        descripcion="La aplicación no se publica en ninguna tienda: las versiones nuevas llegan desde las publicaciones del repositorio, se verifican y se instalan desde acá.">
+        <ui-button variante="secundario" icono="refrescar" [deshabilitado]="ocupado()"
+                   [cargando]="fase() === 'CONSULTANDO'" (pulsado)="buscar()">
+          Buscar
+        </ui-button>
+      </ui-page-header>
 
-    @if (error(); as e) {
-      <p class="error">{{ e }}</p>
-    }
+      <ui-card class="cabecera">
+        <ui-stat rotulo="Versión instalada" [valor]="instalada()" />
+      </ui-card>
+
+      @if (error(); as e) {
+        <p class="error">{{ e }}</p>
+      }
 
     @switch (estado()) {
       @case ('sin-datos') {
@@ -48,7 +55,7 @@ import { UpdateService } from './update.service';
         </p>
       }
       @case ('novedad') {
-        <section class="novedad">
+        <ui-card class="novedad">
           <p class="etiqueta">Versión disponible</p>
           <p class="version grande">{{ disponible() }}</p>
           <p class="tamanio">{{ tamanio() }}</p>
@@ -68,7 +75,7 @@ import { UpdateService } from './update.service';
               desconocidas» para esta aplicación. Es un ajuste del sistema y no
               se puede conceder desde acá.
             </p>
-            <button type="button" (click)="pedirPermiso()">Abrir el ajuste</button>
+            <ui-button variante="secundario" icono="ajustes" (pulsado)="pedirPermiso()">Abrir el ajuste</ui-button>
           } @else {
             @switch (fase()) {
               @case ('DESCARGANDO') {
@@ -82,17 +89,17 @@ import { UpdateService } from './update.service';
                   Descargada y verificada. Al instalar, la aplicación se cierra y
                   vuelve a abrirse con la versión nueva.
                 </p>
-                <button type="button" class="primario" (click)="instalar()">
+                <ui-button variante="primario" icono="descargar" (pulsado)="instalar()">
                   Instalar y reiniciar
-                </button>
+                </ui-button>
               }
               @case ('INSTALANDO') {
                 <p class="progreso">Instalando. Confirmá en el diálogo del sistema.</p>
               }
               @default {
-                <button type="button" class="primario" (click)="descargar()">
+                <ui-button variante="primario" icono="descargar" (pulsado)="descargar()">
                   Descargar
-                </button>
+                </ui-button>
               }
             }
           }
@@ -103,54 +110,45 @@ import { UpdateService } from './update.service';
               <pre>{{ notas() }}</pre>
             </details>
           }
-        </section>
+        </ui-card>
       }
     }
+    </div>
   `,
   styles: [`
-    :host { display: block; max-width: 620px; }
+    @use 'tokens' as *;
 
-    .cabecera {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line);
-    }
-    .etiqueta {
-      margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    .cabecera { margin-bottom: var(--sp-5); }
+
+    .version { font-family: var(--mono); }
+    .version.grande { font-size: var(--txt-2xl); }
+
+    .novedad .etiqueta {
+      font-size: var(--txt-xs); letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--muted);
     }
-    .version { margin: 4px 0 0; font-family: var(--mono); font-size: 18px; }
-    .version.grande { font-size: 28px; }
+    .tamanio { color: var(--muted); font-size: var(--txt-sm); margin-bottom: var(--sp-4); }
 
-    button {
-      background: transparent; border: 1px solid var(--line); color: var(--ink);
-      padding: 10px 18px; border-radius: 3px; cursor: pointer; font-size: 15px;
-    }
-    button:disabled { color: var(--muted); cursor: default; }
-    button.primario { border-color: var(--signal); color: var(--signal); }
-
-    .novedad { padding-top: 20px; }
-    .tamanio { color: var(--muted); font-size: 13px; margin: 2px 0 18px; }
-
-    .nota { color: var(--muted); line-height: 1.55; }
+    .nota { color: var(--muted); line-height: var(--alto-linea); }
     .nota.ok { color: var(--ok); }
     .nota.aviso { color: var(--warn); }
-    .error { color: var(--danger, #e5484d); line-height: 1.55; }
+    .error { color: var(--danger); line-height: var(--alto-linea); margin-bottom: var(--sp-4); }
 
-    .bloqueos { list-style: none; padding: 0; margin: 0 0 12px; }
+    .bloqueos { list-style: none; padding: 0; margin: 0 0 var(--sp-3); }
     .bloqueos li {
-      border-left: 2px solid var(--warn); padding: 8px 0 8px 12px;
-      margin-bottom: 8px; color: var(--muted); line-height: 1.5;
+      border-left: 2px solid var(--warn); padding: var(--sp-2) 0 var(--sp-2) var(--sp-3);
+      margin-bottom: var(--sp-2); color: var(--muted); line-height: var(--alto-linea);
     }
     .inv {
-      font-family: var(--mono); font-size: 12px; color: var(--warn);
-      margin-right: 6px;
+      font-family: var(--mono); font-size: var(--txt-xs); color: var(--warn);
+      margin-right: var(--sp-2);
     }
 
     .progreso { font-family: var(--mono); color: var(--signal); }
 
-    details { margin-top: 24px; color: var(--muted); }
-    summary { cursor: pointer; }
-    pre { white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
+    details { margin-top: var(--sp-5); color: var(--muted); }
+    summary { cursor: pointer; min-height: var(--tap-min); display: flex; align-items: center; }
+    pre { white-space: pre-wrap; font-size: var(--txt-sm); line-height: var(--alto-linea); }
   `],
 })
 export class UpdatesComponent {

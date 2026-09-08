@@ -46,7 +46,16 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 - `tools/visual/flujo.mjs`: recorre el camino de usuario completo en dos anchos
   y falla si algún paso se atasca (`docs/flujo-de-usuario.md`).
 
+- Telemetría, canales, ganancia y actualización migradas al sistema de diseño,
+  con lista de tarjetas en lugar de tabla en pantallas angostas.
+
 ### Corregido
+- Las cuatro pantallas heredadas llamaban funciones desde la plantilla, que se
+  reevalúan en cada ciclo de detección de cambios. En telemetría eran cuarenta
+  y ocho llamadas por ciclo, en la pantalla que más ciclos genera. Ahora cada
+  una deriva sus filas de una sola señal calculada.
+- La asignación de canales usaba una señal `version` incrementada a mano para
+  forzar el refresco, en vez de derivar de las asignaciones.
 - La compilación de desarrollo no compilaba, y con ella `ng serve` tampoco:
   los mapas de código de scripts hacían que el compilador perdiera `main.ts`.
 - El paro de emergencia se montaba sobre el último botón de la pantalla en

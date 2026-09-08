@@ -26,6 +26,9 @@ interfaz, no se editan a mano.
 | `19-actualizacion-sin-permiso.png` | Versión disponible, falta el ajuste del sistema |
 | `20-actualizacion-disponible.png` | Versión disponible, con sus novedades |
 | `21-prelanzamiento-descartado.png` | Una etiqueta `rc` no se ofrece como actualización |
+| `tel-01-consola.png` | Telemetría en teléfono: tarjetas en vez de tabla |
+| `tel-02-canales.png` | Asignación de canales en teléfono |
+| `tel-03-ganancia.png` | Asistente de ganancia en teléfono |
 | `ds-telefono.png` | Sistema de diseño completo a 390 px |
 | `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
 | `ds-tablet.png` | Sistema de diseño completo a 1280 px |
