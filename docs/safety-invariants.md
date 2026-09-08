@@ -12,6 +12,21 @@ El generador de señal es el reproductor de la consola (ADR-002); las invariante
 - *PLAYER_RESERVE:* transacción System que guarda y luego restaura el estado completo del Player (mute, fader, pan, sends a todos los buses, pista cargada).
 - *Incidente de seguridad (para pruebas de campo):* write fuera del pipeline, change UNVERIFIED sin aviso visible, invariante violada en el log, audio no solicitado en el PA reportado por el usuario, transacción en APPLYING > 10 s, o E-Stop usado por necesidad.
 
+## Estado de implementación
+
+Cubiertas por test unitario, en `packages/safety` y `packages/domain`:
+INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008,
+INV-009, INV-010, INV-017, INV-019 (parte de bloqueo), INV-020, INV-021,
+INV-024, INV-025.
+
+Pendientes de hardware, se cierran con su spike: INV-011 (política de
+confirmación, depende de SPK-P0.1), INV-012 a INV-016 y INV-026 (generador,
+dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-022, INV-023, INV-027 a
+INV-033.
+
+Ninguna invariante se marca como cerrada por pasar contra el simulador: el
+simulador reproduce nuestras hipótesis del protocolo, no la consola.
+
 | ID | Invariante | Test | Desde |
 |---|---|---|---|
 | INV-001 | Ninguna transacción pasa a APPLYING sin `snapshotRef` verificado en la lista de snapshots re-leída. Nombre `VSE_AUTO_<ts>` en show `VSE`. | Unit + HIL: aplicar sin snapshot → rechazado; borrar snapshot entre save y apply → abortada. | MVP4a |
