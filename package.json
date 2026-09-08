@@ -1,6 +1,6 @@
 {
   "name": "ui24r-virtual-sound-engineer",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Ingeniero de sonido virtual asistido por medici\u00f3n para Soundcraft Ui24R",
   "license": "UNLICENSED",
