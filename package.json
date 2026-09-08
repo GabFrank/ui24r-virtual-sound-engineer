@@ -16,7 +16,9 @@
     "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
     "validate:docs": "node tools/docs/validate-ids.mjs",
     "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
-    "validate:limites": "node tools/docs/validate-limites.mjs"
+    "validate:limites": "node tools/docs/validate-limites.mjs",
+    "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test",
+    "verificar:commits": "node tools/docs/validate-commits.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

@@ -104,10 +104,15 @@ Cada una de estas costó tiempo. Están acá para que no vuelva a pasar.
 ## Cómo se trabaja
 
 ```bash
+npm run verificar          # todo lo que comprueba la integración continua
+npm run verificar:commits  # los mensajes de esta rama, contra main
+
 npm run lint          # chequeo de tipos completo + compilación de la app
-npm test              # 195 tests de los seis paquetes
+npm test              # 220 tests de los siete paquetes
 npm run test:dsp      # 48 de procesamiento de señal
 npm run validate:docs # identificadores de la documentación
+npm run validate:templates  # acentos graves y llamadas desde plantilla
+npm run validate:limites    # límites entre paquetes
 
 npm run build:dev -w mobile          # compilación con la galería de diseño
 node tools/visual/flujo.mjs          # 21 pasos del camino de usuario, 2 anchos
@@ -115,7 +120,7 @@ node tools/visual/capture.mjs        # escenarios del protocolo + sistema de dis
 node tools/mixer-sim/src/server.mjs  # simulador de la consola
 ```
 
-**Antes de abrir un PR**: `npm run lint`, `npm test`, `npm run test:dsp`, `npm run validate:docs`. Si tocaste interfaz, además las capturas.
+**Antes de abrir un PR**: `npm run verificar` y `npm run verificar:commits`. Si tocaste interfaz, además las capturas.
 
 Las ramas salen de `main` y entran por PR. `main` está protegida.
 
