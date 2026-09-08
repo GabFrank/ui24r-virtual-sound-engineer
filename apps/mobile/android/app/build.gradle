@@ -31,7 +31,33 @@ def vseAlmacen = project.findProperty('vseKeystoreFile') ?: System.getenv('VSE_K
 def vseAlmacenClave = project.findProperty('vseKeystorePassword') ?: System.getenv('VSE_KEYSTORE_PASSWORD')
 def vseAlias = project.findProperty('vseKeyAlias') ?: System.getenv('VSE_KEY_ALIAS')
 def vseAliasClave = project.findProperty('vseKeyPassword') ?: System.getenv('VSE_KEY_PASSWORD')
-def vseFirmaDisponible = vseAlmacen != null && file(vseAlmacen).exists()
+def vseHayAlmacen = vseAlmacen != null && file(vseAlmacen).exists()
+
+/*
+ * Las cuatro credenciales o ninguna.
+ *
+ * Antes alcanzaba con que el fichero existiera. Si faltaba la contrasena o el
+ * alias -- un secreto mal escrito en el repositorio, por ejemplo -- la
+ * configuracion de firma se creaba igual con valores nulos, y lo que se obtenia
+ * era un fallo de Gradle sin relacion aparente con el secreto que faltaba, o
+ * peor, un APK firmado de una forma que nadie eligio. Para un mecanismo cuyo
+ * error es irreversible -- una instalacion firmada con la clave equivocada solo
+ * se arregla desinstalando, y eso borra las sesiones guardadas -- fallar de
+ * inmediato y decir cual falta es la unica respuesta razonable.
+ */
+if (vseHayAlmacen) {
+    def faltantes = []
+    if (!vseAlmacenClave) faltantes << 'VSE_KEYSTORE_PASSWORD (ANDROID_KEYSTORE_PASSWORD)'
+    if (!vseAlias) faltantes << 'VSE_KEY_ALIAS (ANDROID_KEY_ALIAS)'
+    if (!vseAliasClave) faltantes << 'VSE_KEY_PASSWORD (ANDROID_KEY_PASSWORD)'
+    if (!faltantes.isEmpty()) {
+        throw new GradleException(
+            'VSE: hay almacen de claves pero faltan credenciales: ' + faltantes.join(', ') +
+            '. No se compila a medias: ver docs/actualizacion-en-app.md.')
+    }
+}
+
+def vseFirmaDisponible = vseHayAlmacen
 
 if (!vseFirmaDisponible) {
     logger.warn('VSE: sin almacen de claves propio. El APK quedara firmado con la ' +

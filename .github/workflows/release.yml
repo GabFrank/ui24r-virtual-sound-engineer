@@ -56,10 +56,21 @@ jobs:
       - name: Restaurar el almacén de claves
         env:
           ALMACEN: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          CLAVE_ALMACEN: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          CLAVE_ALIAS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$ALMACEN" ]; then
-            echo "Falta el secreto ANDROID_KEYSTORE_BASE64." >&2
-            echo "Sin él el APK quedaría firmado con una clave de depuración" >&2
+          # Los cuatro secretos, no solo el almacén. Faltando la contraseña o
+          # el alias, Gradle fallaba con un error sin relación aparente con el
+          # secreto ausente. Acá se dicen todos los que faltan de una vez.
+          faltan=""
+          [ -z "$ALMACEN" ] && faltan="$faltan ANDROID_KEYSTORE_BASE64"
+          [ -z "$CLAVE_ALMACEN" ] && faltan="$faltan ANDROID_KEYSTORE_PASSWORD"
+          [ -z "$ALIAS" ] && faltan="$faltan ANDROID_KEY_ALIAS"
+          [ -z "$CLAVE_ALIAS" ] && faltan="$faltan ANDROID_KEY_PASSWORD"
+          if [ -n "$faltan" ]; then
+            echo "Faltan secretos del repositorio:$faltan" >&2
+            echo "Sin ellos el APK quedaría firmado con una clave de depuración" >&2
             echo "distinta en cada corrida y NINGUNA actualización funcionaría." >&2
             echo "Ver docs/actualizacion-en-app.md." >&2
             exit 1
@@ -97,7 +108,20 @@ jobs:
           sha256sum "$destino" > "$destino.sha256"
           echo "apk=$destino" >> "$GITHUB_OUTPUT"
           echo "--- huella del certificado ---"
-          keytool -printcert -jarfile "$destino" | grep -i 'SHA256:' || true
+          certificado=$(keytool -printcert -jarfile "$destino")
+          echo "$certificado" | grep -i 'SHA256:' || true
+
+          # Que el APK no salga firmado con la clave de depuración de Android.
+          # Hasta acá eso se advertía en la documentación y se confiaba en que
+          # los secretos estuvieran bien; publicar uno así es irreversible para
+          # quien lo instale, porque la única salida es desinstalar y perder las
+          # sesiones guardadas. Ahora la publicación falla antes de existir.
+          if echo "$certificado" | grep -qi 'CN=Android Debug'; then
+            echo "El APK quedó firmado con la clave de depuración de Android." >&2
+            echo "Publicarlo dejaría a quien lo instale sin poder actualizar nunca." >&2
+            echo "Revisar los secretos del repositorio y docs/actualizacion-en-app.md." >&2
+            exit 1
+          fi
 
       - name: Publicar
         uses: softprops/action-gh-release@v2
