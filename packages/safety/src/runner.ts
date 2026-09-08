@@ -53,17 +53,46 @@ export class EjecutorDeTransacciones {
     this.dormir = opciones.dormir ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
+  /**
+   * Devuelve si la instantánea referenciada existe de verdad en la consola.
+   *
+   * Si la consulta falla —la conexión se cayó justo ahora— se responde que no
+   * está verificada. Es la respuesta segura: sin poder comprobar que existe la
+   * red de la que depende el retroceso, no se escribe.
+   */
+  private async verificarSnapshot(ref: string | null): Promise<boolean> {
+    if (ref === null) return false;
+    try {
+      return (await this.mixer.listarSnapshots()).includes(ref);
+    } catch {
+      return false;
+    }
+  }
+
   async ejecutar(
     id: string,
     sessionId: string,
     razon: string,
     cambios: readonly CambioPropuesto[],
     ctx: ContextoSeguridad,
-    opciones: { readonly conexionPermiteEscribir: boolean; readonly snapshotRef: string | null },
+    opciones: {
+      readonly conexionPermiteEscribir: boolean;
+      readonly snapshotRef: string | null;
+      readonly tipoDeOperacion?: string;
+    },
   ): Promise<ResultadoTransaccion> {
+    // INV-001: la instantánea se verifica releyendo la lista de la consola,
+    // no comprobando que la referencia no sea nula. Alguien pudo borrarla
+    // desde el navegador de la consola entre que se guardó y ahora, y ese es
+    // exactamente el escenario que la invariante describe.
+    const snapshotVerificado = await this.verificarSnapshot(opciones.snapshotRef);
+
     const veredicto = this.safety.evaluar(cambios, ctx, {
       conexionPermiteEscribir: opciones.conexionPermiteEscribir,
-      snapshotVerificado: opciones.snapshotRef !== null,
+      snapshotVerificado,
+      ...(opciones.tipoDeOperacion === undefined
+        ? {}
+        : { tipoDeOperacion: opciones.tipoDeOperacion }),
     });
 
     if (!veredicto.permitido) {

@@ -58,7 +58,17 @@ export type ResultadoLimite =
 export interface ContextoCambio {
   readonly kind: ParameterKind;
   readonly deltaSolicitado: number;
-  /** Cuánto se movió ya este parámetro en la sesión, respecto al valor inicial. */
+  /**
+   * Desplazamiento **neto y con signo** respecto al valor inicial de la sesión.
+   *
+   * Con signo, no en valor absoluto. La diferencia no es de estilo: INV-004
+   * define el tope como «respecto al valor inicial», o sea que el parámetro
+   * debe permanecer dentro de `inicial ± tope`. Sumando magnitudes, la regla
+   * permitía seguir alejándose hasta agotar el presupuesto y después prohibía
+   * **la única dirección segura**, la que devuelve el parámetro hacia donde
+   * estaba: un canal que subió 6 dB en la prueba y resulta estar alto en el
+   * show no se podía bajar.
+   */
   readonly acumuladoEnSesion: number;
   /** Si hay una medición posterior a la última transacción sobre este parámetro. */
   readonly hayMedicionPosterior: boolean;
@@ -82,14 +92,16 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
       mensaje: `${delta} ${lim.unidad} supera el máximo por transacción de ${lim.porTransaccion}`,
     };
   }
-  const acumulado = Math.abs(c.acumuladoEnSesion) + delta;
-  if (acumulado > lim.acumuladoPorSesion) {
+  // El desplazamiento resultante, no la suma de magnitudes: un movimiento que
+  // acerca el parámetro a su valor inicial siempre es admisible.
+  const resultante = c.acumuladoEnSesion + c.deltaSolicitado;
+  if (Math.abs(resultante) > lim.acumuladoPorSesion) {
     return {
       permitido: false,
       codigo: 'CUMULATIVE_CAP',
       mensaje:
-        `el acumulado de la sesión llegaría a ${acumulado.toFixed(1)} ${lim.unidad}, ` +
-        `por encima del máximo de ${lim.acumuladoPorSesion}`,
+        `el parámetro quedaría a ${resultante.toFixed(1)} ${lim.unidad} de su valor ` +
+        `inicial, y el máximo por sesión es ${lim.acumuladoPorSesion}`,
     };
   }
   if (!c.esPrimerCambioDelParametro && !c.hayMedicionPosterior) {

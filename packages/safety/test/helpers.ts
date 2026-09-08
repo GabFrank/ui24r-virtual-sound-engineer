@@ -21,6 +21,19 @@ export class MezcladoraFalsa implements MixerDomainAPI {
   /** Lanza al llegar a esta escritura, simulando una caída del proceso. */
   caerEnEscrituraNumero: number | null = null;
 
+  /**
+   * Estado del almacén confirmado que devuelve `leer`.
+   *
+   * Es configurable porque antes devolvía siempre VALID, y eso dejaba sin
+   * ejercitar la rama del ejecutor que protege de escribir después de una
+   * avalancha: la suite solo podía provocar el otro caso, el de la lectura sin
+   * confirmar.
+   */
+  estadoDelAlmacen: ReadResult['storeState'] = 'VALID';
+
+  /** Instantáneas que la consola dice tener, para verificar INV-001. */
+  snapshots: string[] = [];
+
   constructor(iniciales: Record<string, number> = {}) {
     for (const [k, v] of Object.entries(iniciales)) {
       this.valores.set(k, v);
@@ -34,6 +47,10 @@ export class MezcladoraFalsa implements MixerDomainAPI {
     return { modelo: 'Ui24R-falsa', firmware: '0.0.0' };
   }
 
+  async listarSnapshots(): Promise<readonly string[]> {
+    return this.snapshots;
+  }
+
   leer(parametro: string): ReadResult {
     const tiene = this.confirmados.has(parametro);
     return {
@@ -41,7 +58,7 @@ export class MezcladoraFalsa implements MixerDomainAPI {
       confirmedAt: tiene ? new Date().toISOString() : null,
       source: 'EXTERNAL',
       version: 1,
-      storeState: 'VALID',
+      storeState: this.estadoDelAlmacen,
     };
   }
 

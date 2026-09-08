@@ -4,3 +4,4 @@ export * from './protocol.ts';
 export * from './transport.ts';
 export * from './confirmed-store.ts';
 export * from './ui24r-adapter.ts';
+export * from './clasificar-ruta.ts';

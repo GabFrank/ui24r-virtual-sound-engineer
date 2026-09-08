@@ -50,6 +50,20 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   con lista de tarjetas en lugar de tabla en pantallas angostas.
 
 ### Corregido
+- **Cinco invariantes estaban escritas, probadas y muertas**, el mismo patrón
+  que ya se había visto con INV-034. Todas corregidas con su test:
+  INV-001 comprobaba que la referencia a la instantánea no fuera nula, no que
+  la instantánea existiera; INV-008 e INV-010 se aplicaban sobre la etiqueta
+  que declaraba quien proponía el cambio y no sobre la ruta, así que un envío
+  a un auxiliar de monitor etiquetado como fader de canal pasaba; las cláusulas
+  de Q mínimo y realce máximo de INV-004 tenían su constante en el dominio y
+  ninguna regla las consultaba; el tope acumulado de INV-004 sumaba magnitudes
+  y bloqueaba el movimiento que deshace; y la lista blanca del paro de
+  emergencia de INV-019 no la consultaba el motor.
+- El estado confirmado se daba por válido al abrir el socket, antes de recibir
+  el volcado, y una trama de medidores tras un tramo inestable lo revalidaba
+  sin haber releído nada.
+- Una transacción sin cambios se aprobaba.
 - **INV-019: el paro de emergencia quedaba inoperable con cualquier diálogo
   abierto.** Un `dialog` con `showModal()` se pinta en la capa superior del
   navegador y su velo intercepta los eventos: el botón flotante dejaba de

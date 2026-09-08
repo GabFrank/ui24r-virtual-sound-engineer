@@ -28,6 +28,30 @@ INV-033.
 Ninguna invariante se marca como cerrada por pasar contra el simulador: el
 simulador reproduce nuestras hipótesis del protocolo, no la consola.
 
+**Cláusulas que estaban declaradas y no las aplicaba nadie.** Se corrigieron
+todas en la misma tanda, después de una auditoría que encontró cinco casos del
+mismo patrón —la invariante escrita, probada y muerta— que ya se había visto
+con INV-034:
+
+- **INV-001** comprobaba que la referencia a la instantánea no fuera nula, no
+  que la instantánea existiera. El campo `existenciaVerificada` estaba
+  declarado y no lo escribía ni lo leía nadie. Ahora el ejecutor relee la lista
+  de la consola antes de aplicar, y el segundo escenario del enunciado —borrar
+  la instantánea entre guardarla y aplicar— por fin se detecta.
+- **INV-008 e INV-010** están enunciadas sobre rutas, pero el motor decidía con
+  la clase que declaraba quien proponía el cambio. Un envío a un auxiliar de
+  monitor etiquetado como fader de canal pasaba. Ahora `clasificarRuta` deriva
+  la clase de la ruta y el motor rechaza cuando no coinciden, o cuando la ruta
+  no se reconoce.
+- **INV-004**, cláusulas de Q mínimo en salidas y realce máximo de sala: las
+  constantes existían en el dominio y ninguna regla las consultaba.
+- **INV-004**, tope acumulado: sumaba magnitudes en vez de desplazamiento neto,
+  así que bloqueaba justamente el movimiento que devuelve el parámetro hacia su
+  valor inicial.
+- **INV-019**, lista blanca: estaba escrita y el motor rechazaba todo con el
+  paro activo, incluido un retroceso. Funcionaba porque el retroceso no pasaba
+  por el motor, que no es lo mismo que estar permitido.
+
 **INV-019, parte de interfaz.** El bloqueo de escrituras y la lista blanca
 tienen test unitario. La *presencia* del botón la comprueba
 `tools/visual/flujo.mjs`, que abre un diálogo modal y verifica que el paro siga

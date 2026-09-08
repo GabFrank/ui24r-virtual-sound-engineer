@@ -201,3 +201,132 @@ test('cada rechazo cita la invariante que lo motiva', () => {
     assert.ok(r.mensaje.length > 20, 'el mensaje explica, no solo nombra');
   }
 });
+
+// --- Coherencia entre la ruta y la clase declarada ---
+
+test('INV-008: una ruta de auxiliar de monitor no pasa aunque se declare como fader', () => {
+  // El agujero que motiva el clasificador: una auditoria ejecuto el motor con
+  // exactamente estos datos y obtuvo permitido true.
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'CHANNEL_FADER', path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: -6, valorEsperado: -9,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) {
+    assert.equal(v.rechazos[0]?.codigo, 'RUTA_INCONSISTENTE');
+    assert.equal(v.rechazos[0]?.invariante, 'INV-008');
+  }
+});
+
+test('INV-008: una ruta que el dominio no sabe clasificar se rechaza', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'CHANNEL_FADER', path: 'i.1.inventado', unidad: 'dB',
+      valorPropuesto: -6, valorEsperado: -9,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) assert.equal(v.rechazos[0]?.codigo, 'RUTA_DESCONOCIDA');
+});
+
+test('una ruta coherente con su clase sigue pasando', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'CHANNEL_FADER', path: 'i.3.mix', unidad: 'dB',
+      valorPropuesto: -6, valorEsperado: -9,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, true);
+});
+
+// --- Lista blanca del paro de emergencia ---
+
+test('INV-019: con el paro activo, un retroceso pasa y un cambio normal no', () => {
+  // La lista blanca estaba escrita y no la consultaba nadie: el motor
+  // rechazaba todo, incluido el retroceso. Funcionaba durante el paro solo
+  // porque el retroceso no pasaba por el motor, que no es lo mismo.
+  const motor = new SafetyEngine();
+  motor.bloquear();
+  const cambio = [{
+    kind: 'CHANNEL_FADER' as const, path: 'i.3.mix', unidad: 'dB',
+    valorPropuesto: -6, valorEsperado: -9,
+  }];
+  const opciones = { conexionPermiteEscribir: true, snapshotVerificado: true };
+
+  const normal = motor.evaluar(cambio, contexto(), opciones);
+  assert.equal(normal.permitido, false);
+  if (!normal.permitido) {
+    assert.equal(normal.rechazos.some((r) => r.codigo === 'BLOQUEADO'), true);
+  }
+
+  const retroceso = motor.evaluar(cambio, contexto(), {
+    ...opciones, tipoDeOperacion: 'ROLLBACK',
+  });
+  assert.equal(retroceso.permitido, true);
+});
+
+// --- Q mínimo y realce máximo en buses de salida ---
+
+test('INV-004: un filtro estrecho en un bus de salida se rechaza', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      valorPropuesto: -3, valorEsperado: 0, q: 0.4,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) {
+    assert.equal(v.rechazos.some((r) => r.codigo === 'Q_DEMASIADO_ESTRECHO'), true);
+  }
+});
+
+test('INV-004: la correccion de sala atenua, no realza', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      valorPropuesto: 3, valorEsperado: 0, q: 1.4,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) {
+    assert.equal(v.rechazos.some((r) => r.codigo === 'REALCE_EXCESIVO'), true);
+  }
+});
+
+test('una atenuacion con Q ancho en un bus declarado pasa', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      valorPropuesto: -2, valorEsperado: 0, q: 1.4,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, true);
+});
+
+test('una transaccion sin cambios no se aprueba', () => {
+  const motor = new SafetyEngine();
+  const v = motor.evaluar([], contexto(), {
+    conexionPermiteEscribir: true, snapshotVerificado: true,
+  });
+  assert.equal(v.permitido, false);
+});
