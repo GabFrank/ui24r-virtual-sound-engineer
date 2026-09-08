@@ -86,25 +86,66 @@ export function validarRangoUtil(desde: number, hasta: number): ResultadoValidac
 /**
  * Dirección de la consola.
  *
- * Se guarda la dirección completa del WebSocket y no solo la máquina, porque
- * la ruta exacta del protocolo todavía no está confirmada —depende del spike
- * SPK-P0.1— y porque así el mismo campo sirve para apuntar al simulador
- * durante el desarrollo. Cuando el spike cierre, se podrá derivar la ruta y
- * este campo pasará a pedir solo la máquina.
+ * **Cambió el 2026-09-08, al cerrar SPK-P0.1.** Antes este campo pedía la
+ * dirección completa del WebSocket, y su propio comentario decía por qué era
+ * provisorio: «cuando el spike cierre, se podrá derivar la ruta y este campo
+ * pasará a pedir solo la máquina».
+ *
+ * Ahora hay un motivo más fuerte que la comodidad. La Ui24R habla socket.io 0.9
+ * y su dirección lleva dentro un identificador de sesión **que se agota al
+ * usarlo**:
+ *
+ * ```
+ * ws://192.168.0.49/socket.io/1/websocket/10454688205293084044
+ * ```
+ *
+ * Una dirección así **no se puede guardar**: sirve para un intento y después no.
+ * Lo que se guarda es la máquina, y la ruta se deriva en cada conexión.
+ *
+ * Se siguen aceptando las direcciones `ws://` para no romper el desarrollo
+ * contra el simulador, que sí tiene una dirección estable. `esSimulador()`
+ * distingue una cosa de la otra.
  */
-export function validarUrlDeConsola(valor: string): ResultadoValidacion {
+export function validarDireccionDeConsola(valor: string): ResultadoValidacion {
   const v = valor.trim();
   if (v.length === 0) return 'Falta la dirección de la consola.';
-  if (!/^wss?:\/\//.test(v)) {
-    return 'Tiene que empezar por ws:// o wss://. Por ejemplo, ws://10.10.1.1.';
+
+  if (esSimulador(v)) {
+    try {
+      // eslint-disable-next-line no-new
+      new URL(v);
+    } catch {
+      return 'Esa dirección de simulador no se entiende.';
+    }
+    return null;
   }
-  try {
-    // eslint-disable-next-line no-new
-    new URL(v);
-  } catch {
-    return 'Esa dirección no se entiende.';
+
+  if (/\s/.test(v)) return 'La dirección no puede tener espacios.';
+  if (v.includes('/')) {
+    return 'Poné solo la máquina, sin rutas. Por ejemplo, 192.168.0.49.';
+  }
+
+  const [maquina, puerto, ...sobra] = v.split(':');
+  if (sobra.length > 0) return 'Esa dirección no se entiende.';
+  if (!maquina) return 'Falta la máquina.';
+  if (puerto !== undefined && !/^\d{1,5}$/.test(puerto)) {
+    return 'El puerto tiene que ser un número.';
+  }
+  if (!/^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(maquina)) {
+    return 'Esa máquina no se entiende. Por ejemplo, 192.168.0.49.';
   }
   return null;
+}
+
+/**
+ * Si la dirección apunta al simulador y no a una consola.
+ *
+ * Lo decide la forma, no una preferencia: una dirección `ws://` es una URL
+ * completa, y eso solo lo puede servir el simulador. Una consola real nunca
+ * tiene una dirección estable que se pueda escribir a mano.
+ */
+export function esSimulador(valor: string): boolean {
+  return /^wss?:\/\//.test(valor.trim());
 }
 
 /** Reúne los errores de un formulario. Vacío significa que se puede guardar. */

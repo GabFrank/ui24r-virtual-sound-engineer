@@ -1,11 +1,13 @@
 # Matriz de capacidades del protocolo Ui24R
 
-**Versión 0.** Estado inicial, derivado de la auditoría técnica contra el código de `soundcraft-ui-connection` v7.0.3. **Ninguna fila está probada en hardware todavía.**
+**Versión 1.** Derivada de la auditoría técnica contra `soundcraft-ui-connection` v7.0.3, y **con siete filas probadas contra una consola real el 2026-09-08** (sesión local con hardware, SPK-P0.1 y SPK-P0.2a). El resto sigue sin probar.
 
 **Regla:** ninguna función de producto se implementa sobre una fila que no esté en estado CONFIRMADO **y** con la columna *Probado* en sí. Ver ADR-006.
 
 **Versión de la biblioteca:** 7.0.3
-**Firmware de la consola:** _por registrar en SPK-P0.2a_ — un firmware distinto al aquí listado deshabilita toda escritura por ruta cruda (INV-033).
+**Firmware de la consola:** `3.4.8318-ui24` — modelo `ui24`, `type=8ch`, `schema=6`, `flavour=1`. Un firmware distinto al aquí listado deshabilita toda escritura por ruta cruda (INV-033).
+
+> ⚠️ **INV-033 tiene un problema de orden que conviene mirar.** El firmware **no está expuesto por HTTP**: se probaron `version.txt`, `VERSION`, `js/version.js`, `firmware.txt`, `info.json`, `/api/version` y `sel/version.js`, y las siete devuelven `301 <html>Moved</html>`. La versión aparece como una clave más del volcado del socket, o sea **después de conectarse**. Si INV-033 tiene que decidir si habilita escrituras antes de abrir la conexión, no hay dato con el que decidir.
 
 ## Estados
 
@@ -13,7 +15,7 @@
 - **INFERIDO**: la clave existe en el modelo de estado, pero el escalado del valor es desconocido.
 - **DESCONOCIDO**: no se encontró fuente; requiere spike con hardware.
 
-> **El rango no es la curva.** Varias filas están CONFIRMADAS en cuanto a que el parámetro existe y hasta dónde llega, y aun así la aplicación no sabe traducir su valor a unidades físicas: la *forma* del recorrido entre 0 y 1 la mide SPK-P0.2a. Mientras tanto, `packages/mixer-adapter/src/conversiones.ts` usa suposiciones —logarítmica para el fader, lineal para la ganancia—, están todas juntas y marcadas con `VERIFICADO_CONTRA_CONSOLA = false`, y la interfaz antepone «≈» a lo que sale de ellas. El nivel y el pico no llevan esa marca: vienen de los medidores y son medidas. Y cuando la consola todavía no dijo un valor, la pantalla escribe «—» en vez de un número: antes se devolvía el extremo del rango como si fuera una lectura, que es el peor valor posible para equivocarse y llevaba la misma marca que una estimación real.
+> **El rango no es la curva, y ahora hay curva para dos filas.** El fader y la ganancia de entrada dejaron de ser suposiciones: sus conversiones se extrajeron del `mixer.html` que la propia consola sirve, y `VERIFICADO_CONTRA_CONSOLA` pasó a `true`. Dos cosas cambiaron de valor al medirlas: **el fader llega a +10 dB, no a 0** —dar por sentado que 1,0 es 0 dB erra diez decibeles en el extremo peligroso—, y **la ganancia de entrada es escalonada**, con 48 valores posibles (de 2 en 2 dB hasta +26, de 1 en 1 desde +27); la recta que se suponía antes erraba más de un decibel. El ecualizador, el compresor y la puerta siguen sin curva y siguen fuera de `conversiones.ts` por eso. Ojo con qué garantiza esto: que nuestra lectura coincide con la que ve el operador en la consola. La correspondencia con un nivel digital real la mide SPK-P0.10b y no está medida. El nivel y el pico no llevan esa marca: vienen de los medidores y son medidas. Y cuando la consola todavía no dijo un valor, la pantalla escribe «—» en vez de un número: antes se devolvía el extremo del rango como si fuera una lectura, que es el peor valor posible para equivocarse y llevaba la misma marca que una estimación real.
 
 > **La ruta manda sobre la clase declarada.** `clasificarRuta` deriva de la ruta a qué categoría de propiedad pertenece, y el motor rechaza si no coincide con la que declaró quien propone (INV-008/INV-010). Dos correcciones que salieron de comparar el clasificador con esta tabla: la alimentación fantasma es `hw.N.phantom` y no `i.N.phantom`, y `var.mtk.*` —soundcheck y multipista— estaba clasificado como envío al bus de análisis, o sea como el **único routing escribible** que admite INV-008. El envío al bus de análisis solo se reconoce si se dice qué auxiliar es ese bus, que lo tiene que decir SPK-P0.5: sin ese dato, todos los `i.N.aux.M.value` son envíos de monitor y no se escribe ninguno.
 
@@ -21,10 +23,11 @@
 
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |
 |---|---|---|---|---|---|---|
-| Fader de canal | `master.input(n).setFaderLevelDB` | `i.N.mix` | dB, curva no lineal | CONFIRMADO | ⬜ | P0.2a |
-| Fader general | `master.setFaderLevelDB` | `m.mix` | dB | CONFIRMADO | ⬜ | P0.2a |
-| Silencio, solo, panorama, nombre | sí | `i.N.mute/solo/pan/name` | — | CONFIRMADO | ⬜ | P0.2a |
-| Ganancia de entrada | `hw(n).setGainDB` | `hw.N.gain` | dB, de −6 a 57 | CONFIRMADO | ⬜ | P0.2a |
+| Fader de canal | `master.input(n).setFaderLevelDB` | `i.N.mix` | dB, curva no lineal | CONFIRMADO | ✅ | P0.2a |
+| Fader general | `master.setFaderLevelDB` | `m.mix` | dB | CONFIRMADO | ✅ | P0.2a |
+| Silencio, panorama, nombre | sí | `i.N.mute`, `i.N.pan`, `i.N.name` | booleano, 0..1, texto | CONFIRMADO | ✅ | P0.2a |
+| Solo de canal | sí | `i.N.solo` | booleano | CONFIRMADO | ⬜ | P0.2a |
+| Ganancia de entrada | `hw(n).setGainDB` | `hw.N.gain` | dB, de −6 a 57, **escalonada en 48 valores** | CONFIRMADO | ✅ | P0.2a |
 | Alimentación fantasma | `hw(n).setPhantom` | `hw.N.phantom` | booleano | CONFIRMADO, solo lectura por INV-007 | ⬜ | P0.2a |
 | Alta impedancia | — | `hw.N.hiz` | booleano | INFERIDO | ⬜ | P0.2a |
 | Retardo de canal | `master.input(n).setDelay` | `i.N.delay` | ms, de 0 a 250 | CONFIRMADO | ⬜ | P0.2a |
@@ -41,7 +44,8 @@
 
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |
 |---|---|---|---|---|---|---|
-| Envío auxiliar: nivel y silencio | `aux(b).input(n)` | `i.N.aux.B.value/mute` | dB | CONFIRMADO | ⬜ | P0.2a |
+| Envío auxiliar: nivel | `aux(b).input(n)` | `i.N.aux.B.value` | dB | CONFIRMADO | ✅ | P0.2a |
+| Envío auxiliar: silencio | `aux(b).input(n)` | `i.N.aux.B.mute` | booleano | CONFIRMADO | ⬜ | P0.2a |
 | Envío auxiliar: antes o después del fader | `pre()/post()` | `i.N.aux.B.post` | booleano | CONFIRMADO | ⬜ | P0.2a |
 | Envío auxiliar: antes o después del proceso | `preProc()/postProc()` | `i.N.aux.B.postproc` | booleano | CONFIRMADO | ⬜ | P0.2a |
 | Configuración global de punto de derivación | — | `settings.auxsendpoint`, `mtxsendpoint` | enumerado | DESCONOCIDO | ⬜ | P0.2a |

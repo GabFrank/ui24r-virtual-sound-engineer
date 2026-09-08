@@ -1,0 +1,9 @@
+# Tres clientes simultaneos — 2026-09-08T17:16:23.634Z
+# duracion: 120s  host: 192.168.0.49
+# solo lectura: ningun cliente escribio nada
+
+cliente A: claves=6665 lineas_recibidas=6665 sha256=25af786c4f43cfe697ccd08f7f05c85f7e4ecb69f44e017b618523e463734dbb
+cliente B: claves=6665 lineas_recibidas=6665 sha256=25af786c4f43cfe697ccd08f7f05c85f7e4ecb69f44e017b618523e463734dbb
+cliente C: claves=6665 lineas_recibidas=6665 sha256=25af786c4f43cfe697ccd08f7f05c85f7e4ecb69f44e017b618523e463734dbb
+
+huellas identicas: SI

@@ -19,11 +19,26 @@ import { LevelMeterComponent } from './level-meter.component';
  * Lo que precede a un número que sale de una curva sin medir.
  *
  * El nivel y el pico vienen de los medidores de la consola: son medidas. La
- * ganancia y el fader salen de convertir un valor de 0 a 1 con una curva que
- * ningún spike verificó. Van en la misma tabla, así que sin distinguirlos se
- * leen como si tuvieran la misma procedencia.
+ * ganancia y el fader salen de convertir un valor de 0 a 1. Van en la misma
+ * tabla, así que sin distinguirlos se leen como si tuvieran la misma
+ * procedencia.
+ *
+ * **Ahora depende de si la curva se midió, y desde el 2026-09-08 se midió.** El
+ * fader y la ganancia usan las conversiones que la propia consola sirve en su
+ * `mixer.html`, así que el número que muestra la aplicación es el mismo que
+ * muestra la consola. Seguir anteponiendo «≈» diría que es una estimación
+ * cuando ya no lo es, y una marca que miente en un sentido es tan mala como la
+ * que falta en el otro: enseña a ignorarla.
+ *
+ * Sigue siendo una constante y no se borra el mecanismo: si alguien vuelve
+ * `VERIFICADO_CONTRA_CONSOLA` a falso —otra consola, otro firmware— la marca
+ * reaparece sola.
+ *
+ * Lo que esto **no** dice es que el número corresponda a un nivel digital real.
+ * Eso lo mide SPK-P0.10b y no está medido; pero eso vale igual para el nivel y
+ * el pico, que nunca llevaron marca.
  */
-const MARCA_ESTIMADO = '≈';
+const MARCA_ESTIMADO = VERIFICADO_CONTRA_CONSOLA ? '' : '≈';
 
 const MARGEN_ESCASO_DB = -6;
 

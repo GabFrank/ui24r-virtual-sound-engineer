@@ -1,8 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import {
-  Ui24rMixerAdapter, WebSocketTransport, type EstadoCanal,
+  Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoCanal,
   type ConnectionState, type BulkExternalChange,
 } from '@vse/mixer-adapter';
+import { esSimulador } from '@vse/domain';
 import { Logger } from './logger';
 import { ConnectionStateService } from './connection.state';
 
@@ -78,11 +79,27 @@ export class MixerService {
     return this.adapter.infoDispositivo();
   }
 
-  async conectar(url: string): Promise<void> {
+  /**
+   * Conecta con la consola, o con el simulador.
+   *
+   * `direccion` es **la máquina** cuando se trata de una consola real
+   * —`192.168.0.49`—, no una URL. La ruta del WebSocket lleva dentro un
+   * identificador de sesión que se agota al usarlo, así que hay que resolverla
+   * en cada conexión; de eso se ocupa `Ui24rTransport`.
+   *
+   * Una dirección `ws://` significa simulador, que sí tiene dirección estable, y
+   * se abre con el transporte simple. Es lo que sostiene el desarrollo sin
+   * consola a mano.
+   */
+  async conectar(direccion: string): Promise<void> {
     this.conectando.set(true);
     this.ultimoError.set(null);
+    const url = direccion;
     try {
-      const adapter = new Ui24rMixerAdapter(new WebSocketTransport());
+      const transporte = esSimulador(direccion)
+        ? new WebSocketTransport()
+        : new Ui24rTransport();
+      const adapter = new Ui24rMixerAdapter(transporte);
       this.adapter = adapter;
 
       adapter.alCambiarConexion((e: ConnectionState) => {

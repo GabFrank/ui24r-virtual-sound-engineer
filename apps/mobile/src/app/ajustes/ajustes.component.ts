@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ALMACEN } from '../core/almacen/almacen';
-import { validarUrlDeConsola } from '@vse/domain';
+import { validarDireccionDeConsola } from '@vse/domain';
 import { ConnectionStateService } from '../core/connection.state';
 import { MixerService } from '../core/mixer.service';
 import { Preferencias } from '../core/preferencias.service';
@@ -67,7 +67,7 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
         <ui-card titulo="Consola" [subtitulo]="estadoConexion()">
           <div class="pila">
             <ui-field rotulo="Dirección" idControl="aj-host" [error]="errorHost()"
-                      ayuda="La Ui24R levanta su propia red y se presenta en ws://10.10.1.1. Si está en una red fija, poné la dirección que le asignó el router. Durante el desarrollo, acá va la del simulador.">
+                      ayuda="Solo la máquina, sin ws:// ni rutas. La Ui24R levanta su propia red y se presenta en 10.10.1.1; si está en una red fija, poné la dirección que le asignó el router. Durante el desarrollo, acá va la del simulador, que sí lleva ws:// y puerto.">
               <input id="aj-host" type="text" inputmode="url"
                      autocapitalize="off" autocorrect="off" spellcheck="false"
                      [ngModel]="host()" (ngModelChange)="prefs.fijarHost($event)" />
@@ -273,7 +273,7 @@ export class AjustesComponent {
 
   readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
 
-  readonly errorHost = computed(() => validarUrlDeConsola(this.host()));
+  readonly errorHost = computed(() => validarDireccionDeConsola(this.host()));
 
   readonly estadoConexion = computed(() => {
     switch (this.conexion.estado()) {
