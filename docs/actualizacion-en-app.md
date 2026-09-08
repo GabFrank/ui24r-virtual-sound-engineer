@@ -45,6 +45,8 @@ En GitHub, **Settings → Secrets and variables → Actions → New repository s
 
 Desde acá, cada APK que publique la integración continua queda firmado con esa clave.
 
+**Los cuatro, o ninguno.** Si falta uno, la publicación se detiene y dice cuál — antes, con solo comprobar el almacén, faltando la contraseña o el alias Gradle fallaba con un error sin relación aparente con el secreto ausente. Y antes de adjuntar el APK se lee su certificado: si dice `CN=Android Debug`, la publicación falla. Publicar uno así es irreversible **para quien lo instale**, porque la única salida es desinstalar y con eso se pierden las sesiones guardadas; que dependa de que los secretos estén bien puestos es demasiado poco para un error que no tiene vuelta atrás.
+
 ### 3. Para compilar en la máquina propia con la misma firma
 
 En `~/.gradle/gradle.properties`, fuera del repositorio:
