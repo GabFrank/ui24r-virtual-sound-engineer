@@ -46,6 +46,14 @@ const REGLAS = [
       'probar sin dispositivo, que es donde vive la mitad difícil.',
   },
   {
+    paquete: 'packages/logging',
+    prohibido: ['@vse/mixer-adapter', '@vse/safety', '@angular/core', '@capacitor/core'],
+    motivo:
+      'El registro guarda lo que otros hacen y no participa de lo que hacen. Depende del ' +
+      'almacén y de nada más, que es lo que permite probar la cola, el volcado y la purga ' +
+      'sin Angular, sin Android y sin esperar a que se llene una tabla.',
+  },
+  {
     paquete: 'packages/store',
     prohibido: ['@vse/mixer-adapter', '@vse/safety', '@angular/core', '@capacitor/core'],
     motivo:

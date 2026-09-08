@@ -1,4 +1,4 @@
-import { consultar } from './consulta.ts';
+import { consultar, filtrar } from './consulta.ts';
 import type { Almacen, Coleccion, Documento, Filtro } from './tipos.ts';
 
 /**
@@ -36,6 +36,12 @@ export class AlmacenEnMemoria implements Almacen {
 
   async listar(coleccion: Coleccion, filtro: Filtro = {}): Promise<readonly Documento[]> {
     return consultar(this.leer(coleccion), filtro);
+  }
+
+  async contar(coleccion: Coleccion, filtro: Filtro = {}): Promise<number> {
+    // Sin `limite`: contar cuantos hay y contar cuantos devolveria una lista
+    // recortada son preguntas distintas, y la que hace falta es la primera.
+    return filtrar(this.leer(coleccion), filtro.donde).length;
   }
 
   async borrar(coleccion: Coleccion, id: string): Promise<void> {

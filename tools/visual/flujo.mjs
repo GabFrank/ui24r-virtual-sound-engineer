@@ -158,21 +158,33 @@ async function recorrer(contexto, tamanio) {
   await p.click('[data-destino="ajustes"]');
   await paso(18, 'ajustes', 'ajustes: consola, actualización y datos');
 
+  // El registro persistente tiene que tener algo dentro para este punto: se
+  // vienen guardando bandas, locales y una sesión. La comprobación existe
+  // porque un sumidero que no está conectado se ve exactamente igual que uno
+  // conectado hasta que alguien mira, y durante meses «hay registro» quiso
+  // decir «hay una clase Logger».
+  await p.click('ui-card[titulo="Registro"] ui-button:first-child button');
+  const lineas = p.locator('ui-card[titulo="Registro"] .eventos li');
+  await lineas.first().waitFor({ timeout: 5000 }).catch(() => { /* el conteo lo dice */ });
+  const eventos = await lineas.count();
+  if (eventos === 0) fallos.push('el registro guardado no devolvió ningún evento');
+  await paso(19, 'registro', 'el registro guardado, con lo que hizo la aplicación');
+
   // --- Cierre ---
   await p.click('[data-destino="sesion"]');
   await p.click('ui-page-header ui-button button');
   await p.waitForSelector('ui-dialog[titulo="Cerrar la sesión"] [open]');
-  await paso(19, 'cerrar', 'confirmación de cierre: no se puede reabrir');
+  await paso(20, 'cerrar', 'confirmación de cierre: no se puede reabrir');
   await p.click('ui-dialog[titulo="Cerrar la sesión"] [pie] ui-button:last-child button');
   await esperar(500);
-  await paso(20, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
+  await paso(21, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
 
   await p.click('[data-destino="historial"]');
   // La tabla y la lista de tarjetas coexisten en el árbol; solo una es
   // visible según el ancho. Se elige la que de verdad se ve.
   await p.locator('tbody tr, a.tarjeta').locator('visible=true').first().click();
   await esperar(400);
-  await paso(21, 'detalle', 'detalle de la sesión cerrada, solo lectura');
+  await paso(22, 'detalle', 'detalle de la sesión cerrada, solo lectura');
 
   // --- INV-019: el paro tiene que poder tocarse también con un diálogo abierto ---
   //
@@ -200,7 +212,7 @@ async function recorrer(contexto, tamanio) {
   });
   if (paroAlcanzable !== null) fallos.push(`INV-019 en diálogo: ${paroAlcanzable}`);
 
-  await paso(22, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
+  await paso(23, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
 
   await p.close();
   return fallos;

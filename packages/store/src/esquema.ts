@@ -128,6 +128,30 @@ export const MIGRACIONES: readonly Migracion[] = [
       `CREATE INDEX IF NOT EXISTS idx_local_nombre ON venue_profile(nombre);`,
     ],
   },
+  {
+    version: 3,
+    descripcion: 'el registro se guarda como documento, igual que todo lo demas',
+    sentencias: [
+      // La tabla existia desde la version 1 y nunca se escribio: el registro
+      // solo salia por consola. Al conectarle un sumidero se vio que su forma
+      // no era la de las demas tablas -- clave entera autoincremental y una
+      // columna `payload` en vez de `datos`-- asi que no se podia leer ni
+      // escribir por el mismo puerto que el resto. Se rehace en vez de
+      // adaptarse: no hay ninguna fila que conservar.
+      `DROP TABLE IF EXISTS log_event;`,
+      `CREATE TABLE log_event (
+        id TEXT PRIMARY KEY,
+        ts TEXT NOT NULL,
+        session_id TEXT,
+        category TEXT NOT NULL,
+        level TEXT NOT NULL,
+        event TEXT NOT NULL,
+        datos TEXT NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_log_sesion ON log_event(session_id, id);`,
+      `CREATE INDEX IF NOT EXISTS idx_log_nivel ON log_event(level);`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;
@@ -154,4 +178,8 @@ export const INDICES: Readonly<Record<Coleccion, readonly string[]>> = {
     'pa_component', 'calibration_state_id'],
   finding: ['session_id', 'assistant', 'confidence'],
   recommendation: ['session_id', 'finding_id', 'assistant', 'parameter', 'status', 'confidence'],
+  // El identificador del evento es su marca de tiempo mas un contador, asi
+  // que ordenar por `id` da el orden cronologico y no hace falta indexar
+  // `ts` para eso. Se indexa igual porque un informe se recorta por fecha.
+  log_event: ['ts', 'session_id', 'category', 'level', 'event'],
 };

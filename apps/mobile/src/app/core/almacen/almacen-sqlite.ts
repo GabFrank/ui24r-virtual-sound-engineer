@@ -1,5 +1,6 @@
 import {
-  aDocumento, sentenciaBorrar, sentenciaGuardar, sentenciaListar, sentenciaObtener,
+  aDocumento, sentenciaBorrar, sentenciaContar, sentenciaGuardar, sentenciaListar,
+  sentenciaObtener,
   type Almacen, type Coleccion, type Documento, type Filtro,
 } from '@vse/store';
 import type { DatabaseService } from '../database.service';
@@ -40,6 +41,12 @@ export class AlmacenSqlite implements Almacen {
     const s = sentenciaListar(coleccion, filtro);
     const filas = await this.base.consultar<Record<string, unknown>>(s.sql, s.valores);
     return filas.map((f) => aDocumento(coleccion, f));
+  }
+
+  async contar(coleccion: Coleccion, filtro: Filtro = {}): Promise<number> {
+    const s = sentenciaContar(coleccion, filtro);
+    const filas = await this.base.consultar<{ n: number }>(s.sql, s.valores);
+    return filas[0]?.n ?? 0;
   }
 
   async borrar(coleccion: Coleccion, id: string): Promise<void> {

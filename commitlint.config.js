@@ -15,7 +15,7 @@ module.exports = {
         // Documentación y proceso
         'docs', 'adr', 'gate', 'field',
         // Paquetes
-        'domain', 'adapter', 'assistants', 'safety', 'dsp', 'updater', 'store',
+        'domain', 'adapter', 'assistants', 'safety', 'dsp', 'updater', 'store', 'logging',
         // Aplicación
         'mobile', 'ui', 'audio', 'android', 'nav', 'datos',
         // Herramientas e infraestructura

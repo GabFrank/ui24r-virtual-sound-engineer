@@ -1,13 +1,21 @@
 import { APP_INITIALIZER, inject } from '@angular/core';
 import { ALMACEN } from './almacen/almacen';
 import { Logger } from './logger';
+import { RegistroService } from './registro.service';
 import { SesionService } from './sesion.service';
 
 /**
  * Lo que tiene que pasar antes de mostrar la primera pantalla.
  *
- * Son dos cosas y en este orden: abrir el almacén y recuperar la sesión que
- * hubiera quedado abierta. La recuperación importa más de lo que parece: si la
+ * Son tres cosas y en este orden: abrir el almacén, conectarle el registro y
+ * recuperar la sesión que hubiera quedado abierta.
+ *
+ * El registro se conecta después de abrir porque antes no hay dónde guardar, y
+ * antes de recuperar porque lo que pase durante la recuperación es
+ * precisamente lo que hay que poder leer cuando algo salió mal en el arranque
+ * anterior.
+ *
+ * La recuperación importa más de lo que parece: si la
  * aplicación se cerró en mitad de un ensayo —la tablet se quedó sin batería,
  * alguien la reinició—, al volver tiene que encontrar la sesión donde estaba y
  * no ofrecer empezar una nueva, porque una sesión nueva perdería el hilo de lo
@@ -24,14 +32,21 @@ export function proveerArranque() {
     useFactory: () => {
       const log = inject(Logger);
       const almacen = inject(ALMACEN);
+      const registro = inject(RegistroService);
       const sesiones = inject(SesionService);
       return async () => {
         try {
           await almacen.abrir();
+          registro.conectar();
           log.info('system', 'almacen_abierto', { donde: almacen.descripcion });
           await sesiones.recuperar();
         } catch (e) {
           log.error('system', 'arranque_incompleto', { error: String(e) });
+        } finally {
+          // El volcado va en el `finally` justo porque puede haber fallado
+          // algo: el arranque que no terminó es el que más falta hace leer, y
+          // sin esto su error se quedaría en la cola.
+          await registro.volcar();
         }
       };
     },
