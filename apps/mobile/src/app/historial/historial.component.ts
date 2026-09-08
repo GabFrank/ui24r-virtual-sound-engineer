@@ -38,6 +38,10 @@ interface Fila {
       <ui-page-header titulo="Historial"
         descripcion="Cada sesión guarda qué se midió, qué se propuso y qué se aplicó. Es lo que permite comparar una noche con la anterior en el mismo sitio." />
 
+      @if (avisoDeRecarga(); as a) {
+        <ui-fallo [mensaje]="a" [compacto]="true" (reintentar)="recargar()" />
+      }
+
       @if (problema(); as p) {
         <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
       } @else if (cargando()) {
@@ -153,6 +157,7 @@ export class HistorialComponent {
 
   readonly cargando = this.datos.cargando;
   readonly problema = this.datos.problema;
+  readonly avisoDeRecarga = this.datos.avisoDeRecarga;
   private readonly sesiones = computed(() => this.datos.valor().sesiones);
   private readonly bandas = computed(() => this.datos.valor().bandas);
   private readonly locales = computed(() => this.datos.valor().locales);

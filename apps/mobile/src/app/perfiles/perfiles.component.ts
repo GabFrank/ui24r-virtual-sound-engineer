@@ -3,8 +3,8 @@ import { Router, RouterLink } from '@angular/router';
 import { crearBanda, crearLocal, crearPa, type BandProfile, type PAProfile, type VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, Cargable, CardComponent, CargandoComponent,
-  EmptyStateComponent, FalloComponent, PageHeaderComponent, ToastService,
+  BadgeComponent, ButtonComponent, CardComponent, Cargable, CargandoComponent,
+  EmptyStateComponent, FalloComponent, PageHeaderComponent, ToastService, intentarGuardar,
 } from '../ui';
 
 type Pestania = 'bandas' | 'locales' | 'pa';
@@ -45,6 +45,10 @@ type Pestania = 'bandas' | 'locales' | 'pa';
                   (click)="pestania.set(p.id)">{{ p.etiqueta }}</button>
         }
       </div>
+
+      @if (avisoDeRecarga(); as a) {
+        <ui-fallo [mensaje]="a" [compacto]="true" (reintentar)="recargar()" />
+      }
 
       @if (problema(); as p) {
         <ui-fallo [mensaje]="p" (reintentar)="recargar()" />
@@ -175,6 +179,7 @@ export class PerfilesComponent {
 
   readonly cargando = this.datos.cargando;
   readonly problema = this.datos.problema;
+  readonly avisoDeRecarga = this.datos.avisoDeRecarga;
   readonly bandas = computed(() => this.datos.valor().bandas);
   readonly locales = computed(() => this.datos.valor().locales);
   readonly pas = computed(() => this.datos.valor().pas);
@@ -220,17 +225,26 @@ export class PerfilesComponent {
 
   recargar(): void { void this.datos.recargar(); }
 
+  /**
+   * Crear navega a la pantalla de edición, pero solo si el alta se guardó.
+   *
+   * Antes se navegaba pasara lo que pasara: si el almacén fallaba, la pantalla
+   * de edición se abría con un identificador que no existe y decía «esa banda
+   * ya no existe», que es lo más confuso que se podía contestar a alguien que
+   * acaba de tocar «Nueva banda».
+   */
   async crear(): Promise<void> {
+    const aviso = (m: string) => this.avisos.error(m);
     switch (this.pestania()) {
       case 'bandas': {
         const b = crearBanda('Banda sin nombre');
-        await this.repos.guardarBanda(b);
+        if (!await intentarGuardar(() => this.repos.guardarBanda(b), aviso, 'crear la banda')) return;
         await this.router.navigate(['/perfiles/bandas', b.id]);
         return;
       }
       case 'pa': {
         const p = crearPa('Sistema sin nombre', '');
-        await this.repos.guardarPa(p);
+        if (!await intentarGuardar(() => this.repos.guardarPa(p), aviso, 'crear el sistema')) return;
         await this.router.navigate(['/perfiles/pa', p.id]);
         return;
       }
@@ -241,11 +255,13 @@ export class PerfilesComponent {
         let pa = this.pas()[0];
         if (pa === undefined) {
           pa = crearPa('Sistema de la casa', '');
-          await this.repos.guardarPa(pa);
+          if (!await intentarGuardar(() => this.repos.guardarPa(pa!), aviso, 'crear el sistema')) {
+            return;
+          }
           this.avisos.mostrar('Se creó también un sistema de amplificación: un local no se entiende sin saber qué equipo hay.', 'aviso');
         }
         const l = crearLocal('Local sin nombre', 'INDOOR_SMALL', pa.id);
-        await this.repos.guardarLocal(l);
+        if (!await intentarGuardar(() => this.repos.guardarLocal(l), aviso, 'crear el local')) return;
         await this.router.navigate(['/perfiles/locales', l.id]);
       }
     }
