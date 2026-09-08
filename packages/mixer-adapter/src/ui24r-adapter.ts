@@ -152,17 +152,27 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    * navegador de la consola dejaba el estado —y con él la posibilidad de
    * escribir— muerto por el resto del show.
    *
-   * Se hace reconectando, y no pidiendo el volcado, porque **no hay mensaje
-   * verificado que lo pida**: cuál es lo tiene que decir SPK-P0.2a. Reconectar
-   * usa lo único que el protocolo ya demostró hacer.
+   * **Ahora se pide, ya no se reconecta.** El comentario anterior decía que no
+   * había mensaje verificado que pidiera el volcado y que por eso se reconectaba.
+   * SPK-P0.2a cerró el 2026-09-08 y `INIT` quedó medido: mandarlo produjo un
+   * segundo volcado completo del estado. No escribe ningún parámetro; es una
+   * consulta, como `ALIVE`.
+   *
+   * El cambio no es cosmético. Reconectar **ya no funcionaba** contra la consola
+   * real: el identificador de sesión de socket.io es de un solo uso, así que
+   * volver a abrir la misma dirección falla. Pedir `INIT` evita además tirar la
+   * conexión para recuperar algo que la consola manda sin cortar nada.
    */
   async releerEstado(): Promise<void> {
     if (this.url === null) {
       throw new Error('no hay conexión que releer: primero hay que conectarse');
     }
-    const url = this.url;
-    await this.desconectar();
-    await this.conectar(url);
+    if (!this.transporte.conectado) {
+      throw new Error('el transporte no está conectado: no hay a quién pedirle el estado');
+    }
+    this.store.volcadoIniciado();
+    this.transporte.enviar('INIT');
+    this.reiniciarQuietudDeVolcado();
   }
 
   async desconectar(): Promise<void> {

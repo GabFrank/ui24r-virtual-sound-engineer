@@ -121,7 +121,7 @@ export class WebSocketTransport implements Transport {
   private arrancarLatido(): void {
     this.detenerLatido();
     this.latido = setInterval(() => {
-      if (this.conectado) this.ws!.send(MENSAJE_ALIVE);
+      if (this.conectado) this.enviar(MENSAJE_ALIVE);
     }, ALIVE_INTERVALO_MS);
   }
 
@@ -138,9 +138,18 @@ export class WebSocketTransport implements Transport {
     this.ws = null;
   }
 
+  /**
+   * Envía una línea de protocolo, envuelta como socket.io 0.9.
+   *
+   * **Faltaba el envoltorio también en esta dirección.** Se mandaba la línea
+   * pelada, y la consola no la entiende: espera `3:::ALIVE`, no `ALIVE`. El
+   * síntoma habría sido de los peores — el socket abierto, el estado llegando,
+   * y ninguna de nuestras líneas surtiendo efecto, incluido el `ALIVE` sin el
+   * cual la consola se calla a los pocos segundos.
+   */
   enviar(linea: string): void {
     if (!this.conectado) throw new Error('transporte no conectado');
-    this.ws!.send(linea);
+    this.ws!.send(`3:::${linea}`);
   }
 
   alRecibir(cb: (linea: string) => void): () => void {
@@ -154,5 +163,30 @@ export class WebSocketTransport implements Transport {
   alCerrar(cb: (motivo: string) => void): () => void {
     this.cerrar.push(cb);
     return () => { this.cerrar = this.cerrar.filter((f) => f !== cb); };
+  }
+}
+
+/**
+ * Transporte para una Ui24R real: resuelve la dirección en cada conexión.
+ *
+ * `WebSocketTransport` recibe una URL y la abre, que es lo correcto contra el
+ * simulador. Contra la consola real no alcanza, porque **el identificador de
+ * sesión se agota al usarlo**: reconectar con la misma URL falla siempre.
+ *
+ * Por eso este transporte recibe la **máquina** —`192.168.0.49`, o un nombre—
+ * y hace el apretón de manos cada vez que se conecta. Es lo que hace que la
+ * reconexión funcione, y no un envoltorio de conveniencia.
+ */
+export class Ui24rTransport extends WebSocketTransport {
+  private readonly buscar: typeof fetch;
+
+  constructor(buscar: typeof fetch = fetch) {
+    super();
+    this.buscar = buscar;
+  }
+
+  override async conectar(maquina: string): Promise<void> {
+    const url = await resolverDireccionUi24r(maquina, this.buscar);
+    await super.conectar(url);
   }
 }

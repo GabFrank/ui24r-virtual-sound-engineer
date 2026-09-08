@@ -21,11 +21,28 @@ const CLAVE_AUTOCONECTAR = 'vse.pref.autoconectar';
  * La Ui24R levanta su propia red y se presenta en 10.10.1.1 cuando se usa como
  * punto de acceso, que es como se usa en un escenario sin red fija.
  *
- * Se guarda la dirección completa del WebSocket y no solo la máquina porque la
- * ruta exacta del protocolo todavía no está confirmada: depende del spike
- * SPK-P0.1. Mientras tanto, el mismo campo sirve para apuntar al simulador.
+ * **Es la máquina, ya no una URL.** La ruta del WebSocket lleva dentro un
+ * identificador de sesión que se agota al usarlo, así que no hay dirección
+ * completa que se pueda guardar. El campo sigue aceptando una `ws://` para
+ * apuntar al simulador, que sí la tiene estable.
  */
-export const HOST_POR_DEFECTO = 'ws://10.10.1.1';
+export const HOST_POR_DEFECTO = '10.10.1.1';
+
+/**
+ * Pasa una preferencia vieja al formato nuevo.
+ *
+ * Quien ya tenía la aplicación guardó `ws://10.10.1.1`, que con el formato
+ * nuevo se leería como «simulador» y abriría el transporte equivocado contra
+ * una consola real. Se le quita el esquema.
+ *
+ * **Solo a las direcciones sin puerto.** El simulador se levanta en un puerto
+ * —`ws://localhost:8765`— y esas se dejan como están, que es justamente lo que
+ * distingue un caso del otro.
+ */
+export function migrarHost(guardado: string): string {
+  const m = /^wss?:\/\/([^/:]+)$/.exec(guardado.trim());
+  return m ? m[1]! : guardado;
+}
 
 @Injectable({ providedIn: 'root' })
 export class Preferencias {
@@ -36,7 +53,7 @@ export class Preferencias {
     try { localStorage.setItem(clave, valor); } catch { /* sin persistencia, se sigue */ }
   }
 
-  private readonly _host = signal(this.leer(CLAVE_HOST) ?? HOST_POR_DEFECTO);
+  private readonly _host = signal(migrarHost(this.leer(CLAVE_HOST) ?? HOST_POR_DEFECTO));
   readonly host = this._host.asReadonly();
 
   private readonly _autoconectar = signal(this.leer(CLAVE_AUTOCONECTAR) === 'si');
