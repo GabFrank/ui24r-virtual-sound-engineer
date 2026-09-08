@@ -63,6 +63,45 @@ async function recorrer(contexto, tamanio) {
 
   const paso = async (n, nombre, descripcion) => {
     await esperar(350);
+
+    // Ninguna pantalla puede desplazarse en horizontal. Es la comprobación que
+    // sostiene «funciona en un teléfono»: hasta ahora eso lo respaldaban las
+    // capturas, y una captura muestra el recorte, no el desborde. Se hace en
+    // cada paso y en los dos anchos porque el que desborda suele ser un estado
+    // concreto —una tabla con datos, un diálogo abierto—, no la pantalla vacía.
+    //
+    // **No** se mira `documentElement`: el contenedor de la aplicación lleva
+    // `overflow-y: auto`, y en CSS eso convierte el eje horizontal de `visible`
+    // a `auto`, así que el desbordamiento se lo queda él y el documento nunca
+    // crece. Una comprobación sobre el documento no podía fallar nunca. Se
+    // recorren los contenedores que de verdad se desplazan, y se exceptúa
+    // `.desplaza-x`, que es la vía declarada para lo ancho a propósito -- una
+    // tabla, un diagrama -- dentro de su propia caja.
+    const desborde = await p.evaluate(() => {
+      for (const el of document.querySelectorAll('*')) {
+        if (el.scrollWidth <= el.clientWidth + 1) continue;
+        if (el.closest('.desplaza-x') !== null) continue;
+        // Solo cuentan los contenedores que de verdad se desplazan. Con
+        // `overflow-x: visible` el contenido se pinta fuera y no hay barra: un
+        // icono de 24 px en una caja de 22 no es una pantalla que se desplaza.
+        const estilo = getComputedStyle(el);
+        if (estilo.overflowX !== 'auto' && estilo.overflowX !== 'scroll') continue;
+        const clase = String(el.className || '').split(' ')[0];
+        return {
+          donde: `${el.tagName.toLowerCase()}${clase ? '.' + clase : ''}`,
+          ancho: el.scrollWidth,
+          visible: el.clientWidth,
+        };
+      }
+      return null;
+    });
+    if (desborde !== null) {
+      fallos.push(
+        `paso ${n} (${nombre}): «${desborde.donde}» se desplaza en horizontal, ` +
+        `${desborde.ancho} px de contenido en ${desborde.visible} de ancho`,
+      );
+    }
+
     const ruta = join(OUT, `flujo-${tamanio.id}-${String(n).padStart(2, '0')}-${nombre}.png`);
     await p.screenshot({ path: ruta });
     console.log(`  ✓ ${tamanio.id} ${n}. ${descripcion}`);

@@ -142,6 +142,26 @@ salir, y la respuesta por defecto es quedarse. Después de guardar y después de
 borrar, la entidad de referencia se actualiza, para no preguntar por cambios que
 acaban de guardarse o por un perfil que ya no existe.
 
+### Que no se desplace en horizontal
+
+Ninguna pantalla puede desplazarse de lado. Lo ancho a propósito —una tabla, un
+diagrama— va dentro de `.desplaza-x`, en su propia caja.
+
+`tools/visual/flujo.mjs` lo comprueba en cada paso y en los dos anchos, porque
+el que desborda suele ser un estado concreto —una tabla con datos, un diálogo
+abierto— y no la pantalla vacía que sale en la captura.
+
+Dos detalles que la primera versión de esa comprobación tuvo mal, y que son la
+razón de que esto esté escrito:
+
+- **No sirve medir `documentElement`.** El contenedor de la aplicación lleva
+  `overflow-y: auto`, y en CSS eso convierte el eje horizontal de `visible` a
+  `auto`: el desbordamiento se lo queda él y el documento nunca crece. Una
+  comprobación sobre el documento no podía fallar nunca.
+- **Solo cuentan los contenedores que se desplazan de verdad**, con `overflow-x`
+  en `auto` o `scroll`. Con `visible` el contenido se pinta fuera y no hay
+  barra: un icono de 24 px en una caja de 22 no es una pantalla que se desplaza.
+
 ## Accesibilidad
 
 - Foco visible siempre. La tablet admite teclado externo, y sin anillo de foco
