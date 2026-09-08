@@ -51,6 +51,57 @@ export const PACING_MS: Readonly<Record<'ASSISTED' | 'AUTO' | 'SYSTEM', number>>
   SYSTEM: 20,
 };
 
+/**
+ * Las operaciones que INV-005 llama «transacciones System».
+ *
+ * No es un nivel de autonomía: la autonomía dice cuánta libertad le dio el
+ * usuario a la aplicación, y una operación de sistema es de otra naturaleza
+ * —mover el bus de análisis, reservar el reproductor, silenciar un componente
+ * para medirlo, calibrar—. Por eso se deriva del tipo de operación y no de una
+ * bandera que quien propone pueda encender: pedir la exención no puede ser tan
+ * fácil como decir que se la merece.
+ */
+export const OPERACIONES_DE_SISTEMA: ReadonlySet<string> = new Set([
+  'ANALYSIS_BUS_SELECT', 'PLAYER_RESERVE', 'RESTAURAR_RESERVA',
+  'MUTE_COMPONENTE', 'RESTAURAR_MUTES', 'CALIBRACION',
+]);
+
+export function esOperacionDeSistema(tipoDeOperacion: string | undefined): boolean {
+  return tipoDeOperacion !== undefined && OPERACIONES_DE_SISTEMA.has(tipoDeOperacion);
+}
+
+/**
+ * Cuántos parámetros admite una transacción.
+ *
+ * Las de sistema están exentas del límite de cuatro (INV-005): seleccionar un
+ * canal en el bus de análisis exige poner a menos infinito los otros veintitrés
+ * envíos, y con el límite de ASSISTED esa operación se rechazaría entera. La
+ * exención estaba enunciada en la invariante y **no se podía ni expresar**,
+ * porque el máximo se resolvía solo por nivel de autonomía.
+ */
+export function maximoDeParametros(
+  nivel: AutonomyLevel,
+  tipoDeOperacion?: string,
+): number {
+  return esOperacionDeSistema(tipoDeOperacion)
+    ? Number.POSITIVE_INFINITY
+    : MAX_PARAMETROS_POR_TRANSACCION[nivel];
+}
+
+/**
+ * Milisegundos que hay que esperar entre dos escrituras de una transacción.
+ *
+ * `PACING_MS` estaba escrita en este archivo y **no la importaba ningún código
+ * de producción**: el ejecutor llevaba un 100 a mano y nunca bajaba a 20. El
+ * único test que la usaba comprobaba que dos literales del mismo archivo
+ * guardaran entre sí la relación que el propio archivo escribió, que es una
+ * tautología y no una conducta.
+ */
+export function pacingMs(nivel: AutonomyLevel, tipoDeOperacion?: string): number {
+  if (esOperacionDeSistema(tipoDeOperacion)) return PACING_MS.SYSTEM;
+  return nivel === 'AUTO' ? PACING_MS.AUTO : PACING_MS.ASSISTED;
+}
+
 export type ResultadoLimite =
   | { readonly permitido: true }
   | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP' | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA'; readonly mensaje: string };

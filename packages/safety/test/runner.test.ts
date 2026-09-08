@@ -396,3 +396,55 @@ test('revertir mientras se aplica no apaga el aviso a mitad', async () => {
 
   assert.deepEqual(avisos, [true, false]);
 });
+
+// --- INV-005: el ritmo entre escrituras y la exencion de las de sistema ---
+
+function montarConRitmo(iniciales: Record<string, number>) {
+  const esperas: number[] = [];
+  const mixer = new MezcladoraFalsa(iniciales);
+  mixer.snapshots = ['VSE_AUTO_1'];
+  const ejecutor = new EjecutorDeTransacciones(
+    mixer, new SafetyEngine(), new DiarioEnMemoria(),
+    { dormir: async (ms) => { esperas.push(ms); } },
+  );
+  return { esperas, ejecutor };
+}
+
+test('INV-005: sin tipo de operacion se espera cien milisegundos', async () => {
+  // El ejecutor llevaba un 100 escrito a mano. Ahora sale de `PACING_MS`, que
+  // hasta hoy no la importaba ningun codigo de produccion.
+  const { esperas, ejecutor } = montarConRitmo({ 'i.3.mix': -6, 'i.4.mix': -8 });
+  await ejecutor.ejecutar('tx1', 's1', 'balance',
+    [fader('i.3.mix', -4, -6), fader('i.4.mix', -6, -8)], contexto(), conSnapshot);
+  assert.deepEqual(esperas, [100]);
+});
+
+test('INV-005: una transaccion de sistema va a veinte', async () => {
+  const { esperas, ejecutor } = montarConRitmo({ 'i.3.mix': -6, 'i.4.mix': -8 });
+  await ejecutor.ejecutar('tx1', 's1', 'bus de analisis',
+    [fader('i.3.mix', -4, -6), fader('i.4.mix', -6, -8)], contexto(),
+    { ...conSnapshot, tipoDeOperacion: 'ANALYSIS_BUS_SELECT' });
+  assert.deepEqual(esperas, [20]);
+});
+
+test('INV-005: una transaccion de sistema pasa del limite de cuatro', async () => {
+  // Con el maximo resuelto solo por nivel de autonomia, esta transaccion se
+  // rechazaba entera: la exencion estaba enunciada y no se podia expresar.
+  const iniciales: Record<string, number> = {};
+  const cambios = [];
+  for (let i = 1; i <= 8; i++) {
+    iniciales[`i.${i}.mix`] = -6;
+    cambios.push(fader(`i.${i}.mix`, -4, -6));
+  }
+  const { ejecutor } = montarConRitmo(iniciales);
+
+  const rechazada = await ejecutor.ejecutar('tx1', 's1', 'ocho de golpe',
+    cambios, contexto(), conSnapshot);
+  assert.equal(rechazada.estado, 'RECHAZADA');
+  assert.ok(rechazada.estado === 'RECHAZADA'
+    && rechazada.motivos.some((m) => m.includes('INV-005')));
+
+  const aceptada = await ejecutor.ejecutar('tx2', 's1', 'bus de analisis',
+    cambios, contexto(), { ...conSnapshot, tipoDeOperacion: 'ANALYSIS_BUS_SELECT' });
+  assert.equal(aceptada.estado, 'APLICADA');
+});

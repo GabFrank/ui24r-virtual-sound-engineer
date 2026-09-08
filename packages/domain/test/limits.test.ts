@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  verificarLimite, MAX_PARAMETROS_POR_TRANSACCION, PACING_MS,
-  Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
+  MAX_PARAMETROS_POR_TRANSACCION, PACING_MS, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
+  esOperacionDeSistema, maximoDeParametros, pacingMs, verificarLimite,
 } from '../src/rules/limits.ts';
 
 test('INV-004: un cambio dentro del límite se permite', () => {
@@ -81,8 +81,30 @@ test('INV-005: el modo automático permite un solo parámetro por transacción',
 test('INV-005: las transacciones de sistema tienen un ritmo más rápido', () => {
   // Seleccionar un canal en el bus exige 24 escrituras: a 100 ms cada una no
   // entra en el tiempo de conmutación exigido.
-  assert.ok(PACING_MS.SYSTEM < PACING_MS.ASSISTED);
-  assert.ok(24 * PACING_MS.SYSTEM < 1000, 'veinticuatro envíos entran en un segundo');
+  assert.equal(pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT'), 20);
+  assert.equal(pacingMs('ASSISTED'), 100);
+  assert.equal(pacingMs('AUTO'), 100);
+  assert.ok(24 * pacingMs('ASSISTED', 'ANALYSIS_BUS_SELECT') < 1000,
+    'veinticuatro envíos entran en un segundo');
+});
+
+test('INV-005: una operación que no es de sistema no se lleva la exención', () => {
+  // La exención se deriva del tipo de operación y no de una bandera que quien
+  // propone pueda encender: pedirla no puede ser tan fácil como merecerla.
+  assert.equal(pacingMs('ASSISTED', 'BALANCE_DE_COROS'), 100);
+  assert.equal(maximoDeParametros('ASSISTED', 'BALANCE_DE_COROS'), 4);
+  assert.equal(esOperacionDeSistema('BALANCE_DE_COROS'), false);
+  assert.equal(esOperacionDeSistema(undefined), false);
+});
+
+test('INV-005: las de sistema quedan exentas del límite de cuatro', () => {
+  // Es la cláusula que no se podía ni expresar: el máximo se resolvía solo por
+  // nivel de autonomía, así que una transacción de sistema de veinticuatro
+  // envíos se rechazaba entera.
+  assert.equal(maximoDeParametros('ASSISTED'), 4);
+  assert.equal(maximoDeParametros('AUTO'), 1);
+  assert.equal(maximoDeParametros('ASSISTED', 'ANALYSIS_BUS_SELECT'), Number.POSITIVE_INFINITY);
+  assert.equal(maximoDeParametros('AUTO', 'MUTE_COMPONENTE'), Number.POSITIVE_INFINITY);
 });
 
 test('los límites de ecualización de sala favorecen atenuar sobre realzar', () => {
