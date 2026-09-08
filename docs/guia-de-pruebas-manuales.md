@@ -75,7 +75,7 @@ delante.
 |---|---|---|---|
 | 5.1 | Una compilación local reemplaza a la instalada sin desinstalar | ✅ | Con la clave de publicación, `adb install -r`. La huella tiene que dar `8db45d3f…5325` |
 | 5.2 | El WebView se puede inspeccionar | ✅ | `chrome://inspect`, o CDP por `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` |
-| 5.3 | **La base de datos local abre** | ⬜ | **Hay un defecto abierto:** el registro muestra `arranque_incompleto` y `Error: la base no está abierta: llamar a abrir() primero`, y antes `no such table: sound_session`. Es independiente de la consola y quedó sin investigar |
+| 5.3 | **La base de datos local abre** | ✅ | Corregido el 2026-09-08: la migración abría un `BEGIN;` dentro de la transacción del complemento y ninguna se aplicaba. Ahora el registro muestra tres `migracion_aplicada` y `base_abierta` |
 | 5.4 | Ajustes → Diagnóstico exporta su informe | ⬜ | |
 | 5.5 | Buscar actualizaciones | ⬜ | |
 | 5.6 | Paro de emergencia | ⬜ | |

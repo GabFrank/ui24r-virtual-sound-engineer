@@ -6,6 +6,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La base local no se creaba nunca, en ninguna instalación.** La migración
+  abría su propia transacción con `BEGIN;`, pero el `execute()` del complemento
+  de SQLite ya abre una y la cierra con `COMMIT`. SQLite rechazaba la
+  transacción anidada —`cannot start a transaction within a transaction`— y con
+  eso **ninguna migración se aplicaba**: la base quedaba sin una sola tabla. El
+  `ROLLBACK;` del manejo de error, envuelto igual, fallaba después por su
+  cuenta. Lo que se veía era `arranque_incompleto` y `no such table:
+  sound_session`, que apuntan al almacén y no a la transacción.
+
+  Cada migración se manda ahora en **un solo lote**, con su `PRAGMA
+  user_version` adentro, y la transacción la hace el complemento —que revierte
+  sola si algo falla, así que la atomicidad no se pierde. La lógica salió de
+  `DatabaseService` a `core/migracion.ts` para poder probarla: los tests emulan
+  el `execute()` del complemento contra SQLite de verdad, que es lo único que
+  reproduce el error, y verifican que ningún lote lleve transacción propia.
+
+  Medido en el Motorola Edge 60 Pro el 2026-09-08: tres migraciones aplicadas y
+  `base_abierta` en el registro, donde antes había tres errores seguidos.
+
 - **Tres bloqueos encadenados impedían que la aplicación hablara con una Ui24R, y
   ninguno se ve en el navegador de escritorio.** Los tres se encontraron en el
   WebView del teléfono el 2026-09-08 y son anteriores a cualquier defecto del
