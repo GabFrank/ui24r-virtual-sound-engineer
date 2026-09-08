@@ -2,18 +2,41 @@ name: Publicación
 
 # La aplicación no se publica en ninguna tienda (ADR-020): esta es la única vía
 # por la que una versión nueva llega a la tablet.
+#
+# Antes disparaba con una etiqueta `v*` empujada a mano. Ahora la etiqueta la
+# crea semantic-release a partir de los commits, y el disparador es la fusión en
+# `main` (ADR-021). Empujar una etiqueta a mano ya no publica nada: el número de
+# versión sale de lo que dicen los commits, no de lo que alguien escriba.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  # Para volver a intentarlo cuando la publicación falló por algo de fuera --un
+  # secreto mal cargado, un fallo del ejecutor-- sin tener que hacer un commit
+  # vacío. Si desde la última etiqueta no hay ningún commit que libere, termina
+  # sin publicar.
+  workflow_dispatch:
 
 permissions:
   contents: write
+  # semantic-release abre una incidencia si la publicación falla. Una tablet que
+  # se queda vieja porque nadie miró una corrida en rojo es el fallo silencioso
+  # que esto evita.
+  issues: write
+
+# Dos fusiones seguidas no pueden repartirse la misma etiqueta.
+concurrency:
+  group: publicacion
+  cancel-in-progress: false
 
 jobs:
-  apk:
+  publicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # semantic-release necesita las etiquetas y todo el historial para
+          # saber desde dónde leer los commits.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -36,129 +59,21 @@ jobs:
       - name: Las comprobaciones completas
         run: npm run verificar
 
-      - name: Deducir la versión de la etiqueta
-        id: version
-        run: |
-          nombre="${GITHUB_REF_NAME#v}"
-          if ! printf '%s' "$nombre" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "La etiqueta '$GITHUB_REF_NAME' no es una versión estable." >&2
-            echo "Este flujo solo publica versiones estables (ADR-020)." >&2
-            exit 1
-          fi
-          # El código de versión tiene que crecer siempre y ser un entero.
-          # 1.2.3 da 10203; deja mil versiones de margen por componente.
-          IFS=. read -r mayor menor parche <<< "$nombre"
-          codigo=$(( mayor * 10000 + menor * 100 + parche ))
-          echo "nombre=$nombre" >> "$GITHUB_OUTPUT"
-          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
-
       - name: Restaurar el almacén de claves
         env:
-          ALMACEN: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          CLAVE: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: |
-          # Dos secretos, no cuatro. El alias no es secreto -- está publicado en
-          # docs/actualizacion-en-app.md -- y en un almacén PKCS12 la clave y el
-          # almacén comparten contraseña, así que pedir cuatro valores era pedir
-          # dos veces lo mismo y una cosa que no hacía falta esconder. Cada
-          # secreto de más es una oportunidad de más de equivocarse en algo cuyo
-          # error no tiene arreglo.
-          faltan=""
-          [ -z "$ALMACEN" ] && faltan="$faltan ANDROID_KEYSTORE_BASE64"
-          [ -z "$CLAVE" ] && faltan="$faltan ANDROID_KEYSTORE_PASSWORD"
-          if [ -n "$faltan" ]; then
-            echo "Faltan secretos del repositorio:$faltan" >&2
-            echo "Sin ellos el APK quedaría firmado con una clave de depuración" >&2
-            echo "distinta en cada corrida y NINGUNA actualización funcionaría." >&2
-            echo "Ver docs/actualizacion-en-app.md." >&2
-            exit 1
-          fi
-          printf '%s' "$ALMACEN" | base64 -d > "$RUNNER_TEMP/vse.jks"
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: tools/release/restaurar-almacen.sh "$RUNNER_TEMP/vse.jks"
 
-      - name: Compilar el contenido web
-        run: npm run build --workspace mobile
-
-      - name: Sincronizar Capacitor
-        working-directory: apps/mobile
-        run: npx cap sync android
-
-      - name: Compilar y firmar el APK
-        working-directory: apps/mobile/android
+      # Decide la versión, compila y firma el APK (tools/release/construir-apk.sh
+      # desde el paso `prepare`), y crea la publicación con sus dos adjuntos.
+      - name: Publicar
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VSE_KEYSTORE_FILE: ${{ runner.temp }}/vse.jks
           VSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          # El alias es público y la contraseña de la clave es la del almacén.
+          # El alias es público --está en docs/actualizacion-en-app.md-- y en un
+          # almacén PKCS12 la clave comparte contraseña con el almacén.
           VSE_KEY_ALIAS: vse
           VSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon \
-            -PvseVersionName=${{ steps.version.outputs.nombre }} \
-            -PvseVersionCode=${{ steps.version.outputs.codigo }}
-
-      - name: Preparar los adjuntos
-        id: adjuntos
-        run: |
-          origen=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
-          destino="vse-${{ steps.version.outputs.nombre }}.apk"
-          cp "$origen" "$destino"
-          # El nombre dentro del fichero de suma queda relativo a propósito:
-          # así `sha256sum -c` funciona desde el directorio de la descarga.
-          sha256sum "$destino" > "$destino.sha256"
-          echo "apk=$destino" >> "$GITHUB_OUTPUT"
-          # --- El certificado del APK, con apksigner y no con keytool ---
-          #
-          # `keytool -printcert -jarfile` lee la firma v1 (JAR). Con minSdk 29
-          # el plugin de Android desactiva v1 y firma solo con v2/v3, así que
-          # sobre este APK no devuelve certificado: el guardián se quedaba sin
-          # nada que inspeccionar y dejaba pasar cualquier cosa, y la huella no
-          # llegaba a imprimirse nunca. `apksigner` entiende los tres esquemas.
-          apksigner=$(find "$ANDROID_HOME" -name apksigner -type f 2>/dev/null | sort -r | head -1)
-          if [ -z "$apksigner" ]; then
-            echo "No se encontró apksigner en el SDK de Android." >&2
-            echo "Sin él no se puede comprobar con qué clave quedó firmado el APK," >&2
-            echo "y publicar sin comprobarlo es lo que este paso existe para impedir." >&2
-            exit 1
-          fi
-
-          certificado=$("$apksigner" verify --print-certs "$destino")
-
-          # No poder comprobarlo no es lo mismo que estar bien. Si el
-          # certificado viene vacío se detiene: un guardián que aprueba cuando
-          # no vio nada no es un guardián.
-          if [ -z "$certificado" ]; then
-            echo "apksigner no devolvió ningún certificado para el APK." >&2
-            exit 1
-          fi
-
-          echo "--- huella del certificado ---"
-          echo "$certificado" | grep -i 'certificate DN' || true
-          huella=$(echo "$certificado" | grep -i 'SHA-256 digest' | head -1 |
-                   sed 's/.*: *//' | tr -d '[:space:]')
-          # En mayúsculas y con dos puntos, como la imprime keytool: así se
-          # puede comparar a ojo con la huella del almacén de claves.
-          echo "SHA-256: $(echo "$huella" | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')"
-
-          # Que el APK no salga firmado con la clave de depuración de Android.
-          # Hasta acá eso se advertía en la documentación y se confiaba en que
-          # los secretos estuvieran bien; publicar uno así es irreversible para
-          # quien lo instale, porque la única salida es desinstalar y perder las
-          # sesiones guardadas. Ahora la publicación falla antes de existir.
-          if echo "$certificado" | grep -qi 'CN=Android Debug'; then
-            echo "El APK quedó firmado con la clave de depuración de Android." >&2
-            echo "Publicarlo dejaría a quien lo instale sin poder actualizar nunca." >&2
-            echo "Revisar los secretos del repositorio y docs/actualizacion-en-app.md." >&2
-            exit 1
-          fi
-
-      - name: Publicar
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ steps.version.outputs.nombre }}
-          # Sin los DOS adjuntos la aplicación descarta la publicación: la
-          # suma es obligatoria y no hay actualización sin verificar.
-          files: |
-            ${{ steps.adjuntos.outputs.apk }}
-            ${{ steps.adjuntos.outputs.apk }}.sha256
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+        run: npx semantic-release

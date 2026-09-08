@@ -75,11 +75,11 @@ Fichas obligatorias, en `apps/mobile/src/styles/_tokens.scss`. Las que más se o
 
 ## Publicación
 
-```bash
-git tag v0.2.0 && git push origin v0.2.0
-```
+Fusionar en `main` (ADR-021). El número sale de los commits: `fix:` parche, `feat:` menor, `feat!:` mayor; `docs:`, `chore:`, `ci:`, `refactor:` y `test:` no publican nada. **Empujar una etiqueta a mano ya no publica**.
 
-El flujo compila, firma con el almacén de claves guardado como secreto, y adjunta `vse-<version>.apk` y `vse-<version>.apk.sha256`. **Sin los dos adjuntos la aplicación descarta la publicación**: sin suma no hay nada que verificar.
+El flujo compila, firma con el almacén de claves guardado como secreto, comprueba que la huella del APK sea la del almacén, y adjunta `vse-<version>.apk` y `vse-<version>.apk.sha256`. **Sin los dos adjuntos la aplicación descarta la publicación**: sin suma no hay nada que verificar.
+
+Para compilar y firmar sin publicar: `tools/release/construir-apk.sh 0.2.0`.
 
 La etiqueta manda sobre la casilla de pre-lanzamiento de GitHub: `v0.3.0-rc.1` se descarta aunque nadie la haya marcado.
 
