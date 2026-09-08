@@ -357,3 +357,42 @@ test('un fallo al revertir apaga el aviso', async () => {
   await assert.rejects(() => ejecutor.revertir('no-existe'));
   assert.deepEqual(avisos, [true, false]);
 });
+
+test('dos transacciones solapadas: el aviso no se apaga con una todavia escribiendo', async () => {
+  // Con un booleano en vez de un contador, el `finally` de la primera apagaba
+  // el aviso mientras la segunda seguia en `escribir()`. En esa ventana
+  // INV-034 deja empezar una descarga en mitad de una escritura.
+  const { avisos, ejecutor } = montarConAviso({ 'i.3.mix': -6, 'i.4.mix': -8 });
+
+  // La segunda empieza antes de que termine la primera: `ejecutar` cede en su
+  // primer `await` -- la relectura de la lista de instantaneas -- asi que las
+  // dos quedan abiertas a la vez sin necesidad de trucos de sincronizacion.
+  const p1 = ejecutor.ejecutar(
+    'tx1', 's1', 'una', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  const p2 = ejecutor.ejecutar(
+    'tx2', 's1', 'otra', [fader('i.4.mix', -6, -8)], contexto(), conSnapshot,
+  );
+
+  await Promise.all([p1, p2]);
+
+  // Un solo encendido y un solo apagado, y el apagado al final de todo.
+  assert.deepEqual(avisos, [true, false],
+    `se avisó ${JSON.stringify(avisos)}: el aviso se apagó y se volvió a encender`);
+});
+
+test('revertir mientras se aplica no apaga el aviso a mitad', async () => {
+  const { avisos, ejecutor } = montarConAviso({ 'i.3.mix': -6, 'i.4.mix': -8 });
+  await ejecutor.ejecutar(
+    'tx1', 's1', 'una', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  avisos.length = 0;
+
+  const aplicar = ejecutor.ejecutar(
+    'tx2', 's1', 'otra', [fader('i.4.mix', -6, -8)], contexto(), conSnapshot,
+  );
+  const revertir = ejecutor.revertir('tx1');
+  await Promise.all([aplicar, revertir]);
+
+  assert.deepEqual(avisos, [true, false]);
+});

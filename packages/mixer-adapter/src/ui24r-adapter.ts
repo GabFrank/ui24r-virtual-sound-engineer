@@ -56,6 +56,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private oyentesTelemetria: (() => void)[] = [];
   private desuscribir: (() => void)[] = [];
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
+  /** La última dirección conectada, para poder releer el estado. */
+  private url: string | null = null;
 
   private readonly transporte: Transport;
 
@@ -72,6 +74,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   }
 
   async conectar(url: string): Promise<void> {
+    this.url = url;
     this.cambiarEstado('RECONNECTING');
     // El volcado empieza en cuanto se abre la conexión: la consola lo manda
     // sin que se le pida.
@@ -91,6 +94,30 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // Vigila el hueco entre tramas de medidores: si la consola deja de
     // emitirlas, la conexión está en problemas aunque el socket siga abierto.
     this.vigilanteVu = setInterval(() => this.revisarCadenciaVu(), 100);
+  }
+
+  /**
+   * Vuelve a leer el estado entero de la consola.
+   *
+   * Es la mitad que le faltaba a INV-021. La invariante dice «store INVALID
+   * **hasta re-lectura**», y el estado se invalidaba sin que existiera ninguna
+   * forma de releerlo: lo único que devuelve el almacén a VALID es el volcado
+   * completo, que la consola manda sola al abrir la conexión. El cartel decía
+   * «hasta releerlo» y el botón decía «Entendido», así que un recall desde el
+   * navegador de la consola dejaba el estado —y con él la posibilidad de
+   * escribir— muerto por el resto del show.
+   *
+   * Se hace reconectando, y no pidiendo el volcado, porque **no hay mensaje
+   * verificado que lo pida**: cuál es lo tiene que decir SPK-P0.2a. Reconectar
+   * usa lo único que el protocolo ya demostró hacer.
+   */
+  async releerEstado(): Promise<void> {
+    if (this.url === null) {
+      throw new Error('no hay conexión que releer: primero hay que conectarse');
+    }
+    const url = this.url;
+    await this.desconectar();
+    await this.conectar(url);
   }
 
   async desconectar(): Promise<void> {

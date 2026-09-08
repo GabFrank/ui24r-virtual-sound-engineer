@@ -90,6 +90,33 @@ export class MixerService {
     this.cambioMasivo.set(null);
   }
 
+  readonly releyendo = signal(false);
+
+  /**
+   * Vuelve a leer el estado entero de la consola.
+   *
+   * Es lo que el cartel de cambio masivo prometía y no hacía: decía «hasta
+   * releerlo» y el botón decía «Entendido». Sin esto, el estado quedaba
+   * inválido hasta desconectar y volver a conectar a mano, y con él la
+   * posibilidad de escribir.
+   */
+  async releerEstado(): Promise<void> {
+    const adapter = this.adapter;
+    if (adapter === null) return;
+    this.releyendo.set(true);
+    try {
+      await adapter.releerEstado();
+      this.cambioMasivo.set(null);
+      this.canales.set(adapter.canales());
+      this.log.info('mixer', 'estado_releido', {});
+    } catch (e) {
+      this.ultimoError.set(String(e));
+      this.log.error('mixer', 'relectura_fallida', { error: String(e) });
+    } finally {
+      this.releyendo.set(false);
+    }
+  }
+
   /**
    * Refleja en la interfaz lo que el adaptador determinó. No vuelve a decidir
    * nada: la detección de inestabilidad vive en el adaptador, que es el que ve

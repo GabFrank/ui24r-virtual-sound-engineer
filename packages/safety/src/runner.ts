@@ -50,6 +50,8 @@ export class EjecutorDeTransacciones {
   private readonly pacingMs: number;
   private readonly dormir: (ms: number) => Promise<void>;
   private readonly avisarActividad: (enCurso: boolean) => void;
+  /** Transacciones abiertas ahora mismo. El aviso mira el paso por cero. */
+  private enCurso = 0;
 
   constructor(
     mixer: MixerDomainAPI,
@@ -68,17 +70,27 @@ export class EjecutorDeTransacciones {
   /**
    * Marca la transacción como en curso mientras corre `cuerpo`.
    *
-   * El `finally` es lo importante: si se avisara el fin solo en el camino
-   * feliz, una excepción dejaría la marca encendida para siempre y la
-   * aplicación no volvería a poder actualizarse nunca. Un aviso que se queda
-   * pegado es peor que no avisar, porque nadie sabe que está pegado.
+   * Cuenta en vez de encender y apagar, y las dos mitades importan por razones
+   * distintas:
+   *
+   * El `finally` evita que la marca quede **pegada**: si se avisara el fin solo
+   * en el camino feliz, una excepción la dejaría encendida para siempre y la
+   * aplicación no volvería a poder actualizarse nunca, sin que nadie se entere.
+   *
+   * El contador evita que se apague **antes de tiempo**. Con un booleano, dos
+   * transacciones solapadas —o una que revierte mientras otra aplica— dejaban
+   * la marca en `false` al terminar la primera, con la segunda todavía
+   * escribiendo. En esa ventana la invariante deja empezar una descarga en
+   * mitad de una escritura, que es exactamente lo que existe para impedir.
    */
   private async conActividad<T>(cuerpo: () => Promise<T>): Promise<T> {
-    this.avisarActividad(true);
+    this.enCurso += 1;
+    if (this.enCurso === 1) this.avisarActividad(true);
     try {
       return await cuerpo();
     } finally {
-      this.avisarActividad(false);
+      this.enCurso -= 1;
+      if (this.enCurso === 0) this.avisarActividad(false);
     }
   }
 
