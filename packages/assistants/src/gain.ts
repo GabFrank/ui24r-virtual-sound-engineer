@@ -116,8 +116,9 @@ function vacio(motivo: string): AnalisisDeGanancia {
 }
 
 export interface PropuestaDeGanancia {
-  readonly gainActualDb: number;
-  readonly gainPropuestoDb: number;
+  /** La ganancia leída de la consola, o `null` si todavía no se leyó. */
+  readonly gainActualDb: number | null;
+  readonly gainPropuestoDb: number | null;
   readonly deltaDb: number;
   /** Si el ajuste se recortó por el límite de cambio por transacción. */
   readonly recortadoPorLimite: boolean;
@@ -140,7 +141,7 @@ export const DELTA_MAXIMO_DB = 3;
 export function proponerGanancia(
   analisis: AnalisisDeGanancia,
   perfil: ChannelProfile,
-  gainActualDb: number,
+  gainActualDb: number | null,
   opciones: {
     readonly repetidoEnDosCapturas: boolean;
     readonly snrDb: number;
@@ -215,7 +216,10 @@ export function proponerGanancia(
 
   return {
     gainActualDb,
-    gainPropuestoDb: gainActualDb + delta,
+    // Sin ganancia leída no hay valor absoluto que proponer. El delta sí vale:
+    // sale del pico medido y de la señal, no de la ganancia. Se dice cuánto
+    // mover, no a dónde llegar.
+    gainPropuestoDb: gainActualDb === null ? null : gainActualDb + delta,
     deltaDb: delta,
     recortadoPorLimite: recortado,
     razon,

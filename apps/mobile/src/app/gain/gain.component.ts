@@ -280,7 +280,10 @@ export class GainComponent {
         pico: r.analisis.picoDb.toFixed(1),
         margen: r.analisis.margenDb.toFixed(1),
         objetivo: `${perfil.margenObjetivoDb}`,
-        ganancia: r.propuesta.gainActualDb.toFixed(0),
+        // «—» y no un número: si la consola no dijo la ganancia, no hay
+        // ganancia que mostrar. El delta sigue valiendo, porque sale del pico
+        // medido y no de la ganancia.
+        ganancia: r.propuesta.gainActualDb === null ? '—' : r.propuesta.gainActualDb.toFixed(0),
         delta: Math.abs(db) < 0.05 ? '—' : `${db > 0 ? '+' : ''}${db.toFixed(1)}`,
         sube: db > 0.05,
         baja: db < -0.05,
