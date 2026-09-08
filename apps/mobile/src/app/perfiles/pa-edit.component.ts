@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, signal,
+  type OnDestroy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -10,6 +13,7 @@ import {
   BadgeComponent, ButtonComponent, CamposTocados, CardComponent, CargandoComponent,
   DialogComponent, EmptyStateComponent, FalloComponent, FieldComponent, Lectura,
   PageHeaderComponent, PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
+  intentarGuardar,
 } from '../ui';
 
 function textoDeBus(b: BusRef): string {
@@ -220,7 +224,7 @@ function textoDeBus(b: BusRef): string {
     .bus { font-size: var(--txt-sm); color: var(--muted); }
   `],
 })
-export class PaEditComponent implements PuedeSalir {
+export class PaEditComponent implements PuedeSalir, OnDestroy {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -287,6 +291,12 @@ export class PaEditComponent implements PuedeSalir {
     const p = this.pa();
     return p !== null && JSON.stringify(this.aGuardar(p)) !== JSON.stringify(p);
   });
+
+  ngOnDestroy(): void {
+    // Si la pantalla se va con la pregunta abierta, la promesa quedaría sin
+    // resolver y el router esperando para siempre.
+    this.salida.cancelar();
+  }
 
   puedeSalir(): boolean | Promise<boolean> {
     return this.hayCambios() ? this.salida.preguntar() : true;
@@ -411,7 +421,9 @@ export class PaEditComponent implements PuedeSalir {
     const p = this.pa();
     if (p === null) return;
     const guardado = this.aGuardar(p);
-    await this.repos.guardarPa(guardado);
+    const ok = await intentarGuardar(
+      () => this.repos.guardarPa(guardado), (m) => this.avisos.error(m), 'guardar el sistema');
+    if (!ok) return;
     // La entidad de referencia pasa a ser la guardada: si no, al volver
     // preguntaría por cambios que acaban de guardarse.
     this.pa.set(guardado);

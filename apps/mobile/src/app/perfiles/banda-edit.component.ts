@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, signal,
+  type OnDestroy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -9,7 +12,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import {
   ButtonComponent, CamposTocados, CardComponent, CargandoComponent, DialogComponent,
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
-  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
+  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService, intentarGuardar,
 } from '../ui';
 
 /**
@@ -140,7 +143,7 @@ import {
     .instrumentos { font-size: var(--txt-sm); color: var(--muted); }
   `],
 })
-export class BandaEditComponent implements PuedeSalir {
+export class BandaEditComponent implements PuedeSalir, OnDestroy {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -209,6 +212,12 @@ export class BandaEditComponent implements PuedeSalir {
     return JSON.stringify(this.integrantes()) !== JSON.stringify(b.integrantes);
   });
 
+  ngOnDestroy(): void {
+    // Si la pantalla se va con la pregunta abierta, la promesa quedaría sin
+    // resolver y el router esperando para siempre.
+    this.salida.cancelar();
+  }
+
   puedeSalir(): boolean | Promise<boolean> {
     return this.hayCambios() ? this.salida.preguntar() : true;
   }
@@ -260,7 +269,9 @@ export class BandaEditComponent implements PuedeSalir {
     const b = this.banda();
     if (b === null) return;
     const guardada = { ...b, nombre: this.nombre().trim(), integrantes: this.integrantes() };
-    await this.repos.guardarBanda(guardada);
+    const ok = await intentarGuardar(
+      () => this.repos.guardarBanda(guardada), (m) => this.avisos.error(m), 'guardar la banda');
+    if (!ok) return;
     // La entidad de referencia pasa a ser la guardada: si no, al volver el
     // formulario seguiría diferiendo de lo leído y preguntaría por cambios que
     // acaban de guardarse.
@@ -272,7 +283,9 @@ export class BandaEditComponent implements PuedeSalir {
   async borrar(): Promise<void> {
     const b = this.banda();
     if (b === null) return;
-    await this.repos.borrarBanda(b.id);
+    const ok = await intentarGuardar(
+      () => this.repos.borrarBanda(b.id), (m) => this.avisos.error(m), 'borrar la banda');
+    if (!ok) { this.confirmarBorrado.set(false); return; }
     // Ya no hay contra qué comparar: sin esto, salir tras borrar preguntaría
     // por los cambios de una banda que ya no existe.
     this.banda.set(null);

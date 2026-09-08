@@ -27,7 +27,9 @@ export const guardaDeSalida: CanDeactivateFn<PuedeSalir> = (componente) =>
  * La promesa se resuelve cuando alguien toca un botón del diálogo. Si la
  * pantalla se destruye con la pregunta abierta —no debería, pero el router es
  * el router— `cancelar()` la resuelve como «quedarse», que es la respuesta que
- * no pierde nada.
+ * no pierde nada. Está para llamarse desde `ngOnDestroy`; el comentario la
+ * describía y la clase no la tenía, que es peor que no tener la red: se lee
+ * como que el caso está cubierto.
  */
 export class SalidaSinGuardar {
   private readonly _abierto = signal(false);
@@ -42,6 +44,16 @@ export class SalidaSinGuardar {
     this.resolver?.(false);
     this._abierto.set(true);
     return new Promise<boolean>((r) => { this.resolver = r; });
+  }
+
+  /**
+   * Resuelve como «quedarse» una pregunta que quedó abierta.
+   *
+   * Sin esto, una pantalla destruida con el diálogo abierto deja la promesa de
+   * `preguntar()` sin resolver, y el router esperando para siempre.
+   */
+  cancelar(): void {
+    if (this.resolver !== null) this.responder(false);
   }
 
   responder(salir: boolean): void {

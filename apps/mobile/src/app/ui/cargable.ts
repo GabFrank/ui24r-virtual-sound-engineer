@@ -20,40 +20,62 @@ export class Cargable<T> {
   private readonly _valor: ReturnType<typeof signal<T>>;
   private readonly _estado = signal<EstadoDeCarga>('cargando');
   private readonly _error = signal<string | null>(null);
+  /** Si alguna lectura llegó a buen puerto. Decide qué se puede seguir viendo. */
+  private readonly _hayValor = signal(false);
   private readonly leer: () => Promise<T>;
+  /** Número de la última lectura pedida, para descartar respuestas viejas. */
+  private peticion = 0;
 
   /** El último valor leído. Antes de la primera lectura, el inicial. */
   readonly valor: Signal<T>;
   readonly estado: Signal<EstadoDeCarga>;
 
   /**
-   * El mensaje de error, o `null`. Se consulta antes que `cargando` porque un
-   * fallo importa más que el hecho de estar reintentando.
+   * Un fallo que impide mostrar algo: falló y no hay valor previo.
+   *
+   * Si ya había uno, el fallo **no** es bloqueante: se sigue mostrando lo que
+   * había y el aviso va aparte. Vaciar una lista que estaba en pantalla porque
+   * una recarga falló pierde información que todavía servía.
    */
   readonly problema: Signal<string | null>;
 
+  /** Un fallo al recargar, con algo ya en pantalla. Va como aviso discreto. */
+  readonly avisoDeRecarga: Signal<string | null>;
+
   /** Está leyendo y todavía no hay nada que mostrar. */
   readonly cargando: Signal<boolean>;
+
+  /** Está releyendo con algo ya en pantalla: no se tapa lo que hay. */
+  readonly recargando: Signal<boolean>;
 
   constructor(inicial: T, leer: () => Promise<T>) {
     this._valor = signal<T>(inicial);
     this.leer = leer;
     this.valor = this._valor.asReadonly();
     this.estado = this._estado.asReadonly();
-    this.problema = computed(() => this._error());
-    this.cargando = computed(() => this._estado() === 'cargando');
+    this.problema = computed(() => (this._hayValor() ? null : this._error()));
+    this.avisoDeRecarga = computed(() => (this._hayValor() ? this._error() : null));
+    this.cargando = computed(() => this._estado() === 'cargando' && !this._hayValor());
+    this.recargando = computed(() => this._estado() === 'cargando' && this._hayValor());
   }
 
   async recargar(): Promise<void> {
+    // Cada lectura lleva número: si se piden dos y la vieja contesta última,
+    // su respuesta pisaría a la nueva. Pasa al navegar de una banda a otra, y
+    // el resultado sería la banda equivocada con estado «listo».
+    const mia = ++this.peticion;
     this._estado.set('cargando');
     this._error.set(null);
     try {
-      this._valor.set(await this.leer());
+      const v = await this.leer();
+      if (mia !== this.peticion) return;
+      this._valor.set(v);
+      this._hayValor.set(true);
       this._estado.set('listo');
     } catch (e) {
-      // El valor anterior se conserva a propósito: si la lista ya estaba en
-      // pantalla, vaciarla al fallar una recarga pierde información que
-      // todavía era buena.
+      if (mia !== this.peticion) return;
+      // El valor anterior se conserva a propósito, y `_hayValor` sigue en
+      // `true`: el fallo se muestra como aviso al lado de lo que ya había.
       this._error.set(mensajeDe(e));
       this._estado.set('error');
     }
@@ -83,19 +105,53 @@ export function mensajeDe(e: unknown): string {
 export class Lectura {
   private readonly _cargando = signal(true);
   private readonly _problema = signal<string | null>(null);
+  private readonly _leidoAlgunaVez = signal(false);
+  private peticion = 0;
 
-  readonly cargando: Signal<boolean> = this._cargando.asReadonly();
+  /** Está leyendo y el formulario todavía no tiene nada. */
+  readonly cargando: Signal<boolean> = computed(
+    () => this._cargando() && !this._leidoAlgunaVez());
   readonly problema: Signal<string | null> = this._problema.asReadonly();
 
   async correr(leer: () => Promise<void>): Promise<void> {
+    const mia = ++this.peticion;
     this._cargando.set(true);
     this._problema.set(null);
     try {
       await leer();
+      if (mia !== this.peticion) return;
+      this._leidoAlgunaVez.set(true);
     } catch (e) {
+      if (mia !== this.peticion) return;
       this._problema.set(mensajeDe(e));
     } finally {
-      this._cargando.set(false);
+      if (mia === this.peticion) this._cargando.set(false);
     }
+  }
+}
+
+/**
+ * Una escritura que puede fallar.
+ *
+ * Las pantallas de edición hacían `await repos.guardarX(...)` sin captura. Si
+ * el almacén fallaba, la promesa quedaba rechazada sin manejar: no aparecía el
+ * aviso de éxito, no aparecía ningún error, no se navegaba, y al usuario le
+ * parecía que el botón no había hecho nada — **con lo que acababa de escribir
+ * todavía sin guardar**. Es el caso caro: leer y fallar se reintenta, escribir
+ * y fallar pierde trabajo.
+ *
+ * Devuelve si salió bien, para que quien llama decida si navegar o quedarse.
+ */
+export async function intentarGuardar(
+  accion: () => Promise<void>,
+  avisar: (mensaje: string) => void,
+  queSeEstabaHaciendo: string,
+): Promise<boolean> {
+  try {
+    await accion();
+    return true;
+  } catch (e) {
+    avisar(`No se pudo ${queSeEstabaHaciendo}. ${mensajeDe(e)} Lo que escribiste sigue acá.`);
+    return false;
   }
 }

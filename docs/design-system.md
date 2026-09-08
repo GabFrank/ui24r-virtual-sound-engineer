@@ -101,9 +101,28 @@ ninguna banda» cuando en realidad el almacén falló es peor que un error, porq
 la reacción de quien lo lee es crear una banda que ya existía.
 
 `Cargable<T>` lo resuelve para una pantalla con un valor; `Lectura` para una que
-reparte lo leído en un campo por control, como los formularios. Los dos
-conservan el último valor bueno mientras recargan: vaciar una lista que ya
-estaba en pantalla pierde información que todavía servía.
+reparte lo leído en un campo por control, como los formularios.
+
+**El esqueleto de carga solo aparece la primera vez.** Los dos conservan el
+último valor bueno y lo siguen mostrando mientras recargan: vaciar una lista que
+ya estaba en pantalla pierde información que todavía servía. La primera versión
+guardaba ese valor y no lo mostraba nunca, porque `cargando()` era cierto en toda
+recarga y el esqueleto lo tapaba — en Perfiles, cada guardado sustituía la lista
+por el esqueleto.
+
+Por lo mismo, un fallo **al recargar** no es bloqueante: se sigue viendo lo que
+había y el aviso va en una línea, con su botón de reintentar. `ui-fallo` a página
+completa queda para cuando no hay nada que mostrar.
+
+Cada lectura lleva número de orden y descarta las respuestas viejas. Sin eso,
+navegar de una banda a otra podía terminar mostrando la primera con estado
+«listo», si su lectura contestaba última.
+
+Y escribir tiene su propia red: `intentarGuardar()`. Las pantallas hacían
+`await repos.guardarX(...)` sin captura, así que un fallo del almacén no mostraba
+error, no navegaba y dejaba a quien escribía creyendo que el botón no hizo nada,
+**con lo escrito todavía sin guardar**. Leer y fallar se reintenta; escribir y
+fallar pierde trabajo.
 
 ### Salir de una edición con cambios sin guardar
 

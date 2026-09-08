@@ -3,9 +3,9 @@ import { Router } from '@angular/router';
 import type { BandProfile, SessionId, SoundSession, VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
-  BadgeComponent, ButtonComponent, Cargable, CardComponent, CargandoComponent,
+  BadgeComponent, ButtonComponent, CardComponent, Cargable, CargandoComponent,
   DialogComponent, EmptyStateComponent, FalloComponent, PageHeaderComponent, StatComponent,
-  ToastService,
+  ToastService, intentarGuardar,
 } from '../ui';
 import { ESTADOS } from '../sesion/estados';
 
@@ -190,7 +190,9 @@ export class SesionDetalleComponent {
   async borrar(): Promise<void> {
     const s = this.sesion();
     if (s === null) return;
-    await this.repos.borrarSesion(s.id);
+    const ok = await intentarGuardar(
+      () => this.repos.borrarSesion(s.id), (m) => this.avisos.error(m), 'borrar la sesión');
+    if (!ok) { this.confirmarBorrado.set(false); return; }
     this.confirmarBorrado.set(false);
     this.avisos.ok('Sesión borrada.');
     await this.volver();

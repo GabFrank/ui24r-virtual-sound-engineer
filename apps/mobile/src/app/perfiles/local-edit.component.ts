@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, signal,
+  type OnDestroy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -9,7 +12,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import {
   ButtonComponent, CamposTocados, CardComponent, CargandoComponent, DialogComponent,
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
-  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
+  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService, intentarGuardar,
 } from '../ui';
 
 const TIPOS: readonly { id: VenueType; etiqueta: string }[] = [
@@ -185,7 +188,7 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
     .error { margin-top: var(--sp-3); color: var(--danger); font-size: var(--txt-sm); }
   `],
 })
-export class LocalEditComponent implements PuedeSalir {
+export class LocalEditComponent implements PuedeSalir, OnDestroy {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -224,6 +227,12 @@ export class LocalEditComponent implements PuedeSalir {
     const l = this.local();
     return l !== null && JSON.stringify(this.aGuardar(l)) !== JSON.stringify(l);
   });
+
+  ngOnDestroy(): void {
+    // Si la pantalla se va con la pregunta abierta, la promesa quedaría sin
+    // resolver y el router esperando para siempre.
+    this.salida.cancelar();
+  }
 
   puedeSalir(): boolean | Promise<boolean> {
     return this.hayCambios() ? this.salida.preguntar() : true;
@@ -345,7 +354,9 @@ export class LocalEditComponent implements PuedeSalir {
     const l = this.local();
     if (l === null) return;
     const guardado = this.aGuardar(l);
-    await this.repos.guardarLocal(guardado);
+    const ok = await intentarGuardar(
+      () => this.repos.guardarLocal(guardado), (m) => this.avisos.error(m), 'guardar el local');
+    if (!ok) return;
     // La entidad de referencia pasa a ser la guardada: si no, al volver
     // preguntaría por cambios que acaban de guardarse.
     this.local.set(guardado);
@@ -356,7 +367,9 @@ export class LocalEditComponent implements PuedeSalir {
   async borrar(): Promise<void> {
     const l = this.local();
     if (l === null) return;
-    await this.repos.borrarLocal(l.id);
+    const ok = await intentarGuardar(
+      () => this.repos.borrarLocal(l.id), (m) => this.avisos.error(m), 'borrar el local');
+    if (!ok) { this.confirmarBorrado.set(false); return; }
     this.local.set(null);
     this.confirmarBorrado.set(false);
     this.avisos.ok('Local borrado.');
