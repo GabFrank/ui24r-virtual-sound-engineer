@@ -9,7 +9,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import {
   ButtonComponent, CamposTocados, CardComponent, CargandoComponent, DialogComponent,
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
-  ToastService,
+  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
 } from '../ui';
 
 const TIPOS: readonly { id: VenueType; etiqueta: string }[] = [
@@ -45,6 +45,7 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
   imports: [
     ButtonComponent, CardComponent, CargandoComponent, DialogComponent, EmptyStateComponent,
     FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
+    SalirSinGuardarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -159,6 +160,9 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
       }
     </div>
 
+    <ui-salir-sin-guardar que="Lo que cambiaste del local" [abierto]="salida.abierto()"
+                          (respuesta)="salida.responder($event)" />
+
     <ui-dialog titulo="Borrar el local" [abierto]="confirmarBorrado()"
                [cerrableAlTocarFuera]="false" (cerrado)="confirmarBorrado.set(false)">
       <p class="lectura">
@@ -181,7 +185,7 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
     .error { margin-top: var(--sp-3); color: var(--danger); font-size: var(--txt-sm); }
   `],
 })
-export class LocalEditComponent {
+export class LocalEditComponent implements PuedeSalir {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -205,6 +209,25 @@ export class LocalEditComponent {
   readonly curva = signal<HouseCurvePreset>('LIVE_MUSIC');
   readonly notas = signal('');
   readonly confirmarBorrado = signal(false);
+  readonly salida = new SalidaSinGuardar();
+
+  /**
+   * Si lo que está en pantalla difiere de lo guardado.
+   *
+   * Se compara el local que se guardaría contra el que se leyó, y no campo por
+   * campo: una comparación campo por campo se olvida del campo que se agregue
+   * mañana, y se olvida en silencio. Tampoco vale una bandera que se marque al
+   * escribir, porque escribir una letra y borrarla no es un cambio y preguntar
+   * ahí enseña a contestar que sí sin leer.
+   */
+  private readonly hayCambios = computed(() => {
+    const l = this.local();
+    return l !== null && JSON.stringify(this.aGuardar(l)) !== JSON.stringify(l);
+  });
+
+  puedeSalir(): boolean | Promise<boolean> {
+    return this.hayCambios() ? this.salida.preguntar() : true;
+  }
 
   readonly interiorTexto = computed(() => (this.interior() ? 'si' : 'no'));
 
@@ -303,11 +326,9 @@ export class LocalEditComponent {
     return { largo: n(this.largo()), ancho: n(this.ancho()), alto: n(this.alto()) };
   }
 
-  async guardar(): Promise<void> {
-    this.tocados.intentarGuardar();
-    const l = this.local();
-    if (l === null) return;
-    await this.repos.guardarLocal({
+  /** El local tal como quedaría al guardar. */
+  private aGuardar(l: VenueProfile): VenueProfile {
+    return {
       ...l,
       nombre: this.nombre().trim(),
       tipo: this.tipo(),
@@ -316,7 +337,18 @@ export class LocalEditComponent {
       dimensionesM: this.dimensiones(),
       houseCurve: this.curva(),
       notas: this.notas().trim() === '' ? null : this.notas().trim(),
-    });
+    };
+  }
+
+  async guardar(): Promise<void> {
+    this.tocados.intentarGuardar();
+    const l = this.local();
+    if (l === null) return;
+    const guardado = this.aGuardar(l);
+    await this.repos.guardarLocal(guardado);
+    // La entidad de referencia pasa a ser la guardada: si no, al volver
+    // preguntaría por cambios que acaban de guardarse.
+    this.local.set(guardado);
     this.avisos.ok('Local guardado.');
     await this.volver();
   }
@@ -325,6 +357,7 @@ export class LocalEditComponent {
     const l = this.local();
     if (l === null) return;
     await this.repos.borrarLocal(l.id);
+    this.local.set(null);
     this.confirmarBorrado.set(false);
     this.avisos.ok('Local borrado.');
     await this.volver();

@@ -14,3 +14,5 @@ export * from './tocado';
 export * from './cargable';
 export * from './cargando.component';
 export * from './fallo.component';
+export * from './salida';
+export * from './salir-dialogo.component';

@@ -9,7 +9,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import {
   BadgeComponent, ButtonComponent, CamposTocados, CardComponent, CargandoComponent,
   DialogComponent, EmptyStateComponent, FalloComponent, FieldComponent, Lectura,
-  PageHeaderComponent, ToastService,
+  PageHeaderComponent, PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
 } from '../ui';
 
 function textoDeBus(b: BusRef): string {
@@ -42,6 +42,7 @@ function textoDeBus(b: BusRef): string {
   imports: [
     BadgeComponent, ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
     EmptyStateComponent, FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
+    SalirSinGuardarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -175,6 +176,9 @@ function textoDeBus(b: BusRef): string {
       </div>
     </ui-dialog>
 
+    <ui-salir-sin-guardar que="Lo que cambiaste del sistema" [abierto]="salida.abierto()"
+                          (respuesta)="salida.responder($event)" />
+
     <ui-dialog titulo="Borrar el sistema" [abierto]="confirmarBorrado()"
                [cerrableAlTocarFuera]="false" (cerrado)="confirmarBorrado.set(false)">
       @if (usosDelSistema().length > 0) {
@@ -216,7 +220,7 @@ function textoDeBus(b: BusRef): string {
     .bus { font-size: var(--txt-sm); color: var(--muted); }
   `],
 })
-export class PaEditComponent {
+export class PaEditComponent implements PuedeSalir {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -272,6 +276,22 @@ export class PaEditComponent {
   });
 
   readonly confirmarBorrado = signal(false);
+  readonly salida = new SalidaSinGuardar();
+
+  /**
+   * Si lo que está en pantalla difiere de lo guardado. Se compara el sistema
+   * que se guardaría contra el que se leyó: campo por campo se olvidaría del
+   * campo que se agregue mañana, y se olvidaría en silencio.
+   */
+  private readonly hayCambios = computed(() => {
+    const p = this.pa();
+    return p !== null && JSON.stringify(this.aGuardar(p)) !== JSON.stringify(p);
+  });
+
+  puedeSalir(): boolean | Promise<boolean> {
+    return this.hayCambios() ? this.salida.preguntar() : true;
+  }
+
   readonly usosDelSistema = signal<readonly string[]>([]);
   readonly textoDeUsos = computed(() => this.usosDelSistema().join(', '));
 
@@ -314,6 +334,7 @@ export class PaEditComponent {
     if (p === null) return;
     try {
       await this.repos.borrarPa(p.id);
+      this.pa.set(null);
     } catch (e) {
       // El repositorio vuelve a comprobar el uso antes de borrar: entre abrir
       // el diálogo y confirmar pudo crearse un local que lo usa.
@@ -368,15 +389,13 @@ export class PaEditComponent {
     this.componentes.update((l) => l.filter((c) => c.nombre !== nombre));
   }
 
-  async guardar(): Promise<void> {
-    this.tocados.intentarGuardar();
-    const p = this.pa();
-    if (p === null) return;
+  /** El sistema tal como quedaría al guardar. */
+  private aGuardar(p: PAProfile): PAProfile {
     // Los buses sobre los que se permite escribir ecualización se derivan de
     // los componentes: nunca se escribe sobre un bus que el usuario no declaró
     // como parte del sistema (INV-008).
     const outputBuses = this.componentes().map((c) => c.bus);
-    await this.repos.guardarPa({
+    return {
       ...p,
       nombre: this.nombre().trim(),
       cajasPrincipales: this.cajas().trim(),
@@ -384,7 +403,18 @@ export class PaEditComponent {
       rangoUtilHz: [Number(this.desde()), Number(this.hasta())],
       componentes: this.componentes(),
       outputBuses: outputBuses.length > 0 ? outputBuses : [{ tipo: 'MASTER' }],
-    });
+    };
+  }
+
+  async guardar(): Promise<void> {
+    this.tocados.intentarGuardar();
+    const p = this.pa();
+    if (p === null) return;
+    const guardado = this.aGuardar(p);
+    await this.repos.guardarPa(guardado);
+    // La entidad de referencia pasa a ser la guardada: si no, al volver
+    // preguntaría por cambios que acaban de guardarse.
+    this.pa.set(guardado);
     this.avisos.ok('Sistema guardado.');
     await this.volver();
   }

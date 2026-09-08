@@ -9,7 +9,7 @@ import { Repositorios } from '../core/repos/repositorios';
 import {
   ButtonComponent, CamposTocados, CardComponent, CargandoComponent, DialogComponent,
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
-  ToastService,
+  PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService,
 } from '../ui';
 
 /**
@@ -26,6 +26,7 @@ import {
   imports: [
     ButtonComponent, CardComponent, CargandoComponent, DialogComponent, EmptyStateComponent,
     FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
+    SalirSinGuardarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -110,6 +111,9 @@ import {
       </div>
     </ui-dialog>
 
+    <ui-salir-sin-guardar que="Lo que cambiaste de la banda" [abierto]="salida.abierto()"
+                          (respuesta)="salida.responder($event)" />
+
     <ui-dialog titulo="Borrar la banda" [abierto]="confirmarBorrado()"
                [cerrableAlTocarFuera]="false" (cerrado)="confirmarBorrado.set(false)">
       <p class="lectura">
@@ -136,7 +140,7 @@ import {
     .instrumentos { font-size: var(--txt-sm); color: var(--muted); }
   `],
 })
-export class BandaEditComponent {
+export class BandaEditComponent implements PuedeSalir {
   private readonly repos = inject(Repositorios);
   private readonly router = inject(Router);
   private readonly avisos = inject(ToastService);
@@ -189,6 +193,26 @@ export class BandaEditComponent {
   /** Estado de la lectura: mientras lee no dice que no existe. */
   readonly lectura = new Lectura();
 
+  readonly salida = new SalidaSinGuardar();
+
+  /**
+   * Si lo que está en pantalla difiere de lo guardado.
+   *
+   * Se compara contra la entidad tal como se leyó, y no contra una bandera que
+   * se marque al escribir: escribir una letra y borrarla no es un cambio, y
+   * preguntar en ese caso enseña a contestar que sí sin leer.
+   */
+  private readonly hayCambios = computed(() => {
+    const b = this.banda();
+    if (b === null) return false;
+    if (this.nombre().trim() !== b.nombre) return true;
+    return JSON.stringify(this.integrantes()) !== JSON.stringify(b.integrantes);
+  });
+
+  puedeSalir(): boolean | Promise<boolean> {
+    return this.hayCambios() ? this.salida.preguntar() : true;
+  }
+
   constructor() {
     // «allowSignalWrites» porque empezar a leer marca «cargando», y eso es una
     // escritura de señal dentro del efecto. La prohibición existe para evitar
@@ -235,11 +259,12 @@ export class BandaEditComponent {
     this.tocados.intentarGuardar();
     const b = this.banda();
     if (b === null) return;
-    await this.repos.guardarBanda({
-      ...b,
-      nombre: this.nombre().trim(),
-      integrantes: this.integrantes(),
-    });
+    const guardada = { ...b, nombre: this.nombre().trim(), integrantes: this.integrantes() };
+    await this.repos.guardarBanda(guardada);
+    // La entidad de referencia pasa a ser la guardada: si no, al volver el
+    // formulario seguiría diferiendo de lo leído y preguntaría por cambios que
+    // acaban de guardarse.
+    this.banda.set(guardada);
     this.avisos.ok('Banda guardada.');
     await this.volver();
   }
@@ -248,6 +273,9 @@ export class BandaEditComponent {
     const b = this.banda();
     if (b === null) return;
     await this.repos.borrarBanda(b.id);
+    // Ya no hay contra qué comparar: sin esto, salir tras borrar preguntaría
+    // por los cambios de una banda que ya no existe.
+    this.banda.set(null);
     this.confirmarBorrado.set(false);
     this.avisos.ok('Banda borrada.');
     await this.volver();
