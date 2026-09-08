@@ -17,6 +17,15 @@ export interface CambioPropuesto {
   readonly valorPropuesto: number;
   /** Valor esperado en la consola justo antes de escribir. */
   readonly valorEsperado: number;
+  /**
+   * Factor de calidad del filtro, solo para ecualización de salida.
+   *
+   * INV-004 exige Q ≥ 0,7 en salidas y la constante existía en el dominio,
+   * pero el motor no la consultaba porque el cambio propuesto no traía el
+   * dato. Un filtro estrecho de realce en un bus de salida es el camino corto
+   * al acople: es justo lo que esa cláusula existe para impedir.
+   */
+  readonly q?: number;
 }
 
 export interface ContextoSeguridad {
@@ -37,6 +46,10 @@ export interface ContextoSeguridad {
 }
 
 export type CodigoRechazo =
+  | 'RUTA_INCONSISTENTE'
+  | 'RUTA_DESCONOCIDA'
+  | 'Q_DEMASIADO_ESTRECHO'
+  | 'REALCE_EXCESIVO'
   | 'PARAMETRO_DEL_USUARIO'
   | 'PARAMETRO_NO_ESCRIBIBLE'
   | 'DELTA_EXCEDIDO'

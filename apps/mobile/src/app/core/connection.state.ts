@@ -33,7 +33,11 @@ export class ConnectionStateService {
 
   fijarEstado(e: ConnectionState): void {
     this._estado.set(e);
-    if (e === 'RECONNECTING' || e === 'DISCONNECTED') {
+    // También con la conexión inestable: ADR-005 exige conexión continua desde
+    // el último volcado completo, y una conexión inestable no lo es. Antes solo
+    // se invalidaba al desconectar o reconectar, así que un tramo inestable
+    // dejaba el estado marcado como confirmado.
+    if (e !== 'CONNECTED') {
       this._storeValido.set(false);
     }
   }

@@ -89,3 +89,40 @@ test('los límites de ecualización de sala favorecen atenuar sobre realzar', ()
   assert.equal(REALCE_MAXIMO_SALA_DB, 2);
   assert.equal(Q_MINIMO_SALIDA, 0.7);
 });
+
+test('INV-004: el tope acumulado no bloquea el movimiento que deshace', () => {
+  // Antes sumaba magnitudes, asi que con +6 dB acumulados rechazaba un -3 dB
+  // que dejaria el parametro en +3, dentro del tope. La regla prohibia
+  // justamente la unica direccion segura: la que devuelve el parametro hacia
+  // donde estaba.
+  const base = {
+    kind: 'CHANNEL_FADER' as const,
+    hayMedicionPosterior: true,
+    esPrimerCambioDelParametro: false,
+  };
+  const volver = verificarLimite({ ...base, deltaSolicitado: -3, acumuladoEnSesion: 6 });
+  assert.equal(volver.permitido, true);
+
+  // Y sigue bloqueando el que se aleja mas alla del tope.
+  const alejarse = verificarLimite({ ...base, deltaSolicitado: 3, acumuladoEnSesion: 6 });
+  assert.equal(alejarse.permitido, false);
+  if (!alejarse.permitido) assert.equal(alejarse.codigo, 'CUMULATIVE_CAP');
+});
+
+test('INV-004: el tope es simetrico', () => {
+  const base = {
+    kind: 'CHANNEL_FADER' as const,
+    hayMedicionPosterior: true,
+    esPrimerCambioDelParametro: false,
+  };
+  // -6 acumulado, -3 mas: quedaria en -9, fuera del tope de 6.
+  assert.equal(
+    verificarLimite({ ...base, deltaSolicitado: -3, acumuladoEnSesion: -6 }).permitido,
+    false,
+  );
+  // -6 acumulado, +3: vuelve hacia el inicio.
+  assert.equal(
+    verificarLimite({ ...base, deltaSolicitado: 3, acumuladoEnSesion: -6 }).permitido,
+    true,
+  );
+});

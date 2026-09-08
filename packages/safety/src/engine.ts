@@ -1,7 +1,8 @@
 import {
   ownership, esEscribible, verificarLimite,
-  MAX_PARAMETROS_POR_TRANSACCION,
+  MAX_PARAMETROS_POR_TRANSACCION, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
+import { clasificarRuta } from '@vse/mixer-adapter';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
 /**
@@ -46,11 +47,40 @@ export class SafetyEngine {
   evaluar(
     cambios: readonly CambioPropuesto[],
     ctx: ContextoSeguridad,
-    opciones: { readonly conexionPermiteEscribir: boolean; readonly snapshotVerificado: boolean },
+    opciones: {
+      readonly conexionPermiteEscribir: boolean;
+      readonly snapshotVerificado: boolean;
+      /**
+       * Tipo de operación, para la lista blanca del paro de emergencia.
+       *
+       * Sin este dato, `evaluar` rechazaba **todo** con el paro activo,
+       * incluido un retroceso. La lista blanca estaba escrita y no la
+       * consultaba nadie: el retroceso funcionaba durante el paro por omisión
+       * —porque no pasaba por el motor—, no por diseño.
+       */
+      readonly tipoDeOperacion?: string;
+    },
   ): Veredicto {
     const rechazos: Rechazo[] = [];
 
-    if (this.bloqueado) {
+    // Una transacción sin cambios no es una transacción. Aprobarla dejaba
+    // pasar un veredicto favorable incluso en modos donde el máximo es cero.
+    if (cambios.length === 0) {
+      return {
+        permitido: false,
+        rechazos: [{
+          codigo: 'DEMASIADOS_PARAMETROS',
+          invariante: 'INV-005',
+          mensaje: 'la transacción no propone ningún cambio',
+          path: null,
+        }],
+      };
+    }
+
+    const deSeguridad = opciones.tipoDeOperacion !== undefined
+      && this.esDeSeguridad(opciones.tipoDeOperacion);
+
+    if (this.bloqueado && !deSeguridad) {
       rechazos.push({
         codigo: 'BLOQUEADO',
         invariante: 'INV-019',
@@ -112,6 +142,38 @@ export class SafetyEngine {
 
   private evaluarCambio(c: CambioPropuesto, ctx: ContextoSeguridad): Rechazo[] {
     const salida: Rechazo[] = [];
+
+    // Primero: que la ruta y la clase declarada digan lo mismo.
+    //
+    // INV-008 e INV-010 están enunciadas sobre RUTAS, pero el motor decidía
+    // con la clase que declaraba quien proponía el cambio. Una auditoría lo
+    // comprobó ejecutando: un envío a un auxiliar de monitor etiquetado como
+    // fader de canal pasaba con permitido true. Era una comprobación de
+    // honestidad, no un guardia: bastaba un error de tipeo en un asistente.
+    const claseReal = clasificarRuta(c.path);
+    if (claseReal === null) {
+      salida.push({
+        codigo: 'RUTA_DESCONOCIDA',
+        invariante: 'INV-008',
+        mensaje:
+          `la ruta ${c.path} no corresponde a ningún parámetro conocido. ` +
+          'Escribir en una ruta que el dominio no sabe clasificar es escribir a ciegas',
+        path: c.path,
+      });
+      return salida;
+    }
+    if (claseReal !== c.kind) {
+      salida.push({
+        codigo: 'RUTA_INCONSISTENTE',
+        invariante: 'INV-008',
+        mensaje:
+          `la ruta ${c.path} es de tipo ${claseReal}, pero el cambio se declaró ` +
+          `como ${c.kind}. Manda la ruta`,
+        path: c.path,
+      });
+      return salida;
+    }
+
     const duenio = ownership(c.kind);
 
     if (duenio.owner === 'USER_ONLY') {
@@ -161,13 +223,40 @@ export class SafetyEngine {
     // La ecualización de salida solo se escribe sobre los buses que el perfil
     // del sistema de amplificación declara. Escribir en otro bus podría estar
     // tocando un monitor.
-    if (c.kind === 'OUTPUT_EQ' && !ctx.busesDeSalidaPermitidos.has(c.path)) {
-      salida.push({
-        codigo: 'BUS_NO_PERMITIDO',
-        invariante: 'INV-008',
-        mensaje: `${c.path} no está entre los buses de salida declarados en el perfil del sistema`,
-        path: c.path,
-      });
+    if (c.kind === 'OUTPUT_EQ') {
+      if (!ctx.busesDeSalidaPermitidos.has(c.path)) {
+        salida.push({
+          codigo: 'BUS_NO_PERMITIDO',
+          invariante: 'INV-008',
+          mensaje: `${c.path} no está entre los buses de salida declarados en el perfil del sistema`,
+          path: c.path,
+        });
+      }
+
+      // Un filtro estrecho de realce en un bus de salida es el camino corto al
+      // acople. Las dos constantes existían en el dominio desde el principio y
+      // ninguna regla las consultaba.
+      if (c.q !== undefined && c.q < Q_MINIMO_SALIDA) {
+        salida.push({
+          codigo: 'Q_DEMASIADO_ESTRECHO',
+          invariante: 'INV-004',
+          mensaje:
+            `Q de ${c.q} en un bus de salida: el mínimo es ${Q_MINIMO_SALIDA}. ` +
+            'Un filtro estrecho de realce sobre el sistema es el camino corto al acople',
+          path: c.path,
+        });
+      }
+      const realce = c.valorPropuesto - c.valorEsperado;
+      if (realce > REALCE_MAXIMO_SALA_DB) {
+        salida.push({
+          codigo: 'REALCE_EXCESIVO',
+          invariante: 'INV-004',
+          mensaje:
+            `realce de ${realce.toFixed(1)} dB sobre el sistema: el máximo es ` +
+            `${REALCE_MAXIMO_SALA_DB}. La corrección de sala atenúa, no realza`,
+          path: c.path,
+        });
+      }
     }
 
     const delta = c.valorPropuesto - c.valorEsperado;

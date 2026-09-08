@@ -106,6 +106,25 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return this.info;
   }
 
+  /**
+   * Relee la lista de instantáneas de la consola.
+   *
+   * Todavía no está implementada: el mensaje del protocolo que la devuelve es
+   * uno de los que SPK-P0.4 tiene que verificar. Se lanza en vez de devolver
+   * una lista vacía o inventada, porque quien llama —el ejecutor de
+   * transacciones, para INV-001— trata el fallo como «no verificada» y no
+   * escribe. Devolver algo aquí sería afirmar sobre el protocolo justo lo que
+   * la primera regla del repositorio prohíbe afirmar.
+   */
+  private readonly oyentesVolcado: (() => void)[] = [];
+
+  async listarSnapshots(): Promise<readonly string[]> {
+    throw new Error(
+      'listarSnapshots todavía no está implementado: depende de SPK-P0.4. ' +
+      'Hasta entonces ninguna transacción con instantánea puede verificarse.',
+    );
+  }
+
   leer(parametro: string): ReadResult {
     const e = this.store.leer(parametro);
     return {
@@ -158,6 +177,23 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void {
     return this.store.alCambioExterno(cb);
+  }
+
+  /**
+   * Avisa cuando el volcado inicial terminó y el estado confirmado ya es
+   * completo.
+   *
+   * Hace falta porque `CONNECTED` se emite al abrir el socket, antes de recibir
+   * un solo mensaje del volcado. Quien escuchaba solo la conexión daba el
+   * estado por válido durante todo ese intervalo, en el que el almacén todavía
+   * está INVALID.
+   */
+  alVolcadoCompleto(cb: () => void): () => void {
+    this.oyentesVolcado.push(cb);
+    return () => {
+      const i = this.oyentesVolcado.indexOf(cb);
+      if (i >= 0) this.oyentesVolcado.splice(i, 1);
+    };
   }
 
   alCambioMasivo(cb: (evento: BulkExternalChange) => void): () => void {
@@ -217,6 +253,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (m.linea === 'DUMP_END') {
       this.store.volcadoCompletoRecibido();
       this.cambiarEstado('CONNECTED');
+      for (const cb of this.oyentesVolcado) cb();
     }
   }
 

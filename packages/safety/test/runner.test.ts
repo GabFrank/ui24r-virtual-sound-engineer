@@ -12,6 +12,9 @@ function montar(
   iniciales: Record<string, number> = { 'i.3.mix': -6, 'i.4.mix': -8, 'i.5.mix': -5 },
 ) {
   const mixer = new MezcladoraFalsa(iniciales);
+  // La consola dice tener la instantánea que usan los tests. INV-001 se
+  // verifica releyendo esta lista, no comprobando que la referencia exista.
+  mixer.snapshots = ['VSE_AUTO_1'];
   const safety = new SafetyEngine();
   const diario = new DiarioEnMemoria();
   const ejecutor = new EjecutorDeTransacciones(mixer, safety, diario, sinEspera);
@@ -216,6 +219,7 @@ test('una transacción rechazada no deja rastro en el diario', async () => {
 
 test('el ritmo entre escrituras se respeta', async () => {
   const mixer = new MezcladoraFalsa({ 'i.3.mix': -6, 'i.4.mix': -8 });
+  mixer.snapshots = ['VSE_AUTO_1'];
   const esperas: number[] = [];
   const ejecutor = new EjecutorDeTransacciones(
     mixer, new SafetyEngine(), new DiarioEnMemoria(),
@@ -229,4 +233,51 @@ test('el ritmo entre escrituras se respeta', async () => {
   );
 
   assert.deepEqual(esperas, [100], 'una espera entre los dos, ninguna antes del primero');
+});
+
+test('INV-001: si la instantanea ya no esta en la consola, no se escribe', async () => {
+  // El segundo escenario del enunciado de la invariante: borrar la instantanea
+  // entre guardarla y aplicar. Antes no podia ocurrir, porque "verificado"
+  // significaba "la referencia no es nula".
+  const { mixer, ejecutor } = montar();
+  mixer.snapshots = [];
+
+  const r = await ejecutor.ejecutar(
+    'tx-sin-snap', 's1', 'x', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  assert.equal(r.estado, 'RECHAZADA');
+  if (r.estado === 'RECHAZADA') {
+    assert.equal(r.motivos.some((m) => m.startsWith('INV-001')), true, r.motivos.join(' | '));
+  }
+  assert.deepEqual(mixer.escrituras, [], 'no se escribio nada');
+});
+
+test('INV-001: si la consola no contesta la lista, tampoco se escribe', async () => {
+  // Sin poder comprobar que existe la red de la que depende el retroceso, la
+  // respuesta segura es no escribir.
+  const { mixer, ejecutor } = montar();
+  mixer.listarSnapshots = async () => { throw new Error('conexion caida'); };
+
+  const r = await ejecutor.ejecutar(
+    'tx-sin-lista', 's1', 'x', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  assert.equal(r.estado, 'RECHAZADA');
+  assert.deepEqual(mixer.escrituras, []);
+});
+
+test('INV-021: con el almacen invalido no se escribe', async () => {
+  // Es la rama que la mezcladora falsa no podia ejercitar: devolvia siempre
+  // VALID, asi que la proteccion contra escribir despues de una avalancha
+  // nunca se ejecutaba en ningun test.
+  const { mixer, ejecutor } = montar();
+  mixer.estadoDelAlmacen = 'INVALID';
+
+  const r = await ejecutor.ejecutar(
+    'tx-invalido', 's1', 'x', [fader('i.3.mix', -4, -6)], contexto(), conSnapshot,
+  );
+  assert.equal(r.estado, 'RECHAZADA');
+  if (r.estado === 'RECHAZADA') {
+    assert.equal(r.motivos.some((m) => m.includes('INV-002')), true);
+  }
+  assert.deepEqual(mixer.escrituras, []);
 });

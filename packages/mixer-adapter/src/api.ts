@@ -82,6 +82,21 @@ export interface MixerDomainAPI {
    */
   escribir(parametro: string, valor: number, esperado: number): Promise<WriteResult>;
 
+  /**
+   * Relee la lista de instantáneas que la consola dice tener.
+   *
+   * INV-001 exige que ninguna transacción pase a APLICANDO sin su instantánea
+   * «verificada en la lista de snapshots re-leída». El campo del modelo que
+   * guardaba ese hecho existía y no lo escribía nadie: «verificado» significaba
+   * en la práctica «la cadena no es nula». El escenario que la propia
+   * invariante describe —borrar la instantánea entre guardarla y aplicar— no
+   * podía detectarse.
+   *
+   * Se relee, no se cachea: el punto de la invariante es que alguien pudo
+   * borrarla desde el navegador de la consola mientras tanto.
+   */
+  listarSnapshots(): Promise<readonly string[]>;
+
   /** Suscripción a cambios externos y a avalanchas. */
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void;
   alCambioMasivo(cb: (evento: BulkExternalChange) => void): () => void;

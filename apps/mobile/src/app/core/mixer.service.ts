@@ -42,6 +42,11 @@ export class MixerService {
         this.log.info('mixer', 'conexion_cambio', { estado: e });
       });
 
+      adapter.alVolcadoCompleto(() => {
+        this.conexion.volcadoCompletoRecibido();
+        this.log.info('mixer', 'volcado_completo', {});
+      });
+
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
       });
@@ -91,7 +96,15 @@ export class MixerService {
    * las tramas de medidores.
    */
   private sincronizarConexion(e: ConnectionState): void {
+    // No se revalida el estado acá. `CONNECTED` se emite al abrir el socket,
+    // antes de recibir un solo mensaje del volcado, así que marcar el estado
+    // como confirmado en ese momento dejaba `permiteEscribir()` en verdadero
+    // mientras el almacén seguía INVALID — justo lo contrario de lo que dice
+    // INV-017. Y peor: tras una avalancha bastaba una trama de medidores para
+    // volver a CONNECTED y revalidar sin haber releído nada.
+    //
+    // La validación llega ahora por `alVolcadoCompleto`, que es el hecho que
+    // de verdad la justifica.
     this.conexion.fijarEstado(e);
-    if (e === 'CONNECTED') this.conexion.volcadoCompletoRecibido();
   }
 }
