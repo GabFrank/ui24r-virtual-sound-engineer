@@ -63,10 +63,20 @@ Con eso, `assembleDebug` y `assembleRelease` usan la misma clave que la integrac
 ### Comprobar que la firma es la que se espera
 
 ```bash
-keytool -printcert -jarfile app-release.apk | grep SHA256
+apksigner verify --print-certs app-release.apk | grep -i 'SHA-256 digest'
 ```
 
-La aplicación muestra la misma huella: el complemento nativo la expone en `infoInstalada().firma`. Si las dos coinciden, la actualización va a poder instalarse.
+**No sirve `keytool -printcert -jarfile`.** Lee la firma v1 (JAR), y con `minSdkVersion 29` el plugin de Android desactiva v1 y firma solo con v2/v3: sobre estos APK no devuelve nada. Aquí decía justamente eso, y el guardián de la publicación cometía el mismo error — se quedaba sin certificado que inspeccionar y aprobaba cualquier cosa. `apksigner` (en `$ANDROID_HOME/build-tools/*/`) entiende los tres esquemas.
+
+Las dos huellas son la misma con distinto formato: `apksigner` la da en minúsculas y sin separadores, `keytool` y la aplicación la dan en mayúsculas con dos puntos. Para compararlas a ojo:
+
+```bash
+apksigner verify --print-certs app-release.apk \
+  | grep -i 'SHA-256 digest' | sed 's/.*: *//' \
+  | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//'
+```
+
+La aplicación muestra la misma huella: el complemento nativo la expone en `infoInstalada().firma`. Si las dos coinciden, la actualización va a poder instalarse. La publicación imprime esa huella ya convertida, para poder cotejarla con la del almacén de claves sin hacer cuentas.
 
 ## Cómo funciona
 
