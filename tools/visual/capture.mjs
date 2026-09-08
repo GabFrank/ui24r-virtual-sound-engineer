@@ -165,6 +165,18 @@ async function main() {
 
   await escenario('snapshot-recall');
   await esperar(800);
+  // El simulador manda primero los faders y despues `var.currentSnapshot`, que
+  // es un orden tan valido como el otro. La alerta tiene que terminar diciendo
+  // que fue un recall: anunciarlo como un arrastre de faders cambia lo que el
+  // usuario cree que conviene hacer.
+  const textoAlerta = await pagina.textContent('.alerta');
+  if (!/recuper[oó] una instant[aá]nea/i.test(textoAlerta ?? '')) {
+    throw new Error(
+      'la alerta de cambio masivo no reconoció el recall: ' +
+      `"${textoAlerta?.trim().slice(0, 140)}"`,
+    );
+  }
+  console.log('  · la alerta nombra la instantánea, no un arrastre de faders');
   await capturar('06-cambio-masivo', 'recuperación de instantánea detectada como avalancha');
 
   await pagina.click('.alerta button');
