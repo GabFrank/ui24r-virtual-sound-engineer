@@ -51,6 +51,19 @@ nuevos.
 está mal: dentro de seis meses "mvp0" no le dice a nadie qué parte del sistema
 cambió. Ámbitos permitidos en `commitlint.config.js`.
 
+**Antes de empujar**, un solo comando corre lo mismo que la integración
+continua:
+
+```bash
+npm run verificar            # documentación, plantillas, límites, tipos y tests
+npm run verificar:commits    # los mensajes de esta rama, contra main
+```
+
+El segundo existe porque el mismo error costó dos ciclos de integración
+continua: un asunto de 74 caracteres cuando el máximo es 72, descubierto
+después de empujar. Y comprueba el **rango**, no el último commit: un asunto
+largo de hace tres commits sigue rompiendo la comprobación de la rama.
+
 ```
 feat(domain): agrega ChannelAssignment con enlace a BandProfile
 fix(safety): rechaza delta acumulado por sesión en INV-004

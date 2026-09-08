@@ -5,6 +5,8 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 ## [Sin publicar]
 
 ### Agregado
+- `npm run verificar` y `npm run verificar:commits`: lo mismo que comprueba la
+  integración continua, en un comando, antes de empujar.
 - Estructura de monorepo, integración continua y convenciones de contribución (S-00.1, S-00.5).
 - 18 decisiones de arquitectura, de ADR-001 a ADR-018 (S-00.2).
 - Charters de los 22 spikes de fase 0 con criterio de aprobación numérico (S-00.3).
