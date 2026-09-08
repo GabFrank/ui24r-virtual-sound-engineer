@@ -84,6 +84,11 @@ export const RUTAS: Routes = [
     title: 'Actualización',
     loadComponent: () => import('./updates/updates.component').then((m) => m.UpdatesComponent),
   },
+  {
+    path: 'ajustes/diagnostico',
+    title: 'Prueba de conexión',
+    loadComponent: () => import('./diagnostico/diagnostico.component').then((m) => m.DiagnosticoComponent),
+  },
 
   {
     path: 'diseno',

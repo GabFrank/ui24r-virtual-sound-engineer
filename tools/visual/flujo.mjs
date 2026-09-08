@@ -282,6 +282,15 @@ async function recorrer(contexto, tamanio) {
   await esperar(400);
   await paso(23, 'detalle', 'detalle de la sesión cerrada, solo lectura');
 
+  // --- Prueba de conexión ---
+  //
+  // Tiene una tabla, que es la forma más fácil de romper un ancho de teléfono.
+  // La comprobación de desbordamiento de más abajo la mira como a cualquier
+  // otro paso.
+  await p.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/diagnostico`, { waitUntil: 'networkidle' });
+  await p.waitForSelector('ui-page-header');
+  await paso(24, 'diagnostico', 'prueba de conexión: mide y no escribe');
+
   // --- INV-019: el paro tiene que poder tocarse también con un diálogo abierto ---
   //
   // Un «dialog» abierto con showModal() se pinta en la capa superior del
@@ -316,7 +325,7 @@ async function recorrer(contexto, tamanio) {
   });
   if (paroAlcanzable !== null) fallos.push(`INV-019 en diálogo: ${paroAlcanzable}`);
 
-  await paso(24, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
+  await paso(25, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
 
   await p.close();
   return fallos;
