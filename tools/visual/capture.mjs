@@ -179,7 +179,21 @@ async function main() {
   console.log('  · la alerta nombra la instantánea, no un arrastre de faders');
   await capturar('06-cambio-masivo', 'recuperación de instantánea detectada como avalancha');
 
-  await pagina.click('.alerta button');
+  // Releer tiene que devolver el estado a valido de verdad, no solo cerrar el
+  // cartel. Antes el boton decia "Entendido" y no habia ninguna relectura: un
+  // recall dejaba el estado invalido -- y con el la posibilidad de escribir --
+  // muerto por el resto del show.
+  await pagina.click('.alerta ui-button:first-child button');
+  await esperar(2500);
+  const alertaSigue = await pagina.locator('.alerta').count();
+  if (alertaSigue > 0) {
+    throw new Error('la relectura no despejó el cartel de cambio masivo');
+  }
+  const hayCanales = await pagina.locator('tbody tr, ui-card').count();
+  if (hayCanales === 0) {
+    throw new Error('tras la relectura no se recuperó ningún canal');
+  }
+  console.log('  · la relectura devuelve el estado y despeja el cartel');
   await esperar(300);
 
   await escenario('vu-gap');

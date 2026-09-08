@@ -324,3 +324,37 @@ test('la correccion de causa se avisa una sola vez', () => {
   store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
   assert.equal(rafagas.length, 2);
 });
+
+test('INV-021: el estado invalido vuelve a ser valido con la relectura', () => {
+  // La invariante dice "store INVALID hasta re-lectura". La primera mitad
+  // estaba; la segunda no existia, y el estado se quedaba invalido para
+  // siempre: la unica salida era desconectar y volver a conectar a mano.
+  const { store } = nuevoStore();
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  assert.equal(store.storeState, 'INVALID');
+
+  // Lo que hace una relectura: el volcado entero, otra vez.
+  store.volcadoIniciado();
+  store.procesarLinea(codificarSetd('i.1.mix', 0.5));
+  store.volcadoCompletoRecibido();
+
+  assert.equal(store.storeState, 'VALID');
+});
+
+test('la relectura no se anuncia como una avalancha nueva', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  assert.equal(rafagas.length, 1);
+
+  store.volcadoIniciado();
+  for (let canal = 1; canal <= 24; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.5));
+  }
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.volcadoCompletoRecibido();
+
+  assert.equal(rafagas.length, 1, 'el volcado de la relectura no es un cambio de nadie');
+});

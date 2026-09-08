@@ -58,6 +58,20 @@ con INV-034:
   aviso se apaga en un `finally` — un aviso pegado dejaría la aplicación sin
   poder actualizarse nunca y nadie sabría que está pegado. `SafetyService`
   arma el ejecutor ya conectado, para que no se pueda armar uno que se olvide.
+- **INV-021**, la relectura: la invariante dice «store INVALID **hasta
+  re-lectura**» y la segunda mitad de la frase no existía. Lo único que
+  devolvía el estado a válido era el volcado completo, que la consola manda
+  sola al conectar; el cartel decía «hasta releerlo» y su botón decía
+  «Entendido». Un recall desde el navegador de la consola dejaba el estado —y
+  con él la posibilidad de escribir— muerto por el resto del show. Ahora hay
+  `releerEstado()`, que reconecta: **no** pide el volcado, porque no hay
+  mensaje verificado que lo pida, y usa lo único que el protocolo ya demostró
+  hacer.
+- **INV-034**, el aviso que se apagaba antes de tiempo: `conActividad` era un
+  interruptor y no un contador, así que con dos transacciones solapadas el
+  final de la primera apagaba el aviso con la segunda todavía escribiendo. El
+  arreglo anterior se ocupó de que el aviso no quedara *pegado* y no de que no
+  se apagara *temprano*, que es el mismo fallo por el otro lado.
 - **INV-021**, cláusula del cambio de instantánea: la detección solo miraba el
   conteo de rutas, y la invariante dice «cambio masivo **o** cambio de
   `currentSnapshot`». Un recall desde el navegador de la consola cambia la

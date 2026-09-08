@@ -97,7 +97,11 @@ function db(v: number): string {
             {{ aviso.detalle }}
             El estado local ya no es confiable hasta releerlo.
           </div>
-          <ui-button variante="secundario" (pulsado)="descartarMasivo()">Entendido</ui-button>
+          <div class="racimo">
+            <ui-button variante="primario" icono="refrescar" [cargando]="releyendo()"
+                       (pulsado)="releer()">Releer el estado</ui-button>
+            <ui-button variante="sutil" (pulsado)="descartarMasivo()">Ahora no</ui-button>
+          </div>
         </div>
       }
 
@@ -347,4 +351,8 @@ export class TelemetryComponent {
   reiniciarPicos(): void { this.mixer.reiniciarPicos(); }
 
   descartarMasivo(): void { this.mixer.descartarCambioMasivo(); }
+
+  readonly releyendo = this.mixer.releyendo;
+
+  releer(): void { void this.mixer.releerEstado(); }
 }

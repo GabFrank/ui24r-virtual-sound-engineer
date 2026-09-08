@@ -99,6 +99,15 @@ export interface MixerDomainAPI {
 
   /** Suscripción a cambios externos y a avalanchas. */
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void;
+  /**
+   * Vuelve a leer el estado entero de la consola.
+   *
+   * INV-021 invalida el estado ante una avalancha y dice «hasta re-lectura».
+   * Sin esto, la segunda mitad de la frase no existía y el estado se quedaba
+   * inválido para siempre.
+   */
+  releerEstado(): Promise<void>;
+
   alCambioMasivo(cb: (evento: BulkExternalChange) => void): () => void;
   alCambiarConexion(cb: (estado: ConnectionState) => void): () => void;
 }

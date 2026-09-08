@@ -42,6 +42,10 @@ export class MezcladoraFalsa implements MixerDomainAPI {
   }
 
   async conectar(): Promise<void> { this.estadoConexion = 'CONNECTED'; }
+  async releerEstado(): Promise<void> {
+    // La consola de prueba no pierde el estado, asi que releer no cambia nada.
+  }
+
   async desconectar(): Promise<void> { this.estadoConexion = 'DISCONNECTED'; }
   async infoDispositivo(): Promise<DeviceInfo> {
     return { modelo: 'Ui24R-falsa', firmware: '0.0.0' };
