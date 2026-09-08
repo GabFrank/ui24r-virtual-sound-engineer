@@ -115,7 +115,7 @@ npm run verificar          # todo lo que comprueba la integración continua
 npm run verificar:commits  # los mensajes de esta rama, contra main
 
 npm run lint          # chequeo de tipos completo + compilación de la app
-npm test              # los tests de los ocho paquetes
+npm test              # los tests de los paquetes y de los ayudantes de la app
 npm run test:dsp      # 48 de procesamiento de señal
 npm run validate:docs # identificadores de la documentación
 npm run validate:templates  # acentos graves y llamadas desde plantilla

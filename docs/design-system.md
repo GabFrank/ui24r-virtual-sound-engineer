@@ -154,6 +154,17 @@ salir, y la respuesta por defecto es quedarse. Después de guardar y después de
 borrar, la entidad de referencia se actualiza, para no preguntar por cambios que
 acaban de guardarse o por un perfil que ya no existe.
 
+### Cómo se prueban estos ayudantes
+
+`Cargable`, `Lectura`, `intentarGuardar` y `SalidaSinGuardar` tienen tests en
+`apps/mobile/test/`, con `node --test`: las señales de Angular funcionan fuera
+de un componente, así que no hace falta montar nada.
+
+Existen porque no los cubría **nada** —la aplicación no tenía objetivo de test—
+y una auditoría encontró en ellos tres defectos reales: el valor conservado que
+no se mostraba nunca, y dos casos de lectura fuera de orden. Cada test nombra el
+defecto que atrapa, y se comprobó que los tres fallan al reponerlo.
+
 ### Que no se desplace en horizontal
 
 Ninguna pantalla puede desplazarse de lado. Lo ancho a propósito —una tabla, un
