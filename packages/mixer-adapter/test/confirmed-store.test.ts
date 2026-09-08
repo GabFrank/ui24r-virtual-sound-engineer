@@ -358,3 +358,27 @@ test('la relectura no se anuncia como una avalancha nueva', () => {
 
   assert.equal(rafagas.length, 1, 'el volcado de la relectura no es un cambio de nadie');
 });
+
+test('una avalancha dentro de la ventana de silencio invalida igual', () => {
+  // La ventana existe para no abrir un cartel por cada trama de un mismo
+  // recall. Suprimir tambien la invalidacion hacia que una avalancha distinta,
+  // caida dentro de esa ventana, dejara el estado dado por bueno -- y con el
+  // estado valido se puede escribir.
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  assert.equal(store.storeState, 'INVALID');
+
+  // El usuario relee: el estado vuelve a ser valido dentro de la ventana.
+  store.volcadoIniciado();
+  store.procesarLinea(codificarSetd('i.1.mix', 0.5));
+  store.volcadoCompletoRecibido();
+  assert.equal(store.storeState, 'VALID');
+
+  // Y llega otra avalancha, todavia dentro del segundo de silencio.
+  reloj.avanzar(100);
+  for (let canal = 1; canal <= 12; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
+  }
+  assert.equal(store.storeState, 'INVALID', 'no avisar no es lo mismo que no invalidar');
+});

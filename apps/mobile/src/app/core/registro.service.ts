@@ -34,10 +34,14 @@ export class RegistroService {
    * Se llama antes de leer o exportar: si no, lo último que pasó —que es
    * justo lo que se está buscando— todavía está en memoria.
    */
+  /** Eventos tirados por cola llena. Perderlos en silencio sería peor. */
+  readonly descartados = signal(0);
+
   async volcar(): Promise<void> {
     if (this.sumidero === null) return;
     await this.sumidero.volcar();
     this.ultimoError.set(this.sumidero.ultimoError);
+    this.descartados.set(this.sumidero.descartados);
   }
 
   async eventos(filtro: FiltroRegistro = {}): Promise<ResultadoDeRegistro> {

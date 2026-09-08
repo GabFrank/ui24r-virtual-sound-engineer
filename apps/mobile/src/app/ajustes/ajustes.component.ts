@@ -134,6 +134,13 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
             <p class="error">No se pudo guardar el registro: {{ e }}</p>
           }
 
+          @if (descartados() > 0) {
+            <p class="error">
+              Se perdieron {{ descartados() }} eventos porque el registro no daba
+              abasto. Los que quedan son los más recientes.
+            </p>
+          }
+
           <div class="racimo">
             <ui-button variante="secundario" icono="refrescar" [cargando]="cargandoRegistro()"
                        (pulsado)="verRegistro()">
@@ -242,6 +249,7 @@ export class AjustesComponent {
   readonly errorRegistro = signal<string | null>(null);
   /** La búsqueda pudo quedarse corta: hay que decirlo, no dejarlo parecer vacío. */
   readonly registroTruncado = signal(false);
+  readonly descartados = this.registro.descartados;
 
   private readonly filtroRegistro = computed(() =>
     this.soloGraves() ? ({ desdeNivel: 'warn', limite: 100 } as const) : ({ limite: 100 } as const));

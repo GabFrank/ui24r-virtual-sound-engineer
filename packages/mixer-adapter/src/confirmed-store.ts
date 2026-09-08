@@ -239,6 +239,14 @@ export class ConfirmedStateStore {
     const hayAvalancha = rutas.size >= this.umbralRutas;
     if (!cambioDeInstantanea && !hayAvalancha) return;
 
+    // La invalidación va siempre, la alerta no. La ventana de silencio existe
+    // para no abrir un cartel por cada trama de un mismo recall; suprimir
+    // también la invalidación hacía que una avalancha **distinta**, caída
+    // dentro de esa ventana, dejara el estado dado por bueno. Con la relectura
+    // ahora en manos del usuario, volver a VALID dentro del segundo dejó de ser
+    // imposible.
+    this.invalidar();
+
     if (t < this.enRafagaHastaMs) {
       // Ya se avisó por esta avalancha. La única razón para volver a hablar es
       // haber aprendido algo: la consola no promete un orden, así que el
@@ -254,7 +262,6 @@ export class ConfirmedStateStore {
     }
 
     this.enRafagaHastaMs = t + this.ventanaRafagaMs;
-    this.invalidar();
     this.causaAvisada = this.causaProbable(cambioDeInstantanea, rutas);
     this.avisarRafaga(rutas.size, this.causaAvisada, t);
   }
