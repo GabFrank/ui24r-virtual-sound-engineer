@@ -1,6 +1,9 @@
 import {
-  ChangeDetectionStrategy, Component, ElementRef, effect, inject, input, output, viewChild,
+  ChangeDetectionStrategy, Component, ElementRef, effect, input, output, viewChild,
 } from '@angular/core';
+
+let contadorDeDialogos = 0;
+import { ParoBotonComponent } from '../paro/paro-boton.component';
 import { ButtonComponent } from './button.component';
 
 /**
@@ -17,15 +20,25 @@ import { ButtonComponent } from './button.component';
 @Component({
   selector: 'ui-dialog',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, ParoBotonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <dialog #dlg (close)="cerrado.emit()" (click)="alClicEnFondo($event)">
+    <dialog #dlg [attr.aria-labelledby]="idTitulo"
+            (close)="cerrado.emit()" (cancel)="alIntentarCancelar($event)"
+            (click)="alClicEnFondo($event)">
       <div class="caja" (click)="$event.stopPropagation()">
         <header>
-          <h2>{{ titulo() }}</h2>
-          <ui-button class="solo-icono" variante="sutil" icono="cerrar"
-                     rotuloAccesible="Cerrar" (pulsado)="cerrar()">Cerrar</ui-button>
+          <h2 [id]="idTitulo">{{ titulo() }}</h2>
+          <div class="acciones">
+            <!-- INV-019: el paro tiene que estar disponible también en los
+                 diálogos. Un «dialog» abierto con showModal() se pinta en la
+                 capa superior del navegador y su velo intercepta los eventos,
+                 así que el botón flotante del contenedor no se puede tocar. La
+                 única forma de cumplir la invariante es que esté acá dentro. -->
+            <app-paro-boton class="en-dialogo" />
+            <ui-button class="solo-icono" variante="sutil" icono="cerrar"
+                       rotuloAccesible="Cerrar" (pulsado)="cerrar()">Cerrar</ui-button>
+          </div>
         </header>
 
         <div class="cuerpo"><ng-content /></div>
@@ -43,7 +56,7 @@ import { ButtonComponent } from './button.component';
       width: 100%; height: 100%;
       color: var(--ink);
     }
-    dialog::backdrop { background: rgb(0 0 0 / 0.62); }
+    dialog::backdrop { background: var(--velo-modal); }
 
     /* El «dialog» a pantalla completa es solo el lienzo: la caja de verdad se
        centra dentro. Así el clic en el fondo se detecta sin un elemento extra. */
@@ -78,6 +91,7 @@ import { ButtonComponent } from './button.component';
       border-bottom: 1px solid var(--line);
     }
     h2 { font-size: var(--txt-lg); font-weight: var(--peso-medio); }
+    header .acciones { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
 
     .cuerpo { padding: var(--sp-4); overflow-y: auto; }
 
@@ -87,9 +101,16 @@ import { ButtonComponent } from './button.component';
     @include hasta($bp-telefono) {
       /* En teléfono los botones del pie ocupan el ancho y se apilan: apuntar a
          un botón chico en la esquina con una sola mano falla más de lo que
-         parece. */
-      footer { flex-direction: column-reverse; }
-      footer ::ng-deep ui-button { width: 100%; }
+         parece.
+
+         Dos detalles que estaban mal. Uno: estirar «ui-button» no estira el
+         «button» de dentro, así que los botones seguían midiendo cien píxeles.
+         Dos: «column-reverse» dejaba la acción destructiva abajo, que es la
+         zona de mayor acierto del pulgar, y la salida segura arriba. Ahora el
+         orden se mantiene: primero cancelar, después la acción. */
+      footer { flex-direction: column; }
+      footer ::ng-deep ui-button,
+      footer ::ng-deep ui-button button { width: 100%; }
     }
   `],
 })
@@ -102,6 +123,10 @@ export class DialogComponent {
   readonly cerrado = output<void>();
 
   private readonly dlg = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
+
+  /** Enlaza el título con el diálogo: sin esto el lector de pantalla anuncia
+   *  «diálogo» a secas, y algunos de estos borran datos sin vuelta atrás. */
+  protected readonly idTitulo = `dlg-${++contadorDeDialogos}`;
 
   constructor() {
     effect(() => {
@@ -117,5 +142,15 @@ export class DialogComponent {
 
   protected alClicEnFondo(_: MouseEvent): void {
     if (this.cerrableAlTocarFuera()) this.cerrar();
+  }
+
+  /**
+   * La tecla de escape cierra un «dialog» nativo salvo que se cancele el
+   * evento. Sin esto, los diálogos que exigen una decisión —borrar una banda,
+   * cerrar la sesión— se descartaban con una tecla, que es justo lo que
+   * `cerrableAlTocarFuera = false` quería impedir.
+   */
+  protected alIntentarCancelar(e: Event): void {
+    if (!this.cerrableAlTocarFuera()) e.preventDefault();
   }
 }

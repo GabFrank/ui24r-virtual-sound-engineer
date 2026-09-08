@@ -175,11 +175,11 @@ async function main() {
   await capturar('07-conexion-inestable', 'medidores cortados: la conexión pasa a inestable');
   await esperar(4000);
 
-  await pagina.click('button.stop');
+  await pagina.click('app-paro-boton.flotante button');
   await esperar(500);
   await capturar('08-paro-emergencia', 'paro de emergencia activo, escrituras bloqueadas');
 
-  await pagina.click('.btn-rearme');
+  await pagina.click('app-paro-banda button');
   await esperar(500);
   await capturar('09-rearmado', 'rearmado tras el paro');
 

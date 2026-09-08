@@ -50,6 +50,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   con lista de tarjetas en lugar de tabla en pantallas angostas.
 
 ### Corregido
+- **INV-019: el paro de emergencia quedaba inoperable con cualquier diálogo
+  abierto.** Un `dialog` con `showModal()` se pinta en la capa superior del
+  navegador y su velo intercepta los eventos: el botón flotante dejaba de
+  existir para el usuario. Ahora `ui-dialog` monta el paro en su cabecera, y
+  el recorrido automático lo verifica en cada corrida.
+- El paro medía 60 px en teléfono, por debajo de los 64 que exige INV-019.
+- Con el paro activo, «PARO» quedaba en 2,42:1 sobre gris: ilegible justo
+  cuando importa.
+- La banda de rearme tapaba la barra superior entera, incluido el estado de la
+  conexión, y su botón medía 31 px de alto.
+- La tecla de escape cerraba los diálogos que exigen una decisión.
+- El aviso efímero se solapaba con el paro entre 600 y 696 px de ancho.
+- La marca de pico del medidor se pintaba según el nivel instantáneo, no según
+  el pico.
+- El medidor no tenía rol ni valor accesible, y en teléfono es el único
+  portador del nivel.
 - Las cuatro pantallas heredadas llamaban funciones desde la plantilla, que se
   reevalúan en cada ciclo de detección de cambios. En telemetría eran cuarenta
   y ocho llamadas por ciclo, en la pantalla que más ciclos genera. Ahora cada

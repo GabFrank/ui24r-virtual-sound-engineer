@@ -70,7 +70,7 @@ export interface PasoDeAsistente {
       background: var(--surface-2);
       font-family: var(--mono); font-size: var(--txt-xs);
     }
-    li.actual .marca { background: var(--signal); color: #06282b; }
+    li.actual .marca { background: var(--signal); color: var(--sobre-signal); }
     li.hecho .marca { background: var(--ok-tenue); color: var(--ok); }
 
     p.angosto {

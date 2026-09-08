@@ -3,7 +3,8 @@ import { RouterOutlet } from '@angular/router';
 import { ConnectionStateService } from '../core/connection.state';
 import { SessionStateService } from '../core/session.state';
 import { BadgeComponent, ToastsComponent } from '../ui';
-import { EmergencyStopComponent } from './emergency-stop.component';
+import { ParoBandaComponent } from '../paro/paro-banda.component';
+import { ParoBotonComponent } from '../paro/paro-boton.component';
 import { NavComponent } from './nav.component';
 
 /**
@@ -21,9 +22,14 @@ import { NavComponent } from './nav.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, NavComponent, EmergencyStopComponent, ToastsComponent, BadgeComponent],
+  imports: [
+    RouterOutlet, NavComponent, ParoBandaComponent, ParoBotonComponent,
+    ToastsComponent, BadgeComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <app-paro-banda />
+
     <header class="barra">
       <span class="marca ancho">Virtual Sound Engineer</span>
       <span class="marca angosto">VSE</span>
@@ -42,7 +48,7 @@ import { NavComponent } from './nav.component';
       </main>
     </div>
 
-    <app-emergency-stop />
+    <app-paro-boton class="flotante" />
     <ui-toasts />
   `,
   styles: [`

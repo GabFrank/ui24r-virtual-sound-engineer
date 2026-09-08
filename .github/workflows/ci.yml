@@ -23,6 +23,9 @@ jobs:
       - name: Validar identificadores de la documentación
         run: npm run validate:docs
 
+      - name: Validar plantillas de componente
+        run: npm run validate:templates
+
       - name: Lint
         run: npm run lint
 
