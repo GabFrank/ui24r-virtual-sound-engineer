@@ -95,6 +95,22 @@ en vez de ser un número suelto, y que este cuadro dice dónde falta el cable.
   literalmente el defecto que el enunciado describe—, exportada y con test
   propio. Ahora `puedeAplicarse` recibe la instantánea y exige que exista, que
   se llame como la referencia y que su existencia esté verificada.
+- **INV-034**, el aviso que se apagaba temprano, otra vez y un nivel más arriba:
+  el contador quedó **por instancia del ejecutor**, y `SafetyService.crearEjecutor`
+  devuelve uno nuevo en cada llamada que escribe la misma señal con un `set`
+  booleano. Dos ejecutores —que es la forma natural de usar una fábrica— y el
+  paso por cero del primero apagaba el aviso con el segundo escribiendo: el
+  mismo fallo que el contador había cerrado abajo, reintroducido arriba. La
+  cuenta vive ahora en `SessionStateService`, donde está la señal.
+- **INV-021**, la relectura que no releía: `releerEstado()` despejaba el cartel
+  sin esperar el volcado. `conectar()` resuelve al abrir el socket, y lo que
+  devuelve el estado a válido es el `DUMP_END` que llega después: si no llegaba,
+  el usuario quedaba sin cartel, sin poder escribir y sin nada que se lo dijera.
+  Y la comprobación que decía cubrirlo miraba la ausencia del cartel, que la
+  propia función apaga sin mirar nada — pasaba con `releerEstado()` vaciado a
+  `return;`. Ahora se espera el volcado, y la comprobación mira si el estado
+  volvió a estar confirmado, que es lo que INV-017 exige para escribir y que
+  hasta ahora no se veía en ninguna pantalla.
 - **INV-021**, la relectura: la invariante dice «store INVALID **hasta
   re-lectura**» y la segunda mitad de la frase no existía. Lo único que
   devolvía el estado a válido era el volcado completo, que la consola manda
