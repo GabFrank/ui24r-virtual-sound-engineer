@@ -25,7 +25,8 @@ objeto equivocado.
 src/app/
   core/       servicios transversales: base de datos, registro, conexión, seguridad
   ui/         primitivas del sistema de diseño (ver docs/design-system.md)
-  galeria/    referencia viva del sistema de diseño, solo en desarrollo
+  galeria/    referencia viva del sistema de diseño; el enlace del menú solo
+              aparece en desarrollo, la ruta /diseno existe en las dos
   shell/      contenedor, navegación y paro de emergencia
   telemetry/  medidores en vivo
   channels/   asignación de canales

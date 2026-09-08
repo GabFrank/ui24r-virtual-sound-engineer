@@ -35,7 +35,7 @@ CLOSED
 ## Reglas de transición
 
 - **Solo una sesión activa** a la vez.
-- **Retroceso a `CHANNEL_SETUP`** desde cualquier estado: permitido **solo si no existe una toma de soundcheck activa** (INV-006), y con invalidación explícita de las mediciones posteriores. Si el usuario insiste, la aplicación le dice exactamente qué mediciones y qué candidatos de mezcla pierden validez.
+- **Retroceso a `CHANNEL_SETUP`** desde `CALIBRATING`, `ROOM_OBSERVE`, `SOUNDCHECK_REC` y `MIX` —desde `ROOM_CORRECT`, `FULL_BAND`, `RINGOUT` y `SHOW` hay que pasar antes por `MIX`—: permitido **solo si no existe una toma de soundcheck activa** (INV-006), y con invalidación explícita de las mediciones posteriores. Si el usuario insiste, la aplicación le dice exactamente qué mediciones y qué candidatos de mezcla pierden validez.
 - **`ROOM_OBSERVE` y `ROOM_CORRECT` son reentrantes** desde `MIX`: medir la sala de nuevo a mitad de la mezcla es legítimo.
 - **`SOUNDCHECK_PLAY` y `MIX` alternan** libremente: es el ciclo de comparación A y B.
 - **`SHOW` no admite ninguna escritura** salvo la lista blanca del paro de emergencia.

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ConnectionStateService } from '../core/connection.state';
 import { MixerService } from '../core/mixer.service';
 import {
@@ -15,6 +15,30 @@ import { LevelMeterComponent } from './level-meter.component';
  * la aplicación no escribe nada acá.
  */
 const MARGEN_ESCASO_DB = -6;
+
+/**
+ * Traduce una ruta del protocolo a algo que se pueda leer mezclando.
+ *
+ * No pretende ser exhaustiva: lo que no reconoce se dice tal cual, que sigue
+ * siendo mejor que nada. Lo que sí evita es la ruta cruda para los casos
+ * frecuentes.
+ */
+function describirRuta(path: string): string {
+  const canal = /^i\.(\d+)\./.exec(path);
+  if (canal !== null) {
+    const n = canal[1];
+    if (path.endsWith('.mix')) return `el fader del canal ${n}`;
+    if (path.endsWith('.mute')) return `el silencio del canal ${n}`;
+    if (path.includes('.aux.')) return `un envío de monitor del canal ${n}`;
+    if (path.includes('.eq.')) return `la ecualización del canal ${n}`;
+    return `el canal ${n}`;
+  }
+  if (path === 'm.mix') return 'el fader general';
+  if (path === 'm.mute') return 'el silencio general';
+  if (path === 'var.currentSnapshot') return 'la instantánea activa de la consola';
+  if (path.startsWith('hw.')) return `la ganancia de entrada ${path.split('.')[1] ?? ''}`.trim();
+  return path;
+}
 
 /** Una fila ya formateada: la plantilla no calcula nada. */
 interface FilaDeTelemetria {
@@ -49,7 +73,7 @@ function db(v: number): string {
   selector: 'app-telemetry',
   standalone: true,
   imports: [
-    RouterLink, LevelMeterComponent, BadgeComponent, ButtonComponent,
+    LevelMeterComponent, BadgeComponent, ButtonComponent,
     CardComponent, EmptyStateComponent, PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +96,8 @@ function db(v: number): string {
           descripcion="Los medidores en vivo de la consola. Solo lectura." />
         <ui-empty icono="conectar" titulo="Sin conexión con la consola"
           detalle="La dirección y el botón de conectar están en Ajustes. Durante un show, la consola y la tablet van en un router dedicado: la red del lugar no se usa.">
-          <a routerLink="/ajustes" class="enlace">Ir a Ajustes</a>
+          <ui-button variante="primario" icono="ajustes"
+                     (pulsado)="irAAjustes()">Ir a Ajustes</ui-button>
         </ui-empty>
         @if (error(); as e) { <p class="error">{{ e }}</p> }
       } @else {
@@ -85,14 +110,14 @@ function db(v: number): string {
           <table>
             <thead>
               <tr>
-                <th class="izq">Canal</th>
-                <th class="medidor">Nivel</th>
-                <th class="num">Actual</th>
-                <th class="num">Pico</th>
-                <th class="num">Margen</th>
-                <th class="num">Ganancia</th>
-                <th class="num">Fader</th>
-                <th class="num">Clips</th>
+                <th scope="col" class="izq">Canal</th>
+                <th scope="col" class="medidor">Nivel</th>
+                <th scope="col" class="num">Actual</th>
+                <th scope="col" class="num">Pico</th>
+                <th scope="col" class="num">Margen</th>
+                <th scope="col" class="num">Ganancia</th>
+                <th scope="col" class="num">Fader</th>
+                <th scope="col" class="num">Clips</th>
               </tr>
             </thead>
             <tbody>
@@ -109,10 +134,16 @@ function db(v: number): string {
                   </td>
                   <td class="num">{{ f.nivel }}</td>
                   <td class="num">{{ f.pico }}</td>
-                  <td class="num" [class.escaso]="f.margenEscaso">{{ f.margen }}</td>
+                  <td class="num" [class.escaso]="f.margenEscaso">
+                    {{ f.margen }}
+                    @if (f.margenEscaso) { <ui-badge tono="aviso">Escaso</ui-badge> }
+                  </td>
                   <td class="num">{{ f.ganancia }}</td>
                   <td class="num">{{ f.fader }}</td>
-                  <td class="num" [class.hay]="f.clips > 0">{{ f.clips }}</td>
+                  <td class="num" [class.hay]="f.clips > 0">
+                    {{ f.clips }}
+                    @if (f.clips > 0) { <ui-badge tono="peligro">Clips</ui-badge> }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -133,7 +164,7 @@ function db(v: number): string {
                 <div class="fila2 num">
                   <span>Pico {{ f.pico }}</span>
                   <span [class.escaso]="f.margenEscaso">Margen {{ f.margen }}</span>
-                  <span>Gan {{ f.ganancia }}</span>
+                  <span>Ganancia {{ f.ganancia }}</span>
                 </div>
               </div>
             </ui-card>
@@ -145,7 +176,7 @@ function db(v: number): string {
                    subtitulo="El protocolo no dice qué cliente los hizo: solo se puede distinguir un cambio propio de uno ajeno">
             <ul>
               @for (e of externos(); track e.cuando) {
-                <li><code>{{ e.parametro }}</code> pasó a {{ e.valor.toFixed(3) }}</li>
+                <li>{{ e.texto }}</li>
               }
             </ul>
           </ui-card>
@@ -166,7 +197,7 @@ function db(v: number): string {
     }
     @include hasta($bp-telefono) { .alerta { flex-direction: column; align-items: flex-start; } }
 
-    .enlace { color: var(--signal); }
+
     .error { color: var(--danger); }
 
     table { border-collapse: collapse; width: 100%; }
@@ -199,8 +230,20 @@ function db(v: number): string {
 export class TelemetryComponent {
   private readonly mixer = inject(MixerService);
   private readonly conexion = inject(ConnectionStateService);
+  private readonly router = inject(Router);
 
-  readonly externos = this.mixer.cambiosExternos;
+  /**
+   * Los cambios ajenos, en palabras.
+   *
+   * Antes se mostraba la ruta cruda del protocolo y el valor con tres
+   * decimales: «var.currentSnapshot pasó a 1.000». Ni la ruta ni el número
+   * significan nada para quien está mezclando, y el valor crudo no tiene
+   * unidad porque su escalado todavía no está verificado.
+   */
+  readonly externos = computed(() => this.mixer.cambiosExternos().map((e) => ({
+    cuando: e.cuando,
+    texto: `${describirRuta(e.parametro)} cambió`,
+  })));
   readonly masivo = this.mixer.cambioMasivo;
   readonly error = this.mixer.ultimoError;
 
@@ -234,6 +277,8 @@ export class TelemetryComponent {
   readonly resumen = computed(
     () => `${this.filas().length} canales · solo lectura · esta versión no escribe nada en la consola`,
   );
+
+  irAAjustes(): void { void this.router.navigate(['/ajustes']); }
 
   reiniciarPicos(): void { this.mixer.reiniciarPicos(); }
 

@@ -58,12 +58,12 @@ import {
                 detalle="No es obligatorio cargarlos, pero saber quién canta y quién toca qué es lo que permite decir «el micrófono de Ana» en vez de «el canal 3»." />
             } @else {
               <ul class="lista">
-                @for (m of integrantes(); track m.id) {
+                @for (m of integrantesConTexto(); track m.id) {
                   <li>
                     <div class="quien">
                       <span class="nombre">{{ m.nombre }}</span>
-                      @if (m.instrumentos.length > 0) {
-                        <span class="instrumentos">{{ m.instrumentos.join(', ') }}</span>
+                      @if (m.instrumentos) {
+                        <span class="instrumentos">{{ m.instrumentos }}</span>
                       }
                     </div>
                     <ui-button class="solo-icono" variante="sutil" icono="borrar"
@@ -142,6 +142,14 @@ export class BandaEditComponent {
   readonly banda = signal<BandProfile | null>(null);
   readonly nombre = signal('');
   readonly integrantes = signal<readonly BandMember[]>([]);
+
+  /** La lista de instrumentos, ya unida: unirla en la plantilla la volvería a
+   *  unir en cada ciclo de detección de cambios. */
+  readonly integrantesConTexto = computed(() => this.integrantes().map((m) => ({
+    id: m.id,
+    nombre: m.nombre,
+    instrumentos: m.instrumentos.join(', '),
+  })));
   private readonly otrosNombres = signal<readonly string[]>([]);
 
   readonly nuevoAbierto = signal(false);

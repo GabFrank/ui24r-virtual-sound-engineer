@@ -1,11 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ButtonComponent } from './button.component';
+import { IconComponent, type NombreDeIcono } from './icon.component';
 import { ToastService } from './toast.service';
 
 @Component({
   selector: 'ui-toasts',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   /* `role="status"` y no `alert`: los avisos informativos no deben interrumpir
      lo que el lector de pantalla esté diciendo. Los errores, que sí importan,
@@ -14,6 +15,10 @@ import { ToastService } from './toast.service';
     <div class="zona" role="status" aria-live="polite">
       @for (a of avisos(); track a.id) {
         <div class="mensaje" [class]="a.tono">
+          <!-- Un icono por tono. Antes el tono se distinguía únicamente por
+               tres píxeles de borde de color: para quien no distingue ese
+               tono, un error y una confirmación eran el mismo mensaje. -->
+          <ui-icon [nombre]="a.icono" [tamanio]="18" />
           <span>{{ a.texto }}</span>
           <ui-button class="solo-icono" variante="sutil" icono="cerrar"
                      rotuloAccesible="Descartar" (pulsado)="descartar(a.id)">Descartar</ui-button>
@@ -57,10 +62,13 @@ import { ToastService } from './toast.service';
     @keyframes entra { from { opacity: 0; transform: translateY(8px); } }
     @media (prefers-reduced-motion: reduce) { .mensaje { animation: none; } }
 
-    .mensaje.ok    { border-left-color: var(--ok); }
-    .mensaje.aviso { border-left-color: var(--warn); }
-    .mensaje.error { border-left-color: var(--danger); }
-    .mensaje.info  { border-left-color: var(--signal); }
+    .mensaje ui-icon { flex: none; }
+    .mensaje.ok    { border-left-color: var(--ok); color: var(--ok); }
+    .mensaje.aviso { border-left-color: var(--warn); color: var(--warn); }
+    .mensaje.error { border-left-color: var(--danger); color: var(--danger); }
+    .mensaje.info  { border-left-color: var(--signal); color: var(--signal); }
+    /* El texto vuelve al color normal: el tono lo llevan el icono y el borde. */
+    .mensaje span { color: var(--ink); }
 
     /* En teléfono los avisos suben por encima de todo lo que ya flota abajo:
        la barra de navegación y el paro de emergencia. Sin esto se montaban
@@ -75,7 +83,14 @@ import { ToastService } from './toast.service';
 })
 export class ToastsComponent {
   private readonly servicio = inject(ToastService);
-  readonly avisos = this.servicio.avisos;
+  private static readonly ICONOS: Readonly<Record<string, NombreDeIcono>> = {
+    ok: 'chequeo', aviso: 'aviso', error: 'error', info: 'info',
+  };
+
+  readonly avisos = computed(() => this.servicio.avisos().map((a) => ({
+    ...a,
+    icono: ToastsComponent.ICONOS[a.tono] ?? 'info',
+  })));
 
   descartar(id: number): void { this.servicio.descartar(id); }
 }

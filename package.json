@@ -15,7 +15,8 @@
     "pretest:dsp": "node tools/spikes/p0-10a-dsp/src/generate-signals.mjs",
     "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
     "validate:docs": "node tools/docs/validate-ids.mjs",
-    "validate:templates": "node tools/docs/validate-templates.mjs"
+    "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
+    "validate:limites": "node tools/docs/validate-limites.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

@@ -2,6 +2,8 @@
 
 El sistema **no busca una respuesta plana**. Busca una curva de sala con inclinación descendente, que es lo que suena natural en un recinto.
 
+**Estado: esta tabla vive solo en este documento.** El código conoce los nombres de los presets (`HouseCurvePreset` en `packages/domain/src/entities/venue.ts`) pero todavía no sus valores. Cuando se porten, se agrega el test que verifica que cada preset tenga los 31 valores y que coincidan con esta tabla.
+
 Cada preset es una tabla por bandas de tercio de octava, en decibeles relativos a la banda de 1 kHz. Hay un test que carga cada preset y verifica que tiene los 31 valores.
 
 ## Presets

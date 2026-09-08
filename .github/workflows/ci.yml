@@ -26,6 +26,9 @@ jobs:
       - name: Validar plantillas de componente
         run: npm run validate:templates
 
+      - name: Validar limites entre paquetes
+        run: npm run validate:limites
+
       - name: Lint
         run: npm run lint
 

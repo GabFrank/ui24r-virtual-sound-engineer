@@ -14,7 +14,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="texto">
-      <h1>{{ titulo() }}</h1>
+      <!-- «tabindex=-1» para poder enfocarlo al navegar. En una aplicación de
+           una sola página, cambiar de pantalla no mueve el foco ni anuncia
+           nada: quien usa lector de pantalla o teclado se queda donde estaba,
+           en la navegación. -->
+      <h1 tabindex="-1">{{ titulo() }}</h1>
       @if (descripcion(); as d) { <p>{{ d }}</p> }
     </div>
     <div class="acciones"><ng-content /></div>

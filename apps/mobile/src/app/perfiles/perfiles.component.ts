@@ -32,10 +32,15 @@ type Pestania = 'bandas' | 'locales' | 'pa';
         <ui-button variante="primario" icono="mas" (pulsado)="crear()">{{ textoCrear() }}</ui-button>
       </ui-page-header>
 
-      <div class="pestanias" role="tablist">
+      <!-- Botones con «aria-pressed», no «role=tab». El patrón de pestañas de
+           ARIA promete un panel con «role=tabpanel», identificadores enlazados,
+           foco móvil y navegación con flechas; acá solo estaban los roles. Un
+           ARIA a medias es peor que ninguno: el lector de pantalla anuncia
+           «pestaña 1 de 3» y promete un panel que no existe. -->
+      <div class="pestanias">
         @for (p of pestanias; track p.id) {
-          <button type="button" role="tab" [attr.data-perfil]="p.id"
-                  [attr.aria-selected]="pestania() === p.id"
+          <button type="button" [attr.data-perfil]="p.id"
+                  [attr.aria-pressed]="pestania() === p.id"
                   [class.activa]="pestania() === p.id"
                   (click)="pestania.set(p.id)">{{ p.etiqueta }}</button>
         }
@@ -80,7 +85,10 @@ type Pestania = 'bandas' | 'locales' | 'pa';
                     @if (l.sigmaRoomScore === null) {
                       <ui-badge tono="aviso">Sin repetibilidad medida</ui-badge>
                     } @else {
-                      <ui-badge tono="ok">σ ± {{ l.sigmaRoomScore }}</ui-badge>
+                      <!-- «σ ± 3» no le dice nada a quien no lo escribió. Es
+                           cuánto varía el puntaje de la sala entre noches, y
+                           así es como hay que decirlo. -->
+                      <ui-badge tono="ok">Varía ±{{ l.sigmaRoomScore }} puntos</ui-badge>
                     }
                   </ui-card>
                 </a>

@@ -23,6 +23,27 @@ export type SessionState =
   | 'SHOW'
   | 'CLOSED';
 
+/**
+ * Cómo se nombra cada estado cuando el motivo de un rechazo llega a la
+ * pantalla. Los identificadores son técnicos y correctos para el código; nadie
+ * de pie antes de un show quiere leer `ROOM_OBSERVE`.
+ */
+const ETIQUETAS: Readonly<Record<SessionState, string>> = {
+  CREATED: 'Creada',
+  SETUP: 'Configuración',
+  CALIBRATING: 'Calibrando',
+  ROOM_OBSERVE: 'Observando la sala',
+  CHANNEL_SETUP: 'Configurando canales',
+  SOUNDCHECK_REC: 'Grabando prueba',
+  MIX: 'Mezclando',
+  SOUNDCHECK_PLAY: 'Reproduciendo prueba',
+  ROOM_CORRECT: 'Corrigiendo la sala',
+  FULL_BAND: 'Banda completa',
+  RINGOUT: 'Buscando realimentación',
+  SHOW: 'En show',
+  CLOSED: 'Cerrada',
+};
+
 /** Transiciones permitidas. Ver docs/session-lifecycle.md. */
 export const TRANSICIONES: Readonly<Record<SessionState, readonly SessionState[]>> = {
   CREATED: ['SETUP', 'CLOSED'],
@@ -87,7 +108,12 @@ export function puedeTransicionar(
 ): ResultadoTransicion {
   const permitidas = TRANSICIONES[desde];
   if (!permitidas.includes(hacia)) {
-    return { permitida: false, razon: `transición no permitida: ${desde} a ${hacia}` };
+    return {
+      permitida: false,
+      razon:
+        `no se puede pasar de «${ETIQUETAS[desde]}» a «${ETIQUETAS[hacia]}» directamente. ` +
+        'Los estados siguen el orden en que ocurren las cosas de verdad.',
+    };
   }
   if (hacia === 'CHANNEL_SETUP' && contexto.tieneTakeActivo) {
     return {
