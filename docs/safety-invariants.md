@@ -26,9 +26,15 @@ eventos y no por sesiones, ver `docs/logging.md`), INV-024, INV-025, INV-034
 (con la cláusula de transacción en curso todavía sin llamador, ver el cuadro
 de abajo).
 
-Pendientes de hardware, se cierran con su spike: INV-011 (política de
-confirmación, depende de SPK-P0.1), INV-012 a INV-016 y INV-026 (generador,
-dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-023, INV-027 a INV-033.
+Pendientes de hardware, se cierran con su spike: INV-012 a INV-016 y INV-026
+(generador, dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-023, INV-027 a
+INV-033.
+
+**INV-011 ya no está pendiente de hardware.** SPK-P0.1 midió que la consola no
+devuelve eco, ADR-024 eligió la segunda conexión testigo y el código la
+implementa: `confirmedBy` alcanzable es `WITNESS`, y `ECHO` está prohibido por
+el tipo. Lo que falta es la prueba en banco de la fila —cambiar desde la web
+durante un apply— y no la decisión.
 
 Ninguna invariante se marca como cerrada por pasar contra el simulador: el
 simulador reproduce nuestras hipótesis del protocolo, no la consola.
@@ -180,7 +186,7 @@ recorrido solo pasa por las que están en su camino.
 | INV-008 | Únicos routings escribibles: sends hacia el Analysis Bus; mute/fader/sends de Player L/R dentro de PLAYER_RESERVE; mute de buses ∈ `PAProfile.outputBuses` durante medición por componente (transacción System con restauración). **Desde MVP4b y solo en ASSISTED:** filtros PEQ/GEQ (gain, freq, Q) y HPF de los buses de `PAProfile.outputBuses`. Fader, mute fuera de medición, delay, polaridad y limiter de esos buses, y todo AUX de monitor, matrix y mute de inputs: read-only. | Estático: paths escribibles de salida ⊆ {`m.eq.*`, `a.B.eq.*` para B ∈ PAProfile} + unit. | MVP1 |
 | INV-009 | Fader master nunca > 0 dB y nunca escrito en MVP0–MVP3. | Unit. | MVP0 |
 | INV-010 | Ningún AUX marcado como monitor recibe writes, con una única excepción: sends de Player L/R hacia AUX de monitor, únicamente hacia −∞ y solo dentro de PLAYER_RESERVE/restauración. | Estático: paths escribibles ∩ paths de AUX monitor = {`p.0.aux.*.value`, `p.1.aux.*.value`}; motor rechaza valor > −∞ salvo en restauración. | MVP1 |
-| INV-011 | Toda escritura va precedida de `currentValue == expectedValue` leído del store en estado VALID; si el store está INVALID o difiere → CONFLICT, transacción en estado CONFLICT, sin write. Tras write: confirmación esperada ≤ 500 ms según la política de SPK-ACK-POLICY (`confirmedBy ∈ {ECHO, VU, TIMEOUT, NONE}`). Sin echo: VU válido para fader/mute/gain con señal presente (VU2 ≥ −60 dB); el resto continúa en ASSISTED con `confirmedBy = TIMEOUT` y aviso "no verificable" por change; en CONTROLLED AUTO todo parámetro sin ECHO ni VU es inelegible. | HIL: cambiar desde web durante apply → 100 % CONFLICT. | MVP4a |
+| INV-011 | Toda escritura va precedida de `currentValue == expectedValue` leído del store en estado VALID; si el store está INVALID o difiere → CONFLICT, transacción en estado CONFLICT, sin write. Tras write: confirmación esperada ≤ 500 ms **por la segunda conexión testigo** (ADR-024), `confirmedBy ∈ {WITNESS, VU, TIMEOUT, NONE}`. **`ECHO` no es alcanzable**: está medido que la consola no le devuelve nada a quien escribe, y el tipo del código ya lo prohíbe. Cuando no hay testigo: VU válido para fader/mute/gain con señal presente (VU2 ≥ −60 dB); el resto continúa en ASSISTED con `confirmedBy = TIMEOUT` y aviso "no verificable" por change; en CONTROLLED AUTO todo parámetro sin confirmación del testigo ni VU es inelegible. | HIL: cambiar desde web durante apply → 100 % CONFLICT. | MVP4a |
 | INV-012 | El Player L/R solo es controlado por la app tras el paso explícito "Reservar Player para VSE" del Setup Wizard: (a) se lee y guarda el estado completo del Player como PLAYER_RESERVE; (b) se muestra al usuario qué cambiará y se exige confirmación; (c) se fuerza mute ON, fader −∞ y sends a AUX de monitores −∞. Si el Player está reproduciendo al conectar, la reserva se rechaza y el generador queda NO DISPONIBLE. Al cerrar sesión o liberar, se restaura y verifica por lectura. Watchdog: mientras está reservado, si mute/fader/sends cambian fuera de ventana de generación → restaurar ≤ 300 ms + alerta. | HIL: reservar con sends a AUX 1 y 2 → al liberar, hash idéntico; desmutear desde web → restauración medida. | MVP1 |
 | INV-013 | Precondiciones para reproducir cualquier señal: PLAYER_RESERVE activo; archivo con checksum válido y tope −12 dBFS; sends Player→monitores = −∞ verificados; sends Player→Analysis Bus y →master según modo; fader del Player dentro del rango operativo (INV-015); E-Stop no armado; test de aislamiento del bus (INV-016) vigente; cuenta regresiva 3 s visible y audible. | Unit: matriz de precondiciones, cada una falsa → no se envía `MEDIA_PLAY`, se muestra la precondición y se registra; HIL. | MVP1 |
 | INV-014 | Al terminar, cancelar, perder foco, perder USB o perder red: `MEDIA_STOP` con confirmación ≤ 500 ms y mute de Player L/R; sin confirmación → 3 reintentos + alerta sonora/visual persistente. **Abort por ausencia de referencia:** si ≤ 1,5 s tras `MEDIA_PLAY` Input 2 no muestra energía correlacionada con la señal (> −50 dBFS en la banda del estímulo) → `MEDIA_STOP` y "ruta de referencia rota". | HIL: desconectar USB y Wi-Fi en medio de sweep; send Player→Analysis a −∞ a propósito → stop ≤ 2 s 10/10. | MVP1 |

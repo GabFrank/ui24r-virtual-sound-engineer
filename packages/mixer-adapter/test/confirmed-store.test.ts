@@ -30,22 +30,44 @@ test('ADR-005: una escritura propia no aparece como confirmada hasta que vuelve'
     'registrar el envío no puede alterar el estado confirmado');
 });
 
-test('el eco de una escritura propia se etiqueta como propio', () => {
+/**
+ * Lo que llega por la conexion principal es SIEMPRE ajeno.
+ *
+ * Antes habia dos tests que fijaban lo contrario: que una linea coincidente en
+ * ruta, valor y ventana temporal se etiquetaba SELF --el eco-- y que fuera de
+ * la ventana pasaba a EXTERNAL. Medido el 2026-09-08: LA CONSOLA NO LE DEVUELVE
+ * NADA A QUIEN ESCRIBE, asi que por este socket nuestra escritura no vuelve
+ * nunca y esa rama no podia acertar por el motivo que decia.
+ *
+ * Peor: podia acertar por coincidencia. Si una escritura nuestra vencia sin
+ * testigo quedaba pendiente hasta un segundo, y un cambio de OTRO operador a la
+ * misma ruta y el mismo valor dentro de esa ventana se tragaba como propio y no
+ * disparaba el aviso de cambio ajeno. Eso es lo que este test protege ahora.
+ */
+test('una linea que coincide con una escritura nuestra sigue siendo ajena', () => {
   const { store, reloj } = nuevoStore();
+  const vistos: string[] = [];
+  store.alCambioExterno((path) => vistos.push(path));
+
   store.registrarEscrituraPropia('i.3.mix', 0.7);
   reloj.avanzar(50);
   store.procesarLinea(codificarSetd('i.3.mix', 0.7));
-  assert.equal(store.leer('i.3.mix')?.origen, 'SELF');
+
+  assert.equal(store.leer('i.3.mix')?.origen, 'EXTERNAL',
+    'no hay eco: si llego por aca, lo escribio otro');
+  assert.deepEqual(vistos, ['i.3.mix'], 'y tiene que avisar, que es lo que antes se perdia');
 });
 
-test('un eco que llega demasiado tarde ya no se reconoce como propio', () => {
-  // Dirección segura: ante la duda, se trata como ajeno y se pide confirmación
-  // humana, en vez de sobrescribir el cambio de otro.
-  const { store, reloj } = nuevoStore();
+test('lo nuestro entra por el testigo, y ese si es propio', () => {
+  const { store } = nuevoStore();
+  const vistos: string[] = [];
+  store.alCambioExterno((path) => vistos.push(path));
+
   store.registrarEscrituraPropia('i.3.mix', 0.7);
-  reloj.avanzar(400);
-  store.procesarLinea(codificarSetd('i.3.mix', 0.7));
-  assert.equal(store.leer('i.3.mix')?.origen, 'EXTERNAL');
+  store.confirmarPorTestigo('i.3.mix', 0.7);
+
+  assert.equal(store.leer('i.3.mix')?.origen, 'SELF');
+  assert.deepEqual(vistos, [], 'nuestro propio cambio no es un aviso de cambio ajeno');
 });
 
 test('un cambio de otro cliente se etiqueta como externo y avisa', () => {
@@ -57,7 +79,7 @@ test('un cambio de otro cliente se etiqueta como externo y avisa', () => {
   assert.deepEqual(vistos, ['i.5.mix']);
 });
 
-test('un valor distinto al enviado no cuenta como eco propio', () => {
+test('un valor distinto al enviado tambien es ajeno', () => {
   const { store, reloj } = nuevoStore();
   store.registrarEscrituraPropia('i.3.mix', 0.7);
   reloj.avanzar(10);

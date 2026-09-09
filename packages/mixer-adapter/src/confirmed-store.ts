@@ -122,7 +122,13 @@ export class ConfirmedStateStore {
     this._storeState = 'VALID';
   }
 
-  /** Registra una escritura propia para poder reconocer su eco. */
+  /**
+   * Anota una escritura en vuelo, para que el testigo pueda descontarla.
+   *
+   * Ya **no** sirve para reconocer un eco: no hay eco. Queda porque
+   * `confirmarPorTestigo` descuenta de acá lo que confirma, y porque tener la
+   * lista de lo que está en vuelo es útil para depurar una escritura que venció.
+   */
   registrarEscrituraPropia(path: string, valor: number): void {
     const t = this.ahora();
     this.pendientes.push({ path, valor, enviadaEnMs: t });
@@ -174,7 +180,7 @@ export class ConfirmedStateStore {
 
   aplicar(path: string, valor: number): void {
     const t = this.ahora();
-    const origen = this.deducirOrigen(path, valor, t);
+    const origen = this.deducirOrigen();
     const previo = this.estado.get(path);
 
     this.estado.set(path, {
@@ -237,16 +243,27 @@ export class ConfirmedStateStore {
     return new Map(this.estado);
   }
 
-  private deducirOrigen(path: string, valor: number, t: number): ChangeSource {
-    const ventana = t < this.enRafagaHastaMs ? this.ventanaRafagaCorrelacionMs : this.ventanaMs;
-    this.limpiarPendientes(t);
-    const i = this.pendientes.findIndex(
-      (p) => p.path === path && Math.abs(p.valor - valor) < 1e-9 && t - p.enviadaEnMs <= ventana,
-    );
-    if (i >= 0) {
-      this.pendientes.splice(i, 1);
-      return 'SELF';
-    }
+  /**
+   * De dónde viene un cambio que llegó **por la conexión principal**.
+   *
+   * **Siempre es ajeno, y esto es una consecuencia de lo medido.** Antes esto
+   * buscaba entre nuestras escrituras pendientes una que coincidiera en ruta,
+   * valor y ventana temporal, y la marcaba `SELF`. Era la forma de reconocer
+   * el eco de la consola, de cuando se creía que había eco.
+   *
+   * Medido el 2026-09-08: **la consola no le devuelve nada a quien escribe**.
+   * O sea que por este socket nuestra propia escritura no vuelve nunca, y esa
+   * rama no podía acertar por el motivo que decía. Lo único que podía hacer es
+   * acertar por coincidencia — y ahí hacía daño de verdad: si una escritura
+   * nuestra vencía sin testigo, quedaba pendiente hasta un segundo, y **un
+   * cambio de otro operador a la misma ruta y el mismo valor dentro de esa
+   * ventana se tragaba como propio y no disparaba el aviso de cambio ajeno**.
+   *
+   * Lo que llega por acá es de otro cliente, o de una recuperación de
+   * instantánea. Las dos cosas son ajenas. Lo nuestro entra por
+   * `confirmarPorTestigo`, que no deduce nada porque no hace falta.
+   */
+  private deducirOrigen(): ChangeSource {
     return 'EXTERNAL';
   }
 
