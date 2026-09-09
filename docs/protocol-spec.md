@@ -316,6 +316,22 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 
 Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
 
+### 4.6 Las constantes medidas, en un solo lugar
+
+Cada una de estas salió de una medición contra el aparato o de leer el código de la consola, y cada una **está comprobada contra el código en cada integración** por `tools/docs/validate-numeros.mjs`. Si alguien cambia el valor en un lado y no en el otro, falla la integración en vez de sobrevivir hasta que alguien relea.
+
+No es un detalle de proceso: el recorrido del medidor estuvo escrito como 84,5 dB en cuatro documentos durante horas, y lo que lo encontró fue una relectura, no una comprobación.
+
+| Constante | Valor | Qué es |
+|---|---|---|
+| `MEDIDOR_RANGO_DB` | 80 | Recorrido del medidor, de 0 dB en la punta a −80 en el fondo |
+| `MEDIDOR_SATURACION` | 1 | Posición normalizada donde la lectura deja de subir |
+| `VU_CABECERA_BYTES` | 8 | Cabecera de la trama `VU2` |
+| `VU_BYTES_POR_CANAL` | 6 | Paso de la sección de entradas —y **solo** de esa sección |
+| `CORRECCION_PREVIO_DB` | −1.15 | Lo que el previo no entrega respecto de lo que su tabla promete |
+| `CORRECCION_DESDE_DB` | 26 | Desde qué ganancia aparece ese déficit |
+| `RETENCION_PICO_MS` | 3 | Cuánto sostiene el pico antes de caer, del `mixer.html` |
+
 ## 5. Rutas confirmadas contra el aparato
 
 Siete controles movidos a mano desde la interfaz web de la consola, uno por vez, con una instantánea guardada antes. La sesión no escribió nada: solo registró qué clave cambiaba.

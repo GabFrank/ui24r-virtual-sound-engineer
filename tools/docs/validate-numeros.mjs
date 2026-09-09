@@ -59,8 +59,58 @@ const EN_LETRAS = {
 };
 const aNumero = (t) => (/^\d+$/.test(t) ? Number(t) : EN_LETRAS[t.toLowerCase()]);
 
+/**
+ * Constantes medidas: el valor del código contra la tabla de la especificación.
+ *
+ * Los HECHOS de arriba cuentan cosas; esto compara **valores**. Hacía falta
+ * porque la clase de número que más daño hizo en este repositorio no es una
+ * cuenta sino una constante: el recorrido del medidor estuvo escrito como 84,5
+ * dB en cuatro documentos a la vez, y lo encontró una relectura. Con esto,
+ * cambiar la constante y no la tabla —o al revés— rompe la integración.
+ */
+const CONSTANTES = [
+  ['MEDIDOR_RANGO_DB', 'packages/mixer-adapter/src/protocol.ts'],
+  ['MEDIDOR_SATURACION', 'packages/mixer-adapter/src/protocol.ts'],
+  ['VU_CABECERA_BYTES', 'packages/mixer-adapter/src/protocol.ts'],
+  ['VU_BYTES_POR_CANAL', 'packages/mixer-adapter/src/protocol.ts'],
+  ['CORRECCION_PREVIO_DB', 'packages/mixer-adapter/src/conversiones.ts'],
+  ['CORRECCION_DESDE_DB', 'packages/mixer-adapter/src/conversiones.ts'],
+  ['RETENCION_PICO_MS', 'packages/mixer-adapter/src/retencion-pico.ts'],
+];
+
+/** El menos de la tabla es un menos tipografico, no el del teclado. */
+const aNumeroConSigno = (t) => Number(t.replace('\u2212', '-').replace(',', '.'));
+
 let fallos = 0;
 let comprobadas = 0;
+
+const especificacion = leer('docs/protocol-spec.md');
+for (const [nombre, fuente] of CONSTANTES) {
+  const enCodigo = leer(fuente).match(new RegExp(`export const ${nombre} = (-?[\\d.]+);`));
+  const enTabla = especificacion.match(new RegExp(`\\\`${nombre}\\\` \\| ([^|]+?) \\|`));
+  if (enCodigo === null) {
+    fallos++;
+    console.error(`${fuente} ya no define ${nombre}, o cambió de forma.`);
+    continue;
+  }
+  if (enTabla === null) {
+    fallos++;
+    console.error(
+      `docs/protocol-spec.md ya no declara ${nombre} en su tabla de constantes medidas.\n` +
+      '  Sin esa fila la constante puede volver a pudrirse sin que nadie lo note.',
+    );
+    continue;
+  }
+  comprobadas++;
+  const codigo = Number(enCodigo[1]);
+  const tabla = aNumeroConSigno(enTabla[1].trim());
+  if (codigo !== tabla) {
+    fallos++;
+    console.error(
+      `${nombre}: el código dice ${codigo} y docs/protocol-spec.md dice ${enTabla[1].trim()}.`,
+    );
+  }
+}
 for (const hecho of HECHOS) {
   const real = hecho.contar();
   for (const [archivo, patron] of hecho.afirmaciones) {
