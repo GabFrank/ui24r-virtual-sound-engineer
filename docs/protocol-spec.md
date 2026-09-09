@@ -244,7 +244,11 @@ Las dos mitades se midieron por separado, con una fuente conocida entrando por e
 
 Consecuencia para cualquiera que mida niveles: **`entrada` viene procesado**. Si el canal tiene compresor o puerta actuando, ese byte no dice cuánta señal entra sino cuánta queda después del procesamiento. Para ajustar la ganancia del previo —que es lo que hace el asistente— el byte que corresponde es `+0`.
 
-La medición es del compresor. Que la puerta también quede después del punto `+0` es una **inferencia** razonable —son el mismo bloque dinámico— y no está comprobada con la puerta cerrándose.
+**El ecualizador tampoco lo toca.** Medido el 2026-09-09 con la misma fuente: realzando y cortando una banda al máximo, `entrada` y `salida` se movieron ±2,33 dB y `pre` se quedó en −48,66 en los tres estados, sin variar un decimal.
+
+Con eso, `pre` queda como el punto más limpio que la consola ofrece: **después del previo y antes de todo el procesamiento del canal**. Es exactamente lo que necesita un asistente de ganancia, que tiene que medir el margen del previo sin que lo coloreen decisiones de timbre ni de dinámica.
+
+La medición es del compresor y del ecualizador. Que la puerta también quede después del punto `+0` es una **inferencia** razonable —está en el mismo bloque dinámico que el compresor— y no está comprobada con la puerta cerrándose.
 
 **La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
 
