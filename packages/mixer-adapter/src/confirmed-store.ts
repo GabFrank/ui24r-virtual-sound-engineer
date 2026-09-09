@@ -129,6 +129,42 @@ export class ConfirmedStateStore {
     this.limpiarPendientes(t);
   }
 
+  /**
+   * Da por confirmado un valor que **la conexión testigo** vio difundir.
+   *
+   * No rompe la regla 1 de este almacén —«se alimenta solo de mensajes
+   * entrantes»— sino que la extiende: la línea que provoca esta llamada es un
+   * mensaje entrante de la consola, aunque haya llegado por el otro socket. Lo
+   * que sigue prohibido es dar por buena una escritura porque la enviamos.
+   *
+   * Existe porque **sin esto el estado local queda viejo justo en los
+   * parámetros que tocamos**: la consola no le devuelve el eco al emisor, así
+   * que la conexión principal nunca ve su propia escritura. La segunda
+   * escritura sobre la misma ruta comparaba contra el valor anterior y daba
+   * CONFLICT contra nosotros mismos. Una rampa de dos pasos era imposible.
+   *
+   * El origen es `SELF` sin deducir nada. La deducción por ventana temporal es
+   * para mensajes que llegan solos; acá el llamador ya correlacionó ruta, valor
+   * y ventana, y con un testigo lento —más de 300 ms— la deducción marcaría
+   * `EXTERNAL` y abriría un aviso de cambio ajeno por nuestro propio cambio.
+   */
+  confirmarPorTestigo(path: string, valor: number): void {
+    const t = this.ahora();
+    this.limpiarPendientes(t);
+    const i = this.pendientes.findIndex(
+      (p) => p.path === path && Math.abs(p.valor - valor) < 1e-9,
+    );
+    if (i >= 0) this.pendientes.splice(i, 1);
+
+    const previo = this.estado.get(path);
+    this.estado.set(path, {
+      valor,
+      confirmadoEl: new Date(t).toISOString(),
+      origen: 'SELF',
+      version: (previo?.version ?? 0) + 1,
+    });
+  }
+
   /** Procesa una línea entrante del protocolo. */
   procesarLinea(linea: string): void {
     const m = decodificar(linea);

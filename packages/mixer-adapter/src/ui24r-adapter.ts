@@ -7,6 +7,7 @@ import {
   codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
 } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
+import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
 
 export interface OpcionesAdapter {
@@ -43,6 +44,19 @@ export interface OpcionesAdapter {
    */
   readonly quietudVolcadoMs?: number;
   readonly ahora?: () => number;
+  /**
+   * Cómo se abre la **segunda conexión testigo**, la que confirma las
+   * escrituras (ADR-024).
+   *
+   * Por defecto se le pide al propio transporte con `nuevaSesion()`, que es lo
+   * que hace que esto funcione sin que quien construye el adaptador tenga que
+   * saber que existe un testigo. Se puede sustituir para los tests y para un
+   * despliegue que quiera abrir la sesión de otra manera.
+   *
+   * Si no hay fábrica ni `nuevaSesion()`, el adaptador **no escribe**: lo dice
+   * y devuelve `REJECTED`. Ver `escribir()`.
+   */
+  readonly crearTestigo?: () => Transport;
 }
 
 export interface EstadoCanal {
@@ -133,8 +147,34 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
   private readonly transporte: Transport;
 
+  /**
+   * La conexión testigo, o `null` mientras no haya hecho falta.
+   *
+   * **Se abre perezosamente, en la primera escritura, y esa es la decisión.**
+   * Hoy la aplicación está en nivel OBSERVE: mira, mide y propone, y no escribe
+   * un solo parámetro. Abrir el testigo al conectar le cobraría a ese uso un
+   * costo que no es simbólico, y está medido: cada sesión recibe el **volcado
+   * completo de ~6 665 claves** —112 a 158 ms de ráfaga— y después los flujos de
+   * medidores y analizador, que son 30 tramas por segundo de `RTA` más las de
+   * `VU2` con señal, sostenidas mientras dure el show. En una tablet sobre la
+   * red que levanta la propia consola eso se paga en batería y en ancho de
+   * banda, para nada.
+   *
+   * El costo es real, así que se paga cuando se usa. La primera escritura de la
+   * sesión espera a que el testigo abra y termine su volcado; las siguientes ya
+   * no. Ver `asegurarTestigo()`.
+   */
+  private testigo: TestigoDeEscrituras | null = null;
+  /** Apertura en curso, para que dos escrituras a la vez no abran dos sesiones. */
+  private aperturaTestigo: Promise<TestigoDeEscrituras | null> | null = null;
+  private readonly crearTestigo: (() => Transport) | null;
+
   constructor(transporte: Transport, opciones: OpcionesAdapter = {}) {
     this.transporte = transporte;
+    this.crearTestigo = opciones.crearTestigo
+      ?? (typeof transporte.nuevaSesion === 'function'
+        ? () => transporte.nuevaSesion!()
+        : null);
     this.ahora = opciones.ahora ?? (() => Date.now());
     // 300 ms serian ocho tramas perdidas del analizador, que va a 30 Hz con
     // percentil 95 de 37 ms. Se mantiene el valor: sobre RTA es holgado y
@@ -213,6 +253,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.temporizadorVolcado = null;
     for (const f of this.desuscribir) f();
     this.desuscribir = [];
+    // El testigo se cierra con la principal. Dejarlo abierto sería seguir
+    // pagando el volcado y los medidores de una sesión que ya no atestigua nada.
+    await this.cerrarTestigo();
     await this.transporte.desconectar();
     this.store.invalidar();
     this.cambiarEstado('DISCONNECTED');
@@ -264,11 +307,20 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   }
 
   /**
-   * Escribe comparando antes contra el valor esperado (INV-011).
+   * Escribe comparando antes contra el valor esperado (INV-011) y confirma por
+   * la conexión testigo (ADR-024).
    *
    * Si el valor actual no es el esperado, alguien lo cambió: se devuelve
    * conflicto y **no se escribe**. Sobrescribir el cambio de otra persona en
    * medio de un show es exactamente lo que este proyecto no puede hacer.
+   *
+   * La confirmación ya no espera el eco. Está medido que no llega: seis
+   * segundos escuchando la propia conexión, cero líneas para la ruta escrita, y
+   * el valor nuevo presente al pedir `INIT`. Lo que sí llega es la difusión a
+   * los **demás** clientes, y dos sockets del mismo proceso cuentan como
+   * clientes distintos: el testigo vio la escritura a los 27 ms. Así que se
+   * suscribe la espera en el testigo, después se envía, y se confirma con lo
+   * que el testigo vea.
    */
   async escribir(parametro: string, valor: number, esperado: number): Promise<WriteResult> {
     if (this._estadoConexion !== 'CONNECTED') {
@@ -280,26 +332,62 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       };
     }
 
+    // Se compara antes de abrir el testigo para no pagar una sesión entera por
+    // una escritura que ya sabemos que no va a salir.
+    const previa = this.store.coincideConEsperado(parametro, esperado);
+    if (!previa.coincide) {
+      return {
+        status: 'CONFLICT', confirmedBy: 'NONE', actual: previa.actual, motivo: previa.motivo,
+      };
+    }
+
+    const testigo = await this.asegurarTestigo();
+    if (testigo === null) {
+      return {
+        status: 'REJECTED',
+        confirmedBy: 'NONE',
+        actual: previa.actual,
+        motivo:
+          'no hay conexión testigo y es lo único que confirma una escritura contra esta ' +
+          'consola, que no devuelve eco. No se envió nada',
+      };
+    }
+
+    // La comparación se repite porque abrir el testigo tarda —conexión más su
+    // volcado— y en ese hueco alguien pudo mover el parámetro desde el navegador
+    // de la consola. La primera comprobación evita el gasto; esta es la que
+    // cumple INV-011.
     const cmp = this.store.coincideConEsperado(parametro, esperado);
     if (!cmp.coincide) {
       return { status: 'CONFLICT', confirmedBy: 'NONE', actual: cmp.actual, motivo: cmp.motivo };
     }
 
     this.store.registrarEscrituraPropia(parametro, valor);
+    // La suscripción va **antes** del envío: a 27 ms medidos, suscribirse
+    // después es una carrera que se pierde.
+    const confirmacion = testigo.esperar(parametro, valor, this.timeoutMs);
     this.transporte.enviar(codificarSetd(parametro, valor));
 
-    const confirmado = await this.esperarConfirmacion(parametro, valor);
-    if (confirmado) {
-      return { status: 'APPLIED', confirmedBy: 'ECHO', actual: valor, motivo: null };
+    if (await confirmacion) {
+      // El valor entra al estado confirmado por acá y no por otro lado: la
+      // conexión principal nunca va a ver su propia escritura, así que sin esto
+      // el segundo cambio sobre la misma ruta chocaría contra el valor viejo.
+      this.store.confirmarPorTestigo(parametro, valor);
+      return { status: 'APPLIED', confirmedBy: 'WITNESS', actual: valor, motivo: null };
     }
     return {
       status: 'UNVERIFIED',
       confirmedBy: 'TIMEOUT',
       actual: null,
       motivo:
-        `sin confirmación en ${this.timeoutMs} ms. El cambio pudo aplicarse o no: ` +
-        'la transacción queda detenida hasta que alguien decida',
+        `el testigo no vio ${parametro} = ${valor} en ${this.timeoutMs} ms. El cambio pudo ` +
+        'aplicarse o no: la transacción queda detenida hasta que alguien decida',
     };
+  }
+
+  /** Si la segunda conexión está abierta. Para diagnóstico y para los tests. */
+  get testigoAbierto(): boolean {
+    return this.testigo !== null;
   }
 
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void {
@@ -495,23 +583,54 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     }
   }
 
-  private esperarConfirmacion(parametro: string, valor: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const inicio = this.ahora();
-      const revisar = () => {
-        const e = this.store.leer(parametro);
-        if (e && Math.abs(e.valor - valor) < 1e-9 && e.origen === 'SELF') {
-          clearInterval(temporizador);
-          resolve(true);
-          return;
-        }
-        if (this.ahora() - inicio >= this.timeoutMs) {
-          clearInterval(temporizador);
-          resolve(false);
-        }
-      };
-      const temporizador = setInterval(revisar, 10);
+  /**
+   * Devuelve el testigo listo para atestiguar, abriéndolo si hace falta.
+   *
+   * **Acá vive la pereza.** No hay ninguna llamada a esto fuera de `escribir()`,
+   * y es deliberado: mientras la aplicación observe y no escriba, la segunda
+   * sesión no existe y no cuesta un byte. La primera escritura de la sesión
+   * paga la apertura y el volcado del testigo; el resto no paga nada.
+   *
+   * Devuelve `null` cuando no se puede atestiguar: sin fábrica de sesiones, sin
+   * dirección conocida, o porque la apertura falló. Quien llama no escribe.
+   */
+  private async asegurarTestigo(): Promise<TestigoDeEscrituras | null> {
+    if (this.testigo !== null) {
+      if (this.testigo.listoParaAtestiguar) return this.testigo;
+      // Se cayó. Se descarta y se vuelve a abrir con la escritura que lo pidió.
+      const caido = this.testigo;
+      this.testigo = null;
+      await caido.cerrar().catch(() => { /* ya estaba cerrado */ });
+    }
+    if (this.crearTestigo === null || this.url === null) return null;
+
+    this.aperturaTestigo ??= this.abrirTestigo(this.url);
+    try {
+      return await this.aperturaTestigo;
+    } finally {
+      this.aperturaTestigo = null;
+    }
+  }
+
+  private async abrirTestigo(destino: string): Promise<TestigoDeEscrituras | null> {
+    const testigo = new TestigoDeEscrituras(this.crearTestigo!(), {
+      quietudVolcadoMs: this.quietudVolcadoMs,
     });
+    try {
+      await testigo.conectar(destino);
+    } catch {
+      await testigo.cerrar().catch(() => { /* nunca llegó a abrir */ });
+      return null;
+    }
+    this.testigo = testigo;
+    return testigo;
+  }
+
+  private async cerrarTestigo(): Promise<void> {
+    const testigo = this.testigo;
+    this.testigo = null;
+    this.aperturaTestigo = null;
+    if (testigo !== null) await testigo.cerrar().catch(() => { /* ya estaba cerrado */ });
   }
 
   private cambiarEstado(e: ConnectionState): void {

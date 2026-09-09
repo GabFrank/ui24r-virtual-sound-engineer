@@ -10,18 +10,54 @@ import type { Transport } from '../src/transport.ts';
  */
 export class TransporteFalso implements Transport {
   private recibir: ((linea: string) => void) | null = null;
+  private cerrar: ((motivo: string) => void) | null = null;
+  private debeFallar = false;
   conectado = false;
 
-  async conectar(): Promise<void> { this.conectado = true; }
+  /** Todo lo que el adaptador mandó por este transporte. */
+  readonly enviadas: string[] = [];
+
+  /**
+   * Las sesiones que este transporte tuvo que abrir.
+   *
+   * Es lo que hace comprobable la pereza del testigo (ADR-024): si nadie
+   * escribió, esta lista tiene que estar vacía. Un contador no alcanzaría,
+   * porque el test también necesita meterle líneas al testigo.
+   */
+  readonly sesiones: TransporteFalso[] = [];
+
+  /** Hace fallar la apertura de las sesiones nuevas, no la de esta. */
+  fallaLaSesionNueva = false;
+
+  async conectar(): Promise<void> {
+    if (this.debeFallar) throw new Error('no se pudo abrir la sesión');
+    this.conectado = true;
+  }
   async desconectar(): Promise<void> { this.conectado = false; }
-  enviar(): void { /* estas pruebas no escriben */ }
+  enviar(linea: string): void { this.enviadas.push(linea); }
   alRecibir(cb: (linea: string) => void): () => void {
     this.recibir = cb;
     return () => { this.recibir = null; };
   }
   alAbrir(): () => void { return () => {}; }
-  alCerrar(): () => void { return () => {}; }
+  alCerrar(cb: (motivo: string) => void): () => void {
+    this.cerrar = cb;
+    return () => { this.cerrar = null; };
+  }
+
+  nuevaSesion(): TransporteFalso {
+    const sesion = new TransporteFalso();
+    sesion.debeFallar = this.fallaLaSesionNueva;
+    this.sesiones.push(sesion);
+    return sesion;
+  }
 
   /** Mete una línea como si viniera de la consola. */
   entra(linea: string): void { this.recibir?.(linea); }
+
+  /** Tira la conexión como si el socket se hubiera cerrado solo. */
+  cae(motivo = 'cerrado'): void {
+    this.conectado = false;
+    this.cerrar?.(motivo);
+  }
 }

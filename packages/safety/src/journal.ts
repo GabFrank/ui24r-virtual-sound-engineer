@@ -32,7 +32,15 @@ export interface CambioRegistrado {
   readonly valorEsperado: number;
   readonly valorEnviado: number;
   readonly enviadoEl: string | null;
-  readonly confirmadoPor: 'ECHO' | 'VU' | 'TIMEOUT' | 'NONE' | null;
+  /**
+   * Cómo se confirmó el cambio.
+   *
+   * `WITNESS` es la conexión testigo (ADR-024) y es lo que hoy produce una
+   * escritura aplicada. `ECHO` sigue en la lista porque el diario guarda lo que
+   * se escribió antes de medir que esta consola no devuelve eco: una entrada
+   * vieja tiene que poder leerse.
+   */
+  readonly confirmadoPor: 'ECHO' | 'VU' | 'WITNESS' | 'TIMEOUT' | 'NONE' | null;
   readonly verificado: boolean;
 }
 

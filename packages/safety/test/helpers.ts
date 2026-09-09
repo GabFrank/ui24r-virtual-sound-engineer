@@ -94,7 +94,10 @@ export class MezcladoraFalsa implements MixerDomainAPI {
 
     this.valores.set(parametro, valor);
     this.confirmados.add(parametro);
-    return { status: 'APPLIED', confirmedBy: 'ECHO', actual: valor, motivo: null };
+    // `WITNESS` y no `ECHO`: contra esta consola el eco no existe, así que un
+    // doble que lo devolviera estaría fingiendo algo que el adaptador real no
+    // puede producir (ADR-024).
+    return { status: 'APPLIED', confirmedBy: 'WITNESS', actual: valor, motivo: null };
   }
 
   /** Simula que otro cliente cambió un valor. */

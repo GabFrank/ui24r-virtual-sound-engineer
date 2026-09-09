@@ -23,6 +23,24 @@ export interface Transport {
   alAbrir(cb: () => void): () => void;
   alCerrar(cb: (motivo: string) => void): () => void;
   readonly conectado: boolean;
+  /**
+   * Otra conexión al mismo destino, sin abrir todavía.
+   *
+   * Existe para la conexión testigo (ADR-024). La consola **no le devuelve el
+   * eco de una escritura a quien la hizo**, pero sí la difunde a los demás
+   * clientes, y trata dos sockets del mismo proceso como clientes distintos:
+   * medido el 2026-09-08, el testigo vio la escritura a los 27 ms. Confirmar
+   * una escritura pasa entonces por tener una segunda sesión escuchando.
+   *
+   * Es una fábrica y no un `clone()` porque cada implementación sabe qué hace
+   * falta para abrir una sesión nueva: `Ui24rTransport` tiene que repetir el
+   * apretón de manos, porque el identificador de socket.io es de un solo uso.
+   *
+   * Opcional a propósito: un transporte que no la implemente —un doble de test,
+   * un transporte de solo lectura— deja al adaptador sin forma de confirmar, y
+   * el adaptador lo dice en vez de escribir a ciegas.
+   */
+  nuevaSesion?(): Transport;
 }
 
 /**
@@ -203,6 +221,10 @@ export class WebSocketTransport implements Transport {
     this.cerrar.push(cb);
     return () => { this.cerrar = this.cerrar.filter((f) => f !== cb); };
   }
+
+  nuevaSesion(): Transport {
+    return new WebSocketTransport();
+  }
 }
 
 /**
@@ -227,5 +249,17 @@ export class Ui24rTransport extends WebSocketTransport {
   override async conectar(maquina: string): Promise<void> {
     const url = await resolverDireccionUi24r(maquina, this.buscar);
     await super.conectar(url);
+  }
+
+  /**
+   * El testigo tiene que hacer su propio apretón de manos.
+   *
+   * No alcanza con copiar la URL ya resuelta de la primera conexión: el
+   * identificador de sesión se agota al usarse, así que abrir la misma
+   * dirección dos veces falla. Por eso la sesión nueva se lleva la **máquina**
+   * y el mismo `fetch`, y resuelve lo suyo cuando la abran.
+   */
+  override nuevaSesion(): Transport {
+    return new Ui24rTransport(this.buscar);
   }
 }

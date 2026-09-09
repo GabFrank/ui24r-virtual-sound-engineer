@@ -38,11 +38,32 @@ export type WriteStatus =
   | 'UNVERIFIED'
   | 'REJECTED';
 
-export type ConfirmedBy = 'ECHO' | 'VU' | 'TIMEOUT' | 'NONE';
+/**
+ * Vocabulario de métodos de confirmación, incluido el que ya no se alcanza.
+ *
+ * `ECHO` sigue en la lista porque el diario y el historial guardan lo que se
+ * escribió antes de saber que no existía, y borrarlo del vocabulario haría
+ * ilegible ese registro. Lo que no puede volver a ocurrir es **producirlo**:
+ * para eso está `ConfirmedByAlcanzable`.
+ */
+export type ConfirmedBy = 'ECHO' | 'VU' | 'WITNESS' | 'TIMEOUT' | 'NONE';
+
+/**
+ * Lo que una escritura puede devolver contra esta consola.
+ *
+ * `ECHO` no está, y no es una omisión: está medido el 2026-09-08 que la Ui24R
+ * **no le devuelve la escritura a quien la hizo** (SPK-P0.1, SPK-ACK-POLICY).
+ * Seis segundos escuchando, cero líneas para la ruta escrita; se pide `INIT` y
+ * el valor nuevo está. La rama que devolvía `APPLIED` con `confirmedBy: 'ECHO'`
+ * era código inalcanzable, y mientras el tipo la admitía nada impedía volver a
+ * escribirla. `WITNESS` es lo que la reemplaza: la segunda conexión testigo vio
+ * la consola difundir el valor (ADR-024).
+ */
+export type ConfirmedByAlcanzable = Exclude<ConfirmedBy, 'ECHO'>;
 
 export interface WriteResult {
   readonly status: WriteStatus;
-  readonly confirmedBy: ConfirmedBy;
+  readonly confirmedBy: ConfirmedByAlcanzable;
   /** Valor leído cuando el estado es de conflicto. */
   readonly actual: number | null;
   readonly motivo: string | null;
