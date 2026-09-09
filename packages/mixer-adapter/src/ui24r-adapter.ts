@@ -7,8 +7,10 @@ import {
   codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
 } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
+import { leerDinamica } from './dinamica.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
+import type { DinamicaDeCanal } from '@vse/domain';
 
 export interface OpcionesAdapter {
   /**
@@ -76,14 +78,55 @@ export interface EstadoCanal {
   readonly gainDb: number | null;
   readonly silenciado: boolean;
   /**
-   * Nivel de **entrada**, antes del fader.
+   * Nivel de **entrada**, antes del fader y **después del proceso dinámico**.
    *
-   * Es el que importa para el margen del previo: no cambia porque alguien
-   * mueva un fader. En la consola es la marca fantasma del medidor, no la
-   * barra de color.
+   * Es el que importa para el margen del previo en un sentido: no cambia
+   * porque alguien mueva un fader. En la consola es la marca fantasma del
+   * medidor, no la barra de color.
+   *
+   * **Lo que no es, y costó descubrirlo:** no es la señal que entra al canal.
+   * El compresor y la puerta ya pasaron. Medido el 2026-09-09 con un tono fijo,
+   * bajar el umbral del compresor movió esta lectura de −29,66 a −40,46 dB. Un
+   * consejo de ganancia calculado sobre este número sin mirar `reduccionDb` es
+   * un consejo calculado sobre una señal procesada.
    */
   readonly nivelDb: number;
   readonly picoDb: number;
+  /**
+   * Nivel **después del previo y antes del procesamiento dinámico**.
+   *
+   * Es el que hay que mirar para aconsejar ganancia, y el que muestrea el
+   * asistente. `nivelDb` es lo que la consola dibuja en su tira —sirve para
+   * hablar el mismo idioma que el operador— pero llega con el compresor
+   * encima; este no.
+   *
+   * Medido el 2026-09-09: con el compresor apretando 5 dB, `nivelDb` cayó a
+   * −53,33 y este se quedó en −48,66; y subiendo `hw.N.gain` de 10 a 22 dB,
+   * los dos subieron lo mismo. Ver `MedidorCanal.pre`, donde está también qué
+   * parte de esto sigue inferida.
+   */
+  readonly nivelPreProcesoDb: number;
+  readonly picoPreProcesoDb: number;
+  /**
+   * Cuántos decibeles le está sacando el procesador dinámico ahora mismo.
+   *
+   * Cero cuando no está actuando, que es lo que informa la consola en un canal
+   * sin compresor **y** en un canal con compresor puesto que no llega a su
+   * umbral. Esa diferencia es la que convierte un aviso genérico —«hay un
+   * compresor, cuidado»— en un dato accionable: «este nivel ya viene 9 dB
+   * comprimido».
+   */
+  readonly reduccionDb: number;
+  /** La mayor reducción vista desde el último reinicio de picos. */
+  readonly reduccionPicoDb: number;
+  /**
+   * Qué proceso dinámico tiene puesto el canal.
+   *
+   * Es configuración, no medición: `reduccionDb` dice cuánto está haciendo el
+   * compresor, y esto dice qué hay en el camino. Los dos hacen falta, porque la
+   * puerta y el de-esser no tienen medidor propio en la trama.
+   */
+  readonly dinamica: DinamicaDeCanal;
   /**
    * Nivel de **salida**, después del fader.
    *
@@ -133,6 +176,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly nivelesSalida = new Map<number, number>();
   private readonly picosSalida = new Map<number, number>();
   private readonly saturaciones = new Map<number, number>();
+  private readonly reducciones = new Map<number, number>();
+  private readonly picosReduccion = new Map<number, number>();
+  private readonly nivelesPreProceso = new Map<number, number>();
+  private readonly picosPreProceso = new Map<number, number>();
 
   private info: DeviceInfo = { modelo: 'desconocido', firmware: 'desconocido' };
   private oyentesConexion: ((e: ConnectionState) => void)[] = [];
@@ -460,6 +507,14 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
         picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
         eventosSaturacion: this.saturaciones.get(canal) ?? 0,
+        // Cero y no `null` cuando todavía no llegó una trama: la reducción es
+        // una medida acotada por abajo, y «no llegó ninguna trama de medidores»
+        // ya se distingue mirando el nivel, que sí es −∞.
+        nivelPreProcesoDb: this.nivelesPreProceso.get(canal) ?? -Infinity,
+        picoPreProcesoDb: this.picosPreProceso.get(canal) ?? -Infinity,
+        reduccionDb: this.reducciones.get(canal) ?? 0,
+        reduccionPicoDb: this.picosReduccion.get(canal) ?? 0,
+        dinamica: leerDinamica((path) => this.store.leer(path), n),
       });
     }
     return salida;
@@ -525,6 +580,20 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
       const picoPrevio = this.picosVu.get(canal) ?? -Infinity;
       this.picosVu.set(canal, Math.max(picoPrevio, db));
+
+      // El nivel anterior al procesamiento dinámico. Es el que usa el asistente
+      // de ganancia: `db` de acá arriba ya pasó por el compresor.
+      const dbPreProceso = dbDeMedidor(medidor.pre);
+      this.nivelesPreProceso.set(canal, dbPreProceso);
+      const picoPreProcesoPrevio = this.picosPreProceso.get(canal) ?? -Infinity;
+      this.picosPreProceso.set(canal, Math.max(picoPreProcesoPrevio, dbPreProceso));
+
+      // La reducción viaja en el sexto byte de cada canal y estuvo llegando
+      // desde siempre sin que nadie la leyera. Es lo que permite saber si el
+      // nivel de arriba viene condicionado y por cuánto.
+      this.reducciones.set(canal, medidor.reduccionDb);
+      const picoReduccionPrevio = this.picosReduccion.get(canal) ?? 0;
+      this.picosReduccion.set(canal, Math.max(picoReduccionPrevio, medidor.reduccionDb));
 
       const dbSalida = dbDeMedidor(medidor.salida);
       this.nivelesSalida.set(canal, dbSalida);
@@ -644,6 +713,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.picosSalida.clear();
     this.picosVu.clear();
     this.saturaciones.clear();
+    // El pico de reducción se reinicia con los demás: si no, la insignia de
+    // «este canal viene comprimido» sobreviviría a puentear el compresor y
+    // seguiría acusando a un canal ya limpio.
+    this.picosReduccion.clear();
+    this.picosPreProceso.clear();
   }
 }
 

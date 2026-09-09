@@ -5,8 +5,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  crearIntegrante, editarIntegrante, reunirErrores, textoDeInstrumentos,
-  validarNombre, validarUnico,
+  crearIntegrante, editarIntegrante, nombresDeOtrosIntegrantes, reunirErrores,
+  textoDeInstrumentos, validarNombre, validarNombreDeIntegrante, validarUnico,
   type BandMember, type BandMemberId, type BandProfile, type BandProfileId, type Instrumento,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
@@ -95,15 +95,13 @@ interface FilaDeIntegrante {
                       }
                     </div>
                     <div class="fila-acciones">
-                      <!-- Editar, y no borrar y volver a cargar: el
-                           identificador del integrante es lo que enlaza a la
-                           persona con su asignación de canal. -->
+                      <!-- Un solo botón en la fila, y el de quitar adentro del
+                           diálogo. La fila ya no tiene ningún gesto destructivo
+                           al lado de uno que no lo es. Ver la nota de
+                           «quitarIntegrante». -->
                       <ui-button class="solo-icono" variante="sutil" icono="editar"
-                                 [rotuloAccesible]="'Editar a ' + m.nombre"
-                                 (pulsado)="abrirEdicion(m)">Editar</ui-button>
-                      <ui-button class="solo-icono" variante="sutil" icono="borrar"
-                                 [rotuloAccesible]="'Quitar a ' + m.nombre"
-                                 (pulsado)="quitar(m.id)">Quitar</ui-button>
+                                 [rotuloAccesible]="'Abrir a ' + m.nombre"
+                                 (pulsado)="abrirEdicion(m)">Abrir</ui-button>
                     </div>
                   </li>
                 }
@@ -135,7 +133,15 @@ interface FilaDeIntegrante {
         <app-elegir-instrumentos [instrumentos]="instrumentosDelIntegrante()"
                                  (cambiado)="instrumentosDelIntegrante.set($event)" />
       </div>
-      <div pie>
+      <div pie class="pie-integrante">
+        <!-- «Quitar» vive acá y no en la fila, y no pide confirmación aparte:
+             llegar hasta este botón exige haber abierto a esa persona y estar
+             viendo su nombre y sus instrumentos, que es una confirmación que
+             además informa. Ver la nota de «quitarIntegrante». -->
+        @if (integranteEditado() !== null) {
+          <ui-button class="quitar" variante="peligro" icono="borrar"
+                     (pulsado)="quitarIntegrante()">Quitar</ui-button>
+        }
         <ui-button variante="sutil" (pulsado)="cerrarDialogo()">Cancelar</ui-button>
         <ui-button variante="primario" [deshabilitado]="errorDelIntegrante() !== null"
                    (pulsado)="confirmarIntegrante()">{{ accionDelDialogo() }}</ui-button>
@@ -159,6 +165,8 @@ interface FilaDeIntegrante {
     </ui-dialog>
   `,
   styles: [`
+    @use 'tokens' as *;
+
     .lista { list-style: none; margin: 0; padding: 0; }
     .lista li {
       display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
@@ -169,10 +177,21 @@ interface FilaDeIntegrante {
     .quien { display: flex; flex-direction: column; min-width: 0; }
     .nombre { overflow: hidden; text-overflow: ellipsis; }
     .instrumentos { font-size: var(--txt-sm); color: var(--muted); }
-    /* Editar y quitar quedan juntos, pero no pegados: los dos miden lo mínimo
-       táctil y uno de ellos borra. A un metro y con poca luz, el espacio entre
-       ambos es lo que evita el toque equivocado. */
     .fila-acciones { display: flex; flex: none; gap: var(--sp-3); }
+
+    /* «Quitar» a la izquierda del todo, separado del resto por el espacio que
+       sobre. Es el mismo reparto que el pie de la página —«Borrar banda» a un
+       lado, «Guardar» al otro— y por el mismo motivo: la acción destructiva no
+       comparte borde con ninguna otra. */
+    .pie-integrante { display: flex; gap: var(--sp-2); width: 100%; }
+    .pie-integrante .quitar { margin-right: auto; }
+
+    @include hasta($bp-telefono) {
+      /* En teléfono el pie del diálogo apila a lo ancho. «Quitar» queda arriba,
+         lejos del pulgar, que es donde tiene que estar. */
+      .pie-integrante { flex-direction: column; }
+      .pie-integrante .quitar { margin-right: 0; margin-bottom: var(--sp-3); }
+    }
   `],
 })
 export class BandaEditComponent implements PuedeSalir, OnDestroy {
@@ -243,8 +262,25 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   readonly sePuedeGuardar = computed(
     () => Object.keys(reunirErrores({ nombre: this.errorNombre() })).length === 0);
 
+  /**
+   * Los nombres de los demás, para que no haya dos «Ana».
+   *
+   * Se excluye a quien se está corrigiendo: sin eso, abrir a Ana y confirmar
+   * sin tocar nada diría que «Ana» ya está en uso —por ella misma— y el botón
+   * quedaría apagado sin salida. En un alta no hay a quién excluir.
+   */
+  private readonly otrosNombresDeIntegrantes = computed(
+    () => nombresDeOtrosIntegrantes(this.integrantes(), this.integranteEditado()));
+
+  /**
+   * Dos «Ana» rompen la premisa de la pantalla de canales, que es poder decir
+   * «el micrófono de Ana» en vez de «el canal 3»: el desplegable de «quién»
+   * muestra dos veces lo mismo y quien elige no tiene con qué distinguirlas.
+   * La regla y su mensaje viven en el dominio, no acá.
+   */
   readonly errorDelIntegrante = computed(
-    () => validarNombre(this.nombreDelIntegrante(), 'El nombre'));
+    () => validarNombreDeIntegrante(
+      this.nombreDelIntegrante(), this.otrosNombresDeIntegrantes()));
 
   /**
    * Los errores no se muestran hasta que el campo se abandona o se intenta
@@ -368,8 +404,39 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
     this.cerrarDialogo();
   }
 
-  quitar(id: BandMemberId): void {
+  /**
+   * Quita al integrante que el diálogo está mostrando.
+   *
+   * **Por qué acá y no en la fila, y por qué sin un «¿estás seguro?».** El
+   * botón estaba en la lista, pegado al de editar, los dos del mismo tamaño y
+   * del mismo color. A un metro de la tablet, con poca luz y apurado, un toque
+   * de más borraba a una persona con sus instrumentos y con el identificador
+   * que enlaza sus canales, y no había forma de deshacerlo.
+   *
+   * Las dos salidas obvias eran malas. Dejarlo donde estaba y pedir
+   * confirmación agrega un diálogo a cada borrado, incluidos los que el usuario
+   * tenía decididos; y un «¿estás seguro?» que aparece siempre se contesta que
+   * sí sin leer, que es el mismo argumento por el que la salida sin guardar
+   * compara entidades en vez de marcar una bandera. Quitar el botón sin más
+   * dejaría sin manera de corregir una carga equivocada.
+   *
+   * Lo que se hizo es mover el gesto: para llegar hasta acá hay que haber
+   * abierto a esa persona y estar viendo su nombre y sus instrumentos. Eso ya
+   * es una confirmación, y a diferencia de un «¿estás seguro?» **muestra a
+   * quién se está por quitar** en vez de preguntarlo en abstracto. Cuesta los
+   * mismos dos toques que confirmar, y el primero de los dos es informativo.
+   * La fila queda con un solo botón, así que no hay ningún toque equivocado
+   * posible entre dos acciones distintas.
+   *
+   * Sigue sin ser irreversible de verdad: esto cambia la lista en pantalla y lo
+   * que persiste es el «Guardar» de la banda, así que salir sin guardar deja
+   * todo como estaba —y la guarda de salida lo pregunta—.
+   */
+  quitarIntegrante(): void {
+    const id = this.integranteEditado();
+    if (id === null) return;
     this.integrantes.update((l) => l.filter((m) => m.id !== id));
+    this.cerrarDialogo();
   }
 
   async guardar(): Promise<void> {

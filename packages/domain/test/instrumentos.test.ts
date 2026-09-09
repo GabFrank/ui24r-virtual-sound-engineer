@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import {
   crearInstrumento, errorDeInstrumento, etiquetaCanonicaDeInstrumento, etiquetaDeInstrumento,
   fuentePorId, fuentesConRol, FUENTES, FUENTES_IDS, instrumentoDeAsignacion,
-  interpretarInstrumento, NOMBRE_DE_ROL, perfilDeCanalDeInstrumento, perfilDeInstrumento,
+  interpretarInstrumento, motivoSinPerfilDeInstrumento, NOMBRE_DE_ROL,
+  perfilDeCanalDeInstrumento, perfilDeInstrumento,
   reinterpretarInstrumento, ROLES_DE_INSTRUMENTO, SINONIMOS_DE_FUENTE, SINONIMOS_DE_ROL,
   SINONIMOS_DE_VARIANTE, VARIANTES_IDS, type Instrumento,
 } from '../src/data/instrumentos.ts';
@@ -152,6 +153,33 @@ test('djembe y bombo quedan sin perfil, y dicen por qué', () => {
     assert.equal(perfilDeCanalDeInstrumento(crearInstrumento(id)), null);
     assert.ok((fuentePorId(id).sinPerfilPorque ?? '').length > 20);
   }
+});
+
+test('el motivo de que no haya perfil sale del catálogo, no de la pantalla', () => {
+  // La pantalla de canales tiene que poder decir por qué un djembe no trae
+  // perfil. Si el texto se escribiera allá habría dos explicaciones que pueden
+  // divergir, y la del catálogo es la que se revisa al agregar una fuente.
+  for (const id of ['DJEMBE', 'BOMBO'] as const) {
+    assert.equal(
+      motivoSinPerfilDeInstrumento(crearInstrumento(id)),
+      fuentePorId(id).sinPerfilPorque,
+    );
+  }
+});
+
+test('una fuente que sí tiene perfil no tiene nada que explicar', () => {
+  assert.equal(motivoSinPerfilDeInstrumento(crearInstrumento('CONGA')), null);
+  // También cuando el perfil sale de la variante o del rol, y no del defecto.
+  assert.equal(motivoSinPerfilDeInstrumento(crearInstrumento('GUITARRA', 'ELECTRICO')), null);
+  assert.equal(motivoSinPerfilDeInstrumento(crearInstrumento('VOZ', null, 'CORO')), null);
+});
+
+test('un instrumento que el catálogo no reconoce también dice por qué no hay perfil', () => {
+  // Es el caso de un perfil viejo escrito a mano. Quedarse callado ahí es lo
+  // mismo que en el djembe: un canal sin perfil y sin explicación.
+  const motivo = motivoSinPerfilDeInstrumento(interpretarInstrumento('serrucho'));
+  assert.ok(motivo !== null);
+  assert.match(motivo, /serrucho/);
 });
 
 // --- La estructura impide las combinaciones absurdas -------------------------
@@ -326,6 +354,8 @@ const asignacionVieja: ChannelAssignment = {
   ui24rInputIndex: ui24rInput(3),
   bandMemberId: null,
   instrumento: 'FLAUTA',
+  // Sin clasificar: es lo que hay guardado de antes del catálogo.
+  instrumentoDetalle: null,
   channelProfileId: 'perfil_flute' as ChannelProfileId,
   defaultRole: 'SUPPORT',
   micModelo: null,

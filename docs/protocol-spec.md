@@ -233,6 +233,23 @@ Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis 
 | Fantasma de la tira | `+1` entrada | el segundo valor de `setValueExt` |
 | Página de ganancia | `+0` pre | `setVUPre(m)` |
 
+**Dónde está tomado cada medidor, medido el 2026-09-09.** La tabla de arriba decía «nivel previo a la ganancia del previo» para el byte `+0`, y eso es falso: está **después** del previo. Lo que sí es, y es más útil, es que está **antes del procesamiento dinámico**.
+
+Las dos mitades se midieron por separado, con una fuente conocida entrando por el canal 10:
+
+| Qué se movió | `pre` (`+0`) | `entrada` (`+1`) |
+|---|---|---|
+| Ganancia del previo, de 10 a 22 dB | sube 6,00 y 6,01 dB | sube igual |
+| Compresor apretando 5 dB | **no se mueve** | baja 4,7 dB |
+
+Consecuencia para cualquiera que mida niveles: **`entrada` viene procesado**. Si el canal tiene compresor o puerta actuando, ese byte no dice cuánta señal entra sino cuánta queda después del procesamiento. Para ajustar la ganancia del previo —que es lo que hace el asistente— el byte que corresponde es `+0`.
+
+La medición es del compresor. Que la puerta también quede después del punto `+0` es una **inferencia** razonable —son el mismo bloque dinámico— y no está comprobada con la puerta cerrándose.
+
+**La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
+
+**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera de esta sesión se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+
 **Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
 
 **Y está comprobado contra el aparato**, no solo leído del código. Con la ganancia del canal al máximo —57 dB— y la fuente subiendo, **el byte se clava en 239 y la lectura deja de subir en −0,7 dB**, que es el valor 1,0 —byte ~240— donde la consola enciende su clip. El medidor no informa nada por encima de esa posición: no hay margen escondido arriba. `MEDIDOR_SATURACION = 1` en el adaptador es ese punto.

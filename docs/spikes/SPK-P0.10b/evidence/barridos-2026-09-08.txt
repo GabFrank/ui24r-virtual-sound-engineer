@@ -45,3 +45,19 @@ concuerdan entre si y con esta medicion.
 La correspondencia con dBFS reales. Exige un bucle fisico calibrado: hay que
 conocer la ganancia analogica del camino, que aca es desconocida y solo se
 mantuvo fija durante la sesion.
+
+=== DONDE ESTA TOMADO CADA MEDIDOR (2026-09-09) ===
+Ganancia del previo de 10 a 22 dB:  pre sube 6,00 y 6,01 -- entrada igual.
+Compresor 4:1 apretando 5 dB:       pre NO se mueve (-48,66) -- entrada baja a -53,33.
+  => el byte +0 esta DESPUES del previo y ANTES del dinamico.
+  => el byte +1 viene procesado: no sirve para aconsejar ganancia.
+La puerta se infiere en el mismo bloque; NO se comprobo con la puerta cerrandose.
+
+Reduccion de ganancia en vivo (byte +5), factor VU_RANGE/COMP_ZOOM = 40:
+  10,8 % -> 4,66 dB medidos contra 4,32 calculados
+  22,5 % -> 9,00 contra 9,00
+  27,5 % -> 10,80 contra 11,00
+
+Conversiones del dinamico, del mixer.html:
+  VtoRATIO(a) = 1/a      <- el crudo 1 es 1:1, SIN compresion. Costo una corrida.
+  VtoTHRESH(a) = -90 + 96a

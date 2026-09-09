@@ -94,14 +94,19 @@ export interface ChannelAssignment {
    * leerla, porque cae en interpretar la etiqueta cuando la clasificación
    * todavía no está —que es el caso de todo lo guardado hasta hoy—.
    *
-   * Declarada opcional y no `Instrumento | null`, que es lo que manda el
-   * estilo de este repositorio. El motivo es concreto y temporal: la pantalla
-   * de canales construye literales de `ChannelAssignment` y un campo
-   * obligatorio los rompería hoy, sin que nadie gane nada, porque esa pantalla
-   * todavía no tiene de dónde sacar la clasificación. Pasa a `| null`
-   * obligatorio cuando la pantalla la escriba.
+   * Estuvo declarada opcional mientras la pantalla de canales no tenía de
+   * dónde sacar la clasificación. Ahora la escribe —el instrumento se elige
+   * entre los que toca el integrante—, así que pasa a ser obligatoria y
+   * `| null`, que es lo que manda el estilo de este repositorio: quien arme
+   * una asignación tiene que **decidir** si la clasificación está o no está,
+   * en vez de olvidarse del campo.
+   *
+   * `null` sigue siendo el caso de todo lo guardado hasta hoy, y también el de
+   * una asignación cuyo instrumento se escribió a mano en la consola. Los
+   * documentos viejos ni siquiera traen la clave; `instrumentoDeAsignacion()`
+   * trata los dos casos igual.
    */
-  readonly instrumentoDetalle?: Instrumento;
+  readonly instrumentoDetalle: Instrumento | null;
   readonly channelProfileId: ChannelProfileId;
   readonly defaultRole: MusicalRole;
   readonly micModelo: string | null;

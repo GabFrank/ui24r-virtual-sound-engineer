@@ -3,6 +3,7 @@ export * from './entities/musical.ts';
 export * from './data/channel-profiles.ts';
 export * from './data/instrumentos.ts';
 export * from './entities/measurement.ts';
+export * from './entities/dinamica.ts';
 export * from './entities/recommendation.ts';
 export * from './entities/transaction.ts';
 export * from './entities/venue.ts';

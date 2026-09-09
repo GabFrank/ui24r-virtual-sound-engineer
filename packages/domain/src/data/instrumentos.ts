@@ -538,6 +538,34 @@ export function perfilDeCanalDeInstrumento(instrumento: Instrumento): ChannelPro
   return tipo === null ? null : perfilPorTipo(tipo);
 }
 
+/**
+ * Por qué este instrumento no trae perfil de canal, o `null` cuando sí lo trae.
+ *
+ * Es el otro extremo de `perfilDeInstrumento()`. Que devuelva `null` no es un
+ * fallo ni un dato que falte cargar: djembe y bombo **no tienen perfil a
+ * propósito**, y quien muestre un canal con uno de esos instrumentos tiene que
+ * poder decir por qué en vez de quedarse callado o de inventar el más parecido.
+ *
+ * El motivo sale del catálogo —`sinPerfilPorque`, que cada fuente sin perfil
+ * está obligada a declarar—, así que no hay dos explicaciones que puedan
+ * divergir. El único texto que se escribe acá es el del instrumento que el
+ * catálogo no reconoció, porque ese caso no es de ninguna fuente.
+ */
+export function motivoSinPerfilDeInstrumento(instrumento: Instrumento): string | null {
+  if (perfilDeInstrumento(instrumento) !== null) return null;
+  if (instrumento.fuente === null) {
+    const texto = instrumento.textoOriginal ?? '';
+    return `El catálogo no reconoce «${texto}», así que no hay perfil que traer. `
+      + 'Elegí el perfil a mano, o cargá ese instrumento desde la lista en Perfiles → Banda.';
+  }
+  const f = fuentePorId(instrumento.fuente);
+  // El `??` no debería alcanzarse: hay un test que exige el motivo a toda
+  // fuente sin perfil. Está por si alguien agrega una y se olvida: decir que no
+  // hay perfil es peor que explicarlo, y mucho mejor que no decir nada.
+  return f.sinPerfilPorque
+    ?? `No hay perfil de canal para ${f.nombre}. Elegilo a mano o usá «Personalizado».`;
+}
+
 /** El nombre del catálogo, con la variante y el rol que se hayan elegido. */
 export function etiquetaCanonicaDeInstrumento(instrumento: Instrumento): string {
   if (instrumento.fuente === null) return instrumento.textoOriginal ?? '';

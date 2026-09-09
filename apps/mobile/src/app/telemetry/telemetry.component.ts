@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { VERIFICADO_CONTRA_CONSOLA } from '@vse/mixer-adapter';
+import { REDUCCION_RELEVANTE_DB } from '@vse/assistants';
+import { VERIFICADO_CONTRA_CONSOLA, type EstadoCanal } from '@vse/mixer-adapter';
 import { ConnectionStateService } from '../core/connection.state';
 import { MixerService } from '../core/mixer.service';
 import {
@@ -82,6 +83,43 @@ interface FilaDeTelemetria {
   readonly ganancia: string;
   readonly fader: string;
   readonly clips: number;
+  /** Si el nivel de arriba viene condicionado por proceso dinámico. */
+  readonly condicionada: boolean;
+  /** Qué lo condiciona, para la insignia que va junto al nivel. */
+  readonly procesos: string;
+}
+
+/**
+ * Reducción a partir de la cual se marca el canal.
+ *
+ * El mismo número que usa el asistente, y por la misma razón: es el escalón más
+ * fino de la perilla de ganancia, así que por debajo de eso no cambia nada de
+ * lo que se pueda hacer.
+ */
+const REDUCCION_VISIBLE_DB = REDUCCION_RELEVANTE_DB;
+
+/**
+ * Qué está condicionando el nivel de un canal, en corto.
+ *
+ * El compresor entra con su número —«Comp −9 dB» dice mucho más que «Comp»— y
+ * solo cuando de verdad está actuando: un compresor puesto que no llega a su
+ * umbral no condiciona nada, y marcarlo pondría una insignia en casi todos los
+ * canales de cualquier show hasta que se dejen de mirar.
+ *
+ * DESCONOCIDO no lleva insignia acá. En esta pantalla la insignia afirma «este
+ * número pasó por algo»; «no sé si pasó por algo» es otra afirmación y, si la
+ * consola dejara de publicar esas claves, marcaría los veinticuatro canales
+ * para siempre. Donde sí se dice es en el asistente de ganancia, que es donde
+ * cambia una respuesta.
+ */
+function procesosDe(c: EstadoCanal): string {
+  const partes: string[] = [];
+  if (c.reduccionPicoDb >= REDUCCION_VISIBLE_DB) {
+    partes.push(`Comp −${c.reduccionPicoDb.toFixed(0)} dB`);
+  }
+  if (c.dinamica.puerta === 'ACTIVO') partes.push('Puerta');
+  if (c.dinamica.deesser === 'ACTIVO') partes.push('De-esser');
+  return partes.join(' · ');
 }
 
 function db(v: number): string {
@@ -173,7 +211,13 @@ function db(v: number): string {
                                      [etiqueta]="'nivel de ' + f.nombre" />
                   </td>
                   <td class="num">{{ f.nivel }}</td>
-                  <td class="num">{{ f.pico }}</td>
+                  <!-- La insignia va pegada al pico de entrada porque es ese
+                       número el que está condicionado: el medidor de entrada de
+                       esta consola está DESPUÉS del proceso dinámico. -->
+                  <td class="num">
+                    {{ f.pico }}
+                    @if (f.condicionada) { <ui-badge tono="aviso">{{ f.procesos }}</ui-badge> }
+                  </td>
                   <td class="num suave">{{ f.picoSalida }}</td>
                   <td class="num" [class.escaso]="f.margenEscaso">
                     {{ f.margen }}
@@ -208,10 +252,24 @@ function db(v: number): string {
                   <span [class.escaso]="f.margenEscaso">Margen {{ f.margen }}</span>
                   <span>Ganancia {{ f.ganancia }}</span>
                 </div>
+                @if (f.condicionada) {
+                  <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                }
               </div>
             </ui-card>
           }
         </div>
+
+        @if (hayCondicionados()) {
+          <p class="nota-estimado">
+            Los canales marcados junto al pico de entrada tienen proceso
+            actuando: el medidor de entrada de esta consola está después del
+            compresor y de la puerta, así que en esas filas el número no es el
+            de la fuente. «Comp −9 dB» quiere decir que el compresor le estaba
+            sacando nueve decibeles al pico. Reiniciar picos también reinicia
+            esa cuenta.
+          </p>
+        }
 
         @if (hayEstimaciones) {
           <p class="nota-estimado">
@@ -350,7 +408,9 @@ export class TelemetryComponent {
    * de detección de cambios, en la pantalla que más ciclos genera.
    */
   readonly filas = computed<readonly FilaDeTelemetria[]>(() =>
-    this.mixer.canales().map((c) => ({
+    this.mixer.canales().map((c) => {
+    const procesos = procesosDe(c);
+    return {
       indice: c.indice,
       nombre: c.nombre,
       silenciado: c.silenciado,
@@ -372,11 +432,21 @@ export class TelemetryComponent {
       ganancia: c.gainDb === null ? '—' : `${MARCA_ESTIMADO}${c.gainDb.toFixed(0)}`,
       fader: `${MARCA_ESTIMADO}${db(c.faderDb)}`,
       clips: c.eventosSaturacion,
-    })),
+      condicionada: procesos !== '',
+      procesos,
+    };
+    }),
   );
 
+  /** Si algún canal está mostrando el nivel condicionado por proceso. */
+  readonly hayCondicionados = computed(() => this.filas().some((f) => f.condicionada));
+
   readonly resumen = computed(
-    () => `${this.filas().length} canales · entrada antes del fader y salida después · `
+    // «Después del proceso» no es un detalle de pie de página: es lo que hace
+    // que un pico de entrada de −4 dB signifique una cosa u otra. Medido el
+    // 2026-09-09: bajar el umbral del compresor mueve esta columna.
+    () => `${this.filas().length} canales · entrada antes del fader y después del `
+      + 'proceso dinámico, salida después del fader · '
       + 'solo lectura: esta versión no escribe nada en la consola',
   );
 

@@ -1,5 +1,5 @@
-import type { ChannelProfile, Confidence } from '@vse/domain';
-import { confianzaCanal } from '@vse/domain';
+import type { ChannelProfile, Confidence, DinamicaDeCanal } from '@vse/domain';
+import { confianzaCanal, describirProcesos, procesosEn } from '@vse/domain';
 
 /**
  * Asistente de ganancia.
@@ -15,10 +15,32 @@ import { confianzaCanal } from '@vse/domain';
  * entero con datos sintéticos.
  */
 
-/** Una lectura del medidor previo al proceso, con su instante. */
+/**
+ * Una lectura del medidor, con su instante.
+ *
+ * **`db` tiene que venir del medidor anterior al procesamiento dinámico**, que
+ * en esta consola es el primer byte de cada canal de la trama —`pre`— y no el
+ * segundo. El segundo es el que la consola dibuja en su tira, y llega con el
+ * compresor encima: medido el 2026-09-09, con el compresor apretando 5 dB uno
+ * cayó a −53,33 y el otro se quedó en −48,66. Aconsejar ganancia sobre el
+ * segundo es aconsejar sobre una señal ya procesada.
+ *
+ * `reduccionDb` viaja igual, aunque el nivel ya no dependa de ella: sirve para
+ * decirle al usuario cuánto está apretando el canal, que cambia lo que va a
+ * escuchar cuando mueva la perilla.
+ */
 export interface MuestraVu {
   readonly tMs: number;
+  /** Nivel anterior al procesamiento dinámico, en la escala de la consola. */
   readonly db: number;
+  /**
+   * Decibeles que el procesador dinámico estaba sacando en ese instante.
+   *
+   * Es un campo obligatorio a propósito: hacerlo opcional dejaría que un
+   * llamador nuevo volviera a medir sin mirarlo, y este dato es lo único que
+   * distingue un compresor puesto de uno actuando.
+   */
+  readonly reduccionDb: number;
 }
 
 export interface AnalisisDeGanancia {
@@ -36,6 +58,19 @@ export interface AnalisisDeGanancia {
   readonly duracionS: number;
   readonly suficiente: boolean;
   readonly motivoInsuficiente: string | null;
+  /**
+   * Reducción que el compresor aplicaba **en el instante del pico**.
+   *
+   * Es la que importa y no el promedio: es el momento más fuerte de la toma, o
+   * sea el que decide cuánto va a comprimir el canal en el show. Un canal que
+   * aprieta tres decibeles en las frases y nada en el grito no es lo mismo que
+   * uno que aprieta nueve justo cuando el cantante empuja.
+   */
+  readonly reduccionEnPicoDb: number;
+  /** La mayor reducción vista en toda la ventana. */
+  readonly reduccionMaximaDb: number;
+  /** Fracción de muestras con señal en las que el compresor estuvo actuando. */
+  readonly fraccionComprimida: number;
 }
 
 /**
@@ -49,6 +84,21 @@ export const UMBRAL_RIESGO_DB = -1;
 
 /** Por debajo de esto se considera que la fuente no está sonando. */
 export const UMBRAL_SILENCIO_DB = -50;
+
+/**
+ * Reducción por debajo de la cual el compresor no cambia ningún consejo.
+ *
+ * **No es un umbral elegido a ojo: es la granularidad del control que se está
+ * aconsejando mover.** La ganancia de entrada de esta consola es escalonada —de
+ * 2 en 2 dB hasta +26 y de 1 en 1 desde +27, 48 posiciones en total, medido en
+ * SPK-P0.2a—. El escalón más fino es de un decibel, así que un sesgo menor que
+ * eso no puede cambiar a qué posición de la perilla se manda al usuario.
+ *
+ * Es también lo que separa «hay un compresor puesto» de «hay un compresor
+ * actuando». La distinción vale la pena: casi todos los canales de un show
+ * tienen compresor, y avisar en todos sería un cartel que se aprende a ignorar.
+ */
+export const REDUCCION_RELEVANTE_DB = 1;
 
 const DURACION_MINIMA_S = 10;
 const MUESTRAS_MINIMAS = 60;
@@ -76,14 +126,25 @@ export function analizarVentana(muestras: readonly MuestraVu[]): AnalisisDeGanan
   let minimo = Infinity;
   let sumaPotencia = 0;
   let enRiesgo = 0;
+  let reduccionEnPico = 0;
+  let reduccionMaxima = 0;
+  let comprimidas = 0;
 
   for (const m of conSenal) {
-    if (m.db > pico) pico = m.db;
+    if (m.db > pico) {
+      pico = m.db;
+      // La reducción del pico se toma de la misma muestra que el pico, no del
+      // promedio de la ventana: las dos cifras vienen de la misma trama y
+      // describen el mismo instante.
+      reduccionEnPico = m.reduccionDb;
+    }
     if (m.db < minimo) minimo = m.db;
     // Promedio en potencia y de vuelta a decibeles. Promediar decibeles
     // directamente da un número que no corresponde a ninguna energía real.
     sumaPotencia += Math.pow(10, m.db / 10);
     if (m.db >= UMBRAL_RIESGO_DB) enRiesgo++;
+    if (m.reduccionDb > reduccionMaxima) reduccionMaxima = m.reduccionDb;
+    if (m.reduccionDb >= REDUCCION_RELEVANTE_DB) comprimidas++;
   }
 
   const promedioDb = 10 * Math.log10(sumaPotencia / conSenal.length);
@@ -104,6 +165,9 @@ export function analizarVentana(muestras: readonly MuestraVu[]): AnalisisDeGanan
       duracionS >= DURACION_MINIMA_S
         ? null
         : `la ventana duró ${duracionS.toFixed(1)} s y hacen falta ${DURACION_MINIMA_S}`,
+    reduccionEnPicoDb: reduccionEnPico,
+    reduccionMaximaDb: reduccionMaxima,
+    fraccionComprimida: comprimidas / conSenal.length,
   };
 }
 
@@ -112,6 +176,7 @@ function vacio(motivo: string): AnalisisDeGanancia {
     picoDb: -Infinity, promedioDb: -Infinity, margenDb: Infinity,
     probabilidadDeSaturacion: 0, estabilidadDb: 0, rangoDinamicoDb: 0,
     muestras: 0, duracionS: 0, suficiente: false, motivoInsuficiente: motivo,
+    reduccionEnPicoDb: 0, reduccionMaximaDb: 0, fraccionComprimida: 0,
   };
 }
 
@@ -125,6 +190,17 @@ export interface PropuestaDeGanancia {
   readonly razon: string;
   readonly confianza: Confidence;
   readonly avisos: readonly string[];
+  /** Reducción que el compresor aplicaba en el pico. Cero si no actuaba. */
+  readonly reduccionEnPicoDb: number;
+  /**
+   * Qué procesos hay entre este nivel y lo que se va a escuchar.
+   *
+   * Vacío cuando el canal está limpio. **No** quiere decir que la medición esté
+   * mal —se mide antes del proceso, a propósito—, sino que el efecto de mover
+   * la perilla no va a ser el que el usuario espera. La pantalla lo muestra
+   * donde se lee el nivel.
+   */
+  readonly condicionadaPor: readonly string[];
 }
 
 /** Cambio máximo de ganancia en una sola propuesta (INV-004). */
@@ -137,6 +213,37 @@ export const DELTA_MAXIMO_DB = 3;
  * perfil pide. Un cajón necesita menos margen que una voz porque su dinámica
  * es más predecible; una voz necesita más porque el cantante va a gritar en el
  * estribillo aunque en la prueba no lo haya hecho.
+ *
+ * ## Qué hace cuando el canal tiene proceso dinámico
+ *
+ * En un show casi todos los canales tienen compresor, así que la pregunta no es
+ * si hay proceso: es qué cambia por haberlo.
+ *
+ * **Lo que no cambia es el número.** La ventana se mide en el punto anterior al
+ * procesamiento dinámico —ver `MuestraVu`—, así que el pico del que sale la
+ * propuesta es el que entra al canal, con el compresor puesto o sin él.
+ * Abstenerse acá sería callarse teniendo el dato bueno en la mano.
+ *
+ * **Lo que sí cambia es lo que hay que contarle al usuario**, y no es un matiz:
+ * si el canal está apretando 9 dB, subir tres decibeles de ganancia **no se va
+ * a oír como tres decibeles**. La ganancia queda bien puesta y la mezcla se
+ * mueve menos de lo esperado. Quien está por tocar necesita saberlo antes de
+ * volver al fader creyendo que el cambio no se aplicó.
+ *
+ * Por eso el aviso se gradúa por lo que se **midió**, no por lo que está
+ * configurado: un compresor que no llegó a su umbral no cambia nada de lo que
+ * el usuario va a escuchar, y marcarlo pondría un cartel en casi todos los
+ * canales hasta que se dejen de mirar.
+ *
+ * ## Qué le cuesta confianza a una propuesta
+ *
+ * Solo lo que está **inferido y no medido**. Que el compresor no toca el punto
+ * de medición está comprobado contra la consola, así que un canal comprimiendo
+ * no baja de confianza: la medición es tan buena como cualquier otra. Que la
+ * **puerta** y el **de-esser** tampoco lo tocan es una inferencia razonable
+ * —viven en el mismo bloque— que nadie midió todavía. Mientras siga siendo una
+ * inferencia, un canal con puerta o de-esser activos no alcanza la confianza
+ * más alta, que es la que hace que el usuario aplique sin comprobar.
  */
 export function proponerGanancia(
   analisis: AnalisisDeGanancia,
@@ -146,6 +253,14 @@ export function proponerGanancia(
     readonly repetidoEnDosCapturas: boolean;
     readonly snrDb: number;
     readonly calibracionValida: boolean;
+    /**
+     * Qué proceso dinámico tenía puesto el canal al medir.
+     *
+     * Es obligatorio a propósito. Con un valor por defecto, un llamador nuevo
+     * volvería a aconsejar sin mirar qué hay entre el previo y el parlante, que
+     * es el agujero que esto vino a tapar.
+     */
+    readonly dinamica: DinamicaDeCanal;
   },
 ): PropuestaDeGanancia {
   const avisos: string[] = [];
@@ -156,12 +271,34 @@ export function proponerGanancia(
 
   const margenObjetivo = perfil.margenObjetivoDb;
 
+  // Un compresor que sacó menos de un escalón de la perilla de ganancia no
+  // puede cambiar a qué posición se manda al usuario: se trata como cero.
+  const reduccion = analisis.reduccionEnPicoDb >= REDUCCION_RELEVANTE_DB
+    ? analisis.reduccionEnPicoDb
+    : 0;
+  const puertaActiva = opciones.dinamica.puerta === 'ACTIVO';
+  const deesserActivo = opciones.dinamica.deesser === 'ACTIVO';
+
+  // Qué hay entre el punto que se midió y lo que se va a escuchar. El compresor
+  // entra por lo que se midió que hizo, no por estar puesto; la puerta y el
+  // de-esser entran por configuración porque no tienen medidor propio.
+  const condicionadaPor: string[] = [];
+  if (reduccion > 0) condicionadaPor.push('compresor');
+  if (puertaActiva) condicionadaPor.push('puerta de ruido');
+  if (deesserActivo) condicionadaPor.push('de-esser');
+
   // El signo importa y es fácil de invertir: si hay MENOS margen del que el
   // perfil pide, hay que BAJAR la ganancia para ganar margen. Un margen medido
   // de 4 dB contra un objetivo de 12 pide bajar 8, no subir 8. Escribirlo al
   // revés propondría empujar hacia la saturación justo el canal que ya está
   // cerca de ella.
+  //
+  // El margen sale del pico anterior al procesamiento dinámico, así que acá no
+  // se descuenta ninguna reducción: no hay nada que descontar. Se midió en el
+  // punto correcto en vez de reconstruirlo, que además evitaba tener que
+  // suponer la ganancia de compensación del compresor, que nadie midió.
   const deltaIdeal = analisis.margenDb - margenObjetivo;
+
   const recortado = Math.abs(deltaIdeal) > DELTA_MAXIMO_DB;
   const delta = recortado ? Math.sign(deltaIdeal) * DELTA_MAXIMO_DB : deltaIdeal;
 
@@ -173,6 +310,53 @@ export function proponerGanancia(
     );
   }
 
+  if (reduccion > 0) {
+    // Este aviso **no** dice que la medición esté mal. Dice que el efecto de
+    // aplicarla no va a ser el que el usuario espera, que es una cosa distinta
+    // y la única que le sirve saber estando parado frente a la consola.
+    avisos.push(
+      `el canal está comprimiendo: en el pico el compresor sacaba ${reduccion.toFixed(1)} dB, ` +
+      `y actuó en el ${(analisis.fraccionComprimida * 100).toFixed(0)} % de la ventana. ` +
+      'La ganancia se mide antes del compresor, así que el número de acá arriba es el ' +
+      `correcto, pero al aplicarlo vas a escuchar bastante menos de ${Math.abs(delta).toFixed(1)} dB ` +
+      'de cambio: el compresor se come parte',
+    );
+  } else if (opciones.dinamica.compresor === 'ACTIVO') {
+    // Buena noticia y vale decirla: sostiene la confianza en el aviso de al
+    // lado el día que sí aparezca.
+    avisos.push(
+      'el canal tiene compresor y no llegó a actuar durante la medición ' +
+      `(${analisis.reduccionMaximaDb.toFixed(1)} dB como máximo), así que el cambio se ` +
+      'va a escuchar entero',
+    );
+  }
+
+  if (puertaActiva) {
+    avisos.push(
+      'la puerta de ruido está activa. La ganancia se mide antes del bloque dinámico, ' +
+      'pero que la puerta no toque ese punto está inferido y no medido, así que este ' +
+      'canal no llega a la confianza más alta hasta comprobarlo',
+    );
+  }
+
+  if (deesserActivo) {
+    avisos.push(
+      'el canal tiene de-esser activo. Vale lo mismo que para la puerta: se mide antes ' +
+      'del bloque dinámico, pero que el de-esser no toque ese punto todavía nadie lo midió',
+    );
+  }
+
+  const sinConfirmar = procesosEn(opciones.dinamica, 'DESCONOCIDO');
+  if (sinConfirmar.length > 0) {
+    // Se avisa y no se penaliza. «No lo sé» no es evidencia de que haya
+    // proceso, y lo que se mide ya no depende de estas banderas: sirven para
+    // contar qué va a pasar aguas abajo, no para validar el número.
+    avisos.push(
+      `la consola no dijo si ${describirProcesos(sinConfirmar)} está en el camino de ` +
+      'este canal',
+    );
+  }
+
   if (analisis.probabilidadDeSaturacion > 0) {
     avisos.push(
       `${(analisis.probabilidadDeSaturacion * 100).toFixed(0)} % de las muestras ` +
@@ -180,7 +364,11 @@ export function proponerGanancia(
     );
   }
 
-  if (analisis.rangoDinamicoDb > perfil.rangoDinamicoEsperadoDb + 6) {
+  // Con la puerta activa, la variación de la ventana puede ser la que produjo
+  // la puerta y no la fuente: el aviso estaría midiendo la puerta y culpando al
+  // músico. El compresor ya no entra acá —se mide antes de él—, que es
+  // justamente lo que se gana midiendo en el punto correcto.
+  if (!puertaActiva && analisis.rangoDinamicoDb > perfil.rangoDinamicoEsperadoDb + 6) {
     avisos.push(
       `la fuente varió ${analisis.rangoDinamicoDb.toFixed(0)} dB, más de lo esperado ` +
       `para ${perfil.nombre} (${perfil.rangoDinamicoEsperadoDb} dB). Puede ser una ` +
@@ -196,7 +384,7 @@ export function proponerGanancia(
     );
   }
 
-  const confianza: Confidence = analisis.suficiente
+  const confianzaMedida: Confidence = analisis.suficiente
     ? confianzaCanal({
         repetidoEnDosCapturas: opciones.repetidoEnDosCapturas,
         desviacionBandaOctavas: 0,
@@ -205,10 +393,24 @@ export function proponerGanancia(
       })
     : 'INSUFFICIENT_DATA';
 
+  // **Solo lo inferido cuesta confianza.** Que el compresor no toca el punto de
+  // medición está medido contra la consola, así que un canal comprimiendo mide
+  // tan bien como cualquier otro y no baja de escalón. Que la puerta y el
+  // de-esser tampoco lo tocan es una inferencia que nadie comprobó: mientras lo
+  // sea, esos canales no llegan a ALTA, que es la confianza con la que el
+  // usuario aplica sin verificar. El día que se mida, esta línea desaparece.
+  const inferido = puertaActiva || deesserActivo;
+  const confianza: Confidence =
+    inferido && confianzaMedida === 'HIGH' ? 'MEDIUM' : confianzaMedida;
+
   const razon =
     `El pico llegó a ${analisis.picoDb.toFixed(1)} dB en la escala de la consola, lo que deja ` +
-    `${analisis.margenDb.toFixed(1)} dB de margen. El perfil ${perfil.nombre} ` +
-    `busca ${margenObjetivo} dB, así que la ganancia ` +
+    `${analisis.margenDb.toFixed(1)} dB de margen` +
+    // Se dice de dónde salió el número, porque no es la columna que el usuario
+    // está mirando en la consola: la de la consola trae el compresor encima.
+    (reduccion > 0 ? ' medidos antes del compresor, que en ese momento sacaba '
+      + `${reduccion.toFixed(1)} dB` : '') +
+    `. El perfil ${perfil.nombre} busca ${margenObjetivo} dB, así que la ganancia ` +
     (Math.abs(delta) < 0.05
       ? 'ya está donde corresponde'
       : `debería ${delta > 0 ? 'subir' : 'bajar'} ${Math.abs(delta).toFixed(1)} dB`) +
@@ -225,5 +427,7 @@ export function proponerGanancia(
     razon,
     confianza,
     avisos,
+    reduccionEnPicoDb: reduccion,
+    condicionadaPor,
   };
 }

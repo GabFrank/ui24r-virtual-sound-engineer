@@ -28,6 +28,7 @@ const asignacion: ChannelAssignment = {
   ui24rInputIndex: ui24rInput(3),
   bandMemberId: null,
   instrumento: 'flauta',
+  instrumentoDetalle: null,
   channelProfileId: 'prof_flute' as ChannelProfileId,
   defaultRole: 'SUPPORT',
   micModelo: null,

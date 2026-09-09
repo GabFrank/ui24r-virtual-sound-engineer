@@ -56,6 +56,26 @@ export function gainANormalizado(db) {
   return Math.max(0, Math.min(1, (db + 6) / 63));
 }
 
+/**
+ * Canales con proceso dinamico puesto, como en una consola de show de verdad.
+ *
+ * `comprimeDb` es cuanta reduccion emite el simulador para ese canal. La voz
+ * principal aprieta de verdad; la guitarra tiene compresor puesto que no llega
+ * a actuar, que es el caso que distingue "hay compresor" de "hay compresor
+ * actuando" y el que hace que el asistente NO se calle.
+ *
+ * Esto reproduce nuestra hipotesis, no la consola: un test que pase contra el
+ * simulador no cierra ninguna invariante.
+ */
+export const PROCESO = new Map([
+  [0,  { compresor: true,  comprimeDb: 6,   puerta: false, deesser: true  }], // VOZ PRINCIPAL
+  [1,  { compresor: true,  comprimeDb: 2.5, puerta: false, deesser: false }], // CORO 1
+  [3,  { compresor: true,  comprimeDb: 0,   puerta: false, deesser: false }], // GUITARRA AC
+  [5,  { compresor: true,  comprimeDb: 4,   puerta: false, deesser: false }], // BAJO
+  [6,  { compresor: false, comprimeDb: 0,   puerta: true,  deesser: false }], // CAJON
+  [7,  { compresor: false, comprimeDb: 0,   puerta: true,  deesser: false }], // CONGA
+]);
+
 export function estadoInicial() {
   const estado = new Map();
   for (const c of CANALES) {
@@ -64,6 +84,14 @@ export function estadoInicial() {
     estado.set(`i.${c.idx}.pan`, 0.5);
     estado.set(`hw.${c.idx}.gain`, gainANormalizado(c.gainDb));
     estado.set(`hw.${c.idx}.phantom`, c.idx <= 3 ? 1 : 0);  // los cuatro primeros
+
+    // Ojo con la polaridad, que no es la misma en las tres: `bypass = 1` es
+    // PUENTEADO --o sea inactivo-- y `enabled = 1` es ACTIVO.
+    const p = PROCESO.get(c.idx);
+    estado.set(`i.${c.idx}.dyn.bypass`, p?.compresor ? 0 : 1);
+    estado.set(`i.${c.idx}.gate.enabled`, p?.puerta ? 1 : 0);
+    estado.set(`i.${c.idx}.gate.bypass`, 0);
+    estado.set(`i.${c.idx}.deesser.enabled`, p?.deesser ? 1 : 0);
   }
   estado.set('m.mix', dbAFader(0));
   estado.set('m.mute', 0);

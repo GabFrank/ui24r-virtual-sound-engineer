@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { REDUCCION_RELEVANTE_DB } from '@vse/assistants';
 import type { ChannelAssignment } from '@vse/domain';
 import { BandService } from '../core/band.service';
+import { MixerService } from '../core/mixer.service';
 import { SesionService } from '../core/sesion.service';
 import {
   BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
@@ -25,6 +27,10 @@ interface FilaDeGanancia {
   readonly confianza: string;
   readonly tonoConfianza: TonoDeInsignia;
   readonly accion: string;
+  /** Si el nivel de este canal viene condicionado por proceso dinámico. */
+  readonly condicionada: boolean;
+  /** Qué lo condiciona, en corto, para la insignia que va junto al nivel. */
+  readonly procesos: string;
 }
 
 const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }>> = {
@@ -32,6 +38,50 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
   MEDIUM: { texto: 'Media', tono: 'aviso' },
   LOW: { texto: 'Baja', tono: 'peligro' },
 };
+
+/** Lo que la pantalla necesita saber del proceso de un canal. */
+interface ProcesoDeCanal {
+  /** Reducción de pico redondeada a decibeles enteros. Cero si no comprime. */
+  readonly comprimeDb: number;
+  readonly puerta: boolean;
+  readonly deesser: boolean;
+}
+
+const SIN_PROCESO: ProcesoDeCanal = { comprimeDb: 0, puerta: false, deesser: false };
+
+/**
+ * Igualdad de la tabla de procesos, para que los medidores no rehagan las filas.
+ *
+ * Las tramas de medidores llegan varias veces por segundo y traen la reducción
+ * adentro. Sin esta comparación, la señal de procesos cambiaría de identidad en
+ * cada trama y arrastraría el recálculo de `filas` —doce a veinticuatro filas
+ * con seis formateos cada una— en la pantalla que ya tiene una cuenta regresiva
+ * corriendo. Con ella, `filas` se rehace solo cuando de verdad cambia algo:
+ * alguien puenteó un compresor, o la reducción cruzó un decibel entero.
+ */
+function mismosProcesos(
+  a: ReadonlyMap<number, ProcesoDeCanal>,
+  b: ReadonlyMap<number, ProcesoDeCanal>,
+): boolean {
+  if (a.size !== b.size) return false;
+  for (const [indice, x] of a) {
+    const y = b.get(indice);
+    if (y === undefined) return false;
+    if (x.comprimeDb !== y.comprimeDb || x.puerta !== y.puerta || x.deesser !== y.deesser) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** La insignia que va junto al nivel. Cadena vacía si nada lo condiciona. */
+function etiquetaDeProceso(p: ProcesoDeCanal): string {
+  const partes: string[] = [];
+  if (p.comprimeDb > 0) partes.push(`Comp −${p.comprimeDb} dB`);
+  if (p.puerta) partes.push('Puerta');
+  if (p.deesser) partes.push('De-esser');
+  return partes.join(' · ');
+}
 
 /**
  * Asistente de ganancia.
@@ -95,7 +145,16 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                 <tr>
                   <td class="izq"><span class="idx num">{{ f.indice }}</span> {{ f.nombre }}</td>
                   @if (f.medido) {
-                    <td class="num">{{ f.pico }}</td>
+                    <!-- La insignia va pegada al nivel y no en una nota al pie:
+                         quien lee este pico tiene que ver en el mismo golpe de
+                         vista que entre ese número y lo que va a escuchar hay
+                         un compresor sacando decibeles. -->
+                    <td class="num">
+                      {{ f.pico }}
+                      @if (f.condicionada) {
+                        <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                      }
+                    </td>
                     <td class="num">{{ f.margen }}</td>
                     <td class="num">{{ f.objetivo }}</td>
                     <td class="num">{{ f.ganancia }}</td>
@@ -104,7 +163,12 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                     </td>
                     <td><ui-badge [tono]="f.tonoConfianza">{{ f.confianza }}</ui-badge></td>
                   } @else {
-                    <td class="num sin" colspan="6">sin medir</td>
+                    <td class="num sin" colspan="6">
+                      sin medir
+                      @if (f.condicionada) {
+                        <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                      }
+                    </td>
                   }
                   <td>
                     <ui-button variante="secundario" [deshabilitado]="capturando()"
@@ -128,13 +192,33 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                   <ui-stat rotulo="Propuesta" [valor]="f.delta" unidad=" dB"
                            [tono]="f.baja ? 'aviso' : 'senal'" />
                 </div>
-                <ui-badge [tono]="f.tonoConfianza">Confianza {{ f.confianza }}</ui-badge>
+                <div class="racimo-insignias">
+                  @if (f.condicionada) {
+                    <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                  }
+                  <ui-badge [tono]="f.tonoConfianza">Confianza {{ f.confianza }}</ui-badge>
+                </div>
               } @else {
                 <p class="sin">Sin medir.</p>
+                @if (f.condicionada) {
+                  <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                }
               }
             </ui-card>
           }
         </div>
+
+        @if (hayCondicionados()) {
+          <p class="nota-estimado">
+            Los canales marcados tienen proceso dinámico entre el previo y lo que
+            se escucha. <strong>El pico y la propuesta son correctos igual</strong>:
+            se miden antes del compresor, no en la columna que muestra la consola.
+            Lo que cambia es el efecto: «Comp −9 dB» quiere decir que al subir la
+            ganancia vas a escuchar bastante menos de lo que subiste, porque el
+            compresor se come parte. Si querés el cambio entero, puenteá el
+            compresor mientras ajustás.
+          </p>
+        }
 
         @if (gananciaEsEstimada) {
           <p class="nota-estimado">
@@ -200,6 +284,8 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
 
     .recomendacion { margin-top: var(--sp-4); }
     .razon { line-height: var(--alto-linea); }
+    .racimo-insignias { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    td ui-badge { margin-left: var(--sp-2); }
     .avisos { margin: var(--sp-3) 0 0; padding-left: var(--sp-4); color: var(--warn); }
     .avisos li { font-size: var(--txt-sm); line-height: var(--alto-linea); }
     .evidencia { margin-top: var(--sp-3); color: var(--muted); font-size: var(--txt-sm); }
@@ -217,6 +303,33 @@ export class GainComponent {
   private readonly banda = inject(BandService);
   private readonly asistente = inject(GainAssistantService);
   private readonly sesion = inject(SesionService);
+  private readonly mixer = inject(MixerService);
+
+  /**
+   * Qué proceso tiene puesto cada canal, **en vivo**.
+   *
+   * Se muestra antes de medir a propósito. Ver que un canal está comprimiendo
+   * antes de gastar dieciocho segundos midiéndolo es la diferencia entre
+   * puentear el compresor y medir una vez, o medir, leer que no hay propuesta,
+   * puentear y medir de nuevo. Para alguien a tres minutos del show son
+   * dieciocho segundos que valen.
+   *
+   * La reducción se redondea a decibeles enteros para que la comparación de
+   * `mismosProcesos` sirva de algo: sin redondear, cambiaría en cada trama.
+   */
+  private readonly procesos = computed<ReadonlyMap<number, ProcesoDeCanal>>(
+    () => new Map(this.mixer.canales().map((c) => [c.indice, {
+      // El pico de reducción y no el instantáneo: la insignia tiene que seguir
+      // ahí cuando el compresor suelta entre frase y frase. Se reinicia con los
+      // demás picos.
+      comprimeDb: c.reduccionPicoDb >= REDUCCION_RELEVANTE_DB
+        ? Math.round(c.reduccionPicoDb)
+        : 0,
+      puerta: c.dinamica.puerta === 'ACTIVO',
+      deesser: c.dinamica.deesser === 'ACTIVO',
+    }])),
+    { equal: mismosProcesos },
+  );
 
   readonly resultados = this.asistente.resultados;
 
@@ -257,10 +370,13 @@ export class GainComponent {
     // termina una captura: `resultadoDe` consulta el mismo estado pero no lo
     // declara como dependencia.
     this.asistente.resultados();
+    const procesos = this.procesos();
     return this.banda.asignaciones().map((a) => {
       const indice = a.ui24rInputIndex as number;
       const perfil = this.banda.perfilDe(a);
       const r = this.asistente.resultadoDe(indice);
+      const proceso = procesos.get(indice) ?? SIN_PROCESO;
+      const etiqueta = etiquetaDeProceso(proceso);
       if (r === undefined) {
         return {
           asignacion: a, indice, nombre: a.nombreEnConsola, medido: false,
@@ -268,6 +384,7 @@ export class GainComponent {
           ganancia: '—', delta: '—', sube: false, baja: false,
           confianza: 'Sin datos', tonoConfianza: 'neutro' as TonoDeInsignia,
           accion: 'Medir',
+          condicionada: etiqueta !== '', procesos: etiqueta,
         };
       }
       const db = r.propuesta.deltaDb;
@@ -290,9 +407,18 @@ export class GainComponent {
         confianza: conf.texto,
         tonoConfianza: conf.tono,
         accion: 'Repetir',
+        // La insignia sale del estado **de ahora**, no del de la captura: si el
+        // usuario puenteó el compresor después de medir, la insignia se apaga y
+        // lo que queda es la recomendación vieja diciendo que hay que repetir.
+        // Es lo correcto: el canal ya no está condicionado, la medición sí.
+        condicionada: etiqueta !== '',
+        procesos: etiqueta,
       };
     });
   });
+
+  /** Si algún canal de la lista tiene proceso entre el previo y el parlante. */
+  readonly hayCondicionados = computed(() => this.filas().some((f) => f.condicionada));
 
   readonly tituloCaptura = computed(() => {
     const i = this.asistente.canalEnCurso();

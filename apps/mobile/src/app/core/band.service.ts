@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   PERFILES_DE_CANAL, perfilPorTipo, ui24rInput, makeId,
   type BandProfile, type BandProfileId, type ChannelAssignment,
-  type ChannelProfileType, type MusicalRole,
+  type ChannelProfileType, type Instrumento, type MusicalRole,
 } from '@vse/domain';
 import type { ChannelAssignmentId, BandMemberId } from '@vse/domain';
 import { Logger } from './logger';
@@ -52,6 +52,17 @@ export class BandService {
     return this.asignaciones().find((a) => a.ui24rInputIndex === indice);
   }
 
+  /**
+   * Escribe la asignación de un canal.
+   *
+   * Los campos opcionales que **no se pasan conservan lo que la asignación ya
+   * tenía**, en vez de volver a su valor por defecto. La diferencia no es
+   * cosmética: la pantalla vuelve a llamar acá para cambiar una sola cosa —la
+   * marca de «en vivo», el instrumento, el perfil— y con `?? null` cada una de
+   * esas llamadas borraba en silencio a quién pertenecía el canal. Se distingue
+   * «no lo menciono» de «lo pongo en nulo» por `undefined`, que es lo único que
+   * los separa.
+   */
   async asignar(
     indice: number,
     datos: {
@@ -59,6 +70,7 @@ export class BandService {
       tipo: ChannelProfileType;
       nombreEnConsola: string;
       isLive: boolean;
+      instrumentoDetalle?: Instrumento | null;
       bandMemberId?: BandMemberId | null;
       micModelo?: string | null;
       rol?: MusicalRole;
@@ -78,11 +90,16 @@ export class BandService {
     const asignacion: ChannelAssignment = {
       id: previa?.id ?? makeId<'ChannelAssignmentId'>('ch') as ChannelAssignmentId,
       ui24rInputIndex: ui24rInput(indice),
-      bandMemberId: datos.bandMemberId ?? null,
+      bandMemberId: datos.bandMemberId === undefined
+        ? previa?.bandMemberId ?? null
+        : datos.bandMemberId,
       instrumento: datos.instrumento,
+      instrumentoDetalle: datos.instrumentoDetalle === undefined
+        ? previa?.instrumentoDetalle ?? null
+        : datos.instrumentoDetalle,
       channelProfileId: perfil.id,
       defaultRole: datos.rol ?? perfil.defaultRole,
-      micModelo: datos.micModelo ?? null,
+      micModelo: datos.micModelo === undefined ? previa?.micModelo ?? null : datos.micModelo,
       nombreEnConsola: datos.nombreEnConsola,
       isLive: datos.isLive,
     };

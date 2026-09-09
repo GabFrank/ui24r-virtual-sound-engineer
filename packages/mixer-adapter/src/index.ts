@@ -7,3 +7,4 @@ export * from './confirmed-store.ts';
 export * from './testigo.ts';
 export * from './ui24r-adapter.ts';
 export * from './clasificar-ruta.ts';
+export * from './dinamica.ts';

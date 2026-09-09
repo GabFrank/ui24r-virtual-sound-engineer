@@ -1,9 +1,13 @@
-import { deepStrictEqual, strictEqual, notStrictEqual } from 'node:assert/strict';
+import { deepStrictEqual, strictEqual, notStrictEqual, match, ok } from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  editarIntegrante, instrumentosDesdeTexto, normalizarInstrumentos, textoDeInstrumentos,
+  editarIntegrante, instrumentosDesdeTexto, nombresDeOtrosIntegrantes, normalizarBanda,
+  normalizarIntegrante, normalizarInstrumentos, textoDeInstrumentos,
+  validarNombreDeIntegrante,
 } from '../src/entities/integrantes.ts';
-import { crearIntegrante } from '../src/entities/factories.ts';
+import { crearBanda, crearIntegrante } from '../src/entities/factories.ts';
+import { etiquetaDeInstrumento } from '../src/data/instrumentos.ts';
+import type { BandMember, BandProfile } from '../src/entities/musical.ts';
 import type { BandMemberId } from '../src/ids.ts';
 
 function banda() {
@@ -114,4 +118,122 @@ test('abrir y confirmar sin tocar nada no cambia al integrante', () => {
 
 test('normalizar no deja entradas vacias', () => {
   strictEqual(textoDeInstrumentos(normalizarInstrumentos(['  voz ', '', '   ', 'bajo'])), 'voz, bajo');
+});
+
+// --- Nombres repetidos -------------------------------------------------------
+
+test('dos integrantes no se pueden llamar igual', () => {
+  // La premisa de la pantalla de canales es poder decir «el microfono de Ana»
+  // en vez de «el canal 3». Con dos Anas el desplegable de «quien» muestra dos
+  // veces lo mismo y esa frase deja de senalar a nadie.
+  const otros = ['Ana', 'Beto'];
+  strictEqual(validarNombreDeIntegrante('Cami', otros), null);
+  ok(validarNombreDeIntegrante('Ana', otros) !== null);
+});
+
+test('el mensaje del nombre repetido dice que hacer, no solo que esta mal', () => {
+  const error = validarNombreDeIntegrante('Ana', ['Ana']);
+  ok(error !== null);
+  match(error, /Ana/);
+  match(error, /apellido|inicial/);
+});
+
+test('la comparacion de nombres ignora mayusculas y acentos, como la de bandas', () => {
+  // «Ana» y «ana» son la misma persona; tenerlas separadas parte por un
+  // descuido de tipeo justo el dato que sirve para nombrar canales.
+  ok(validarNombreDeIntegrante('  ana  ', ['Ana']) !== null);
+  ok(validarNombreDeIntegrante('Ramon', ['Ramón']) !== null);
+});
+
+test('un nombre repetido no tapa al que falta o al que es muy corto', () => {
+  // Primero lo que impide guardar por si mismo: decirle «ya esta en uso» a
+  // alguien que dejo el campo vacio no explica nada.
+  match(validarNombreDeIntegrante('', ['Ana']) ?? '', /vacío/);
+  match(validarNombreDeIntegrante('A', ['Ana']) ?? '', /2 caracteres/);
+});
+
+test('corregir a alguien no choca consigo mismo', () => {
+  // Sin excluir al que se corrige, abrir a Ana y confirmar sin tocar nada
+  // diria que «Ana» ya esta en uso --por ella misma-- y el boton de confirmar
+  // quedaria apagado sin ninguna salida.
+  const lista = banda();
+  const ana = lista[0]!;
+  const otros = nombresDeOtrosIntegrantes(lista, ana.id);
+  deepStrictEqual([...otros], ['Beto', 'Cami']);
+  strictEqual(validarNombreDeIntegrante('Ana', otros), null);
+});
+
+test('en un alta no hay a quien excluir, asi que estan todos', () => {
+  const lista = banda();
+  deepStrictEqual([...nombresDeOtrosIntegrantes(lista, null)], ['Ana', 'Beto', 'Cami']);
+  ok(validarNombreDeIntegrante('Ana', nombresDeOtrosIntegrantes(lista, null)) !== null);
+});
+
+// --- Clasificar al leer ------------------------------------------------------
+
+/** Un integrante como lo deja la migracion 4: con forma, sin clasificar. */
+function migrado(nombre: string, textos: readonly string[]): BandMember {
+  return {
+    id: `mbr_${nombre}` as BandMemberId,
+    nombre,
+    instrumentos: textos.map((t) => ({
+      fuente: null, variante: null, rol: null, textoOriginal: t,
+    })),
+  };
+}
+
+function bandaCon(integrantes: readonly BandMember[]): BandProfile {
+  return { ...crearBanda('Los del fondo'), integrantes };
+}
+
+test('leer una banda migrada la deja clasificada', () => {
+  // La migracion le da forma al documento y no clasifica --SQL no sabe que es
+  // un djembe--. Si eso solo se completara al guardar, la eleccion de
+  // instrumento en la asignacion de canal no traeria ningun perfil justo en
+  // los perfiles que ya existian.
+  const leida = normalizarBanda(bandaCon([migrado('Ana', ['guitarra criolla', 'voz'])]));
+  const instrumentos = leida.integrantes[0]!.instrumentos;
+  deepStrictEqual(instrumentos.map((i) => i.fuente), ['GUITARRA', 'VOZ']);
+  strictEqual(instrumentos[0]!.variante, 'NYLON');
+});
+
+test('clasificar al leer nunca pierde el texto original', () => {
+  const leida = normalizarBanda(bandaCon([migrado('Ana', ['GUITARRA CRIOLLA', 'serrucho'])]));
+  const instrumentos = leida.integrantes[0]!.instrumentos;
+  strictEqual(etiquetaDeInstrumento(instrumentos[0]!), 'GUITARRA CRIOLLA');
+  // Lo que el catalogo no reconoce se queda sin fuente, con su texto intacto.
+  strictEqual(instrumentos[1]!.fuente, null);
+  strictEqual(etiquetaDeInstrumento(instrumentos[1]!), 'serrucho');
+});
+
+test('clasificar al leer es idempotente', () => {
+  const una = normalizarBanda(bandaCon([migrado('Ana', ['guitarra criolla'])]));
+  deepStrictEqual(normalizarBanda(una), una);
+});
+
+test('leer una banda que ya estaba bien devuelve exactamente el mismo objeto', () => {
+  // No es una optimizacion: la pantalla de edicion compara lo que tiene contra
+  // lo que leyo para saber si hay cambios sin guardar, y una copia identica
+  // pero nueva se leeria como un cambio que nadie hizo.
+  const b = bandaCon([crearIntegrante('Ana', ['voz'])]);
+  strictEqual(normalizarBanda(b), b);
+  strictEqual(normalizarIntegrante(b.integrantes[0]!), b.integrantes[0]);
+});
+
+test('leer aguanta una banda con cadenas crudas, sin migracion de por medio', () => {
+  // El almacen del navegador no ejecuta las migraciones del esquema, asi que
+  // ahi los instrumentos pueden seguir siendo texto suelto.
+  const crudo = {
+    id: 'mbr_x' as BandMemberId, nombre: 'Ana',
+    instrumentos: ['voz', 'cajon'] as unknown as BandMember['instrumentos'],
+  };
+  const leida = normalizarBanda(bandaCon([crudo]));
+  deepStrictEqual(leida.integrantes[0]!.instrumentos.map((i) => i.fuente), ['VOZ', 'CAJON']);
+});
+
+test('leer no toca a los integrantes que no hacia falta clasificar', () => {
+  const ana = crearIntegrante('Ana', ['voz']);
+  const leida = normalizarBanda(bandaCon([ana, migrado('Beto', ['bajo'])]));
+  strictEqual(leida.integrantes[0], ana);
+  strictEqual(leida.integrantes[1]!.instrumentos[0]!.fuente, 'BAJO');
 });

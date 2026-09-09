@@ -21,7 +21,7 @@
  */
 
 import { WebSocketServer } from 'ws';
-import { CANALES, estadoInicial, nombres, dbAFader } from './state.mjs';
+import { CANALES, estadoInicial, nombres, dbAFader, PROCESO } from './state.mjs';
 
 const args = process.argv.slice(2);
 const puerto = Number(args[args.indexOf('--port') + 1]) || 8765;
@@ -52,16 +52,62 @@ const VU_ESCALA = 0.004167508166392142;
 // con la ley del fader, que es otra cosa.
 const MEDIDOR_RANGO_DB = 80;
 
-function codificarVu(nivelesDb) {
+/**
+ * Ampliacion del medidor de reduccion. `COMP_ZOOM` en `mixer.html`: su recorrido
+ * es la mitad del de nivel, 40 dB y no 80.
+ */
+const COMP_ZOOM = 2;
+const REDUCCION_RANGO_DB = MEDIDOR_RANGO_DB / COMP_ZOOM;
+
+/**
+ * El byte de reduccion que corresponde a estos decibeles.
+ *
+ * La funcion directa de la consola es
+ * `fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM` con
+ * `a = (byte & 127) << 1`, y con reduccion nula el byte vale 247. Aca se
+ * invierte por busqueda, igual que en el adaptador, para no despejar a mano una
+ * cuenta con un bit doblado adentro.
+ */
+function byteDeReduccion(db) {
+  let mejor = 247;
+  let menorError = Infinity;
+  for (let b = 128; b <= 255; b++) {
+    const a = (b & 127) << 1;
+    let fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM;
+    if (fraccion < 0.008) fraccion = 0;
+    else if (fraccion > 1) fraccion = 1;
+    const error = Math.abs(fraccion * REDUCCION_RANGO_DB - db);
+    if (error < menorError) { menorError = error; mejor = b; }
+  }
+  return mejor;
+}
+
+function aByte(db) {
+  const posicion = (!Number.isFinite(db) || db <= -MEDIDOR_RANGO_DB)
+    ? 0
+    : (db + MEDIDOR_RANGO_DB) / MEDIDOR_RANGO_DB;
+  return Math.max(0, Math.min(255, Math.round(posicion / VU_ESCALA)));
+}
+
+/**
+ * `nivelesDb` es el nivel ANTES del procesamiento dinamico, que es lo que sale
+ * por el primer byte de cada canal. El segundo --el que la consola dibuja en su
+ * tira-- lleva la reduccion descontada: medido el 2026-09-09, con el compresor
+ * apretando 5 dB los dos difieren en esos 5 dB. Antes el simulador mandaba el
+ * mismo numero en los dos y con eso el asistente de ganancia no podia notar la
+ * diferencia entre medir bien y medir mal.
+ */
+function codificarVu(nivelesDb, reduccionesDb = []) {
   const bytes = [nivelesDb.length, 0, 0, 0, 0, 0, 0, 0];
-  for (const db of nivelesDb) {
-    const posicion = (!Number.isFinite(db) || db <= -MEDIDOR_RANGO_DB)
-      ? 0
-      : (db + MEDIDOR_RANGO_DB) / MEDIDOR_RANGO_DB;
-    const b = Math.max(0, Math.min(255, Math.round(posicion / VU_ESCALA)));
+  for (let i = 0; i < nivelesDb.length; i++) {
+    const preDb = nivelesDb[i];
+    const reduccion = reduccionesDb[i] ?? 0;
+    const entradaDb = Number.isFinite(preDb) ? preDb - reduccion : preDb;
     // pre, entrada, salida, dinámico entrada, dinámico salida, reducción.
     // 247 en el último byte es "sin reducción de ganancia", como en la consola.
-    bytes.push(b, b, b, 0, 0, 247);
+    bytes.push(
+      aByte(preDb), aByte(entradaDb), aByte(entradaDb), 0, 0, byteDeReduccion(reduccion),
+    );
   }
   return Buffer.from(bytes).toString('base64');
 }
@@ -196,6 +242,7 @@ setInterval(() => {
   if (Date.now() < vuCortadoHasta) return;
   const t = Date.now() / 1000;
   const niveles = [];
+  const reducciones = [];
   for (const c of CANALES) {
     // Movimiento verosímil: una envolvente lenta más variación rápida.
     const lento = Math.sin(t * 0.7 + c.idx) * (c.dinamica / 2);
@@ -203,8 +250,16 @@ setInterval(() => {
     let db = c.nivelBase + lento + rapido;
     if (canalSaturando === c.idx) db = -0.3 + Math.random() * 0.4;
     niveles.push(db);
+
+    // La reduccion sigue a la envolvente: un compresor aprieta mas en los
+    // picos y suelta entre frase y frase. Un canal sin compresor manda cero, y
+    // uno con compresor puesto pero `comprimeDb` en cero tambien: es la
+    // diferencia entre "hay compresor" y "hay compresor actuando".
+    const p = PROCESO.get(c.idx);
+    const tope = p?.compresor ? p.comprimeDb : 0;
+    reducciones.push(tope > 0 ? Math.max(0, tope * (0.55 + lento / 12)) : 0);
   }
-  difundir(`VU2^${codificarVu(niveles)}`);
+  difundir(`VU2^${codificarVu(niveles, reducciones)}`);
 }, Math.round(1000 / vuHz));
 
 // El analizador de espectro, que es lo que la consola emite pase lo que pase.

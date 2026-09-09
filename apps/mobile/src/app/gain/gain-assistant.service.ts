@@ -3,7 +3,7 @@ import {
   analizarVentana, proponerGanancia,
   type MuestraVu, type AnalisisDeGanancia, type PropuestaDeGanancia,
 } from '@vse/assistants';
-import type { ChannelAssignment } from '@vse/domain';
+import { DINAMICA_SIN_LEER, type ChannelAssignment, type DinamicaDeCanal } from '@vse/domain';
 import { Logger } from '../core/logger';
 import { MixerService } from '../core/mixer.service';
 import { BandService } from '../core/band.service';
@@ -91,12 +91,18 @@ export class GainAssistantService {
     const repetido = previa !== undefined &&
       Math.abs(previa.analisis.picoDb - analisis.picoDb) < 3;
 
+    // Qué proceso tenía puesto el canal. Sin canal —la consola no está— no se
+    // sabe, y «no se sabe» no es «no hay»: `DINAMICA_SIN_LEER` lo dice así y el
+    // asistente avisa en vez de dar por limpio un canal que nadie miró.
+    const dinamica: DinamicaDeCanal = canal?.dinamica ?? DINAMICA_SIN_LEER;
+
     const propuesta = proponerGanancia(analisis, perfil, gainActual, {
       repetidoEnDosCapturas: repetido,
       // El ruido de fondo real necesita la interfaz de audio. Hasta entonces
       // se usa el mínimo del perfil, lo que evita avisos falsos de ruido.
       snrDb: perfil.snrMinimoDb,
       calibracionValida: true,
+      dinamica,
     });
 
     const resultado: ResultadoCaptura = {
@@ -121,6 +127,10 @@ export class GainAssistantService {
       margenDb: Number(analisis.margenDb.toFixed(1)),
       deltaPropuestoDb: Number(propuesta.deltaDb.toFixed(1)),
       confianza: propuesta.confianza,
+      // Queda en el registro cuánto apretaba el canal al medir: dos capturas
+      // del mismo canal que difieren se explican mirando esto.
+      reduccionEnPicoDb: Number(analisis.reduccionEnPicoDb.toFixed(1)),
+      condicionadaPor: propuesta.condicionadaPor.join(', '),
     });
 
     return resultado;
@@ -172,7 +182,21 @@ export class GainAssistantService {
     const recoger = () => {
       if (indice === null) return;
       const canal = this.mixer.canales().find((c) => c.indice === indice);
-      if (canal) this.muestras.push({ tMs: Date.now() - inicio, db: canal.nivelDb });
+      // **`nivelPreProcesoDb` y no `nivelDb`.** El segundo es el que la consola
+      // dibuja en su tira y el que muestra la pantalla de Consola, pero llega
+      // con el compresor encima: aconsejar ganancia sobre él es aconsejar sobre
+      // una señal ya procesada. Medido el 2026-09-09.
+      //
+      // El nivel y la reducción se toman juntos y de la misma trama: describen
+      // el mismo instante, y separarlos haría que el pico de una y la reducción
+      // de otra terminaran en la misma cuenta.
+      if (canal) {
+        this.muestras.push({
+          tMs: Date.now() - inicio,
+          db: canal.nivelPreProcesoDb,
+          reduccionDb: canal.reduccionDb,
+        });
+      }
     };
     this.muestreo = setInterval(recoger, 50);
     return this.cuentaAtras(DURACION_CAPTURA_S).finally(() => {

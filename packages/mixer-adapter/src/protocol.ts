@@ -232,11 +232,116 @@ export const MEDIDOR_RANGO_DB = 80;
  */
 export const MEDIDOR_SATURACION = 1;
 
+/**
+ * Ampliación del medidor de reducción de ganancia. `COMP_ZOOM` en `mixer.html`.
+ *
+ * El medidor de reducción usa la misma escala de bytes que el de nivel, pero
+ * dibujada al doble: por eso su recorrido es la mitad, 40 dB y no 80.
+ */
+export const COMP_ZOOM = 2;
+
+/** Recorrido del medidor de reducción de ganancia, en decibeles. */
+export const REDUCCION_RANGO_DB = MEDIDOR_RANGO_DB / COMP_ZOOM;
+
+/**
+ * Fracción por debajo de la cual la consola da la reducción por nula.
+ *
+ * Es su propia zona muerta, no una elección nuestra: con el compresor sin
+ * actuar el byte vale 247 en todos los canales, que despejado da 0,0079 —justo
+ * por debajo de este umbral—. Sin la zona muerta, un canal quieto informaría
+ * 0,32 dB de reducción permanente.
+ */
+const REDUCCION_ZONA_MUERTA = 0.008;
+
+/**
+ * Fracción de reducción de ganancia a partir del sexto byte del canal.
+ *
+ * La cuenta es la de `mixer.html`, y **el orden de los operadores importa**:
+ * `a` se arma con los siete bits bajos desplazados a la izquierda, y el bit que
+ * se cae por arriba se recupera con `a | ((a >> 7) & 1)`. Leerlo como
+ * `(a | (a >> 7)) & 1` da otra cosa.
+ *
+ * **Medido contra la consola el 2026-09-09**, tono fijo y umbral del compresor
+ * bajando: 10,8 % de reducción dio 4,66 dB medidos contra 4,32 calculados;
+ * 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00. Los tres puntos
+ * caen dentro de 0,35 dB.
+ */
+export function fraccionDeReduccion(byte: number): number {
+  const a = (byte & 127) << 1;
+  const fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM;
+  if (fraccion < REDUCCION_ZONA_MUERTA) return 0;
+  return fraccion > 1 ? 1 : fraccion;
+}
+
+/**
+ * Cuántos decibeles le está sacando el procesador dinámico al canal.
+ *
+ * **Este número es la diferencia entre avisar y aconsejar.** El medidor de
+ * entrada de cada canal —el byte `+1` de la trama— está **después** del
+ * procesamiento dinámico: medido el 2026-09-09 con un tono fijo, bajar el
+ * umbral del compresor movió la lectura de −29,66 a −40,46 dB. O sea que el
+ * nivel con el que se calcula un consejo de ganancia puede venir ya comprimido,
+ * y hasta hoy nada lo decía. Con esto se puede decir cuánto, y distinguir un
+ * compresor puesto que no está actuando —reducción cero, que no condiciona
+ * nada— de uno que está sacando nueve decibeles.
+ */
+export function dbDeReduccion(byte: number): number {
+  return fraccionDeReduccion(byte) * REDUCCION_RANGO_DB;
+}
+
+/**
+ * El byte que produciría esta reducción. Lo usan el simulador y los tests.
+ *
+ * Es una búsqueda sobre `dbDeReduccion`, no una fórmula despejada a mano: así
+ * no puede desviarse de la función directa, que es la que describe el aparato.
+ * El bit 7 va puesto porque es lo que hace la consola —es el indicador de
+ * puerta, no el de saturación— y no interviene en la cuenta.
+ */
+export function byteDeReduccion(db: number): number {
+  let mejor = 247;
+  let menorError = Infinity;
+  for (let b = 128; b <= 255; b++) {
+    const error = Math.abs(dbDeReduccion(b) - db);
+    if (error < menorError) {
+      menorError = error;
+      mejor = b;
+    }
+  }
+  return mejor;
+}
+
 /** Lectura de un canal dentro de una trama `VU2`, en posición normalizada. */
 export interface MedidorCanal {
-  /** Nivel previo a la ganancia del previo. */
+  /**
+   * Nivel **después del previo y antes del procesamiento dinámico**.
+   *
+   * El nombre venía de suponer que era anterior a la ganancia del previo, y es
+   * al revés. Las dos mitades están medidas contra la consola el 2026-09-09:
+   *
+   * - **Después del previo**: subiendo `hw.N.gain` de 10 a 22 dB, esta lectura
+   *   subió 6,00 y 6,01 dB, lo mismo que `entrada`.
+   * - **Antes del compresor**: con el compresor apretando 5 dB, `entrada` cayó
+   *   a −53,33 y esta se quedó en −48,66. El dinámico no la toca.
+   *
+   * **Es el punto de la cadena en el que hay que aconsejar ganancia**, y por eso
+   * es el que muestrea el asistente. `entrada` es lo que la consola dibuja en su
+   * tira y sirve para hablar el mismo idioma que el operador, pero llega con el
+   * proceso encima.
+   *
+   * **Lo que está medido y lo que no.** Que el compresor no la toca está
+   * medido. Que la **puerta** tampoco está *inferido*: las dos viven en el mismo
+   * bloque dinámico y esto debería ser anterior a las dos, pero no se comprobó
+   * con la puerta cerrándose. Mientras siga inferido, el asistente no le da a
+   * un canal con puerta activa la confianza más alta.
+   */
   readonly pre: number;
-  /** Nivel de entrada al canal. */
+  /**
+   * Nivel de entrada al canal, **después del procesamiento dinámico**.
+   *
+   * El nombre engaña y conviene no arreglarlo cambiándolo: es «entrada» porque
+   * es lo que la consola muestra en la tira de entrada, antes del fader. Pero
+   * el compresor y la puerta ya pasaron. Medido el 2026-09-09.
+   */
   readonly entrada: number;
   /** Nivel de salida, después del fader. */
   readonly salida: number;
@@ -246,6 +351,13 @@ export interface MedidorCanal {
   readonly dinamicoSalida: number;
   /** Byte crudo de reducción de ganancia y bandera, sin interpretar. */
   readonly byteReduccion: number;
+  /**
+   * Reducción de ganancia que el procesador dinámico está aplicando, en dB.
+   *
+   * Estuvo llegando en cada trama desde siempre y no lo leía nadie. Ver
+   * `dbDeReduccion`.
+   */
+  readonly reduccionDb: number;
   /**
    * Puerta de ruido abierta, según la consola.
    *
@@ -287,6 +399,7 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
       dinamicoEntrada: (bytes[o + 3] ?? 0) * VU_ESCALA,
       dinamicoSalida: (bytes[o + 4] ?? 0) * VU_ESCALA,
       byteReduccion: bytes[o + 5] ?? 0,
+      reduccionDb: dbDeReduccion(bytes[o + 5] ?? 0),
       puertaAbierta: ((bytes[o + 5] ?? 0) & 128) !== 0,
     });
   }
@@ -344,12 +457,24 @@ export function dbDeMedidor(posicion: number): number {
  * Arma una trama `VU2` con el formato real. La usa el simulador.
  *
  * Recibe posiciones normalizadas, no decibeles: es lo que viaja por el cable.
+ * `reduccionesDb` es opcional y por canal; sin ella todos los canales van sin
+ * reducción, que es el byte 247. `posicionesPreProceso` también es opcional y
+ * por defecto iguala a `posiciones`: sirve para armar una trama donde el nivel
+ * anterior al dinámico y el posterior **no** coincidan, que es lo que pasa en
+ * cuanto el compresor aprieta.
  */
-export function codificarVu(posiciones: readonly number[]): string {
+export function codificarVu(
+  posiciones: readonly number[],
+  reduccionesDb: readonly number[] = [],
+  posicionesPreProceso: readonly number[] = [],
+): string {
   const bytes: number[] = [posiciones.length, 0, 0, 0, 0, 0, 0, 0];
-  for (const p of posiciones) {
+  for (let i = 0; i < posiciones.length; i++) {
+    const p = posiciones[i]!;
     const byte = Math.max(0, Math.min(255, Math.round(Math.max(0, p) / VU_ESCALA)));
-    bytes.push(byte, byte, byte, 0, 0, 247);
+    const pPre = posicionesPreProceso[i] ?? p;
+    const bytePre = Math.max(0, Math.min(255, Math.round(Math.max(0, pPre) / VU_ESCALA)));
+    bytes.push(bytePre, byte, byte, 0, 0, byteDeReduccion(reduccionesDb[i] ?? 0));
   }
   return bytesABase64(bytes);
 }
