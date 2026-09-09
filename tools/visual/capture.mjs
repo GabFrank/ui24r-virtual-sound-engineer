@@ -262,7 +262,12 @@ async function main() {
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
   await esperar(600);
   const sobreviven = await pagina.evaluate(() => {
-    const primero = document.querySelector('tbody tr select');
+    // El perfil y no el primer desplegable de la fila. Desde que la pantalla
+    // pregunta primero quien toca, el primero es el integrante, y una
+    // asignacion propuesta desde el nombre del canal no tiene ninguno: esta
+    // legitimamente vacia. Lo que la propuesta si llena es el perfil, que es
+    // lo que esta comprobacion siempre quiso verificar.
+    const primero = document.querySelector('tbody tr select[aria-label^="perfil"]');
     const encabezado = document.querySelector('ui-page-header p')?.textContent ?? '';
     return { valor: primero?.value ?? '(sin select)', encabezado: encabezado.trim().slice(0, 30) };
   });
