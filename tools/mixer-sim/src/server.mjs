@@ -25,7 +25,13 @@ import { CANALES, estadoInicial, nombres, dbAFader, PROCESO } from './state.mjs'
 
 const args = process.argv.slice(2);
 const puerto = Number(args[args.indexOf('--port') + 1]) || 8765;
-const conEco = !args.includes('--no-echo');
+// **Sin eco por defecto, que es como se comporta la consola.** Antes el eco
+// venia activado porque era lo que SPK-P0.1 tenia que medir; ya lo midio, y
+// la respuesta es que la Ui24R no le devuelve nada a quien escribe (ADR-024).
+// Dejarlo activado hacia que el simulador contradijera el hecho central del
+// mecanismo de confirmacion: una rama que esperara eco habria funcionado acá
+// y fallado contra el aparato. `--con-eco` conserva el mundo hipotetico.
+const conEco = args.includes('--con-eco');
 const vuHz = Number(args[args.indexOf('--vu-hz') + 1]) || 20;
 
 const estado = estadoInicial();
@@ -109,7 +115,49 @@ function codificarVu(nivelesDb, reduccionesDb = []) {
       aByte(preDb), aByte(entradaDb), aByte(entradaDb), 0, 0, byteDeReduccion(reduccion),
     );
   }
+  bytes.push(...colaEnSilencio());
   return Buffer.from(bytes).toString('base64');
+}
+
+/**
+ * La cola de la trama: buses en silencio, con el reparto medido.
+ *
+ * Antes el simulador cortaba despues de las entradas y mandaba 152 bytes; la
+ * consola manda **306**. O sea que nada que leyera el general, los auxiliares,
+ * los subgrupos o los efectos se podia desarrollar ni probar contra el
+ * simulador, y el primer intento habria asumido el paso de 6 de las entradas
+ * --que es exactamente el error que la medicion desmintio: las secciones **no
+ * comparten el paso**.
+ *
+ * Reparto medido el 2026-09-09 (relativo al fin de las entradas):
+ *
+ *       0 ..  11   2 entradas de linea, 6 bytes cada una
+ *      12 ..  53   6 subgrupos, 7 bytes cada uno
+ *      54 ..  81   4 efectos, 7 bytes cada uno
+ *      82 .. 131  10 auxiliares, 5 bytes cada uno
+ *     132 .. 153   general
+ *
+ * Va todo en silencio salvo el byte de reduccion de cada bloque, que es 247
+ * --"sin reduccion"-- igual que en los canales. Que este en silencio es una
+ * simplificacion honesta: el simulador no encamina senal a los buses. Lo que
+ * si reproduce, y es lo que importa, es **el largo y el reparto**.
+ */
+const COLA_SECCIONES = [
+  { cuantos: 2,  ancho: 6, reduccion: null },
+  { cuantos: 6,  ancho: 7, reduccion: 6 },
+  { cuantos: 4,  ancho: 7, reduccion: 6 },
+  { cuantos: 10, ancho: 5, reduccion: 4 },
+  { cuantos: 1,  ancho: 22, reduccion: null },
+];
+
+function colaEnSilencio() {
+  const bytes = [];
+  for (const s of COLA_SECCIONES) {
+    for (let i = 0; i < s.cuantos; i++) {
+      for (let b = 0; b < s.ancho; b++) bytes.push(b === s.reduccion ? 247 : 0);
+    }
+  }
+  return bytes;
 }
 
 /**
@@ -133,8 +181,8 @@ function difundir(linea, excepto = null) {
 /** Aplica un cambio y lo difunde, como haría la consola con sus clientes. */
 function aplicar(path, valor, origen = null) {
   estado.set(path, valor);
-  // El eco al propio emisor es justo lo que el spike P0.1 tiene que medir.
-  // Acá es configurable para poder probar la aplicación en los dos mundos.
+  // El eco al propio emisor no existe en la consola real: por eso `origen`
+  // queda excluido de la difusion salvo que se pida el mundo hipotetico.
   difundir(`SETD^${path}^${valor}`, conEco ? null : origen);
 }
 
@@ -273,9 +321,13 @@ setInterval(() => {
 // los silencios y `RTA` no—, así que un simulador sin `RTA` deja toda sesión
 // marcada como inestable a los 300 ms.
 //
-// La carga es un espectro en silencio: 30 bandas en cero. El cliente todavía no
-// decodifica `RTA`, solo cuenta que llegó.
-const RTA_SILENCIO = Buffer.alloc(30).toString('base64');
+// La carga es un espectro en silencio: **122 bandas** en cero, que es lo que
+// manda la consola --un doceavo de octava, de ~20,9 Hz a ~22,6 kHz, medido el
+// 2026-09-09--. Antes eran 30, un numero que no salia de ninguna medicion y
+// que el dia que se decodifique `RTA` habria hecho validar un largo
+// inexistente. Hoy el cliente solo cuenta que llegó.
+const RTA_BANDAS = 122;
+const RTA_SILENCIO = Buffer.alloc(RTA_BANDAS).toString('base64');
 setInterval(() => difundir(`RTA^${RTA_SILENCIO}`), Math.round(1000 / 30));
 
 function log(msg) {

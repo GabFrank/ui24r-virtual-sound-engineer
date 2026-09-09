@@ -26,7 +26,7 @@ protocolo y no en descubrir errores propios.
 
 ```bash
 node src/server.mjs                 # puerto 8765
-node src/server.mjs --port 9000 --no-echo   # simula una consola sin eco
+node src/server.mjs --port 9000 --con-eco   # mundo hipotetico: consola que devuelve eco
 ```
 
 ## Escenarios

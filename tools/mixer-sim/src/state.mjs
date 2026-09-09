@@ -45,16 +45,25 @@ export const CANALES = [
   { idx: 23, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
 ];
 
-export function dbAFader(db) {
-  if (db <= -90) return 0;
-  const v = Math.pow(10, (Math.min(10, db) - 10) / (20 * 2.2));
-  return Math.max(0, Math.min(1, v));
-}
+/**
+ * Las leyes salen del adaptador, no de aca.
+ *
+ * Antes este archivo tenia las suyas: una curva de fader con una pendiente
+ * inventada de 2,2 y una ganancia lineal de -6 a 57. Las dos estan falsadas
+ * --ver la cabecera de `conversiones.ts`-- y el efecto era que el simulador
+ * declaraba un fader en -2,5 dB y la aplicacion mostraba -10,5. Ocho a once
+ * decibeles de error en todo lo que se mirara contra el simulador, que es
+ * justo lo que un simulador existe para no hacer.
+ *
+ * Mantener una segunda copia de una ley medida es lo que permite que derive.
+ * Por eso ahora se importan, aunque obligue a arrancar el simulador con
+ * `--experimental-strip-types`: el costo de arranque es preferible a dos
+ * verdades distintas sobre el mismo aparato.
+ */
+import { dbAFader, dbAGanancia } from '../../../packages/mixer-adapter/src/conversiones.ts';
 
-export function gainANormalizado(db) {
-  // La consola expone la ganancia de entrada de -6 a 57 dB.
-  return Math.max(0, Math.min(1, (db + 6) / 63));
-}
+export { dbAFader };
+export const gainANormalizado = dbAGanancia;
 
 /**
  * Canales con proceso dinamico puesto, como en una consola de show de verdad.
