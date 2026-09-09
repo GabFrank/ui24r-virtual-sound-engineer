@@ -178,11 +178,16 @@ Reparto, en posiciones relativas al fin de las entradas (byte 152 absoluto):
 
 | Relativo | Contenido | Paso |
 |---|---|---|
-| `0 .. 11` | 2 entradas de línea | 6 |
+| `0 .. 11` | 2 del **reproductor de medios** | 6 |
 | `12 .. 53` | 6 subgrupos | 7 |
 | `54 .. 81` | 4 efectos | 7 |
 | `82 .. 131` | 10 auxiliares | 5 |
-| `132 .. 153` | general | — |
+| `132 .. 141` | **general**, dos bloques de 5: izquierdo y derecho | 5 |
+| `142 .. 153` | **2 entradas de línea**, con el formato de 6 de las entradas | 6 |
+
+**Dos rótulos estuvieron invertidos hasta el 2026-09-09.** Esta tabla decía «2 entradas de línea» para la primera sección —que es el reproductor— y «general» para los 22 finales, que son 10 del general más 12 de las entradas de línea. Coinciden en número —reproductor y línea son los dos *dos bloques de seis*— y por eso el censo del vocabulario, presentado como comprobación independiente, no podía distinguirlos. Lo destapó una trama archivada con música por las RCA: los bytes con señal están en 294–305, no en 152–163.
+
+El tamaño del general lo declara el **byte 6** de la cabecera (`l = e += 5·charCodeAt(6)` justo antes de leer las líneas). El byte 5 vale 2 y sigue sin saberse qué es. La cantidad de entradas de línea **no** está en la cabecera.
 
 Cada límite se fijó provocando señal en una sola sección y viendo qué bytes se movían: envío a un efecto, asignación a un subgrupo, envío a un auxiliar. Las cuentas cierran sin holgura —2×6 + 6×7 + 4×7 = 82— y el censo del vocabulario (`l.0..1`, `s.0..5`, `f.0..3`, `a.0..9`) llega a los mismos tamaños por otro camino. La sección de línea es la única que no se provocó con señal: sale por resta y por el censo.
 
@@ -291,7 +296,15 @@ Dos trampas de escala que costaron una corrida cada una, y que conviene tener es
 
 **Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
 
-**Y está comprobado contra el aparato**, no solo leído del código. Con la ganancia del canal al máximo —57 dB— y la fuente subiendo, **el byte se clava en 239 y la lectura deja de subir en −0,7 dB**, que es el valor 1,0 —byte ~240— donde la consola enciende su clip. El medidor no informa nada por encima de esa posición: no hay margen escondido arriba. `MEDIDOR_SATURACION = 1` en el adaptador es ese punto.
+**El techo es el byte 255, y lo que estuvo escrito acá era el techo de otra cosa.**
+
+Decía: «con la ganancia del canal al máximo y la fuente subiendo, el byte se clava en 239 y la lectura deja de subir; el medidor no informa nada por encima». **Ese 239 es donde satura la interfaz de audio, no el medidor.**
+
+Medido el 2026-09-09, por dos personas y con el mismo método: dejar el nivel **previo al fader** en 232 —sin saturar— y subir el **fader**, que es ganancia digital interna y no tiene nada analógico en el medio. La salida siguió creciendo lineal: 232 → 242 → 248 → 255. Con la ley del fader, la posición 0,95 predice exactamente 255 y en 1,0 se planta. El tope real del número que manda la consola es **255**.
+
+Es el mismo error que costó el episodio de los 84,5 dB —medir la cadena entera creyendo medir el medidor— aplicado al techo en vez de a la escala. La lección estaba escrita en este documento y se había aplicado solo a la mitad.
+
+**Consecuencias.** Los bytes 240 a 255 son posiciones **mayores que 1**: de +0,02 a +5,0 dB. `MEDIDOR_SATURACION = 1` es el byte 240 y **sí es alcanzable** —una duda razonable que surgió de auditar con el techo viejo—. Y cualquier normalización que trate 240 como tope entrega posiciones fuera de rango con señal caliente.
 
 **Comprobación cruzada del modelo entero.** Si la barra es la salida y el fantasma la entrada, la diferencia entre las dos tiene que ser exactamente el fader del canal. Medido el 2026-09-08 con música por las RCA:
 
@@ -384,7 +397,7 @@ No es un detalle de proceso: el recorrido del medidor estuvo escrito como 84,5 d
 | `VU_BYTES_POR_CANAL` | 6 | Paso de la sección de entradas —y **solo** de esa sección |
 | `CORRECCION_PREVIO_DB` | −1.15 | Lo que el previo no entrega respecto de lo que su tabla promete |
 | `CORRECCION_DESDE_DB` | 26 | Desde qué ganancia aparece ese déficit |
-| `RETENCION_PICO_MS` | 3 | Cuánto sostiene el pico antes de caer, del `mixer.html` |
+| `RETENCION_PICO_MS` | 3000 | Cuánto sostiene el pico antes de caer. `CLIP_HOLD_TIME = PEAK_HOLD_TIME = 3E3` en el `mixer.html`: **tres segundos**. Estuvo escrito como 3 —error de factor mil— con un comentario que lo explicaba y lo hacía sonar razonable |
 
 ## 5. Rutas confirmadas contra el aparato
 

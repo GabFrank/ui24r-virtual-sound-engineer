@@ -166,7 +166,12 @@ export function base64ABytes(texto: string): number[] {
  * Medido el 2026-09-08 contra la consola: la cabecera vale 8 bytes y el primero
  * es la cantidad de canales de entrada. Los siguientes repiten la topología que
  * la consola publica en `curSetup` — para la Ui24R salieron
- * `[24, 2, 6, 4, 10, 2, 2, 0]` contra `input:24, linein:2, sub:6, fx:4, aux:10`.
+ * `[24, 2, 6, 4, 10, 2, 2, 0]`.
+   *
+   * **Ojo con el byte 1: es el reproductor de medios, no `linein`.** Coincide
+   * en el número —hay 2 de cada uno— y por eso se lee mal sin darse cuenta.
+   * Las entradas de línea son el **byte 6** y su sección va al **final** de la
+   * trama, después del general. Ver `vu-buses.ts`, que sí lo tiene bien.
  */
 export const VU_CABECERA_BYTES = 8;
 

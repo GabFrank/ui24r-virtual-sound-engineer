@@ -10,7 +10,7 @@ Medido el 2026-09-08 contra la Ui24R en `192.168.0.78`, firmware `3.4.8318-ui24`
 
 1. **La consola no devuelve eco de las escrituras propias.** Se escribe, se escucha seis segundos, no llega ninguna línea para esa ruta. Se pide `INIT` y el valor nuevo está: el silencio no es un rechazo, la escritura se aplicó.
 2. **Sí difunde a los demás clientes.** Con tres conexiones simultáneas, el que escribe ve 0 líneas para la ruta y los otros dos ven 1 cada uno.
-3. **Dos conexiones del mismo proceso alcanzan.** La consola las trata como clientes distintos: el testigo vio la escritura a los **27 ms**.
+3. **Dos conexiones del mismo proceso alcanzan.** La consola las trata como clientes distintos: el testigo vio la escritura a los **27 ms**. *Corregido el 2026-09-09*: aquello era **una sola muestra**. Con ocho escrituras la mediana es **11,5 ms** —mínimo 9, máximo 34, y el 34 es la primera, que incluye el calentamiento—. Los 27 se usaban como cota, así que la cota real es más holgada.
 4. **Los tres clientes ven el mismo estado**: 6 087 claves y huella idéntica.
 
 El hecho 3 es el que convierte la opción C de SPK-ACK-POLICY —hasta entonces «una pregunta, no un mecanismo»— en algo elegible.

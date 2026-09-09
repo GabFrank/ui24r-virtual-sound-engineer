@@ -13,9 +13,17 @@
  *     e += 7*charCodeAt(3)   efectos
  *            charCodeAt(4)   auxiliares, de a 5
  *
- * Comprobado contra el aparato: la cabecera trae `24 2 6 4 10`, que es
- * exactamente el mapa medido, y `8 + 6·24 + 6·2 + 7·6 + 7·4 + 5·10 = 284`
- * contra una trama de 306 — los 22 que sobran son el general.
+ * Comprobado contra el aparato: la cabecera trae `24 2 6 4 10 2 2 0`.
+ *
+ * **Y los 22 bytes finales no son «el general», como decía este comentario.**
+ * Son **10 del general** —dos bloques de 5, izquierdo y derecho— y **12 de las
+ * dos entradas de línea**, que van al final de todo. La cuenta cierra sin
+ * resto: `8 + 6·24 + 6·2 + 7·6 + 7·4 + 5·10 + 5·2 + 6·2 = 306`.
+ *
+ * El tamaño del general lo declara el **byte 6** de la cabecera: la consola
+ * hace `l = e += 5*charCodeAt(6)` justo antes de leer las entradas de línea.
+ * El byte 5 vale 2 y no se sabe qué es. La cantidad de entradas de línea **no
+ * está en la cabecera**: se deduce de los bytes que sobran.
  *
  * Por eso acá **no hay ninguna cuenta escrita a mano**: escribirlas sería
  * volver a la trampa del enrutamiento identidad, que coincide hasta que
@@ -61,12 +69,33 @@ export interface MedidorReproductor {
   readonly indicadorDePuerta: boolean;
 }
 
+/**
+ * El general, en dos bloques de 5 bytes con formato de auxiliar.
+ *
+ * La consola lee `masterWidget.setVU2(n=+0, q=+1, h=+5, m=+6, …)`, o sea el
+ * izquierdo en los primeros cinco bytes y el derecho en los cinco siguientes.
+ * Confirmado con el paneo: `i.9.pan = 0` tiró los bytes del bloque derecho y
+ * `pan = 1` los del izquierdo.
+ *
+ * Es la información que justificaba decodificar la cola: sin esto la
+ * aplicación puede decir que un canal está bien puesto pero no que el general
+ * esté saturando.
+ */
+export interface MedidorGeneral {
+  readonly izquierdo: MedidorBusMono;
+  readonly derecho: MedidorBusMono;
+}
+
 /** Todo lo que la cola de una trama `VU2` sabe decir. */
 export interface MedidoresDeSalida {
   readonly reproductor: readonly MedidorReproductor[];
   readonly subgrupos: readonly MedidorBusEstereo[];
   readonly efectos: readonly MedidorBusEstereo[];
   readonly auxiliares: readonly MedidorBusMono[];
+  /** `null` si la trama termina antes: no se inventa un general que no llegó. */
+  readonly general: MedidorGeneral | null;
+  /** Las entradas de línea, con el formato de 6 bytes de las entradas. */
+  readonly entradasDeLinea: readonly MedidorReproductor[];
 }
 
 const CABECERA = 8;
@@ -136,10 +165,16 @@ export function decodificarVuBuses(base64: string): MedidoresDeSalida {
   const b = base64ABytes(base64);
   const vacio: MedidoresDeSalida = {
     reproductor: [], subgrupos: [], efectos: [], auxiliares: [],
+    general: null, entradasDeLinea: [],
   };
   if (b.length < CABECERA) return vacio;
 
-  const cuantas = { entradas: b[0] ?? 0, reproductor: b[1] ?? 0, subgrupos: b[2] ?? 0, efectos: b[3] ?? 0, auxiliares: b[4] ?? 0 };
+  const cuantas = {
+    entradas: b[0] ?? 0, reproductor: b[1] ?? 0, subgrupos: b[2] ?? 0,
+    efectos: b[3] ?? 0, auxiliares: b[4] ?? 0,
+    // El byte 5 vale 2 en esta consola y no se sabe qué es; el 6 es el general.
+    general: b[6] ?? 0,
+  };
 
   let o = CABECERA + PASO_ENTRADA * cuantas.entradas;
   const leer = <T>(cuantos: number, paso: number, uno: (b: readonly number[], o: number) => T): T[] => {
@@ -156,5 +191,15 @@ export function decodificarVuBuses(base64: string): MedidoresDeSalida {
   const efectos = leer(cuantas.efectos, PASO_ESTEREO, busEstereo);
   const auxiliares = leer(cuantas.auxiliares, PASO_AUX, busMono);
 
-  return { reproductor: medios, subgrupos, efectos, auxiliares };
+  const bloquesGenerales = leer(cuantas.general, PASO_AUX, busMono);
+  const general = bloquesGenerales.length >= 2
+    ? { izquierdo: bloquesGenerales[0]!, derecho: bloquesGenerales[1]! }
+    : null;
+
+  // Las entradas de línea son lo que queda, de a 6. No están en la cabecera:
+  // la consola las lee por índice fijo, acotadas por su propia configuración.
+  const cuantasLineas = Math.floor((b.length - o) / PASO_ENTRADA);
+  const entradasDeLinea = leer(cuantasLineas, PASO_ENTRADA, reproductor);
+
+  return { reproductor: medios, subgrupos, efectos, auxiliares, general, entradasDeLinea };
 }

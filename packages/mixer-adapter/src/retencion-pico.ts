@@ -15,9 +15,19 @@ import { MEDIDOR_RANGO_DB } from './protocol.ts';
  * «Reiniciar picos», que responde una pregunta distinta —«¿este canal pegó
  * fuerte alguna vez?»— y no se parece a nada de lo que muestra la consola.
  *
- * Las constantes salen del `mixer.html`: `GLOBAL_VU_FALL_SPEED = 0.01` en
- * unidades de posición por cuadro de animación, aplicada al pico como la mitad
- * —`pFallVelocity = GLOBAL_VU_FALL_SPEED / 2`— después de `PEAK_HOLD_TIME`.
+ * **La ley de caída de la consola no es la que estaba acá, y tampoco es
+ * constante.** El `/2` que se había copiado sale de la rama
+ * `if (!this.globalEnabled())` de `setValueExt`, o sea la del widget que **no**
+ * está visible. La rama viva usa `GLOBAL_PEAK_FALL_SPEED = GLOBAL_VU_FALL_SPEED
+ * / 10 = 0.001` y **acelera**: `pFallVelocity += GLOBAL_PEAK_FALL_ACC` en cada
+ * cuadro, así que arranca en ~4,8 dB/s y se va duplicando.
+ *
+ * Lo que sigue acá es una **caída constante**, que es una simplificación
+ * nuestra y no la consola. Se declara como tal en vez de disfrazarla: la
+ * balística del pico ya era una decisión de producto —la consola manda el
+ * nivel instantáneo—, y una rampa constante es más fácil de explicar al
+ * operador que una que acelera. Si algún día se quiere reproducir la de la
+ * consola, la fórmula está acá arriba.
  *
  * **La traducción a tiempo real es nuestra, y conviene saberlo.** La consola
  * cuenta por cuadros de animación; nosotros no dibujamos a 60 Hz, así que la
@@ -36,11 +46,20 @@ export const CAIDA_PICO_DB_POR_S =
 /**
  * Cuánto se sostiene el pico antes de empezar a caer.
  *
- * `PEAK_HOLD_TIME = 3` en la consola. Es tan corto que en la práctica el pico
- * empieza a caer de inmediato; se respeta el número igual, en vez de
- * redondearlo a cero, porque es el que está escrito del otro lado.
+ * `CLIP_HOLD_TIME = PEAK_HOLD_TIME = 3E3` en la consola: **tres segundos**.
+ *
+ * **Acá hubo un error de factor mil, y lo que lo hizo sobrevivir no fue el
+ * número sino el comentario.** Estaba escrito «`PEAK_HOLD_TIME = 3` en la
+ * consola; es tan corto que en la práctica el pico empieza a caer de
+ * inmediato». Esa frase *explica* el valor equivocado y le da al que lee una
+ * razón para no dudar, que es peor que copiarlo mal a secas.
+ *
+ * Y el validador de cifras no podía atraparlo: compara el código contra una
+ * tabla del mismo repositorio, así que con los dos diciendo 3 pasaba en verde.
+ * Un error de lectura de la fuente es invisible para una comprobación de
+ * coherencia interna.
  */
-export const RETENCION_PICO_MS = 3;
+export const RETENCION_PICO_MS = 3000;
 
 /** El pico de un canal: su valor y desde cuándo no sube. */
 export interface Pico {

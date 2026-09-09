@@ -70,3 +70,36 @@ test('una trama mas corta de lo que su cabecera promete no inventa nada', () => 
   const b = [2, 0, 4, 0, 0, 0, 0, 0, ...new Array<number>(12).fill(0)];
   assert.deepEqual(decodificarVuBuses(bytesABase64(b)).subgrupos, []);
 });
+
+/**
+ * Contra una trama REAL, archivada el 2026-09-08 con musica entrando por las
+ * RCA. Es la que destapo los dos rotulos invertidos de la cola.
+ *
+ * El proyecto llamaba "2 entradas de linea" a la seccion que va justo despues
+ * de los canales, y decia que "los 22 bytes que sobran son el general". Las dos
+ * cosas eran falsas: esa seccion es el REPRODUCTOR --que en esta trama esta en
+ * silencio-- y los 22 finales son 10 del general y 12 de las entradas de linea,
+ * que es donde esta la musica.
+ *
+ * Coincidian numericamente --reproductor y linea son los dos dos bloques de
+ * seis-- y por eso el "censo del vocabulario" que se presento como
+ * comprobacion independiente no podia distinguirlos.
+ */
+test('trama real: la musica de las RCA aparece en las entradas de linea, no en el reproductor', () => {
+  const m = decodificarVuBuses('GAIGBAoCAgAAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAHcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPdyclBycvdyck1ycvcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAPcAAAAAAAD3AAAAAAAA9wAAAAAAAPcAAAAAAAD3AAAAAAAA9wAAAAAAAPcAAAAAAAD3AAAAAAAA9wAAAAAAAPcAAAAAAAD3AAAAAPcAAAAA9wAAAAD3AAAAAPcAAAAA9wAAAAD3AAAAAPcAAAAA9wAAAAD3AAAAAPdnQmdn92dCAGf3cnJDcnL3cnJCcnL3');
+
+  assert.equal(m.entradasDeLinea.length, 2);
+  for (const linea of m.entradasDeLinea) {
+    assert.ok(linea.entrada > 0.4, 'las RCA traian musica');
+  }
+  for (const r of m.reproductor) {
+    assert.equal(r.entrada, 0, 'el reproductor estaba parado');
+  }
+
+  assert.ok(m.general !== null, 'el general se decodifica');
+  assert.ok(m.general.izquierdo.pre > 0.4);
+  assert.ok(m.general.derecho.pre > 0.4);
+  // El general suma los dos canales de linea, asi que tiene senal aunque la
+  // aplicacion no supiera leerlo hasta hoy.
+  assert.ok(m.general.izquierdo.post > 0, 'y su post-fader tambien');
+});
