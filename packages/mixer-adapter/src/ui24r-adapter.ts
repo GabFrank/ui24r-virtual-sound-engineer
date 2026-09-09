@@ -3,6 +3,7 @@ import type {
   ReadResult, WriteResult,
 } from './api.ts';
 import { ConfirmedStateStore, type EntradaEstado } from './confirmed-store.ts';
+import { actualizarPico, type Pico } from './retencion-pico.ts';
 import {
   codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
 } from './protocol.ts';
@@ -172,7 +173,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    */
   private canalesDetectados = 0;
   private readonly nivelesVu = new Map<number, number>();
-  private readonly picosVu = new Map<number, number>();
+  private readonly picosVu = new Map<number, Pico>();
   private readonly nivelesSalida = new Map<number, number>();
   private readonly picosSalida = new Map<number, number>();
   private readonly saturaciones = new Map<number, number>();
@@ -503,7 +504,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         gainDb: gain ? gananciaADb(gain.valor) : null,
         silenciado: (mute?.valor ?? 0) > 0.5,
         nivelDb: this.nivelesVu.get(canal) ?? -Infinity,
-        picoDb: this.picosVu.get(canal) ?? -Infinity,
+        picoDb: this.picosVu.get(canal)?.db ?? -Infinity,
         nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
         picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
         eventosSaturacion: this.saturaciones.get(canal) ?? 0,
@@ -568,7 +569,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // Se anota la marca de tiempo para la estadistica de cadencia, pero **no**
     // se toca el estado de la conexion: la ausencia de VU2 significa silencio,
     // no caida. Quien decide sobre la conexion es el analizador.
-    this.ultimaTramaVuMs = this.ahora();
+    const ahoraMs = this.ahora();
+    this.ultimaTramaVuMs = ahoraMs;
 
     const medidores = decodificarVuCanales(base64);
     this.canalesDetectados = Math.max(this.canalesDetectados, medidores.length);
@@ -578,8 +580,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       const db = dbDeMedidor(medidor.entrada);
       this.nivelesVu.set(canal, db);
 
-      const picoPrevio = this.picosVu.get(canal) ?? -Infinity;
-      this.picosVu.set(canal, Math.max(picoPrevio, db));
+      // El pico se sostiene y cae, como lo dibuja la consola. Ver
+      // `retencion-pico.ts`: la balistica no viene del aparato, la calcula el
+      // cliente, asi que esto es una decision nuestra y no una herencia.
+      this.picosVu.set(canal, actualizarPico(this.picosVu.get(canal), db, ahoraMs));
 
       // El nivel anterior al procesamiento dinámico. Es el que usa el asistente
       // de ganancia: `db` de acá arriba ya pasó por el compresor.
