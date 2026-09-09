@@ -628,7 +628,13 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    * son cambios normales y no tienen que reabrir nada.
    */
   private reiniciarQuietudDeVolcado(): void {
-    if (this.store.storeState === 'VALID') return;
+    // **Solo mientras hay un volcado en curso.** Antes la condicion era que el
+    // almacen no estuviera valido, y eso incluia el estado invalidado por una
+    // avalancha: la linea siguiente rearmaba la cuenta y un cuarto de segundo
+    // despues el estado se declaraba valido sin que nadie hubiera releido nada.
+    // INV-021 se apagaba sola a los 250 ms, que es lo mismo que no existir.
+    // Lo encontro el guion de capturas y se reprodujo en aislamiento.
+    if (!this.store.recibiendoVolcado) return;
     if (this.temporizadorVolcado !== null) clearTimeout(this.temporizadorVolcado);
     this.temporizadorVolcado = setTimeout(
       () => this.completarVolcado(), this.quietudVolcadoMs,

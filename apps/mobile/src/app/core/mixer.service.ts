@@ -125,7 +125,10 @@ export class MixerService {
     this.quiereConectado = true;
     // Un intento nuevo manda sobre el reintento en curso: si la persona
     // escribio otra direccion, la vieja deja de tener sentido.
-    if (!automatico) this.detenerReintento();
+    if (!automatico) {
+      this.detenerReintento();
+      this.direccionDeseada = direccion;
+    }
     if (!automatico) this.conectando.set(true);
     this.ultimoError.set(null);
     const url = direccion;
@@ -198,9 +201,14 @@ export class MixerService {
       // decia RECONECTANDO con la red ya restablecida y nadie reintentando,
       // porque el reintento solo se programaba al recibir DISCONNECTED, que en
       // este camino no llega. Hay que decir la verdad y programarlo aca.
-      this.adapter = null;
-      this.sincronizarConexion('DISCONNECTED');
-      this.reconectarSiCorresponde(url);
+      // Solo se reintenta si esta sigue siendo la direccion que se quiere. Un
+      // intento viejo que termina tarde no debe resucitar su propio reintento
+      // ni pisar la conexion que la persona establecio mientras tanto.
+      if (url === this.direccionDeseada) {
+        this.adapter = null;
+        this.sincronizarConexion('DISCONNECTED');
+        this.reconectarSiCorresponde(url);
+      }
       throw e;
     } finally {
       if (!automatico) this.conectando.set(false);
@@ -283,6 +291,16 @@ export class MixerService {
    * que pelea contra la voluntad de quien la apagó.
    */
   private quiereConectado = false;
+  /**
+   * La direccion que la persona quiere ahora.
+   *
+   * Sin esto, un intento automatico **en vuelo** contra la direccion vieja
+   * rearmaba el reintento al fallar --su `catch` corre despues de que la
+   * persona ya conecto a otra-- y los reintentos siguientes reemplazaban el
+   * adaptador bueno por uno apuntando a ninguna parte. El sintoma era una
+   * conexion que se caia sola unos segundos despues de establecerse.
+   */
+  private direccionDeseada: string | null = null;
   private reintento: ReturnType<typeof setInterval> | null = null;
   /** Un intento automatico por vez: el apreton puede tardar mas que el intervalo. */
   private reintentoEnCurso = false;
