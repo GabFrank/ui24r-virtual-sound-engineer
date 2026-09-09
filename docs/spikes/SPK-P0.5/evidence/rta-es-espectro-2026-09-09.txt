@@ -1,0 +1,62 @@
+EL FLUJO RTA ES UN ANALIZADOR DE ESPECTRO — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24, fuente conocida por el canal 10.
+
+CORRIGE LA CONCLUSION ANTERIOR DE ESTE MISMO DIA, que decia que el RTA no
+traia espectro. El error: `parseVUAdata` hace `a.slice(4)` y se le atribuyo el
+manejo del RTA, pero "VUA^" y "RTA^" miden los dos cuatro caracteres. El censo
+de vocabulario destapo que la consola emite AMBOS, y son cosas distintas:
+  VUA^  -> niveles por entrada para la pagina de Automix (parseVUAdata)
+  RTA^  -> espectro                                      (parseRTAdata)
+
+POR QUE LLEGABA EN CEROS
+`parseRTAdata` lee `dataValue["var.rta"]`, que nombra el canal que el
+analizador esta mirando, y sin fuente elegida no hace nada. En el volcado de
+esta consola `var.rta` NO EXISTIA: nadie lo habia elegido nunca. Se enciende
+escribiendo `SETS^var.rta^i.9` (la ruta del canal, sin el punto final).
+
+FORMATO
+122 bytes por trama, ~30 tramas por segundo, un byte por banda.
+Sin senal: todo en cero. Con un tono: una campana con pico en su banda y
+decaimiento simetrico, de unas 5 posiciones de ancho a media altura.
+
+CALIBRACION (tono de -12 dBFS, pico por banda)
+     63 Hz -> banda  19        2000 Hz -> banda  79
+    125 Hz -> banda  31        4000 Hz -> banda  91
+    250 Hz -> banda  43        8000 Hz -> banda 103
+    500 Hz -> banda  55       16000 Hz -> banda 115
+   1000 Hz -> banda  67
+
+Cada octava son EXACTAMENTE 12 bandas. La ley es:
+    banda = 67 + 12 * log2(f / 1000)
+    f = 1000 * 2^((banda - 67) / 12)
+Resolucion de un doceavo de octava, o sea un semitono.
+Banda 0   -> ~20,9 Hz
+Banda 121 -> ~22,6 kHz
+Las 122 bandas cubren toda la banda audible.
+
+LO QUE ESTO ABRE
+Informacion de frecuencia por canal, a 30 Hz, SIN motor de audio, SIN
+microfono de medicion y sin esperar al control de paso G-B: identificar que
+banda esta creciendo antes de realimentar, ver solapamiento entre fuentes,
+juzgar balance tonal.
+
+LO QUE NO ABRE, y conviene no confundir
+Esto mide la SENAL DE UN CANAL, no la sala. La respuesta del recinto sigue
+necesitando un microfono de medicion: ningun canal de la consola escucha lo
+que pasa en el aire.
+
+LO QUE FALTA MEDIR
+- Que unidad tiene el byte. Se calibra con tonos de nivel conocido, igual que
+  se hizo con el medidor.
+- Si `var.rta` es por cliente o global. Si es global, elegir la fuente le
+  cambia la pantalla al operador, y eso hay que saberlo antes de tocarlo en un
+  show.
+- Si acepta salidas ademas de entradas (el general, los auxiliares).
+- El tiempo de integracion: cuanto promedia cada trama.
+
+ESTADO EN QUE QUEDO LA CONSOLA
+`var.rta` quedo DEFINIDA Y VACIA. Antes de esta prueba no existia en el
+volcado. Es equivalente en funcionamiento --`parseRTAdata` hace `if (b)` y la
+cadena vacia es falsa, asi que el analizador sigue apagado-- pero no es
+identico: la clave ahora esta. No hay forma de borrarla por protocolo, solo de
+vaciarla. Queda dicho para que nadie lo lea como un cambio del aparato.
