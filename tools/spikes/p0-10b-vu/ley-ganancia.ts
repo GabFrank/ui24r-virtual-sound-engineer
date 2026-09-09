@@ -32,7 +32,11 @@ const maquina = process.argv[3] ?? '192.168.0.78';
 const NIVEL_FUENTE_DB = Number(process.argv[5] ?? '-30');
 const HZ = 1000;
 const FM = 48000;
-const SEGUNDOS = 60;
+// Largo del tono. Un barrido de veinte puntos tarda mas de un minuto y medio,
+// y cuando el tono se acaba las lecturas siguen saliendo: son el ruido de
+// fondo subiendo con la ganancia, que se parece lo suficiente a una medicion
+// como para que uno la crea. Paso una vez.
+const SEGUNDOS = 300;
 
 /**
  * Posiciones crudas del fader a recorrer. La primera es 0 dB según el código.
