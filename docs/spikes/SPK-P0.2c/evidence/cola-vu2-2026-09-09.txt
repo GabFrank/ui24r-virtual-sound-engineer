@@ -40,3 +40,28 @@ POR QUE IMPORTA
 Es todo lo que hace falta para saber que esta pasando en las SALIDAS y no solo
 en las entradas. Sin esto, la aplicacion puede decir que un canal esta bien
 puesto pero no que el general este saturando.
+
+=== SECCIONES UBICADAS (misma sesion, con envios de auxiliar) ===
+Subiendo un envio del canal 10 a un auxiliar y viendo que bytes se mueven.
+Posiciones RELATIVAS al fin de las entradas (byte 152 absoluto).
+
+  auxiliar 1 -> 82, 83, 84, 85
+  auxiliar 4 -> 97, 99, 100
+
+Tres auxiliares de distancia son 15 bytes: EL PASO DE LOS AUXILIARES ES DE 5,
+no de 6. Y la cuenta cierra: 10 auxiliares por 5 bytes son 50, que desde el 82
+llegan al 132 -- exactamente donde empieza el general medido antes.
+
+AHI ESTABA EL PROBLEMA. La cola no "parecia desalineada": las secciones NO
+COMPARTEN EL PASO. Leerla con el paso de 6 de las entradas la desalinea a
+partir de los auxiliares.
+
+MAPA HASTA AHORA (relativo al fin de las entradas)
+     0 .. 81   linea, subgrupos y efectos, en algun orden y con algun paso
+    82 .. 131  10 auxiliares, 5 bytes cada uno   <- MEDIDO
+   132 ..      general                            <- MEDIDO
+
+FALTA
+Los 82 bytes de adelante: 2 de linea, 6 subgrupos y 4 efectos, doce bloques
+que no dan un paso entero con 82. Se fijan igual: asignar el canal a un
+subgrupo y subir un envio a un efecto, una cosa por vez.

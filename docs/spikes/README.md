@@ -40,3 +40,30 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | ACK-POLICY | El **mecanismo**: segunda conexión testigo, medida en 27 ms | La tabla parámetro a método y el texto de INV-011. Es redacción, no laboratorio |
 | P0.2a | Rutas confirmadas contra el aparato, y las dos primeras escrituras reales | Reproductor, grabación multipista, punto de derivación y enlace estéreo |
 | P0.10b | Escala y recorrido —80 dB—, balística, tasa, respuesta en frecuencia, techo y repetibilidad | Solo la correspondencia con **dBFS absolutos**, que exige un bucle físico calibrado |
+
+## Qué se puede tocar durante una sesión de medición
+
+Acordado con el dueño del equipo el 2026-09-09, y vale **sólo para los scripts
+de `tools/spikes/` durante una sesión de medición**. No cambia nada de lo que
+la aplicación puede hacer: sus reglas siguen siendo las de `CONTRIBUTING.md`, y
+en particular INV-010 le sigue prohibiendo tocar un envío de monitor.
+
+**La consola entera está disponible**, incluidos los envíos de auxiliar, los
+subgrupos y los efectos, que son lo que hace falta para ubicar cada sección de
+la trama `VU2`.
+
+**Lo único prohibido: borrar las instantáneas guardadas en la consola.** Son el
+trabajo de la banda y no se recuperan.
+
+Dos condiciones que hacían seguro el acuerdo cuando se tomó, y que hay que
+volver a comprobar en cada sesión en vez de darlas por ciertas:
+
+- No había **nada conectado a los parlantes**.
+- Las únicas señales presentes eran la fuente de medición en el canal 10 y
+  audio en los canales 21 y 22.
+
+Si alguna de las dos cambia —alguien enchufa unos in-ears, se alimenta el
+sistema— el acuerdo no aplica: un envío de auxiliar subido a ciegas con
+alguien usando monitores es de las pocas cosas que pueden lastimar a una
+persona. Y como siempre: anotar el valor anterior antes de tocar, y devolverlo
+al terminar.
