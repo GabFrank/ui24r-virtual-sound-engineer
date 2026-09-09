@@ -303,7 +303,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   marcaba la conexión como inestable entre tema y tema y durante toda la prueba
   de sonido, justo cuando el operador mira la pantalla. Ahora se vigila el
   analizador, que no hace esa supresión: 30,0 Hz con señal y 30,2 Hz en silencio,
-  con percentil 95 de 37 ms. La opción pasó de `umbralHuecoVuMs` a Ese percentil es **el de la laptop**; el que fija el umbral de 99 ms es el de la **tablet**, 40 ms, que es el aparato donde corre la aplicación.
+  con percentil 95 de 37 ms. Ese percentil es **el de la laptop**; el que fija el umbral de 99 ms es el de la **tablet**, 40 ms, que es el aparato donde corre la aplicación.
   `umbralHuecoRtaMs`.
 
 ### Cambiado

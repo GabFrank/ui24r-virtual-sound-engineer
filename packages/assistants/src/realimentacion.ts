@@ -32,7 +32,23 @@
  * autonomía se queda en avisar: la decisión de bajar algo es del operador.
  */
 
-/** Caída del analizador, medida: 20 dB en ~300 ms. */
+/**
+ * Caída del analizador, medida.
+ *
+ * **Y es una caída propia del `RTA`, no de la aplicación.** El medidor de nivel
+ * manda el instantáneo y suaviza el cliente; el analizador viene ya suavizado
+ * del otro lado del cable. Por eso esta constante es una *referencia* contra la
+ * que comparar, y no una balística que nosotros dibujemos: la regla del
+ * detector es «esta banda no cayó lo que el analizador la habría hecho caer».
+ *
+ * Medida dos veces con métodos distintos. La primera pasada dio 20 dB en unos
+ * 300 ms —de donde sale este 20/0,3—. Una auditoría posterior, con seis ráfagas
+ * y midiendo del 90 % al 10 %, dio ~536 ms para todo el recorrido con una rampa
+ * **lineal en bytes** de ~5,2 por trama, o sea unos **59 dB/s** contra los 67
+ * de acá. La diferencia es del orden del 12 % y no cambia ninguna conclusión
+ * del detector —los umbrales tienen más margen que eso— pero conviene saber que
+ * el número está medido con esa incertidumbre y no al decimal.
+ */
 export const CAIDA_ESPERADA_DB_POR_S = 20 / 0.3;
 
 /**

@@ -73,3 +73,18 @@ export function decodificarEspectro(base64: string): number[] {
 export function hayEspectro(bandas: readonly number[]): boolean {
   return bandas.some((db) => db > 0);
 }
+
+/**
+ * Si la trama tiene el largo que la ley de bandas supone.
+ *
+ * **La primera trama de cada sesión mide 128 bandas y no 122.** Aparece en las
+ * tres capturas archivadas de SPK-P0.1: `{128: 1, 122: 147/904/144}`. Llega en
+ * ceros, así que hasta ahora no hizo daño, pero `frecuenciaDeBanda` ancla en
+ * «banda 67 = 1 kHz» y con otro largo el índice deja de significar lo mismo.
+ *
+ * No se sabe por qué la primera es distinta. Mientras no se sepa, lo honesto es
+ * poder preguntarlo antes de interpretar, en vez de asumir que siempre son 122.
+ */
+export function largoEsperado(bandas: readonly number[]): boolean {
+  return bandas.length === RTA_BANDAS;
+}

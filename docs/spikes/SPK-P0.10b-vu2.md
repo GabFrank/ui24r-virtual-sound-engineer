@@ -44,7 +44,7 @@ Barra proporcional a la posición y marcas espaciadas linealmente en decibeles d
 dB = 80 · posicion − 80        // 0 dB en la punta, −80 en el fondo
 ```
 
-Un escalón del byte son **0,333 dB**. Eso es lo que vale `MEDIDOR_RANGO_DB` en el adaptador, y **es lo correcto**.
+Un escalón del byte son **0,333 dB**, que es `MEDIDOR_RANGO_DB` —80— por la escala del byte. La constante vale 80, no 0,333.
 
 **Queda falsada la hipótesis anterior**, que era que la consola dibuja sus medidores con la misma regla que sus faders. No es así: con la ley del fader el byte 225 daba +4,6 dB.
 
@@ -74,9 +74,9 @@ Lo que faltaba mirar es que **esos barridos no coincidían entre sí**. Expresad
 | crudo 0,2000 | byte de salida **66,3** |
 | recorrido del medidor | **114,7 escalones** |
 | atenuación según la ley de fader de la consola | **38,19 dB** |
-| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,25 dB** |
+| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,24 dB** |
 
-**Coincide en 0,06 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
+**Coincide en 0,05 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
 
 La constante volvió a 80 en el commit `98d59af`, y el test fuerte de la escala pasó a ser este y no el de la fuente externa: ata la conversión del medidor a la ley del fader con bytes medidos.
 

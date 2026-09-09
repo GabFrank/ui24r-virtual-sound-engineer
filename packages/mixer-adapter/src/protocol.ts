@@ -216,7 +216,7 @@ export const VU_ESCALA = 0.004167508166392142;
  * del canal, que es una ganancia digital dentro de la consola, con la fuente
  * fija y el medidor de entrada de testigo. De 0 a −38,19 dB de atenuación
  * —según la propia ley de fader de la consola— el medidor recorrió 114,7
- * escalones. Con este recorrido de 80 eso da 38,25 dB: **coincide en 0,06 dB
+ * escalones. Con este recorrido de 80 eso da 38,24 dB: **coincide en 0,05 dB
  * sobre 38**. Dos hechos independientes tomados del código de la consola, su
  * `VU_RANGE` y su `VtoLIN`, concuerdan entre sí y con la medición limpia.
  *
@@ -354,9 +354,35 @@ export interface MedidorCanal {
   readonly entrada: number;
   /** Nivel de salida, después del fader. */
   readonly salida: number;
-  /** Entrada del procesador dinámico. Solo lo llena el canal seleccionado. */
+  /**
+   * Los dos bytes del bloque dinámico, `+3` y `+4`.
+   *
+   * **No los llena «solo el canal seleccionado», y eso era imposible.**
+   * `selectedStrip` es estado del **cliente**: la consola no sabe qué tira está
+   * mirando cada tableta, así que no puede llenar bytes selectivamente. Lo que
+   * hace el cliente es *dibujarlos* solo para la tira seleccionada. Llegan
+   * siempre, en todos los canales y en todos los buses. Comprobado en una trama
+   * archivada con música: los canales 21 y 22, que no eran la tira
+   * seleccionada, traen los dos bytes llenos.
+   *
+   * O sea que la aplicación viene tirando, en cada trama y en cada canal, el
+   * dato que dice cuánto está trabajando el procesamiento — que es justo lo que
+   * se fue a buscar por el byte de reducción.
+   *
+   * **Qué son exactamente queda con una tensión sin resolver.** El cliente los
+   * lee como entrada y salida del bloque dinámico, y muestra el mismo par en la
+   * página del compresor y en la de la puerta (`d.vuIN`/`d.vuOUT` y
+   * `f.vuIN`/`f.vuOUT`). Pero una auditoría midió que **`+3` se anula con
+   * `gate.enabled = 0` y `+4` con `dyn.bypass = 1`**, cada uno por su sección,
+   * que no es lo que uno espera de la entrada y la salida de un mismo bloque.
+   *
+   * Las dos observaciones pueden convivir —el motor podría calcular cada byte
+   * solo cuando su sección está activa, y el cliente rotularlos in/out igual—
+   * pero no está resuelto. Por eso los nombres se dejan como están: cambiarlos
+   * a «medidor de la puerta» y «medidor del compresor» afirmaría la lectura de
+   * la medición sobre la del cliente, y todavía no hay con qué elegir.
+   */
   readonly dinamicoEntrada: number;
-  /** Salida del procesador dinámico. Solo lo llena el canal seleccionado. */
   readonly dinamicoSalida: number;
   /** Byte crudo de reducción de ganancia y bandera, sin interpretar. */
   readonly byteReduccion: number;

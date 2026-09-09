@@ -143,14 +143,14 @@ Prefijos de clave por cantidad: `i` 3252, `a` 1330, `s` 612, `f` 452, `l` 246, `
 | | consola en silencio, 30 s | música por las RCA, 90 s |
 |---|---|---|
 | `VU2` | **1 trama** | **1 932 tramas** |
-| `VUA` | 1 | 1 (los auxiliares seguían en silencio) |
+| `VUA` | 1 | 1 (nadie tenía abierta la página de Automix) |
 | `RTA` | 905, a 30,2 Hz | 2 569, a 30,0 Hz |
 
 Con `INIT` a los 3 s llegó exactamente **una** `VU2` más. O sea: `VU2` viaja con el volcado de estado, y además fluye mientras haya algo que medir.
 
 No hay comando de suscripción a medidores: ninguno de los dieciséis comandos del cliente oficial los pide. `settings.disableVUs` es una preferencia **del cliente**, que filtra en `parseVUdata()`.
 
-**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**. **Ese umbral está derogado**: sale de la media de `VU2`, y `VU2` se calla en silencio, así que la conexión se declararía inestable entre tema y tema (R-25). El vigente son **99 ms sobre `RTA`**, que es el flujo que no se apaga.
+**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**. **Ese umbral está derogado**: sale de la media de `VU2`, y `VU2` se calla en silencio, así que la conexión se declararía inestable entre tema y tema (R-25). El de la fórmula son **99 ms sobre `RTA`**, que es el flujo que no se apaga — y el que el código vigila son **300 ms**, un margen elegido a propósito sobre ese resultado: con 99 bastarían tres tramas perdidas para declarar inestable.
 
 Tres advertencias sobre ese número:
 
@@ -250,7 +250,7 @@ Si la barra es proporcional a la posición y las marcas están espaciadas lineal
 dB = 80 · posicion − 80        // 0 dB en la punta, −80 en el fondo
 ```
 
-Un escalón del byte son `80 × 0,004167` = **0,333 dB**. Eso es lo que vale `MEDIDOR_RANGO_DB` en el adaptador.
+Un escalón del byte son `80 × 0,004167` = **0,333 dB**. Ese 80 es `MEDIDOR_RANGO_DB` en el adaptador; el escalón sale de multiplicarlo por la escala, no es la constante misma.
 
 **El recorrido está medido, y da 80.** No es solo lectura de código. Medido el 2026-09-09 contra la consola en `192.168.0.78`, moviendo **el fader del canal**, que es una ganancia digital *dentro* de la consola: entre la fuente y el medidor no hay nada analógico que pueda mentir. Fuente fija, y el medidor de entrada como testigo —se mantuvo clavado en **−20,76 dB en las quince posiciones**—:
 
@@ -260,9 +260,9 @@ Un escalón del byte son `80 × 0,004167` = **0,333 dB**. Eso es lo que vale `ME
 | crudo 0,2000 | byte de salida **66,3** |
 | recorrido del medidor | **114,7 escalones** |
 | atenuación según la ley de fader de la consola | **38,19 dB** |
-| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,25 dB** |
+| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,24 dB** |
 
-**Coincide en 0,06 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
+**Coincide en 0,05 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
 
 > **El recorrido estuvo escrito como 84,5 dB en este documento durante unas horas, y era falso.** Venía de tres barridos de tono con una fuente externa conocida, cada uno una recta impecable —pendientes de 0,9438, 0,9379 y 0,9507 contra el recorrido de 80, desvíos de 0,79, 0,21 y 0,39 dB—. Lo que faltaba mirar es que **no coincidían entre sí**: en dB por escalón del byte daban 0,3516, 0,3582 y 0,3644 según la zona del medidor en la que se midiera, y un cuarto barrido a niveles altos confirmó el 0,3644. Una escala tiene un solo factor; tres factores según el nivel son la cadena analógica —conversor, cable, previo, ruido— metiéndose en el medio.
 >
@@ -383,7 +383,19 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 | Alcance | ~20,9 Hz a ~22,6 kHz |
 | Escala | **0,375 dB por byte** — no es la del medidor |
 | Cadencia | ~30 tramas por segundo |
-| Balística | sube al instante, cae 20 dB en ~300 ms |
+| Balística | sube dentro de una trama —≤ 33 ms, no se resuelve más fino— y **cae con su propia rampa lineal**, ~5,2 bytes por trama, unos 59 dB/s. De 90 % a 10 % tarda ~536 ms |
+
+**La caída del `RTA` viene en los datos, y la del medidor no.** Es una diferencia que importa y que el marco general de este documento no cubría: de `VU2` está medido que la consola manda el **nivel instantáneo** y que la balística la dibuja el cliente. Con el analizador es al revés — el suavizado ya viene hecho del otro lado del cable. En las mismas tramas, con el mismo corte de señal:
+
+```
+t=5296  rta=92  vu=112
+t=5329  rta=86  vu=0      <- el VU cae de golpe
+t=5362  rta=79  vu=0
+...
+t=5900  rta=0   vu=0      <- el RTA tarda ~600 ms
+```
+
+Quien suavice el espectro del lado de la aplicación estaría **apilando dos balísticas**. La detección de realimentación no lo hace: su regla —«no cayó como debía»— usa justamente esta caída como referencia.
 
 **La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. **Llega en el volcado inicial** —`SETS^var.rta^`, medido el 2026-09-09—, así que el valor anterior se puede leer antes de tocarlo. Una nota anterior de este repositorio decía que la clave no existía en el volcado y estaba equivocada; sobre ella se apoyaba la costumbre de «restaurar» a cadena vacía, que es reconstruir y no devolver. Aceptan `i.N` y `m` —el general, que devuelve 78 bandas y no 122—; `a.0` no respondió. Mientras esté vacía no llega espectro, solo la trama de vida.
 

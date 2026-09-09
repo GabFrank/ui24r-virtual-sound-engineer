@@ -31,7 +31,7 @@ Se van anotando a medida que salen, no al cerrar: una decisión escrita el día 
 
 | Decisión | Qué se decidió | De dónde sale |
 |---|---|---|
-| **Umbral de inestabilidad de la conexión** | **99 ms**, tres veces el intervalo medio de `RTA` medido desde la tablet. Se vigila `RTA` y **nunca** `VU2` | SPK-P0.1, criterio 4 |
+| **Umbral de inestabilidad de la conexión** | **99 ms**, tres veces el intervalo medio de `RTA` medido desde la tablet. Se vigila `RTA` y **nunca** `VU2` | SPK-P0.1, criterio 4 | **Ojo: 99 ms es lo que da la fórmula, no lo que el código usa.** El adaptador vigila con **300 ms** —ocho tramas perdidas del analizador— por decisión explícita: sobre `RTA`, que no se apaga en silencio, 99 ms serían tres tramas y quedaría sensible a cualquier hipo de la wifi. Los dos números son correctos y describen cosas distintas: 99 es el resultado del criterio del charter, 300 el margen que se eligió sobre él.
 | **Política de confirmación de escrituras** | **Segunda conexión testigo**, medida en 27 ms. Costo: el testigo recibe el volcado completo y los flujos de medidores. La ADR está en redacción | SPK-ACK-POLICY |
 | **Mecanismo de presencia** | Sin elegir | SPK-P0.9, criterio 6 |
 | **Plan del soundcheck virtual** | Sin elegir | SPK-P0.7a |

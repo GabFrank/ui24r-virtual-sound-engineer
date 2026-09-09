@@ -46,9 +46,9 @@ La cola de la trama son 154 bytes y sus secciones **no comparten el paso**:
 
 Detalle y método en `docs/protocol-spec.md` §4.3 y en `evidence/cola-vu2-2026-09-09.txt`.
 
-**Queda abierto qué es cada byte dentro de un bloque.** En el auxiliar, el `+1` sigue al fader. En el subgrupo, mover `s.0.mix` no movió nada, y no se distinguió si el medidor es anterior al fader o si la escritura no tomó efecto — hace falta la conexión testigo para saberlo.
+**Resuelto el 2026-09-09.** El bloque de subgrupo y el de efecto son tiras **estéreo** de 7 bytes: `+0`/`+1` previo izquierdo y derecho, `+2`/`+3` posterior al fader, `+4`/`+5` del bloque dinámico, `+6` reducción e indicador de puerta. El auxiliar es mono de 5. La primera lectura concluyó «el medidor del subgrupo es anterior al fader» porque mover `s.0.mix` no movía nada; era falso — `s.0.mute` valía 1 y los bytes posteriores estaban en cero.
 
-## Evidencia a entregar## Evidencia a entregar
+## Evidencia a entregar
 
 - `evidence/output-raw-tables/`, `evidence/geq-search.md`.
 

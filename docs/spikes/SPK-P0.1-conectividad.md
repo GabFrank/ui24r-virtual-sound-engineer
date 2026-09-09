@@ -113,7 +113,7 @@ en `192.168.0.78`, firmware `3.4.8318-ui24`:
 silencio, con picos de casi cinco segundos. Es la misma supresión de arriba, vista ahora desde
 el aparato que se va a usar en el show: **una conexión perfecta se leería como moribunda si se
 juzgara por los medidores.** Con la fórmula del charter, tres veces el intervalo medio de `RTA`,
-el umbral de inestabilidad queda en **99 ms**.
+el umbral de inestabilidad queda en **99 ms**. **Ojo: 99 ms es lo que da la fórmula, no lo que el código usa.** El adaptador vigila con **300 ms** —ocho tramas perdidas del analizador— por decisión explícita: sobre `RTA`, que no se apaga en silencio, 99 ms serían tres tramas y quedaría sensible a cualquier hipo de la wifi. Los dos números son correctos y describen cosas distintas: 99 es el resultado del criterio del charter, 300 el margen que se eligió sobre él.
 
 Los 33 ms del teléfono coinciden con los 33,3 ms que la laptop había medido por cable, así que
 **el teléfono sostiene la cadencia del protocolo**: el radio y la gestión de energía del
