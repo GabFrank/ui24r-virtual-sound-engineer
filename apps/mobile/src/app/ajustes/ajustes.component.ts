@@ -73,6 +73,15 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
                      [ngModel]="host()" (ngModelChange)="prefs.fijarHost($event)" />
             </ui-field>
 
+            <label class="conmutador">
+              <input type="checkbox" [checked]="autoconectar()"
+                     (change)="cambiarAutoconectar($event)" />
+              <span>
+                Conectar sola al abrir la aplicación
+                <small>Contra esta misma dirección. Apagala si trabajás sin la consola a mano.</small>
+              </span>
+            </label>
+
             <div class="racimo">
               @if (conectado()) {
                 <ui-button variante="secundario" icono="cerrar" (pulsado)="desconectar()">
@@ -203,6 +212,16 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
     </div>
   `,
   styles: [`
+    /* El area tocable llega a los 44 px de la guia aunque la casilla del
+     * sistema sea mas chica: quien lo va a tocar esta de pie y con poca luz. */
+    .conmutador {
+      display: flex; align-items: flex-start; gap: var(--sp-3);
+      min-height: 44px; padding: var(--sp-2) 0; cursor: pointer;
+    }
+    .conmutador input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+    .conmutador span { color: var(--ink); line-height: var(--alto-linea); }
+    .conmutador small { display: block; color: var(--muted); font-size: var(--txt-sm); }
+
     .nota { color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea); }
     .error { color: var(--danger); font-size: var(--txt-sm); }
 
@@ -299,6 +318,12 @@ export class AjustesComponent {
   }
 
   irAActualizacion(): void { void this.router.navigate(['/ajustes/actualizacion']); }
+  readonly autoconectar = this.prefs.autoconectar;
+
+  cambiarAutoconectar(ev: Event): void {
+    this.prefs.fijarAutoconectar((ev.target as HTMLInputElement).checked);
+  }
+
   irADiagnostico(): void { void this.router.navigate(['/ajustes/diagnostico']); }
 
   alternarGraves(): void {

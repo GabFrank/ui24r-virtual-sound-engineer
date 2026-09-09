@@ -56,7 +56,17 @@ export class Preferencias {
   private readonly _host = signal(migrarHost(this.leer(CLAVE_HOST) ?? HOST_POR_DEFECTO));
   readonly host = this._host.asReadonly();
 
-  private readonly _autoconectar = signal(this.leer(CLAVE_AUTOCONECTAR) === 'si');
+  /**
+   * Conectar sola al abrir, contra la última dirección guardada.
+   *
+   * **Encendida salvo que alguien la apague**, y por eso se compara contra
+   * `'no'` y no contra `'si'`: quien abre esta aplicación en un ensayo la abre
+   * para ver la consola, y hacerle tocar «Conectar» cada vez es una ceremonia
+   * sin sentido tres minutos antes de empezar. Apagarla tiene sentido cuando
+   * se trabaja sin consola a mano: el intento falla igual, pero deja un error
+   * en pantalla que no viene a cuento.
+   */
+  private readonly _autoconectar = signal(this.leer(CLAVE_AUTOCONECTAR) !== 'no');
   readonly autoconectar = this._autoconectar.asReadonly();
 
   fijarHost(v: string): void {

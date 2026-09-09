@@ -61,8 +61,25 @@ export interface EstadoCanal {
    */
   readonly gainDb: number | null;
   readonly silenciado: boolean;
+  /**
+   * Nivel de **entrada**, antes del fader.
+   *
+   * Es el que importa para el margen del previo: no cambia porque alguien
+   * mueva un fader. En la consola es la marca fantasma del medidor, no la
+   * barra de color.
+   */
   readonly nivelDb: number;
   readonly picoDb: number;
+  /**
+   * Nivel de **salida**, después del fader.
+   *
+   * Es la barra de color que dibuja la consola en su tira. Se muestra para
+   * que quien mire las dos pantallas a la vez encuentre el mismo número, y
+   * porque la diferencia con la entrada es el fader: sirve para ver de un
+   * vistazo cuánto se está atenuando un canal.
+   */
+  readonly nivelSalidaDb: number;
+  readonly picoSalidaDb: number;
   readonly eventosSaturacion: number;
 }
 
@@ -99,6 +116,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private canalesDetectados = 0;
   private readonly nivelesVu = new Map<number, number>();
   private readonly picosVu = new Map<number, number>();
+  private readonly nivelesSalida = new Map<number, number>();
+  private readonly picosSalida = new Map<number, number>();
   private readonly saturaciones = new Map<number, number>();
 
   private info: DeviceInfo = { modelo: 'desconocido', firmware: 'desconocido' };
@@ -350,6 +369,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         silenciado: (mute?.valor ?? 0) > 0.5,
         nivelDb: this.nivelesVu.get(canal) ?? -Infinity,
         picoDb: this.picosVu.get(canal) ?? -Infinity,
+        nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
+        picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
         eventosSaturacion: this.saturaciones.get(canal) ?? 0,
       });
     }
@@ -416,6 +437,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
       const picoPrevio = this.picosVu.get(canal) ?? -Infinity;
       this.picosVu.set(canal, Math.max(picoPrevio, db));
+
+      const dbSalida = dbDeMedidor(medidor.salida);
+      this.nivelesSalida.set(canal, dbSalida);
+      const picoSalidaPrevio = this.picosSalida.get(canal) ?? -Infinity;
+      this.picosSalida.set(canal, Math.max(picoSalidaPrevio, dbSalida));
 
       // Saturación: la consola enciende su indicador cuando el medidor llega a
       // la punta de la escala —`1 <= valor` en `setVU`—, que son 0 dB. Antes
@@ -496,6 +522,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
   /** Reinicia los contadores de pico y saturación al empezar una captura. */
   reiniciarPicos(): void {
+    this.picosSalida.clear();
     this.picosVu.clear();
     this.saturaciones.clear();
   }

@@ -75,6 +75,8 @@ interface FilaDeTelemetria {
   readonly picoDb: number;
   readonly nivel: string;
   readonly pico: string;
+  /** El mismo número que dibuja la barra de color de la consola. */
+  readonly picoSalida: string;
   readonly margen: string;
   readonly margenEscaso: boolean;
   readonly ganancia: string;
@@ -151,6 +153,7 @@ function db(v: number): string {
                 <th scope="col" class="medidor">Nivel</th>
                 <th scope="col" class="num">Actual</th>
                 <th scope="col" class="num">Pico ent.</th>
+                <th scope="col" class="num">Pico sal.</th>
                 <th scope="col" class="num">Margen</th>
                 <th scope="col" class="num">Ganancia</th>
                 <th scope="col" class="num">Fader</th>
@@ -171,6 +174,7 @@ function db(v: number): string {
                   </td>
                   <td class="num">{{ f.nivel }}</td>
                   <td class="num">{{ f.pico }}</td>
+                  <td class="num suave">{{ f.picoSalida }}</td>
                   <td class="num" [class.escaso]="f.margenEscaso">
                     {{ f.margen }}
                     @if (f.margenEscaso) { <ui-badge tono="aviso">Escaso</ui-badge> }
@@ -200,6 +204,7 @@ function db(v: number): string {
                                  [etiqueta]="'nivel de ' + f.nombre" />
                 <div class="fila2 num">
                   <span>Pico ent. {{ f.pico }}</span>
+                  <span class="suave">Sal. {{ f.picoSalida }}</span>
                   <span [class.escaso]="f.margenEscaso">Margen {{ f.margen }}</span>
                   <span>Ganancia {{ f.ganancia }}</span>
                 </div>
@@ -231,6 +236,10 @@ function db(v: number): string {
   `,
   styles: [`
     @use 'tokens' as *;
+
+    /* La salida es dato de contexto: el que decide la ganancia es el de
+     * entrada, y dos cifras con el mismo peso invitan a mirar la que no es. */
+    .suave { color: var(--texto-suave); }
 
     .nota-estimado {
       color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea);
@@ -349,6 +358,7 @@ export class TelemetryComponent {
       picoDb: c.picoDb,
       nivel: db(c.nivelDb),
       pico: db(c.picoDb),
+      picoSalida: db(c.picoSalidaDb),
       margen: !Number.isFinite(c.picoDb) || c.picoDb <= -80 ? '—' : (-c.picoDb).toFixed(1),
       margenEscaso: Number.isFinite(c.picoDb) && c.picoDb > MARGEN_ESCASO_DB,
       // El «≈» no es decoración. La ganancia y el fader salen de curvas que
@@ -366,8 +376,8 @@ export class TelemetryComponent {
   );
 
   readonly resumen = computed(
-    () => `${this.filas().length} canales · niveles de entrada, antes del fader · solo lectura: `
-      + 'esta versión no escribe nada en la consola',
+    () => `${this.filas().length} canales · entrada antes del fader y salida después · `
+      + 'solo lectura: esta versión no escribe nada en la consola',
   );
 
   /** Se apaga solo el día que SPK-P0.2a mida las curvas. */
