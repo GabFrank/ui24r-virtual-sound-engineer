@@ -1,6 +1,6 @@
 # Matriz de capacidades del protocolo Ui24R
 
-**Versión 1.** Derivada de la auditoría técnica contra `soundcraft-ui-connection` v7.0.3, y **con siete filas probadas contra una consola real el 2026-09-08** (sesión local con hardware, SPK-P0.1 y SPK-P0.2a). El resto sigue sin probar.
+**Versión 1.** Derivada de la auditoría técnica contra `soundcraft-ui-connection` v7.0.3, y **con las filas marcadas en la columna *Probado* verificadas contra una consola real el 2026-09-08** (sesiones locales con hardware, SPK-P0.1, SPK-P0.2a y la parte de SPK-P0.10b que no necesita tonos). El resto sigue sin probar.
 
 **Regla:** ninguna función de producto se implementa sobre una fila que no esté en estado CONFIRMADO **y** con la columna *Probado* en sí. Ver ADR-006.
 
@@ -18,6 +18,10 @@
 > **El rango no es la curva, y ahora hay curva para dos filas.** El fader y la ganancia de entrada dejaron de ser suposiciones: sus conversiones se extrajeron del `mixer.html` que la propia consola sirve, y `VERIFICADO_CONTRA_CONSOLA` pasó a `true`. Dos cosas cambiaron de valor al medirlas: **el fader llega a +10 dB, no a 0** —dar por sentado que 1,0 es 0 dB erra diez decibeles en el extremo peligroso—, y **la ganancia de entrada es escalonada**, con 48 valores posibles (de 2 en 2 dB hasta +26, de 1 en 1 desde +27); la recta que se suponía antes erraba más de un decibel. El ecualizador, el compresor y la puerta siguen sin curva y siguen fuera de `conversiones.ts` por eso. Ojo con qué garantiza esto: que nuestra lectura coincide con la que ve el operador en la consola. La correspondencia con un nivel digital real la mide SPK-P0.10b y no está medida. El nivel y el pico no llevan esa marca: vienen de los medidores y son medidas. Y cuando la consola todavía no dijo un valor, la pantalla escribe «—» en vez de un número: antes se devolvía el extremo del rango como si fuera una lectura, que es el peor valor posible para equivocarse y llevaba la misma marca que una estimación real.
 
 > **La ruta manda sobre la clase declarada.** `clasificarRuta` deriva de la ruta a qué categoría de propiedad pertenece, y el motor rechaza si no coincide con la que declaró quien propone (INV-008/INV-010). Dos correcciones que salieron de comparar el clasificador con esta tabla: la alimentación fantasma es `hw.N.phantom` y no `i.N.phantom`, y `var.mtk.*` —soundcheck y multipista— estaba clasificado como envío al bus de análisis, o sea como el **único routing escribible** que admite INV-008. El envío al bus de análisis solo se reconoce si se dice qué auxiliar es ese bus, que lo tiene que decir SPK-P0.5: sin ese dato, todos los `i.N.aux.M.value` son envíos de monitor y no se escribe ninguno.
+
+> **La `N` de estas rutas es de base cero, y no leerlo así corre la tabla entera.** El canal 1 es `i.0.mix`, `hw.0.gain`, `i.0.name`. Está medido contra el aparato y escrito en [protocol-spec.md](protocol-spec.md) desde el 2026-09-08, y aun así el adaptador componía `i.1` para el canal 1: la trama `VU2` sí trae el canal 1 en su posición 0, así que el nivel caía en la fila correcta y **todo lo demás corrido uno** —nombre, ganancia, fader y silencio del canal siguiente al lado del medidor del anterior—. Un asistente que propusiera bajar esa ganancia habría nombrado el canal equivocado, y en nivel ASISTIDO habría escrito en el equivocado. Corregido en `eb3900a`. No lo agarró ningún test porque el simulador cargaba la misma suposición y los dos errores se cancelaban: un test que pasa contra el simulador no cierra nada.
+
+> **La consola reporta veinticuatro entradas y hay que preguntárselo.** La cabecera de cada trama `VU2` trae la cantidad de entradas en su byte 0 y el volcado manda un `i.N.name` por cada una. La aplicación tenía doce fijos, y las dos entradas RCA —los canales 21 y 22, justo la fuente con la que se prueba con música— no se veían. La cantidad de canales sale de lo que informa la consola, nunca de una constante.
 
 ## Entradas y canales
 
@@ -77,10 +81,14 @@
 | Instantáneas: guardar, recuperar, listar | `shows.*` | `SAVESNAPSHOT`, `LOADSNAPSHOT`, `SNAPSHOTLIST` | CONFIRMADO. Sobrescribe sin pedir confirmación | ⬜ | P0.8 |
 | Alcance de la recuperación | — | — | DESCONOCIDO | ⬜ | P0.8 |
 | Borrado o renombrado de instantánea | — | — | DESCONOCIDO | ⬜ | P0.8 |
-| Medidores | `vuProcessor.*` | `VU2` | CONFIRMADO. Balística y tasa DESCONOCIDAS | ⬜ | P0.2a, P0.10b |
-| Analizador de espectro de la consola por red | — | — | DESCONOCIDO | ⬜ | P0.2a |
+| Medidores: reparto de bytes y escala | `vuProcessor.*` | `VU2` | CONFIRMADO. Escala leída del `mixer.html` de la consola y comprobada contra el aparato en dos puntos: `dB = 80 · posición − 80`, **0,333 dB por escalón del byte**. Balística y tasa DESCONOCIDAS, y la correspondencia con dBFS **sin medir** | ✅ | P0.2a, P0.10b |
+| Medidores: qué byte es cada cosa | — | `VU2`, bloque de 6 bytes por canal | CONFIRMADO. `+0` pre, `+1` entrada, `+2` salida después del fader. La consola dibuja la salida en la barra y la entrada como fantasma; la diferencia dio el fader del canal con una décima de error | ✅ | P0.10b |
+| Medidores: saturación | — | — | CONFIRMADO. La consola enciende su indicador cuando la barra llega a la punta, o sea a 0 dB. No hay ni hace falta un umbral propio | ✅ | P0.10b |
+| Indicador de puerta de ruido en la trama | — | `VU2`, bit 7 del byte `+5` del canal | CONFIRMADO como `GATEind`. **No es saturación**: vale 1 en todos los canales quietos, y leerlo como clip da los veinticuatro canales saturando sin parar | ✅ | P0.10b |
+| Sección de `VU2` posterior a las entradas: media, auxiliares, efectos | — | — | DESCONOCIDO. Los bytes restantes no cierran en múltiplo de 6 con la lectura de arriba | ⬜ | P0.10b |
+| Analizador de espectro de la consola por red | — | `RTA^<base64>` | El **flujo** es CONFIRMADO: llega a ~30 Hz sin condición, con señal y en silencio, y por eso es la señal de vida de la conexión. Su **contenido** sigue DESCONOCIDO: no está decodificado | ✅ como flujo, ⬜ como dato | P0.1, P0.2a |
 | Información del dispositivo y firmware | `deviceInfo.*` | `model`, `firmware` | CONFIRMADO | ⬜ | P0.2a |
-| Estado de conexión | `status$` | latido cada segundo | CONFIRMADO. Sin medida de ida y vuelta | ⬜ | P0.1 |
+| Estado de conexión | `status$` | latido cada segundo | CONFIRMADO. Sin medida de ida y vuelta. La cadencia que decide si la conexión es inestable se mide sobre `RTA`: 33 ms de media y p95 de 40 ms **desde la tablet**, igual en silencio que con señal, o sea umbral de 99 ms. Nunca sobre `VU2`, que en silencio da 1 231 ms de media | ✅ | P0.1 |
 | Identidad del cliente en los mensajes | — | **no existe** | CONFIRMADO como ausente | ⬜ | P0.1 |
 | Eco de las escrituras propias | — | — | DESCONOCIDO | ⬜ | P0.1 |
 | Consola como interfaz USB de 32 canales hacia Android | — | — | DESCONOCIDO | ⬜ | P0.3b |

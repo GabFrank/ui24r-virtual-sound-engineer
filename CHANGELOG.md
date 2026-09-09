@@ -4,7 +4,63 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Catálogo de instrumentos, para elegirlos en vez de escribirlos.** Cada
+  instrumento se describe con tres facetas independientes —qué es, qué clase de
+  esa cosa es y para qué se lo usa en el tema— y no con un árbol de tres
+  niveles: el árbol multiplica hojas por combinación y obliga a recorrer ramas
+  para preguntar «todos los repiques», que con facetas es un filtro. Cada
+  fuente declara qué variantes y qué roles admite, así que un djembe no puede
+  quedar con tesitura de voz. Elegir una fuente trae su perfil de canal;
+  **djembe y bombo quedan a propósito sin perfil**, con el motivo escrito, en
+  vez de heredar el más parecido y presentar rangos que nadie midió para ellos.
+  El texto ya cargado no se pierde: la migración 4 le da forma al documento sin
+  interpretarlo, el dominio lo clasifica al guardarlo y la pantalla sigue
+  mostrando lo que el usuario escribió. Documentado en
+  [docs/instrumentos.md](docs/instrumentos.md), con un test que compara sus
+  tablas con el código.
+
 ### Corregido
+
+- **A un integrante de la banda solo se lo podía borrar.** Un nombre mal escrito
+  o un instrumento equivocado obligaban a quitarlo y cargarlo de nuevo, y el
+  alta le da un identificador nuevo: todo lo que apuntaba al anterior
+  —empezando por la asignación de canal— quedaba huérfano en silencio. Ahora
+  cada integrante se corrige desde el mismo diálogo que lo dio de alta, y
+  `editarIntegrante()` conserva el identificador y el lugar en la lista.
+
+- **Un intento de conexión que no terminaba bloqueaba a todos los siguientes.**
+  Medido en el teléfono con la red cortada: el `fetch` del apretón de manos se
+  quedaba colgado sin resolver ni fallar, así que el intento nunca moría, el
+  reintento se saltaba por haber uno en curso, y la aplicación se quedaba en
+  RECONECTANDO **con la red ya restablecida**. Ahora el apretón y la apertura
+  del socket llevan corte de tiempo de tres segundos: la consola contesta en
+  menos de dos milisegundos en la misma red, así que tres segundos son mil veces
+  su tiempo de respuesta y siguen siendo menos de la mitad del umbral de diez
+  segundos del criterio 1 de SPK-P0.1.
+
+- **Si el primer intento de conexión fallaba, no se reintentaba nunca.** El
+  reintento sólo se programaba al recibir un `DISCONNECTED`, y ese camino no lo
+  emite: el adaptador anuncia `RECONNECTING` al empezar y, si el intento falla,
+  se queda ahí. La aplicación decía «RECONECTANDO» sin que nadie estuviera
+  reconectando. Ahora el fallo baja el estado a desconectado —que es la verdad—
+  y programa el reintento. Medido con cortes de wifi reales: vuelve en 3,8 a
+  4,9 segundos desde que la red se restablece.
+
+- **El simulador se había quedado en doce canales** mientras el adaptador ya
+  leía la cantidad real, o sea el mismo agujero de antes reabierto por el otro
+  lado: contra el simulador, el camino que descubre cuántas entradas hay no se
+  ejercitaba nunca. Ahora sirve veinticuatro, con las dos entradas de línea en
+  los canales 21 y 22 como la consola, y las que no se usan con el nombre vacío
+  —que es como llegan de verdad—.
+
+- **La aplicación decía «dBFS» sobre números que no son dBFS.** El pico de la
+  pantalla de ganancia, el texto accesible del medidor y la explicación del
+  asistente afirmaban una referencia de fondo de escala que nadie midió. Son dB
+  de la escala de la consola; la correspondencia con un nivel digital real la
+  mide SPK-P0.10b. Una etiqueta que afirma de más es peor que una que no dice
+  nada: enseña a desconfiar del resto.
 
 - **Los medidores mostraban decibeles que no eran los de la consola, y contaban
   saturaciones que no existían.** La conversión usaba la ley del fader, sobre la
