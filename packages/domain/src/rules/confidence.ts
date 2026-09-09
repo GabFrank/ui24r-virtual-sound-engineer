@@ -41,13 +41,25 @@ export interface ChannelConfidenceInput {
   readonly repetidoEnDosCapturas: boolean;
   /** Coincidencia de banda entre capturas, en fracción de octava. */
   readonly desviacionBandaOctavas: number;
-  readonly snrDb: number;
+  /**
+   * Relación señal a ruido, o `null` si no se pudo calcular.
+   *
+   * **El `null` está en el tipo porque el resultado correcto salía por
+   * accidente.** Antes esto era `number` y la comparación `snrDb < 10` daba
+   * verdadero con `null` —JavaScript lo convierte a 0— así que devolvía
+   * «datos insuficientes», que es lo que corresponde, pero por coerción y no
+   * por decisión. Un cambio de umbral a un número negativo lo habría dado
+   * vuelta sin que nadie lo notara.
+   */
+  readonly snrDb: number | null;
   readonly calibracionValida: boolean;
 }
 
 export function confianzaCanal(i: ChannelConfidenceInput): Confidence {
   if (!i.calibracionValida) return 'INSUFFICIENT_DATA';
-  if (i.snrDb < 10) return 'INSUFFICIENT_DATA';
+  // Sin relación señal a ruido no hay con qué juzgar el ruido de fondo, y esta
+  // función solo sube de confianza cuando puede descartarlo.
+  if (i.snrDb === null || i.snrDb < 10) return 'INSUFFICIENT_DATA';
   const mismaBanda = i.desviacionBandaOctavas <= 1 / 6;
   if (i.repetidoEnDosCapturas && mismaBanda && i.snrDb >= 20) return 'HIGH';
   if (i.repetidoEnDosCapturas && i.snrDb >= 10) return 'MEDIUM';

@@ -470,3 +470,24 @@ test('un canal limpio se comporta exactamente igual que antes de todo esto', () 
   assert.equal(p.deltaDb, 3, 'margen 18 contra objetivo 12, recortado al límite');
   assert.equal(p.gainPropuestoDb, 37);
 });
+
+/**
+ * Sin senal no se imprime Infinity ni se propone nada.
+ *
+ * Encontrado recorriendo la aplicacion en la tablet, con el canal en silencio:
+ * la pantalla decia literalmente "El pico llego a -Infinity dB, lo que deja
+ * Infinity dB de margen" y mostraba una propuesta de +3,0 dB junto a una
+ * confianza que decia SIN DATOS. Un numero que invita a mover una perilla,
+ * sacado de una medicion que no existio.
+ */
+test('sin senal la razon no trae numeros inventados', () => {
+  const a = analizarVentana([]);
+  assert.ok(!Number.isFinite(a.picoDb), 'sin muestras el pico es -infinito');
+
+  const p = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 10, {
+    repetidoEnDosCapturas: false, snrDb: null, calibracionValida: true, dinamica: DINAMICA_LIMPIA,
+  });
+
+  assert.ok(!/Infinity/i.test(p.razon), `la razon no puede traer Infinity: ${p.razon}`);
+  assert.match(p.razon, /No entró señal/);
+});

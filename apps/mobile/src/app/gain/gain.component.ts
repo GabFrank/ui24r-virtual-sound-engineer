@@ -91,6 +91,18 @@ function etiquetaDeProceso(p: ProcesoDeCanal): string {
  * la pantalla lo dice en cada recomendación en vez de dejarlo en la
  * documentación.
  */
+/**
+ * Decibeles para leer en una tabla, sin `Infinity` ni `-Infinity`.
+ *
+ * Con el canal en silencio el pico es −∞ y el margen infinito. `toFixed` los
+ * imprime tal cual, y eso llegó hasta la pantalla de la tablet.
+ */
+function dbLegible(db: number): string {
+  if (db === Number.POSITIVE_INFINITY) return '—';
+  if (!Number.isFinite(db)) return '−∞';
+  return db.toFixed(1);
+}
+
 @Component({
   selector: 'app-gain',
   standalone: true,
@@ -389,21 +401,32 @@ export class GainComponent {
       }
       const db = r.propuesta.deltaDb;
       const conf = CONFIANZA[r.propuesta.confianza] ?? { texto: 'Sin datos', tono: 'neutro' as TonoDeInsignia };
+      const sinDatos = !Number.isFinite(r.analisis.picoDb);
       return {
         asignacion: a,
         indice,
         nombre: a.nombreEnConsola,
         medido: true,
-        pico: r.analisis.picoDb.toFixed(1),
-        margen: r.analisis.margenDb.toFixed(1),
+        // **`—` y no `-Infinity`.** Sin señal el pico es −∞ y el margen es
+        // infinito, y `toFixed` los imprime literales. Apareció recorriendo la
+        // aplicación en la tablet con el canal en silencio.
+        pico: dbLegible(r.analisis.picoDb),
+        margen: dbLegible(r.analisis.margenDb),
         objetivo: `${perfil.margenObjetivoDb}`,
         // «—» y no un número: si la consola no dijo la ganancia, no hay
         // ganancia que mostrar. El delta sigue valiendo, porque sale del pico
         // medido y no de la ganancia.
         ganancia: r.propuesta.gainActualDb === null ? '—' : r.propuesta.gainActualDb.toFixed(0),
-        delta: Math.abs(db) < 0.05 ? '—' : `${db > 0 ? '+' : ''}${db.toFixed(1)}`,
-        sube: db > 0.05,
-        baja: db < -0.05,
+        // **Sin muestras no se propone nada.** Con el canal en silencio esto
+        // mostraba «+3.0» junto a una confianza que decía SIN DATOS: un número
+        // que invita a mover una perilla, sacado de una medición que no existió.
+        // La propuesta se calcula igual —el motor la acota y explica por qué—
+        // pero acá no se muestra, que es donde el usuario decide.
+        delta: sinDatos || Math.abs(db) < 0.05
+          ? '—'
+          : `${db > 0 ? '+' : ''}${db.toFixed(1)}`,
+        sube: !sinDatos && db > 0.05,
+        baja: !sinDatos && db < -0.05,
         confianza: conf.texto,
         tonoConfianza: conf.tono,
         accion: 'Repetir',

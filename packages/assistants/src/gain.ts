@@ -122,6 +122,18 @@ export const REDUCCION_RELEVANTE_DB = 1;
 const DURACION_MINIMA_S = 10;
 const MUESTRAS_MINIMAS = 60;
 
+/**
+ * Un número de decibeles para leer, que nunca imprime `Infinity`.
+ *
+ * El margen es `objetivo − pico`, así que con el canal en silencio da infinito
+ * y `toFixed` lo escupe tal cual. Apareció en la tablet, en la pantalla que el
+ * usuario mira para decidir si mueve una perilla.
+ */
+function formatearDb(db: number): string {
+  if (!Number.isFinite(db)) return '—';
+  return db.toFixed(1);
+}
+
 export function analizarVentana(muestras: readonly MuestraVu[]): AnalisisDeGanancia {
   if (muestras.length === 0) return vacio('la ventana no tiene ninguna muestra');
 
@@ -273,7 +285,19 @@ export function proponerGanancia(
   gainActualDb: number | null,
   opciones: {
     readonly repetidoEnDosCapturas: boolean;
-    readonly snrDb: number;
+    /**
+     * Relación señal a ruido de la ventana, o `null` si no se pudo calcular.
+     *
+     * **El `null` es alcanzable y por eso está en el tipo.** Hoy la aplicación
+     * pasa el mínimo del perfil como provisorio —el ruido de fondo real
+     * necesita la interfaz de audio— así que nunca llega `null` y el aviso de
+     * ruido no puede saltar. El día que se conecte la medición de verdad va a
+     * poder faltar, y `Measurement.snrDb` del dominio ya lo declara opcional.
+     *
+     * Importa porque en JavaScript `null < 12` es **verdadero**: sin el tipo
+     * ancho, la comparación entra en la rama y revienta al formatear.
+     */
+    readonly snrDb: number | null;
     readonly calibracionValida: boolean;
     /**
      * Qué proceso dinámico tenía puesto el canal al medir.
@@ -399,7 +423,16 @@ export function proponerGanancia(
     );
   }
 
-  if (opciones.snrDb < perfil.snrMinimoDb) {
+  // **`null` no es «cero decibeles de relación señal a ruido».** En JavaScript
+  // `null < 12` es verdadero —`null` se convierte a 0— así que sin este
+  // resguardo se entraba en la rama y se llamaba `.toFixed` sobre `null`: el
+  // asistente reventaba cada vez que la relación no se podía calcular, que es
+  // justo lo que pasa cuando no hubo señal. Lo encontró un test escrito después
+  // de ver la pantalla imprimir «Infinity» en la tablet.
+  //
+  // Que no se pueda calcular no es un aviso: es la ausencia de un dato. Si hace
+  // falta decir algo, lo dice la confianza.
+  if (opciones.snrDb !== null && opciones.snrDb < perfil.snrMinimoDb) {
     avisos.push(
       `la relación señal a ruido es de ${opciones.snrDb.toFixed(0)} dB y el perfil ` +
       `espera al menos ${perfil.snrMinimoDb}. Puede haber ruido de fondo, o el ` +
@@ -429,9 +462,17 @@ export function proponerGanancia(
   const confianza: Confidence =
     inferido && confianzaMedida === 'HIGH' ? 'MEDIUM' : confianzaMedida;
 
-  const razon =
-    `El pico llegó a ${analisis.picoDb.toFixed(1)} dB en la escala de la consola, lo que deja ` +
-    `${analisis.margenDb.toFixed(1)} dB de margen` +
+  // **Sin señal no se arma una frase con números.** Recorriendo la aplicación
+  // en la tablet, con el canal en silencio, esto imprimía literalmente «El pico
+  // llegó a -Infinity dB, lo que deja Infinity dB de margen»: JavaScript crudo
+  // en la cara del usuario, y una frase que suena a medición cuando no se midió
+  // nada. La confianza ya decía SIN DATOS y la lista de razones ya explicaba
+  // que faltaban muestras; lo que sobraba era esta oración.
+  const razon = !Number.isFinite(analisis.picoDb)
+    ? 'No entró señal durante la medición, así que no hay pico del que sacar el '
+      + 'margen. Hacé sonar el canal y volvé a medir.'
+    : `El pico llegó a ${analisis.picoDb.toFixed(1)} dB en la escala de la consola, lo que deja ` +
+    `${formatearDb(analisis.margenDb)} dB de margen` +
     // Se dice de dónde salió el número, porque no es la columna que el usuario
     // está mirando en la consola: la de la consola trae el compresor encima.
     (reduccion > 0 ? ' medidos antes del compresor, que en ese momento sacaba '

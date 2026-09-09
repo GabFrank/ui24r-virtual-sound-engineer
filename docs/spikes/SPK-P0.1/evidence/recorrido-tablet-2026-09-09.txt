@@ -1,0 +1,83 @@
+RECORRIDO DE LA APLICACION EN LA TABLET — 2026-09-09
+Tablet LINK 8, Android 15, 192.168.0.160. Consola 192.168.0.78.
+Compilada e instalada desde la rama fix/sesion-con-consola.
+
+LO QUE FUNCIONO
+- Conexion automatica al arrancar: la insignia dice CONECTADO sin tocar nada.
+- Pantalla de consola con los 24 canales y datos reales.
+- LA CADENA DE GANANCIA, DE PUNTA A PUNTA. Comparada contra el volcado de la
+  consola en el mismo momento:
+      canal 1: consola 32,85 dB -> tablet 33      canal 4: 26,85 -> 27
+      canal 2: 14,00 -> 14                        canal 5: -6,00 -> -6
+      canal 3: 12,00 -> 12                        canal 6: -6,00 -> -6
+  Es la tarea de derivar el previo de i.N.src, verificada sobre hardware.
+- Asignacion de canales con el catalogo de instrumentos y el integrante.
+- Medicion de 18 segundos con su cuenta regresiva.
+- El texto de la puerta es el corregido hoy y dice lo correcto: "no afecta a la
+  medicion --esta comprobado que no toca el punto donde se mide la ganancia--".
+
+TRES DEFECTOS ENCONTRADOS, LOS TRES CORREGIDOS Y VERIFICADOS EN EL APARATO
+
+1. `-Infinity` e `Infinity` impresos crudos.
+   Con el canal en silencio, la pantalla decia literalmente:
+     "El pico llego a -Infinity dB en la escala de la consola, lo que deja
+      Infinity dB de margen"
+   y la tabla mostraba `-Infinity` en Pico y `Infinity` en Margen. Es
+   JavaScript filtrandose a la cara del usuario, en la pantalla que mira para
+   decidir si mueve una perilla.
+   Ahora: `−∞` y `—`, y la frase pasa a "No entro senal durante la medicion,
+   asi que no hay pico del que sacar el margen. Hace sonar el canal y volve a
+   medir."
+
+2. Proponia +3,0 dB con CERO muestras.
+   La confianza decia SIN DATOS y la lista de razones decia "solo 0 muestras
+   con senal, hacen falta 60" --o sea que el motor era honesto-- pero la
+   columna Propuesta mostraba un numero igual. Un valor que invita a mover una
+   perilla, sacado de una medicion que no existio.
+   Ahora la propuesta muestra `—` cuando no hubo senal.
+
+3. EL PEOR, Y NO SE VEIA: el asistente REVENTABA con la relacion senal a ruido
+   sin calcular.
+     if (opciones.snrDb < perfil.snrMinimoDb) { ... opciones.snrDb.toFixed(0) }
+   En JavaScript `null < 12` es VERDADERO --null se convierte a 0-- asi que con
+   snrDb en null se entraba en la rama y se llamaba .toFixed sobre null.
+   En la tablet no exploto porque ahi venia con valor; lo encontro el test que
+   se escribio DESPUES de ver el defecto 1. Un defecto llevo al otro.
+   Ahora se comprueba el null antes de comparar, y queda escrito por que: que
+   no se pueda calcular no es un aviso, es la ausencia de un dato.
+
+   Y al ensanchar el tipo a `number | null` --que es lo que el dominio ya
+   declara en Measurement.snrDb-- aparecio que TODA LA CADENA se apoyaba en la
+   coercion. `confianzaCanal` hace `snrDb < 10`, que con null da verdadero y
+   devuelve "datos insuficientes": la respuesta correcta, por accidente. Un
+   cambio de ese umbral a un numero negativo lo habria dado vuelta sin que
+   nadie lo notara. Ahora el null se comprueba explicito.
+
+   La cadena entera: un `Infinity` en pantalla llevo a escribir un test, el
+   test destapo un reventon, el reventon destapo un tipo que mentia, y el tipo
+   destapo una regla de confianza que acertaba de casualidad.
+
+DOS COSAS ANOTADAS, SIN CORREGIR
+- La pantalla de sesion dice "Todavia sin configurar. El siguiente paso es
+  conectar la consola" ESTANDO CONECTADA.
+- La insignia PUERTA aparece en los 24 canales, asi que no informa nada. No es
+  un error de lectura: los 24 tienen gate.enabled=1. Pero 23 tienen el umbral
+  en -90 dB, o sea la puerta abierta permanentemente sin poder cerrarse nunca.
+  Declararla ACTIVA es correcto segun las banderas y enganoso para lo que la
+  insignia sirve. Se resolveria mirando el umbral, que es un cambio de
+  conducta y no una correccion.
+
+LO QUE NO SE PUDO PROBAR
+Cerrar el lazo medir-proponer-aplicar-verificar. La aplicacion esta en nivel
+OBSERVE y lo dice en su propia pantalla: "La aplicacion propone; el cambio se
+aplica a mano en la consola". No escribe nada. El lazo completo necesita subir
+de nivel de autonomia, que es una decision de producto y no una prueba.
+
+Tampoco se midio con senal real: hacerlo pide tonos sostenidos, que le ensenan
+filtros al supresor de realimentacion del general (ver README de spikes).
+
+UN DATO DE RED PARA TENER EN CUENTA
+Ping de la tablet a la consola: 7,7 / 130,1 / 368,6 ms (min/media/max) sobre
+tres paquetes. Esa variacion es grande y toca directamente el umbral de
+inestabilidad, que el codigo tiene en 300 ms. Vale medirlo en serio antes de
+bajarlo a los 99 que da la formula.
