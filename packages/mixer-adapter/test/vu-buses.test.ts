@@ -11,8 +11,9 @@ const bytesABase64 = (xs: readonly number[]): string => Buffer.from(xs).toString
  * 306 bytes, que es 8 + 6*24 + 6*2 + 7*6 + 7*4 + 5*10 + 22 del general.
  */
 function trama(entradas: number, medios: number, subs: number, fx: number, aux: number,
-               relleno: (i: number) => number = () => 0): number[] {
-  const b = [entradas, medios, subs, fx, aux, 0, 0, 0];
+               relleno: (i: number) => number = () => 0, generales = 0, lineas = 0): number[] {
+  // Cabecera: NINPUTS, NMEDIA, NSUBGROUPS, NFX, NAUX, NMASTERS, NLINEIN, cero.
+  const b = [entradas, medios, subs, fx, aux, generales, lineas, 0];
   const cuerpo = 6 * entradas + 6 * medios + 7 * subs + 7 * fx + 5 * aux + 22;
   for (let i = 0; i < cuerpo; i++) b.push(relleno(i));
   return b;
@@ -102,4 +103,24 @@ test('trama real: la musica de las RCA aparece en las entradas de linea, no en e
   // El general suma los dos canales de linea, asi que tiene senal aunque la
   // aplicacion no supiera leerlo hasta hoy.
   assert.ok(m.general.izquierdo.post > 0, 'y su post-fader tambien');
+});
+
+/**
+ * El byte 5 es la cantidad de generales, no el 6.
+ *
+ * En una Ui24R los dos valen 2 y no se distingue midiendo. Lo fijan dos
+ * implementaciones de terceros independientes --UI24RBridge y DigiMixer-- que
+ * nombran la cabecera igual, y el orden de las secciones en la trama. El
+ * mixer.html avanza el general con charCodeAt(6), que en esta consola da lo
+ * mismo; este test es lo unico que impide volver a seguirlo.
+ */
+test('la cantidad de generales sale del byte 5 de la cabecera', () => {
+  // Un general y NINGUNA linea: si se leyera del byte 6, no encontraria nada.
+  const b = trama(0, 0, 0, 0, 0, () => 0, 2, 0);
+  b[8 + 0] = 150; b[8 + 1] = 90;
+  b[8 + 5] = 140; b[8 + 6] = 80;
+  const m = decodificarVuBuses(bytesABase64(b));
+  assert.ok(m.general !== null, 'el general se encuentra con la cuenta del byte 5');
+  assert.ok(Math.abs(m.general.izquierdo.pre - 150 * VU_ESCALA) < 1e-9);
+  assert.ok(Math.abs(m.general.derecho.pre - 140 * VU_ESCALA) < 1e-9);
 });

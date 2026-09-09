@@ -1,0 +1,88 @@
+QUE HAY PUBLICADO SOBRE ESTE PROTOCOLO — 2026-09-09
+
+MOTIVO
+El usuario pregunto si se habian mirado los repositorios que ya documentan la
+consola. La respuesta honesta era NO: el proyecto conocia la biblioteca
+principal del ecosistema y habia decidido no usarla por una razon escrita, pero
+NADIE se pregunto si alguien ya habia documentado LAS PARTES QUE ESTABAMOS
+DECODIFICANDO A MANO. No es lo mismo "no uso esa biblioteca" que "nadie mapeo
+esto antes".
+
+Se busco despues, de forma sistematica. Habia material, y del bueno.
+
+=== LO QUE YA ESTABA PUBLICADO, Y NOS HABRIA AHORRADO HORAS ===
+
+1. MatthewInch/UI24RBridge  ->  UI24RController/UI24RChannels/UI24RVUMessage.cs
+   Decodifica la trama VU2 ENTERA, con los ocho bytes de la cabecera nombrados:
+       NINPUTS, NMEDIA, NSUBGROUPS, NFX, NAUX, NMASTERS, NLINEIN, cero
+   Y los tres formatos de bloque:
+       entrada / reproductor / linea (6):  Pre, Post, PostFader, GateIn,
+                                           CompOut, CompMeter
+       subgrupo / efecto (7):              PostL, PostR, PostFaderL,
+                                           PostFaderR, GateIn, CompOut,
+                                           CompMeter
+       auxiliar / general (5):             Post, PostFader, GateIn, CompOut,
+                                           CompMeter
+   Coincide EXACTAMENTE con lo que medimos a mano, incluido que el auxiliar y
+   el general comparten formato y que el reproductor usa el de las entradas.
+
+2. jskeet/DemoCode  ->  DigiMixer/DigiMixer.UiHttp/
+   Usa `GET /raw HTTP1.1` como transporte, salteandose socket.io por completo.
+   O sea que el endpoint /raw que "descubrimos" hoy ya era conocido. Nombra la
+   cabecera igual que UI24RBridge: Mains en el 5, LinesIn en el 6.
+
+3. fmalcher/soundcraft-ui (antes soundcraft-ui-connection)
+   La biblioteca seria del ecosistema. Control, no medicion.
+
+4. Otros: Dennion/ioBroker.soundcraft, jonathanslenders/ui24r-client,
+   stevaedrum/ui2mcp, eric-silverman/soundcraft-ui-swift,
+   stefets/osc-soundcraft-bridge, bitfocus/companion-module-soundcraft-ui.
+
+5. Existe documentacion OFICIAL del protocolo, no publicada abiertamente: Jon
+   Skeet dice que se la mando Tom Der de Soundcraft, y que hay una version mas
+   nueva circulando en un grupo de programadores de Crestron. No se persiguio.
+
+=== UNA CORRECCION QUE SALIO DE ESTO ===
+El byte 5 de la cabecera, que este proyecto daba por desconocido, es la
+CANTIDAD DE GENERALES. El 6 es la de entradas de linea.
+
+El mixer.html avanza el general con `5*charCodeAt(6)` --el indice de las
+lineas-- y nosotros lo habiamos copiado. En una Ui24R los dos valen 2, asi que
+no se puede distinguir midiendo y el error nunca se manifiesta. Dos
+implementaciones independientes entre si ponen los generales en el 5, y ese es
+ademas el orden de las secciones en la trama. Se corrigio siguiendo a las dos y
+al orden, no al cliente oficial.
+
+=== LO QUE NO ESTABA PUBLICADO, Y ES NUESTRO ===
+Ninguno de los proyectos encontrados convierte el medidor a decibeles. El de
+Jon Skeet devuelve una posicion normalizada y RECORTA EN 240:
+
+    // 240 is actually the highest value we see, but let's make sure that's
+    // actually the case...
+    int normalized = Math.Min((int) rawValue, 240);
+
+El comentario declara su propia duda, y hoy quedo medido que es falso: el byte
+llega a 255. Recortar en 240 pierde los ultimos 5 dB.
+
+Tampoco esta publicado:
+  - La ley del medidor en dB (recorrido 80, 0,333 dB por byte), comprobada
+    contra el aparato.
+  - El techo real del medidor: 255, no 239 ni 240.
+  - El deficit del previo respecto de su propia tabla: -1,15 dB por encima de
+    26 dB.
+  - El RTA como espectro: 122 bandas de 1/12 de octava, banda = 67 +
+    12*log2(f/1000), 0,375 dB por byte, con su balistica.
+  - La confirmacion de escrituras por segunda conexion testigo, con latencia
+    medida.
+  - Donde esta tomado el medidor `pre` (despues del previo, antes de todo el
+    procesamiento del canal).
+  - Que enlazar un par estereo desde la aplicacion es DESTRUCTIVO.
+
+=== LA LECCION DE METODO ===
+Buscar trabajo previo es barato y va PRIMERO. Media hora de busqueda habria
+ahorrado varias horas de decodificar bytes que ya estaban nombrados. Y el
+trabajo previo no reemplaza a la medicion --su recorte en 240 esta mal-- pero
+da hipotesis mucho mejores que empezar de cero.
+
+Todo el ecosistema encontrado CONTROLA la consola. Ninguno la MIDE. Ahi sigue
+estando lo propio de este proyecto.

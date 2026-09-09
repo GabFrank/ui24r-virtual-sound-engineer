@@ -172,8 +172,19 @@ export function decodificarVuBuses(base64: string): MedidoresDeSalida {
   const cuantas = {
     entradas: b[0] ?? 0, reproductor: b[1] ?? 0, subgrupos: b[2] ?? 0,
     efectos: b[3] ?? 0, auxiliares: b[4] ?? 0,
-    // El byte 5 vale 2 en esta consola y no se sabe qué es; el 6 es el general.
-    general: b[6] ?? 0,
+    // **El byte 5 es la cantidad de generales y el 6 la de entradas de línea.**
+    //
+    // Antes acá se leía `b[6]`, siguiendo al `mixer.html`, que avanza el
+    // general con `5*charCodeAt(6)`. Dos implementaciones de terceros
+    // independientes entre sí —`MatthewInch/UI24RBridge` y el `DigiMixer` de
+    // Jon Skeet— nombran la cabecera igual y ponen los generales en el **5**:
+    // `NINPUTS, NMEDIA, NSUBGROUPS, NFX, NAUX, NMASTERS, NLINEIN, cero`. Ese
+    // orden es además el de las secciones en la trama, que es lo coherente.
+    //
+    // En una Ui24R los dos valen 2, así que **no se puede distinguir midiendo**
+    // y el `charCodeAt(6)` del cliente oficial nunca falla acá. Se sigue a las
+    // dos implementaciones y al orden de las secciones, no al cliente.
+    general: b[5] ?? 0,
   };
 
   let o = CABECERA + PASO_ENTRADA * cuantas.entradas;
