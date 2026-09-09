@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { Router, RouterLink } from '@angular/router';
 import { crearBanda, crearLocal, crearPa, type BandProfile, type PAProfile, type VenueProfile } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
+import { cuenta } from '../ui/plural';
 import {
   BadgeComponent, ButtonComponent, CardComponent, Cargable, CargandoComponent,
   EmptyStateComponent, FalloComponent, PageHeaderComponent, ToastService, intentarGuardar,
@@ -68,12 +69,12 @@ type Pestania = 'bandas' | 'locales' | 'pa';
             </ui-empty>
           } @else {
             <div class="rejilla">
-              @for (b of bandas(); track b.id) {
+              @for (b of filasDeBanda(); track b.id) {
                 <a class="tarjeta" [routerLink]="['/perfiles/bandas', b.id]">
                   <ui-card [titulo]="b.nombre">
-                    <p class="dato">{{ b.integrantes.length }} integrantes</p>
-                    <p class="dato">{{ b.asignaciones.length }} canales asignados</p>
-                    @if (b.mixSignature === null) {
+                    <p class="dato">{{ b.integrantes }}</p>
+                    <p class="dato">{{ b.canales }}</p>
+                    @if (b.sinFirma) {
                       <ui-badge tono="neutro">Sin firma de mezcla</ui-badge>
                     }
                   </ui-card>
@@ -118,14 +119,14 @@ type Pestania = 'bandas' | 'locales' | 'pa';
             </ui-empty>
           } @else {
             <div class="rejilla">
-              @for (p of pas(); track p.id) {
+              @for (p of filasDePa(); track p.id) {
                 <a class="tarjeta" [routerLink]="['/perfiles/pa', p.id]">
                   <ui-card [titulo]="p.nombre" [subtitulo]="p.cajasPrincipales">
-                    <p class="dato num">{{ p.rangoUtilHz[0] }} – {{ p.rangoUtilHz[1] }} Hz</p>
-                    @if (p.componentes.length === 1) {
+                    <p class="dato num">{{ p.rango }}</p>
+                    @if (p.unSoloComponente) {
                       <ui-badge tono="neutro">Sin medición por componente</ui-badge>
                     } @else {
-                      <ui-badge tono="ok">{{ p.componentes.length }} componentes</ui-badge>
+                      <ui-badge tono="ok">{{ p.componentes }}</ui-badge>
                     }
                   </ui-card>
                 </a>
@@ -191,6 +192,31 @@ export class PerfilesComponent {
   readonly recargando = this.datos.recargando;
   readonly avisoDeRecarga = this.datos.avisoDeRecarga;
   readonly bandas = computed(() => this.datos.valor().bandas);
+
+  /**
+   * Las bandas con sus cuentas ya escritas.
+   *
+   * El texto se arma acá y no en la plantilla porque una llamada a función
+   * desde la plantilla se reevalúa en cada ciclo de detección de cambios, y
+   * porque «1 integrantes» era exactamente lo que pasaba cuando el número y su
+   * sustantivo vivían separados.
+   */
+  readonly filasDeBanda = computed(() => this.bandas().map((b) => ({
+    id: b.id,
+    nombre: b.nombre,
+    integrantes: cuenta(b.integrantes.length, 'integrante', 'integrantes'),
+    canales: cuenta(b.asignaciones.length, 'canal asignado', 'canales asignados'),
+    sinFirma: b.mixSignature === null,
+  })));
+
+  readonly filasDePa = computed(() => this.pas().map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    cajasPrincipales: p.cajasPrincipales,
+    rango: `${p.rangoUtilHz[0]} – ${p.rangoUtilHz[1]} Hz`,
+    unSoloComponente: p.componentes.length === 1,
+    componentes: cuenta(p.componentes.length, 'componente', 'componentes'),
+  })));
   readonly locales = computed(() => this.datos.valor().locales);
   readonly pas = computed(() => this.datos.valor().pas);
 
