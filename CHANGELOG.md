@@ -6,6 +6,15 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Los medidores de las salidas se leen: general, subgrupos, efectos,
+  auxiliares y reproductor.** La cola de `VU2` estuvo meses declarada
+  indescifrable porque se la leía con el paso de las entradas y las secciones
+  **no comparten el paso**. Además resultó **autodescriptiva**: la cabecera
+  dice cuántos hay de cada cosa, así que el decodificador lee las cuentas en
+  vez de tenerlas escritas —fijarlas sería la misma trampa que suponer
+  enrutamiento identidad, que coincide hasta que alguien cambia la
+  configuración de la consola.
+
 - **Detección de realimentación sobre el espectro de la consola.** La regla es
   «no cayó como debía», no «creció»: cualquier golpe de música crece, lo que
   distingue a una resonancia es que **se queda**. Como la balística del

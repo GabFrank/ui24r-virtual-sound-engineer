@@ -186,7 +186,26 @@ Reparto, en posiciones relativas al fin de las entradas (byte 152 absoluto):
 
 Cada límite se fijó provocando señal en una sola sección y viendo qué bytes se movían: envío a un efecto, asignación a un subgrupo, envío a un auxiliar. Las cuentas cierran sin holgura —2×6 + 6×7 + 4×7 = 82— y el censo del vocabulario (`l.0..1`, `s.0..5`, `f.0..3`, `a.0..9`) llega a los mismos tamaños por otro camino. La sección de línea es la única que no se provocó con señal: sale por resta y por el censo.
 
-**Lo que sí queda abierto es qué es cada byte dentro de un bloque.** En el auxiliar, el `+1` sigue al fader y el `+4` es el 247 de «sin reducción». En el subgrupo, mover `s.0.mix` no movió nada, y no se distinguió si el medidor es anterior al fader o si la escritura no tomó efecto —la consola no le devuelve eco a quien escribe, así que hace falta el testigo para saberlo—. Sin eso, no se afirma ninguna de las dos.
+**Y la cabecera dice cuántos hay de cada cosa, así que la cola no tiene un reparto fijo.** El cliente avanza con `e += 6·charCodeAt(0)` para las entradas, `6·charCodeAt(1)` el reproductor, `7·charCodeAt(2)` los subgrupos, `7·charCodeAt(3)` los efectos, y `charCodeAt(4)` auxiliares de a 5. Comprobado: la cabecera trae `24 2 6 4 10` —el mismo mapa levantado a mano— y `8 + 6·24 + 6·2 + 7·6 + 7·4 + 5·10 = 284` contra 306, o sea 22 bytes de general. **Escribir esas cuentas en el código sería la misma trampa que el enrutamiento identidad**: coincide hasta que alguien cambia la configuración de la consola. Los bytes 5, 6 y 7 de la cabecera valen `2 2 0` y no se sabe qué son.
+
+#### El formato de cada bloque
+
+**Subgrupo y efecto — 7 bytes, tira estéreo de dos medidores.** `setVU(n=+0, h=+2, q=+1, m=+3, …)` sobre la firma `setVU(a,b,c,d,…)`, que arma `vu=(a,b)` y `vu2=(c,d)`:
+
+| Byte | Qué es |
+|---|---|
+| `+0` / `+1` | previo, izquierdo y derecho |
+| `+2` / `+3` | posterior al fader, izquierdo y derecho |
+| `+4` / `+5` | entrada y salida del bloque dinámico, solo para la tira seleccionada |
+| `+6` | reducción en los 7 bits bajos, indicador de puerta en el alto |
+
+Comprobado moviendo el fader del subgrupo 1 con el canal 10 asignado: `+2` y `+3` bajaron 94 → 50 → 0 y `+0` y `+1` no se movieron.
+
+**Auxiliar — 5 bytes, tira mono.** `+0` previo, `+1` posterior al fader, `+4` reducción e indicador. Comprobado moviendo `a.0.mix`: el `+1` bajó 104 → 77 → 37.
+
+**Reproductor — 6 bytes, el mismo formato que una entrada** y no el de los buses: `+0` previo, `+1` entrada, `+2` salida. Comparte posición en la cola pero no formato.
+
+**Una conclusión que hubo que retirar.** La primera lectura del bloque de subgrupo dijo «el medidor es anterior al fader», porque mover `s.0.mix` no movía nada y el testigo confirmaba que la escritura sí se aplicaba. Era falsa: `s.0.mute` valía 1, los bytes posteriores estaban en cero y se estaba mirando los previos. Dos bytes en cero con señal presente eran la pista que faltó seguir.
 
 ### 4.3 De posición a decibeles: el medidor es lineal, y no usa la ley del fader
 

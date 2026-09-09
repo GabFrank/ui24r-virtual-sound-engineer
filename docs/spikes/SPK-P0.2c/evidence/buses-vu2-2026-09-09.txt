@@ -1,0 +1,80 @@
+QUE ES CADA BYTE DE LA COLA DE VU2 — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24.
+Sondas: subgrupo-pre-o-post.ts, cabecera-vu2.ts, buses-reales.ts, aux-senal.ts
+
+=== PRIMERO, UNA CONCLUSION MIA QUE ERA FALSA ===
+La corrida anterior dijo "el medidor del subgrupo es entero anterior al fader",
+porque mover s.0.mix no movia ningun byte del bloque. Con el testigo quedo
+confirmado que la escritura SI se aplicaba --el testigo la veia-- asi que la
+lectura parecia solida.
+
+Era falsa igual. Lo que pasaba: s.0.mute valia 1. El subgrupo estaba
+silenciado, los bytes POST estaban en cero, y yo estaba mirando los bytes PRE
+--que efectivamente no se mueven con el fader-- y concluyendo sobre el medidor
+entero. Dos bytes en cero con senal presente tendrian que haberme hecho dudar.
+
+Quitando el silencio (anotado y devuelto):
+    fader s.0.mix   preL preR postL postR din din red
+       0.7647        94   94    94    94   94  94  247
+       0.4500        94   94    50    50   94  93  247
+       0.1500        94   94     0     0   94  94  247
+
+Ahi si: +2 y +3 siguen al fader, +0 y +1 no.
+
+=== LA COLA ES AUTODESCRIPTIVA: LA CABECERA DICE CUANTOS HAY ===
+Leyendo parseVUdata en el mixer.html:
+    e += 6*charCodeAt(0)   entradas
+    e += 6*charCodeAt(1)   reproductor
+    e += 7*charCodeAt(2)   subgrupos
+    e += 7*charCodeAt(3)   efectos
+           charCodeAt(4)   auxiliares, de a 5
+
+Comprobado contra el aparato:
+    cabecera: 24 2 6 4 10 2 2 0
+    8 + 6*24 + 6*2 + 7*6 + 7*4 + 5*10 = 284
+    trama real = 306  ->  22 bytes de general
+
+Coincide EXACTAMENTE con el mapa que se habia levantado a mano moviendo senal
+seccion por seccion. Las dos vias llegan al mismo sitio, y la de la cabecera es
+mejor: no hay que escribir las cuentas en el codigo, que es la misma trampa del
+enrutamiento identidad --coincide hasta que alguien cambia la configuracion--.
+Los bytes 5, 6 y 7 de la cabecera valen 2, 2 y 0 y no se sabe que son.
+
+=== FORMATO DE CADA BLOQUE, del mixer.html y comprobado ===
+
+SUBGRUPO y EFECTO (7 bytes, tira ESTEREO de dos medidores)
+    subStrips[g].setVU(n=+0, h=+2, q=+1, m=+3, r, r, p, p)
+    con la firma setVU(a,b,c,d,f,e,g,h) -> vu=(a,b) y vu2=(c,d)
+      +0 pre izquierdo     +2 post izquierdo
+      +1 pre derecho       +3 post derecho
+      +4 entrada del dinamico, +5 salida  (solo para la tira seleccionada)
+      +6 reduccion en los 7 bits bajos, indicador de puerta en el alto
+    Los efectos usan el MISMO formato.
+
+AUXILIAR (5 bytes, tira MONO)
+    auxStrips[g].setVU(n=+0, q=+1, 0, 0, r, 0, p, 0)
+      +0 pre    +1 post    +4 reduccion + indicador
+    Coincide con lo medido moviendo a.0.mix: el +1 bajo 104 -> 77 -> 37.
+
+REPRODUCTOR (6 bytes, MISMO formato que una entrada, no el de los buses)
+    mediaStrips[0].setVU(n=+1, q=+2, ...) y +0 como previo
+    Comparte posicion en la cola pero no formato. La consola avanza de a 6.
+
+=== COMPROBACION DE PUNTA A PUNTA ===
+buses-reales.ts contra la consola: reproductor 2, subgrupos 6, efectos 4,
+auxiliares 10. Todo en -inf porque no habia nada enrutado.
+
+aux-senal.ts, subiendo el envio del canal 10 al auxiliar 1:
+    envio en 0     -> aux 1: pre=-inf   post=-75.0
+    envio en 0,85  -> aux 1: pre=-45.3  post=-40.0
+El post queda por encima del pre porque a.0.mix esta arriba de la unidad.
+
+UNA TRAMPA QUE COSTO UNA CORRIDA: el primer intento uso el canal 21, donde
+habia musica, y no se movio nada. No era el decodificador: LA MUSICA SE HABIA
+APAGADO. Con el canal 21 en -67,7 dB --piso de ruido-- no hay nada que
+enrutar. Conviene comprobar que la fuente suena antes de concluir sobre el
+instrumento.
+
+=== QUE SE TOCO Y COMO QUEDO ===
+i.9.subgroup -> -1        s.0.mute -> 1 (silenciado, como estaba)
+s.0.mix -> 0.7647058824   i.9.aux.0.value -> 0     i.20.aux.0.value -> 0

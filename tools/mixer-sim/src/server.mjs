@@ -123,7 +123,22 @@ function aByte(db) {
  * diferencia entre medir bien y medir mal.
  */
 function codificarVu(nivelesDb, reduccionesDb = []) {
-  const bytes = [nivelesDb.length, 0, 0, 0, 0, 0, 0, 0];
+  // **La cabecera dice cuantos hay de cada cosa, y el simulador la mandaba en
+  // cero.** Medido el 2026-09-09: el cliente de la consola avanza por la cola
+  // usando estas cuentas --`e += 7*charCodeAt(2)` para los subgrupos, y asi--,
+  // asi que con la cabecera en cero un decodificador correcto no encuentra
+  // ninguna seccion, por mas que la cola venga completa detras.
+  //
+  // La consola real manda `24 2 6 4 10`. Los bytes 5, 6 y 7 valen `2 2 0` y no
+  // se sabe que son; van en cero porque inventarlos seria peor.
+  const bytes = [
+    nivelesDb.length,
+    COLA_SECCIONES[0].cuantos,   // reproductor
+    COLA_SECCIONES[1].cuantos,   // subgrupos
+    COLA_SECCIONES[2].cuantos,   // efectos
+    COLA_SECCIONES[3].cuantos,   // auxiliares
+    0, 0, 0,
+  ];
   for (let i = 0; i < nivelesDb.length; i++) {
     const preDb = nivelesDb[i];
     const reduccion = reduccionesDb[i] ?? 0;
