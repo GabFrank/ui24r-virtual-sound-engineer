@@ -141,7 +141,23 @@ export interface EstadoCanal {
    */
   readonly nivelSalidaDb: number;
   readonly picoSalidaDb: number;
-  readonly eventosSaturacion: number;
+  /**
+   * Veces que saturó el **previo**, byte `+0`.
+   *
+   * Es el que le importa a la ganancia: la consola lo vigila en su página de
+   * ganancia con `setVUPre`, y cuando se enciende **congela el deslizador de
+   * ganancia** para que nadie siga subiendo. Si este cuenta, la perilla del
+   * previo está de más.
+   */
+  readonly saturacionesPrevio: number;
+  /**
+   * Veces que saturó la **salida** del canal, byte `+2`.
+   *
+   * Es el clip que la consola dibuja en la tira del canal, con `setVU(n, q, …)`
+   * y `1 <= q`. Depende del fader, así que se arregla bajando el canal y no
+   * tocando el previo.
+   */
+  readonly saturacionesSalida: number;
 }
 
 /**
@@ -183,7 +199,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly picosVu = new Map<number, Pico>();
   private readonly nivelesSalida = new Map<number, number>();
   private readonly picosSalida = new Map<number, number>();
-  private readonly saturaciones = new Map<number, number>();
+  private readonly saturacionesPrevio = new Map<number, number>();
+  private readonly saturacionesSalida = new Map<number, number>();
   private readonly reducciones = new Map<number, number>();
   private readonly picosReduccion = new Map<number, number>();
   private readonly nivelesPreProceso = new Map<number, number>();
@@ -529,7 +546,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         picoDb: this.picosVu.get(canal)?.db ?? -Infinity,
         nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
         picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
-        eventosSaturacion: this.saturaciones.get(canal) ?? 0,
+        saturacionesPrevio: this.saturacionesPrevio.get(canal) ?? 0,
+        saturacionesSalida: this.saturacionesSalida.get(canal) ?? 0,
         // Cero y no `null` cuando todavía no llegó una trama: la reducción es
         // una medida acotada por abajo, y «no llegó ninguna trama de medidores»
         // ya se distingue mirando el nivel, que sí es −∞.
@@ -640,18 +658,27 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       const picoSalidaPrevio = this.picosSalida.get(canal) ?? -Infinity;
       this.picosSalida.set(canal, Math.max(picoSalidaPrevio, dbSalida));
 
-      // Saturación: la consola enciende su indicador cuando el medidor llega a
-      // la punta de la escala —`1 <= valor` en `setVU`—, que son 0 dB. Antes
-      // acá había un umbral de -1 dB elegido a mano y, con la conversión
-      // equivocada, un canal 12 dB por debajo del tope acumulaba mil
-      // saturaciones por minuto.
+      // **Saturación: son dos indicadores, y ninguno es `entrada`.**
       //
-      // Se mira `entrada`, que es el nivel que esta fila muestra. La consola
-      // vigila además `pre` para el clip del previo, en su página de ganancia;
-      // cuál de los dos debe mirar un asistente de ganancia lo decide
-      // SPK-P0.10b, que es el que mide qué significa cada uno en dBFS.
-      if (medidor.entrada >= MEDIDOR_SATURACION) {
-        this.saturaciones.set(canal, (this.saturaciones.get(canal) ?? 0) + 1);
+      // Esto contaba sobre `entrada` —el byte `+1`— con la duda anotada de
+      // «cuál de los dos debe mirar un asistente de ganancia lo decide
+      // SPK-P0.10b». Leído el `mixer.html` de la consola el 2026-09-09, la
+      // respuesta es que `+1` **no tiene indicador de clip**:
+      //
+      //     m = +0 (pre)   n = +1 (entrada)   q = +2 (salida)
+      //     inStrips[g].setVU(n, q, …)   // clip sobre q, la SALIDA
+      //     gainStrips[g].setVUPre(m)    // clip propio sobre m, el PREVIO
+      //
+      // Son dos cosas distintas y se arreglan distinto: el del previo se baja
+      // con la perilla de ganancia —tanto es así que la consola congela ese
+      // deslizador mientras está encendido— y el de la salida, con el fader.
+      // Contarlos juntos, o contarlos sobre un byte que la consola no vigila,
+      // le da al asistente una señal que no corresponde a ninguna acción.
+      if (medidor.pre >= MEDIDOR_SATURACION) {
+        this.saturacionesPrevio.set(canal, (this.saturacionesPrevio.get(canal) ?? 0) + 1);
+      }
+      if (medidor.salida >= MEDIDOR_SATURACION) {
+        this.saturacionesSalida.set(canal, (this.saturacionesSalida.get(canal) ?? 0) + 1);
       }
     }
     for (const cb of this.oyentesTelemetria) cb();
@@ -768,7 +795,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   reiniciarPicos(): void {
     this.picosSalida.clear();
     this.picosVu.clear();
-    this.saturaciones.clear();
+    this.saturacionesPrevio.clear();
+    this.saturacionesSalida.clear();
     // El pico de reducción se reinicia con los demás: si no, la insignia de
     // «este canal viene comprimido» sobreviviría a puentear el compresor y
     // seguiría acusando a un canal ya limpio.

@@ -297,6 +297,25 @@ De la cola de `VU2` está ubicada cada sección (§4.3) y falta el papel de cada
 
 ---
 
+### 4.4.1 Los dos indicadores de saturación, y cuál mira cada uno
+
+Medido leyendo `parseVUdata` en el `mixer.html`, el 2026-09-09:
+
+```js
+m = deconvertVU(a.charCodeAt(l+0));   // pre
+n = deconvertVU(a.charCodeAt(l+1));   // entrada
+q = deconvertVU(a.charCodeAt(l+2));   // salida
+inStrips[g].setVU(n, q, 0, 0, r, 0, p, 0);   // clip sobre q  → la SALIDA
+gainStrips[g].setVUPre(m);                    // clip propio sobre m → el PREVIO
+```
+
+| Indicador | Byte | Dónde lo dibuja la consola | Cómo se arregla |
+|---|---|---|---|
+| Clip del previo | `+0` | página de ganancia; **congela el deslizador de ganancia** mientras está encendido | bajando la ganancia del previo |
+| Clip de la tira | `+2` | tira del canal | bajando el fader |
+
+**El byte `+1` no tiene indicador de clip.** Es el que la aplicación estuvo contando: ni el que la consola vigila para el previo ni el que vigila para la tira. Son dos problemas distintos que se arreglan de manera distinta, así que contarlos juntos —o contarlos sobre un byte que la consola no mira— le da al asistente una señal que no corresponde a ninguna acción.
+
 ### 4.5 `RTA`: el analizador de espectro
 
 **Medido el 2026-09-09.** Durante meses este flujo se usó solo como señal de vida y se tiraba la carga. No es un latido: es **el analizador de espectro de la consola**, y es la única fuente de información frecuencial que el proyecto tiene sin motor de audio ni micrófono propio.

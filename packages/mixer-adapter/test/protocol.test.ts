@@ -178,3 +178,28 @@ test('ALIVE es el texto plano que espera la consola', () => {
   assert.equal(MENSAJE_ALIVE, 'ALIVE');
   assert.equal(ALIVE_INTERVALO_MS, 1000);
 });
+
+/**
+ * Los dos indicadores de saturacion de la consola, y cual es cual.
+ *
+ * Leido del mixer.html el 2026-09-09, en parseVUdata:
+ *   m = +0 (pre)   n = +1 (entrada)   q = +2 (salida)
+ *   inStrips[g].setVU(n, q, ...)   -> clip sobre q, la SALIDA
+ *   gainStrips[g].setVUPre(m)      -> clip propio sobre m, el PREVIO
+ *
+ * El byte +1 NO tiene indicador de clip. El adaptador contaba sobre el, que
+ * es justo el unico de los tres que la consola no vigila.
+ */
+test('VU2: el byte +1 no es ninguno de los dos indicadores de saturacion', () => {
+  const cabecera = [1, 0, 0, 0, 0, 0, 0, 0];
+  // pre y salida por debajo del tope, entrada clavada arriba.
+  const soloEntrada = decodificarVuCanales(
+    bytesABase64([...cabecera, 100, 240, 100, 0, 0, 247]),
+  )[0];
+  assert.ok(soloEntrada !== undefined);
+  assert.ok(soloEntrada.pre < MEDIDOR_SATURACION, 'el previo no satura');
+  assert.ok(soloEntrada.salida < MEDIDOR_SATURACION, 'la salida tampoco');
+  // Y sin embargo `entrada` esta arriba: contar sobre este byte inventaria una
+  // saturacion que la consola no muestra en ningun lado.
+  assert.ok(soloEntrada.entrada >= MEDIDOR_SATURACION);
+});

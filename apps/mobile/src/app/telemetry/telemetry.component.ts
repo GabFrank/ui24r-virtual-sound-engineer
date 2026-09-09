@@ -436,7 +436,10 @@ export class TelemetryComponent {
       // para equivocarse, y con la misma marca que una estimación real.
       ganancia: c.gainDb === null ? '—' : `${MARCA_ESTIMADO}${c.gainDb.toFixed(0)}`,
       fader: `${MARCA_ESTIMADO}${db(c.faderDb)}`,
-      clips: c.eventosSaturacion,
+      // El clip de la tira del canal es el de la SALIDA, que es lo que la
+      // consola dibuja acá. El del previo tiene su propia fila.
+      clips: c.saturacionesSalida,
+      clipsPrevio: c.saturacionesPrevio,
       condicionada: procesos !== '',
       procesos,
     };
