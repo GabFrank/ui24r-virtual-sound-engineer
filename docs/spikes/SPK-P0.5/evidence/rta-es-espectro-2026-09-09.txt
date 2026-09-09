@@ -60,3 +60,32 @@ volcado. Es equivalente en funcionamiento --`parseRTAdata` hace `if (b)` y la
 cadena vacia es falsa, asi que el analizador sigue apagado-- pero no es
 identico: la clave ahora esta. No hay forma de borrarla por protocolo, solo de
 vaciarla. Queda dicho para que nadie lo lea como un cambio del aparato.
+
+=== LAS TRES PREGUNTAS ABIERTAS, CONTESTADAS (misma sesion) ===
+
+1. UNIDAD DEL BYTE: lineal en decibeles, 0,375 dB por byte.
+   Tono de 1 kHz a niveles conocidos, leyendo la banda 67:
+     -36 dBFS -> 25,6      -18 dBFS -> 73,0
+     -30 dBFS -> 41,0      -12 dBFS -> 89,0
+     -24 dBFS -> 57,0       -6 dBFS -> 105,0
+   Los pasos de 6 dB dieron 16,0 bytes EXACTOS cuatro veces seguidas. El unico
+   que se desvio --15,4-- es el mas bajo, junto al piso de ruido, que es donde
+   siempre se desvia.
+   0,375 dB/byte no es la escala del medidor de nivel (0,333): son dos escalas
+   distintas y conviene no mezclarlas.
+
+2. `var.rta` ES GLOBAL. Una segunda conexion vio el cambio inmediatamente.
+   CONSECUENCIA DE PRODUCTO, y no es menor: elegir la fuente del analizador
+   LE CAMBIA LA PANTALLA AL OPERADOR. Si la aplicacion lo hace sola en medio de
+   un show, alguien va a ver su analizador saltar a otro canal sin haberlo
+   tocado. Es una decision de producto --pedir permiso, avisar, o no usarlo con
+   la consola en uso-- y no una de medicion.
+
+3. FUENTES QUE ACEPTA:
+     "i.9"  (entrada)  -> funciona
+     "m"    (general)  -> funciona, 78 bandas con valor
+     "a.0"  (auxiliar) -> 0 bandas: o no es fuente valida o se nombra distinto
+   Que el general funcione importa mas de lo que parece: es lo mas cercano a
+   "que esta saliendo" que hay sin microfono de medicion.
+
+QUEDA SIN MEDIR: el tiempo de integracion de cada trama.
