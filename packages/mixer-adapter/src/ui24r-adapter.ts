@@ -10,6 +10,7 @@ import {
 import { faderADb, gananciaADb } from './conversiones.ts';
 import { leerDinamica } from './dinamica.ts';
 import { rutaDeGanancia } from './fuente-de-canal.ts';
+import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
 import type { DinamicaDeCanal } from '@vse/domain';
@@ -167,6 +168,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly nombresCanal = new Map<number, string>();
   /** De qué previo viene cada canal, según `i.N.src`. Ver `fuente-de-canal.ts`. */
   private readonly fuentesCanal = new Map<number, string>();
+  /** `stereoIndex` por canal. 0 es el izquierdo, 1 el derecho, −1 sin enlazar. */
+  private readonly enlacesEstereo = new Map<number, number>();
   /**
    * Cuántos canales tiene la consola de enfrente.
    *
@@ -493,6 +496,17 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return () => { this.oyentesLatido = this.oyentesLatido.filter((f) => f !== cb); };
   }
 
+  /**
+   * Los pares estéreo que la consola tiene declarados.
+   *
+   * **Se lee, no se declara.** El plan era pedirle al usuario que dijera qué
+   * canales forman un par; resultó que la consola ya lo sabe. Ver
+   * `pares-estereo.ts` para qué significa el número y por qué acá solo se lee.
+   */
+  paresEstereo(): readonly ParEstereo[] {
+    return paresEstereo(this.enlacesEstereo);
+  }
+
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
   canales(cantidad = this.canalesDetectados || CANALES_HASTA_SABER): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
@@ -534,6 +548,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETD') {
       this.store.procesarLinea(linea);
+      // El enlace estéreo se guarda aparte y por canal: el almacén confirmado
+      // lo tiene igual, pero armar el par exige mirar dos rutas a la vez y
+      // traducir la base cero, y eso se hace una sola vez acá en el borde.
+      const enlace = /^i\.(\d+)\.stereoIndex$/.exec(m.path);
+      if (enlace) this.enlacesEstereo.set(canalDeIndice(Number(enlace[1])), m.valor);
       this.reiniciarQuietudDeVolcado();
       return;
     }

@@ -316,6 +316,22 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 
 Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
 
+### 4.5.1 `i.N.stereoIndex`: qué canales van enlazados
+
+Medido el 2026-09-09. Está en los 24 canales y dice la **posición dentro del par**, no un identificador de par:
+
+| Valor | Significa |
+|---|---|
+| `0` | primer miembro; el compañero es el canal **siguiente** |
+| `1` | segundo miembro; el compañero es el **anterior** |
+| `-1` | sin enlazar |
+
+Se corrobora solo: las entradas de línea, que son un par de verdad, valen `l.0 = 0` y `l.1 = 1`, igual que el reproductor. Del `mixer.html`: `setValue(this.name + "stereoIndex", 0)` y `setValue(this.linkTarget.name + "stereoIndex", 1)`, con `linkTarget = allStrips[this.id + 1]`.
+
+**La consola no mantiene la relación.** Medido con la conexión testigo: escribir `i.4.stereoIndex = 0` no movió `i.5`. Las dos escrituras son independientes, así que un par a medias es un estado alcanzable y hay que leerlo como «no hay par».
+
+**Enlazar es destructivo.** Antes de escribir las dos claves, el cliente oficial hace `copySettings()` sobre el izquierdo y `pasteSettings()` sobre el derecho: **el enlace pisa todos los ajustes del canal derecho**. La copia la hace el cliente y no la consola, así que escribir solo las dos claves no copia nada — pero dejaría un par que la consola dibuja enlazado con dos canales que suenan distinto. Por eso el adaptador solo lee.
+
 ### 4.6 Las constantes medidas, en un solo lugar
 
 Cada una de estas salió de una medición contra el aparato o de leer el código de la consola, y cada una **está comprobada contra el código en cada integración** por `tools/docs/validate-numeros.mjs`. Si alguien cambia el valor en un lado y no en el otro, falla la integración en vez de sobrevivir hasta que alguien relea.

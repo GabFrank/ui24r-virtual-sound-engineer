@@ -6,6 +6,15 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Los pares estéreo se leen de la consola en vez de declararse a mano.** El
+  plan era pedirle al usuario que dijera qué canales forman un par —era lo
+  primero de la lista de lo que faltaba para el panorama—. Resultó que la
+  consola ya lo sabe: `i.N.stereoIndex` vale 0 en el primero del par, 1 en el
+  segundo y −1 sin enlazar. Una cosa menos que el usuario tiene que decir, y
+  una cosa menos que se puede desincronizar. **El adaptador solo lee**: enlazar
+  desde la aplicación sería destructivo, porque el cliente de la consola copia
+  todos los ajustes del canal izquierdo sobre el derecho antes de enlazar.
+
 - **El analizador de espectro se toma prestado con permiso y se devuelve.**
   `RTA` resultó ser el analizador de la consola y no un latido, pero la fuente
   se elige con `var.rta`, que es **global**: apuntarlo a un canal le cambia el

@@ -158,11 +158,19 @@ Lo que ya está:
 
 Lo que falta, en orden:
 
-1. **Qué canales forman un par estéreo.** Es el dato que ninguna faceta
-   contiene y sin el cual no se puede abrir nada: el teclado llega por dos
-   canales —el simulador los llama «TECLADO L» y «TECLADO R»— y una entrada de
-   línea también. Hoy son dos asignaciones sin nada que las relacione. No es
-   una variante del instrumento: es una propiedad del par de canales.
+1. ~~**Qué canales forman un par estéreo.**~~ **Resuelto el 2026-09-09, y no
+   como estaba previsto.** Iba a pedírsele al usuario; resultó que la consola ya
+   lo sabe. `i.N.stereoIndex` existe en los 24 canales: **0 es el primero del
+   par y su compañero es el canal siguiente, 1 es el segundo, −1 es sin
+   enlazar**. Se lee, no se declara — una cosa menos que el usuario tiene que
+   decir, y una cosa menos que se puede desincronizar con la consola. Ver
+   `packages/mixer-adapter/src/pares-estereo.ts` y
+   `docs/spikes/SPK-P0.2a/evidence/enlace-estereo-2026-09-09.txt`.
+
+   Con una advertencia que sí es nueva: **enlazar desde la aplicación sería
+   destructivo**. El cliente de la consola copia todos los ajustes del canal
+   izquierdo sobre el derecho antes de escribir el enlace. Por eso el adaptador
+   solo lee.
 2. **La regla, escrita como convención y no como medición.** Qué va al centro
    (voz principal, bajo, bombo), qué se abre y cuánto, y qué hace cuando hay
    tres congas y no dos. Con su fundamento, o declarada como preferencia del
