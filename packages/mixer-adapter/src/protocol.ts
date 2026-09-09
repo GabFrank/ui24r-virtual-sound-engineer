@@ -185,37 +185,42 @@ export const VU_BYTES_POR_CANAL = 6;
 export const VU_ESCALA = 0.004167508166392142;
 
 /**
- * Recorrido del medidor, en decibeles. **Medido, no deducido.**
+ * Recorrido del medidor, en decibeles. `VU_RANGE` en `mixer.html`.
  *
- * El código de la consola dice 80: `VU_RANGE = 80` y las marcas de la escala
- * en `-dB * h / VU_RANGE`. De ahí se dedujo primero este número, y **la
- * medición lo desmintió**. Con una fuente de nivel conocido entrando por una
- * entrada de la consola —tonos generados en la máquina de desarrollo, salida
- * analógica al canal 10, compresor y puerta puenteados— la recta salió
- * impecable pero con la pendiente equivocada:
+ * La escala va de 0 en la punta a −80 en el fondo, y la barra se dibuja
+ * proporcional a la posición, así que un escalón del byte son
+ * `80 * VU_ESCALA` = 0,333 dB.
  *
- * | Barrido | Pendiente contra el recorrido de 80 | Recorrido implícito |
- * |---|---|---|
- * | 1 kHz, −40 a −3 dBFS | 0,9438 | 84,8 dB |
- * | 1 kHz, −32 a −14 dBFS, pasos de 2 | 0,9379 | 85,3 dB |
- * | 400 Hz, −30 a −15 dBFS, pasos de 3 | 0,9507 | 84,1 dB |
+ * **Este número estuvo en 84,5 durante unas horas y se volvió atrás.** Vale
+ * dejar escrito el episodio completo, porque la trampa es sutil y se puede
+ * repetir.
  *
- * El desvío máximo de la recta en el barrido más fino fue de **0,21 dB**: la
- * escala es lineal en decibeles, que es lo que el código decía, y sólo estaba
- * mal el factor.
+ * Se midió con tonos de nivel conocido generados en la máquina de desarrollo,
+ * entrando por una entrada de la consola. Tres barridos dieron pendientes de
+ * 0,94 contra el recorrido de 80, con desvíos de 0,21 a 0,79 dB: rectas
+ * impecables, y todas apuntando a un recorrido de ~85 dB. Con eso se cambió la
+ * constante.
  *
- * **Por qué 80 no era el número.** En `drawVUMarks` las marcas se dibujan
- * sobre `a.h - 9` píxeles, mientras `paint()` dibuja la barra sobre `a.h`
- * completo. Los nueve píxeles de diferencia estiran el recorrido efectivo:
- * `80 * h / (h - 9)` con la altura de tira de la consola da ~85 dB, que es lo
- * que se midió. La consola arrastra esa inconsistencia entre su barra y sus
- * propios rótulos; nosotros informamos el número que corresponde a la señal.
+ * Lo que faltaba mirar: **esos barridos no coincidían entre sí.** En dB por
+ * escalón del byte daban 0,3516, 0,3582 y 0,3644 según el nivel al que se
+ * midiera. Una escala tiene un solo factor; tres factores distintos según el
+ * nivel no son una escala, son una cadena analógica metiendo la cola —el
+ * conversor, el cable, el previo, o el ruido sumándose en los niveles bajos—.
  *
- * La incertidumbre de los tres barridos es de ±0,6 dB. Si algún día se mide
- * con un bucle físico calibrado —SPK-P0.10b— este número se afina; hasta
- * entonces es el mejor que hay y sale de una fuente conocida.
+ * Lo que lo resolvió fue una medición **sin cadena analógica**: mover el fader
+ * del canal, que es una ganancia digital dentro de la consola, con la fuente
+ * fija y el medidor de entrada de testigo. De 0 a −38,19 dB de atenuación
+ * —según la propia ley de fader de la consola— el medidor recorrió 114,7
+ * escalones. Con este recorrido de 80 eso da 38,25 dB: **coincide en 0,06 dB
+ * sobre 38**. Dos hechos independientes tomados del código de la consola, su
+ * `VU_RANGE` y su `VtoLIN`, concuerdan entre sí y con la medición limpia.
+ *
+ * La moraleja para el próximo que mida: una fuente externa mide la cadena
+ * entera, no el medidor. Para medir el medidor hay que mover algo que ya esté
+ * adentro. Y la correspondencia con dBFS reales sigue sin medirse: eso es lo
+ * que pide SPK-P0.10b con un bucle calibrado.
  */
-export const MEDIDOR_RANGO_DB = 84.5;
+export const MEDIDOR_RANGO_DB = 80;
 
 /**
  * Posición desde la que la consola enciende su indicador de saturación.

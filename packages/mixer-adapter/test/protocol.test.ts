@@ -101,7 +101,7 @@ test('VU2: el medidor es lineal en decibeles, no la ley del fader', () => {
   // otra recta posible. Este test existe porque aca vivia el contrario: uno
   // que exigia que la conversion del medidor coincidiera con la del fader,
   // que era la hipotesis, y la hipotesis resulto falsa.
-  assert.equal(MEDIDOR_RANGO_DB, 84.5, 'el recorrido esta medido, no deducido del codigo');
+  assert.equal(MEDIDOR_RANGO_DB, 80);
   assert.equal(dbDeMedidor(1), 0, 'la punta de la escala es 0 dB');
   assert.equal(dbDeMedidor(0.5), -MEDIDOR_RANGO_DB / 2, 'la mitad de la barra es la mitad del recorrido');
   assert.equal(dbDeMedidor(0), -Infinity, 'sin senal no hay decibeles que dar');
@@ -113,16 +113,24 @@ test('VU2: el medidor es lineal en decibeles, no la ley del fader', () => {
   }
 });
 
-test('VU2: la pendiente es la que se midio con una fuente conocida', () => {
-  // Esta es la prueba fuerte de la escala, y la unica que no depende de que
-  // alguien lea bien una barra: con tonos generados en la maquina de
-  // desarrollo entrando por el canal 10 --compresor y puerta puenteados-- una
-  // rebaja de 18 dB en la fuente movio el byte de 86,4 a 35,2. Si nuestra
-  // conversion es correcta, esos dos bytes tienen que estar a 18 dB.
+test('VU2: la escala coincide con la ley de fader de la propia consola', () => {
+  // La prueba fuerte de la escala, y la unica sin cadena analogica en el medio:
+  // el fader es una ganancia digital dentro de la consola. Con la fuente fija,
+  // bajarlo del crudo 0,7647 al 0,20 movio el medidor de salida del byte 181,0
+  // al 66,3. Segun la ley de fader eso son 38,19 dB de atenuacion, y nuestra
+  // conversion tiene que dar lo mismo.
+  //
+  // Medir con una fuente externa da otro numero --y tres numeros distintos
+  // segun el nivel-- porque mide la cadena entera y no el medidor. Ver la nota
+  // de MEDIDOR_RANGO_DB.
   const dbDeByte = (byte: number): number => dbDeMedidor(byte * VU_ESCALA);
-  const medido = dbDeByte(86.4) - dbDeByte(35.2);
+  const medido = dbDeByte(181.0) - dbDeByte(66.3);
+  const segunElFader = faderADb(0.7647058824) - faderADb(0.2);
 
-  assert.ok(Math.abs(medido - 18) < 0.5, `dio ${medido.toFixed(2)} dB donde la fuente bajo 18`);
+  assert.ok(
+    Math.abs(medido - segunElFader) < 0.2,
+    `el medidor dio ${medido.toFixed(2)} dB y el fader ${segunElFader.toFixed(2)}`,
+  );
 });
 
 test('VU2: coincide con lo que se leyo en la pantalla de la consola', () => {

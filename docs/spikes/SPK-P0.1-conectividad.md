@@ -1,6 +1,6 @@
 # SPK-P0.1 — Conectividad, reconexión, eco y cadencia de medidores
 
-**Estado:** Parcial — criterio 4 cerrado desde la tablet el 2026-09-08; **1, 3 y 5 siguen abiertos** · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial — criterios 4 y 3 contestados el 2026-09-08 (el 3 con un **no**); **1 y 5, los dos bloqueantes que faltan, siguen abiertos** · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** S-00.3 · **Bloquea a:** SPK-ACK-POLICY, SPK-P0.2a, SPK-P0.9, S-02.5b, S-02.7
 **Montaje:** Ui24R, router dedicado, laptop con Node. No hace falta interfaz de audio.
 
@@ -22,9 +22,9 @@ La respuesta al eco determina cómo se confirma cada escritura, y la cadencia de
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | 20 de 20 ciclos de apretón a volcado, 112–158 ms, **desde una laptop por cable y sin cortar la red** | ⬜ |
+| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | 20 de 20 ciclos de apretón a volcado, 112–158 ms, **desde una laptop por cable y sin cortar la red**. Con cortes de red inalámbrica de verdad se hicieron **unos pocos** ciclos, con vueltas de **3,8 a 4,9 s**: dentro del umbral, y muy lejos de los veinte por modo que pide el criterio | ⬜ |
 | 2 | Volcado completo recibido tras cada reconexión | bloqueante | 20 de 20 | 20 de 20, 6 665 claves cada vez | ⬜ |
-| 3 | La consola devuelve eco al emisor de su propia escritura | informativo | sí o no, con captura | sin medir: exige escribir, y el nivel es OBSERVE | ⬜ |
+| 3 | La consola devuelve eco al emisor de su propia escritura | informativo | sí o no, con captura | **NO.** Medido el 2026-09-08 en `i.9.mute` y en `i.9.mix`: se escribe, se escucha seis segundos y **no llega ninguna línea para esa ruta**; un `INIT` posterior trae el valor nuevo a los ~100 ms, o sea que la escritura **sí se aplicó**. A los demás clientes **sí se la difunde**: la aplicación en la tablet lo registró como `cambio_externo` en el mismo instante | ✅ |
 | 4 | Cadencia de medidores: intervalo medio, mediana, percentil 95 | bloqueante | los tres valores registrados; umbral de inestabilidad = 3 veces el intervalo medio | **Desde la tablet** —Motorola Edge 60 Pro contra la consola en `192.168.0.78`, firmware `3.4.8318-ui24`, Ajustes → Prueba de conexión—: **`RTA` media 33 ms, p95 40 ms, idéntico en silencio y con guitarra sonando → umbral 99 ms.** `VU2`: media 1 231 ms y p95 4 730 ms en silencio, media 44 ms y p95 69 ms con señal. Mediana de `RTA`, desde la laptop por cable: 33 ms | ✅ |
 | 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | 3 clientes, 120 s, misma huella SHA-256 y mismas 6 665 claves — **con el estado quieto, así que no prueba lo que el criterio pregunta** | ⬜ |
 
@@ -36,7 +36,9 @@ Se mide desde la tablet y no desde una laptop a propósito: cuánto tarda en rec
 
 **La prueba medía el flujo equivocado y por eso no podía contestar el criterio 4.** Cronometraba `VU2` y presentaba esa cadencia como la de la conexión, cuando la consola calla `VU2` en silencio: en una sala callada el número que salía era el del silencio de la sala, no el de la red. Corregido en `b7db4e9`: el informe pasó a versión 2 y trae las dos cadencias, la de `RTA` —que es sobre la que se decide este criterio— y la de los medidores, cada una diciendo para qué sirve.
 
-La prueba **no escribe nada**. Eso deja el criterio 3, el eco de las escrituras propias, sin contestar: exige escribir, y en esta fase la aplicación no escribe. Lo dice el propio informe en la sección de lo que no midió, para que nadie lo lea como comprobado.
+La prueba **no escribe nada**, y por eso no puede contestar el criterio 3: en esta fase la aplicación no escribe. Lo dice el propio informe en la sección de lo que no midió, para que nadie lo lea como comprobado.
+
+El criterio 3 se contestó por fuera de la aplicación, con un script de spike —`tools/spikes/p0-10b-vu/eco.ts`— que tiene la misma autoridad que una persona tocando un control en el `mixer.html` de la consola. No es la aplicación escribiendo: el nivel de autonomía sigue en OBSERVE y el camino `Assistant → Recommendation → Transaction → SafetyEngine → write()` sigue siendo el único por el que la aplicación puede escribir.
 
 El criterio 5 se contesta a medias: la aplicación da la huella de su estado confirmado, y comparar tres clientes es generar las otras dos huellas y ver si coinciden.
 
@@ -118,19 +120,77 @@ Los 33 ms del teléfono coinciden con los 33,3 ms que la laptop había medido po
 aparato no la degradan. La mediana de `RTA` sigue siendo la de la laptop, 33 ms; el informe de
 la aplicación reporta media y percentil 95.
 
+### El criterio 3, contestado: la consola no devuelve eco
+
+**La respuesta es no.** Medido el 2026-09-08 contra la consola en `192.168.0.78`, firmware
+`3.4.8318-ui24`, con `tools/spikes/p0-10b-vu/eco.ts`. El procedimiento es de tres pasos y no
+admite interpretación: se escribe, se escucha, y después se pregunta.
+
+En **dos parámetros distintos**, `i.9.mute` y `i.9.mix` —uno booleano y uno continuo, para que
+la respuesta no dependa del tipo—:
+
+1. Se envía la escritura y se escuchan **seis segundos**. **No llega ninguna línea para esa
+   ruta.** Ni el mismo mensaje, ni una versión distinta, ni nada.
+2. Se pide `INIT`. El valor nuevo aparece a los **~100 ms**.
+
+Las dos cosas juntas dicen algo más preciso que «no hay eco»: **la consola aplica la escritura y
+no se la devuelve a quien la hizo.** El silencio no era un rechazo.
+
+**Y sí la difunde a los demás clientes.** Mientras corría la prueba, la aplicación estaba
+conectada en la tablet y registró el cambio como `cambio_externo` en el mismo instante. O sea
+que el mensaje existe y sale: lo que la consola hace es no mandárselo al socket que lo originó.
+
+Eso, sumado a que los mensajes **no identifican al cliente** —ya estaba medido—, cierra un cabo
+suelto de ADR-005: la correlación temporal propio/externo del `ConfirmedStateStore` **nunca
+marcaría `SELF`**, porque el mensaje con el que se correlacionaría no llega jamás.
+
+#### Qué decisiones toca esto
+
+- **`Ui24rMixerAdapter.escribir()` hoy devolvería `UNVERIFIED` siempre.** Espera confirmación
+  con `esperarConfirmacion()`, que exige una entrada en el almacén con origen `SELF`; sin eco no
+  hay una nunca, así que agota su tiempo de espera en todas las escrituras y ninguna transacción
+  pasaría de su primera escritura. La rama que devuelve `APPLIED` con `confirmedBy: 'ECHO'` es
+  código muerto contra esta consola.
+- **La política de confirmación no puede basarse en el eco.** Es la entrada que le faltaba a
+  SPK-ACK-POLICY, y ahí están escritas las opciones. Este spike no elige ninguna.
+- **Confirmar por relectura significa `INIT`**, que es el volcado entero: 6 665 claves. Funciona
+  —los ~100 ms lo demuestran— pero es caro para confirmar una sola escritura.
+- **Hay una tercera vía que la medición sugiere**, y se registra como opción a evaluar y no como
+  decisión tomada: una **segunda conexión como testigo**, ya que la consola sí difunde a los
+  otros clientes.
+
+#### Un hallazgo de protocolo que salió de la misma prueba
+
+Escribir requiere **el mismo envoltorio socket.io que el resto**: `3:::SETD^ruta^valor`. Enviado
+sin él, la consola lo ignora. Se probaron cinco variantes con
+`tools/spikes/p0-10b-vu/probar-escritura.ts` y la que funciona es la de siempre, sin ningún
+prefijo especial ni ninguna forma reservada para las escrituras.
+
+Y **no hace falta ningún `INIT` previo** para que una escritura sea aceptada. El `INIT` es la
+única forma de *verificarla*, no una condición para que se aplique.
+
 ### Qué falta para cerrar el spike
 
-Tres criterios, y ninguno se contesta con lo medido hasta ahora:
+Dos criterios, los dos bloqueantes:
 
 - **Criterio 1**: los veinte ciclos **por cada modo de corte** —router apagado, cambio de IP de
-  la tablet, corte de la red inalámbrica—, con cortes de red reales y desde la tablet. Lo
-  medido hasta ahora son veinte ciclos de apretón a volcado, sin cortar nada.
-- **Criterio 3**: el eco de las escrituras propias. Exige escribir, y el nivel de autonomía es
-  OBSERVE. No se contesta en esta fase.
+  la tablet, corte de la red inalámbrica—, con cortes de red reales y desde la tablet. Lo medido
+  hasta ahora son veinte ciclos de apretón a volcado sin cortar nada, más **unos pocos** ciclos
+  de corte de red inalámbrica de verdad, con vueltas de **3,8 a 4,9 s**. Esos tiempos entran
+  holgados en el umbral de 10 s, pero un puñado de ciclos de un solo modo no es lo que el
+  criterio pide, y el criterio pide veinte por modo justamente porque lo que se busca es el caso
+  raro.
 - **Criterio 5**: los tres clientes simultáneos **con el estado moviéndose**. La comparación de
   huellas se hizo con el estado quieto, que no prueba lo que el criterio pregunta.
+
+El criterio 3 ya no está en esta lista: quedó contestado. Era informativo, así que no bloqueaba
+el cierre, pero sí bloqueaba a SPK-ACK-POLICY, que ahora tiene su entrada.
 
 ### Evidencia
 
 `evidence/` — volcados crudos, inventario de claves, capturas de medidores con y sin señal,
 ciclos de reconexión y huellas de los tres clientes.
+
+**Falta archivar `evidence/echo-capture.txt`**, la salida de `eco.ts` para las dos rutas con sus
+tiempos. Sin ella el criterio 3 está contestado en este documento pero no cumple el segundo
+punto de la definición de terminado de un spike, que pide la evidencia archivada.

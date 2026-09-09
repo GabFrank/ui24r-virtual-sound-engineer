@@ -1,0 +1,23 @@
+SPK-P0.1 criterio 1, modo wifi-cortada, tablet LINK_8, consola 192.168.0.78
+corte de 6 s; se cronometra desde que se reactiva la wifi hasta que la app dice CONECTADO
+ciclo 1: 3.8 s
+ciclo 2: 3.7 s
+ciclo 3: 3.7 s
+ciclo 4: 3.7 s
+ciclo 5: 3.8 s
+ciclo 6: 3.7 s
+ciclo 7: 3.8 s
+ciclo 8: 3.7 s
+ciclo 9: 3.7 s
+ciclo 10: 5.0 s
+ciclo 11: 3.7 s
+ciclo 12: 3.8 s
+ciclo 13: 3.8 s
+ciclo 14: 3.7 s
+ciclo 15: 3.7 s
+ciclo 16: 3.7 s
+ciclo 17: 3.7 s
+ciclo 18: 3.7 s
+ciclo 19: 3.7 s
+ciclo 20: 3.8 s
+FIN

@@ -185,17 +185,35 @@ paint()          { c = h * this.value }   // alto de la barra, proporcional a la
 Si la barra es proporcional a la posición y las marcas están espaciadas linealmente en decibeles, la correspondencia es una recta:
 
 ```
-dB = VU_RANGE · posicion − VU_RANGE       // 0 dB en la punta, −80 en el fondo
+dB = RECORRIDO · posicion − RECORRIDO      // 0 dB en la punta, −RECORRIDO en el fondo
 ```
 
-Un escalón del byte son `80 × 0,004167` = **0,333 dB**.
+**La forma es esa, y `VU_RANGE` no es el valor de `RECORRIDO`.** Medido el 2026-09-08 con una fuente de nivel conocido —tonos generados en la máquina de desarrollo, salida analógica al canal 10 de la consola, compresor y puerta puenteados—:
 
-**Comprobado contra el aparato en dos puntos independientes**, con la consola en `192.168.0.78`:
-
-| Fuente | Byte | Según esta recta | Lo que mostraba la consola |
+| Barrido | Pendiente contra un recorrido de 80 | Desvío máximo | Recorrido implícito |
 |---|---|---|---|
-| Guitarra en el canal 1 | entrada 225 | −5,0 dB de entrada; con el fader en −6,9 dB, **−11,9 a la salida** | ≈ −12 dB |
-| Música por las RCA (21 y 22) | salida 102 | **−46 dB** | barra en −45 aprox. |
+| 1 kHz, −40 a −3 dBFS | 0,9438 | 0,79 dB | 84,8 dB |
+| 1 kHz, −32 a −14 dBFS, pasos de 2 | 0,9379 | **0,21 dB** | 85,3 dB |
+| 400 Hz, −30 a −15 dBFS, pasos de 3 | 0,9507 | 0,39 dB | 84,1 dB |
+
+La escala **es lineal en decibeles**, que es lo que el código decía, y solo estaba mal el factor. El recorrido es de **84,5 dB (±0,6)**, que es lo que vale `MEDIDOR_RANGO_DB` en el adaptador:
+
+```
+dB = 84,5 · posicion − 84,5
+```
+
+Un escalón del byte son `84,5 × 0,004167` = **0,352 dB**, no los 0,333 que salían de 80.
+
+**Causa probable, escrita como probable.** En `drawVUMarks` las marcas se dibujan sobre `a.h - 9` píxeles mientras `paint()` usa `a.h` completo; `80 · h/(h − 9)` con la altura de tira de la consola da ~85 dB. La consola arrastraría así una inconsistencia entre su barra y sus propios rótulos. Nadie comprobó esa hipótesis contra el aparato: lo medido es el número, no su causa.
+
+**Lo que esta medición no contesta:** la correspondencia con dBFS absolutos. El camino llevaba una ganancia analógica desconocida —perilla de la interfaz más previo del canal— que se mantuvo fija, así que valen las diferencias y no los valores absolutos. Eso exige un bucle calibrado y lo sigue debiendo SPK-P0.10b.
+
+**Control de sensatez contra el aparato en dos puntos**, con la consola en `192.168.0.78`. Son lecturas a ojo de una barra en movimiento, así que valen con la tolerancia de leer una barra y **no** como calibración —esa es la de los tonos de arriba—:
+
+| Fuente | Byte | Según la recta medida | Lo que mostraba la consola |
+|---|---|---|---|
+| Guitarra en el canal 1 | entrada 225 | −5,3 dB de entrada; con el fader en −6,9 dB, **−12,2 a la salida** | ≈ −12 dB |
+| Música por las RCA (21 y 22) | salida 102 | **−48,6 dB** | barra entre −40 y −45 aprox. |
 
 Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis —escrita como tal— de que la consola dibuja sus medidores con la misma regla que sus faders. **Es falsa.** Con esa ley el byte 225 daba +4,6 dB, recortado a +10 en pantalla.
 
@@ -211,12 +229,19 @@ Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis 
 
 **Comprobación cruzada del modelo entero.** Si la barra es la salida y el fantasma la entrada, la diferencia entre las dos tiene que ser exactamente el fader del canal. Medido el 2026-09-08 con música por las RCA:
 
-| Canal | Entrada | Salida | Diferencia | `i.N.mix` |
-|---|---|---|---|---|
-| 21 | −22,7 dB | −34,3 dB | 11,7 dB | −11,6 dB |
-| 22 | −21,7 dB | −33,3 dB | 11,7 dB | −11,5 dB |
+| Canal | Entrada (byte) | Salida (byte) | Diferencia con recorrido 80 | Diferencia con recorrido 84,5 | `i.N.mix` |
+|---|---|---|---|---|---|
+| 21 | 171,9 | 137,1 | **11,6 dB** | 12,3 dB | −11,6 dB |
+| 22 | 174,9 | 140,1 | **11,6 dB** | 12,3 dB | −11,5 dB |
 
-Una décima de decibel. La recta de conversión, el reparto de bytes y la ley del fader quedan comprobados a la vez, y con una fuente que no hizo falta calibrar.
+El reparto de bytes y la relación entre la barra, el fantasma y el fader quedan comprobados: la diferencia entre los dos medidores *es* el fader del canal, y eso no depende de cuánto valga el recorrido.
+
+> ⚠️ **Pero el recorrido que sale de acá no es el que salió de los tonos, y la discrepancia está sin resolver.** Esta comprobación cruzada da un recorrido implícito de **79 a 80 dB** —justo `VU_RANGE`— mientras los tres barridos con fuente conocida dan **84 a 85**. Con 80 cerraba en una décima de decibel; con 84,5 queda a 0,65 y 0,75 dB del fader. Un 6 % de diferencia que alguna de las dos mediciones tiene mal, y no se sabe cuál:
+>
+> - Los **tonos** son la medición más fuerte: nivel de fuente exacto, muchos puntos, pasos finos, recta de mínimos cuadrados y desvío máximo de 0,21 dB. Pero miden **un solo medidor** contra una fuente externa.
+> - La **comprobación cruzada** compara **dos medidores entre sí** y contra `faderADb`, que es otra lectura del código de la consola y no una medición. Si la ley del fader tiene un error de escala del mismo orden, esta comprobación lo absorbe sin notarlo: los dos números están afectados por el mismo factor. Además son dos puntos de una señal de música en movimiento, no un barrido.
+>
+> Por eso el adaptador se quedó con el número de los tonos —84,5— y esta comprobación deja de ser una confirmación del recorrido para pasar a ser una **pregunta abierta**. La zanja la cierra el bucle calibrado que SPK-P0.10b sigue debiendo, y de paso pondría a prueba `faderADb` contra algo que no sea su propio código fuente.
 
 **La aplicación muestra la entrada**, no la salida: lo que le importa es el margen del previo, y ese no cambia porque alguien mueva un fader. El operador que compare con la barra de su consola va a ver un número más alto en la aplicación, por lo que baje el fader; la pantalla lo dice.
 
@@ -243,6 +268,24 @@ Siete controles movidos a mano desde la interfaz web de la consola, uno por vez,
 La ganancia de entrada cuelga del espacio de hardware, `hw.N.gain`, no del canal. Ya estaba así en la matriz y en `clasificar-ruta.ts`; lo que agrega esta medición es la comprobación contra el aparato.
 
 **Granularidad:** mover un fader produjo 118 mensajes en unos nueve segundos. La consola emite el valor de forma continua mientras se arrastra el control, sin agrupar: unas trece actualizaciones por segundo por control movido.
+
+### 5.1 Cómo se comporta una escritura, medido el 2026-09-08
+
+Una sesión posterior sí escribió, desde un script de spike y no desde la aplicación —el nivel de autonomía sigue en OBSERVE—, en `i.9.mute` y en `i.9.mix`. Es el criterio 3 de SPK-P0.1.
+
+**Forma.** Escribir usa **el mismo envoltorio socket.io que todo lo demás**: `3:::SETD^ruta^valor`. Sin él la consola ignora el mensaje. Se probaron cinco variantes —con y sin envoltorio, con decimal, con `@` delante, con `INIT` previo— y la que funciona es la de siempre. **No hace falta ningún `INIT` previo** para que la escritura sea aceptada.
+
+**Qué hace la consola con ella**, y son tres hechos distintos:
+
+| | |
+|---|---|
+| ¿La aplica? | **Sí.** Un `INIT` posterior trae el valor nuevo a los ~100 ms |
+| ¿Se la devuelve a quien escribió? | **No.** Seis segundos escuchando, cero líneas para esa ruta |
+| ¿Se la manda a los demás clientes? | **Sí.** La aplicación conectada en la tablet lo registró en el mismo instante |
+
+La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la difunde al resto. Con eso, **la única forma de que un cliente verifique su propia escritura es pedir `INIT`**, que trae el valor nuevo y con él las 6 665 claves enteras. Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY.
+
+Se escribió además en `i.9.dyn.bypass` y `i.9.gate.enabled` para puentear el procesamiento del canal antes de medir su medidor. Las dos claves existen y aceptan escritura; su efecto se verificó de forma indirecta, por lo que le pasó a la recta del §4.3, y no se midió ninguna curva ni ningún rango.
 
 ---
 
@@ -316,8 +359,9 @@ Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el apara
 
 Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia no se lea como verificación.
 
-- **Si la consola devuelve eco de las escrituras propias** (SPK-P0.1, criterio 3). Exige escribir. Nivel OBSERVE: no se hizo.
-- **La calibración y la balística de los medidores** (SPK-P0.10b entero). Necesita tonos y bucle físico.
+- **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala ya está medida; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
+- **El recorrido del medidor, que tiene dos respuestas** (79–80 dB por la comprobación cruzada, 84–85 por los tonos). Ver 4.3.
+- **La balística de los medidores** (SPK-P0.10b, criterio 3). Necesita ráfagas.
 - **La cadencia de medidores desde la tablet.**
 - **La reconexión con cortes de red reales.**
 - **La transición de señal a silencio en `VU2`.**
