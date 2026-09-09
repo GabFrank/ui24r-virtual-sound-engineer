@@ -46,6 +46,30 @@ function desdePuenteo(e: { readonly valor: number } | undefined): EstadoDeProces
 }
 
 /**
+ * Si el umbral de la puerta puede alcanzarse alguna vez.
+ *
+ * **Una puerta habilitada con el umbral en el fondo no es una puerta activa.**
+ * Recorriendo la aplicación en la tablet, la insignia «PUERTA» salía en los 24
+ * canales: los 24 tienen `gate.enabled = 1`, pero 23 tienen `gate.thresh = 0`,
+ * que con `VtoTHRESH = 96a − 90` son **−90 dB**. Ninguna señal baja de ahí, así
+ * que esa puerta no se cierra nunca y no toca nada de lo que se escucha. Una
+ * insignia que aparece siempre no informa: es ruido con forma de advertencia.
+ *
+ * Esto no es interpretar de más lo que la consola declara. Las banderas dicen
+ * si el bloque está habilitado; el umbral dice si puede actuar, y para lo que
+ * la insignia sirve —«¿esto afecta a lo que estoy midiendo o escuchando?»— la
+ * segunda pregunta es la que importa.
+ *
+ * Se compara contra el mínimo exacto y no contra un margen elegido: el crudo 0
+ * es el fondo de la escala, y decir «por debajo de tanto tampoco cuenta» sería
+ * agregar un umbral nuestro sobre el de la consola.
+ */
+function puertaAlcanzable(entrada: { readonly valor: number } | undefined): EstadoDeProceso | null {
+  if (entrada === undefined) return null;
+  return entrada.valor > 0 ? 'ACTIVO' : 'INACTIVO';
+}
+
+/**
  * Junta las banderas de un mismo proceso.
  *
  * La puerta tiene dos —`enabled` y `bypass`— y pueden decir cosas distintas:
@@ -80,6 +104,7 @@ export function leerDinamica(leer: LectorDeEstado, n: number): DinamicaDeCanal {
     puerta: combinar(
       desdeHabilitado(leer(`i.${n}.gate.enabled`)),
       desdePuenteo(leer(`i.${n}.gate.bypass`)),
+      puertaAlcanzable(leer(`i.${n}.gate.thresh`)),
     ),
     // El de-esser solo publica `enabled`.
     deesser: combinar(desdeHabilitado(leer(`i.${n}.deesser.enabled`))),

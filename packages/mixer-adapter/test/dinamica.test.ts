@@ -107,3 +107,29 @@ test('las rutas son de base cero: el canal 1 lee `i.0`, no `i.1`', async () => {
   assert.equal(dos?.dinamica.puerta, 'ACTIVO');
   await a.desconectar();
 });
+
+/**
+ * Una puerta habilitada con el umbral en el fondo NO esta activa.
+ *
+ * Encontrado en la tablet: la insignia PUERTA salia en los 24 canales. Los 24
+ * tienen gate.enabled=1, pero 23 tienen gate.thresh=0, que son -90 dB con
+ * VtoTHRESH = 96a - 90. Ninguna senal baja de ahi, asi que esa puerta no se
+ * cierra nunca. Una insignia que aparece siempre no informa nada.
+ */
+test('la puerta con el umbral en el fondo no cuenta como activa', () => {
+  const estado = new Map<string, number>([
+    ['i.0.gate.enabled', 1],
+    ['i.0.gate.bypass', 0],
+    ['i.0.gate.thresh', 0],
+  ]);
+  const leer = (p: string): { valor: number } | undefined => {
+    const v = estado.get(p);
+    return v === undefined ? undefined : { valor: v };
+  };
+  assert.equal(leerDinamica(leer, 0).puerta, 'INACTIVO',
+    'habilitada pero con el umbral en -90 dB: no puede cerrarse nunca');
+
+  estado.set('i.0.gate.thresh', 0.41);
+  assert.equal(leerDinamica(leer, 0).puerta, 'ACTIVO',
+    'con un umbral real si esta actuando');
+});
