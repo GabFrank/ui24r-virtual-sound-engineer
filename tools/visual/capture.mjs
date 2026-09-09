@@ -148,7 +148,7 @@ async function main() {
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
   await pagina.waitForSelector('table tbody tr', { timeout: 10000 });
   await esperar(1500);
-  await capturar('02-telemetria', 'telemetría de doce canales con medidores en vivo');
+  await capturar('02-telemetria', 'telemetría con medidores en vivo, un canal por entrada de la consola');
 
   await escenario('clipping');
   await esperar(2500);
@@ -285,7 +285,8 @@ async function main() {
   await esperar(4000);
   await capturar('14-capturando', 'capturando la ventana del canal');
   await esperar(17000);
-  // La explicación queda debajo de la tabla de doce canales: sin bajar, la
+  // La explicación queda debajo de la tabla de canales, que ocupa mas de una
+  // pantalla: sin bajar, la
   // captura mostraría solo los números y no el porqué, que es lo importante.
   await pagina.evaluate(() => {
     document.querySelector('.recomendacion')?.scrollIntoView({ block: 'center' });

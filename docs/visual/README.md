@@ -9,7 +9,7 @@ describiendo pasos que ya no existen.
 | Captura | Qué muestra |
 |---|---|
 | `01-sin-conexion.png` | Pantalla inicial, antes de conectar |
-| `02-telemetria.png` | Telemetría de doce canales con medidores en vivo |
+| `02-telemetria.png` | Telemetría con medidores en vivo, un canal por entrada de la consola |
 | `03-saturacion.png` | Un canal saturando: medidor en rojo, margen en cero, contador de clips |
 | `04-cambio-externo.png` | Un cambio hecho desde otro dispositivo, detectado como ajeno |
 | `05-arrastre-fader.png` | Arrastre de fader: decenas de mensajes sobre una sola ruta, sin alerta |

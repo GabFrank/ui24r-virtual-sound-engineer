@@ -87,6 +87,6 @@ La etiqueta manda sobre la casilla de pre-lanzamiento de GitHub: `v0.3.0-rc.1` s
 
 `node tools/mixer-sim/src/server.mjs --port 8765`
 
-Doce canales y los escenarios `external-change`, `snapshot-recall`, `fader-drag`, `vu-gap`, `clipping`, `drop`. Se provocan enviando `!scenario <nombre>` por el propio WebSocket.
+Veinticuatro canales --como la consola-- y los escenarios `external-change`, `snapshot-recall`, `fader-drag`, `vu-gap`, `clipping`, `drop`. Se provocan enviando `!scenario <nombre>` por el propio WebSocket.
 
 **Advertencia que se repite en tres sitios y conviene repetir acá:** el simulador reproduce *nuestras hipótesis* del protocolo. Si son equivocadas, está equivocado igual y las pruebas pasan igual. Ninguna invariante se cierra contra el simulador.

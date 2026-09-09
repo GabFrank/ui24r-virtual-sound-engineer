@@ -120,7 +120,7 @@ const escenarios = {
       aplicar(`i.${c.idx}.mix`, dbAFader(c.faderDb - 3));
     }
     aplicar('var.currentSnapshot', 1);
-    log('escenario: recuperación de instantánea, 13 rutas en menos de un segundo');
+    log(`escenario: recuperación de instantánea, ${CANALES.length + 1} rutas en menos de un segundo`);
   },
 
   /** Arrastre de fader: muchos mensajes sobre una sola ruta. */

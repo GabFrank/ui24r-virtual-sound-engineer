@@ -20,6 +20,29 @@ export const CANALES = [
   { idx: 9,  nombre: 'FLAUTA',        gainDb: 33, faderDb: -5.0,  nivelBase: -22, dinamica: 8 },
   { idx: 10, nombre: 'TECLADO L',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
   { idx: 11, nombre: 'TECLADO R',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
+  // Una Ui24R tiene veinticuatro entradas, no doce. Estuvo en doce hasta el
+  // 2026-09-08, y como el adaptador tambien leia doce fijos los dos errores se
+  // cancelaban: el camino que descubre cuantas entradas hay no se ejercitaba
+  // nunca contra el simulador, y los canales 21 y 22 --las RCA, la fuente con
+  // la que se prueba con musica-- no existian aca.
+  //
+  // Las que siguen van sin nombre a proposito: en una consola real las
+  // entradas sin usar llegan con el nombre vacio, y la aplicacion tiene que
+  // saber mostrarlas como "CANAL N".
+  { idx: 12, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 13, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 14, nombre: 'MARACA',       gainDb: 36, faderDb: -8.0,  nivelBase: -27, dinamica: 9 },
+  { idx: 15, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 16, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 17, nombre: 'DJEMBE',       gainDb: 30, faderDb: -6.0,  nivelBase: -21, dinamica: 10 },
+  { idx: 18, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 19, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  // Las dos ultimas parejas son las entradas de linea. En la consola real la
+  // musica de fondo entra por aca, y no tienen ganancia de previo.
+  { idx: 20, nombre: 'RCA L',        gainDb: -6, faderDb: -11.6, nivelBase: -26, dinamica: 6 },
+  { idx: 21, nombre: 'RCA R',        gainDb: -6, faderDb: -11.5, nivelBase: -26, dinamica: 6 },
+  { idx: 22, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
+  { idx: 23, nombre: '',             gainDb: -6, faderDb: -Infinity, nivelBase: -100, dinamica: 0 },
 ];
 
 export function dbAFader(db) {
