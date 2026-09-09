@@ -41,6 +41,16 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | P0.2a | Rutas confirmadas contra el aparato, y las dos primeras escrituras reales | Reproductor, grabación multipista, punto de derivación y enlace estéreo |
 | P0.10b | Escala y recorrido —80 dB—, balística, tasa, respuesta en frecuencia, techo y repetibilidad | Solo la correspondencia con **dBFS absolutos**, que exige un bucle físico calibrado |
 
+## El estado en que quedó la consola, y dos cosas que no se pudieron devolver
+
+Anotado el 2026-09-09. La regla de la fase es restaurar todo lo que se toca, y se cumplió con una excepción y media.
+
+**`var.rta` quedó publicándose como `-1` en vez de vacío.** La clave llegaba en el volcado como `SETS^var.rta^` —texto vacío— y ahora la consola la publica como `SETD^var.rta^-1`. Una vez asignada en caliente, el tipo cambia y no se revierte por protocolo. **El analizador está apagado igual**, comprobado: 172 tramas seguidas en cero. Probablemente se normalice con un reinicio del aparato.
+
+**El supresor de realimentación del general aprendió de los tonos.** Esto es lo importante y no fue por escribir nada: `m.afs.enabled` vale 1, y los tonos sostenidos de 1 kHz le hicieron plantar filtros nuevos. Los trece filtros se devolvieron a su valor exacto del volcado inicial y está comprobado clave por clave, así que **lo que procesa audio es lo original**. Lo que no se pudo devolver es `var.afsdata`, la contabilidad interna del motor —con qué nivel aprendió cada filtro y en qué orden—: no acepta escritura.
+
+> **Regla nueva, y vale para cualquiera que mida acá: antes de meter tonos sostenidos, mirar `*.afs.enabled`.** Nada en el protocolo avisa. El daño aparece en el diff final o no aparece nunca. Si está encendido, apagarlo anotando el valor y devolverlo al terminar.
+
 ## Qué se puede tocar durante una sesión de medición
 
 Acordado con el dueño del equipo el 2026-09-09, y vale **sólo para los scripts

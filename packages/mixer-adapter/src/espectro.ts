@@ -54,7 +54,14 @@ export function bandaDeFrecuencia(hz: number): number {
  *
  * **Relativos a qué no está medido.** El byte es lineal en decibeles y el paso
  * está calibrado, pero a qué nivel absoluto corresponde el byte 0 no se
- * comprobó. Sirve para comparar bandas entre sí y una banda consigo misma en
+ * comprobó.
+ *
+ * Lo único que hay sobre el cero absoluto es una relación, medida el
+ * 2026-09-09: con la misma señal, el `RTA` queda **2,0 dB por debajo** del
+ * medidor de nivel, de forma consistente en todo el barrido. Si el byte 0 del
+ * medidor fueran −80 dBFS, el del `RTA` serían ≈ −82. No se puede separar de
+ * ahí la normalización de la transformada, así que **no alcanza para afirmar**
+ * cuál es el cero del analizador — pero acota, y es más de lo que había. Sirve para comparar bandas entre sí y una banda consigo misma en
  * el tiempo, que es lo que necesita la detección de realimentación. No sirve
  * para decir «esta banda está a −20 dBFS».
  *

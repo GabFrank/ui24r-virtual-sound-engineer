@@ -403,12 +403,25 @@ export interface MedidorCanal {
    * el bit 7 puesto, y leerlo como saturación da todos los canales saturando
    * todo el tiempo.
    *
-   * **Qué significa que valga 1 no está medido, y por eso este campo no se
-   * llama `puertaAbierta`.** Ese nombre afirmaba una polaridad que nadie
-   * comprobó, y la evidencia disponible apunta más bien al revés: el bit está
-   * puesto en todos los canales quietos, y un canal quieto tiene la puerta
-   * *cerrada*. Se resuelve con una medición —puerta armada, señal entrando y
-   * saliendo— y hasta entonces esto viaja crudo y no lo consume nadie.
+   * **La polaridad quedó resuelta el 2026-09-09: `1` es puerta ABIERTA.**
+   *
+   * Estuvo escrito acá que «la evidencia apunta más bien al revés, porque el
+   * bit está puesto en todos los canales quietos y un canal quieto tiene la
+   * puerta cerrada». La premisa era falsa, y la respuesta ya estaba pagada en
+   * el repositorio: en `SPK-P0.1/evidence/prueba-A-pasivo.txt`, de los 24
+   * canales **el 15 es el único con el bit en 0**, y es también el único con
+   * `gate.thresh` distinto de cero —0,4109, que con `VtoTHRESH = 96a − 90` son
+   * −50,55 dB—. Los otros 23 tenían el umbral en −90 dB, o sea la puerta
+   * abierta permanentemente aunque no hubiera señal.
+   *
+   * Lo que faltó fue mirar el estado de alrededor —los umbrales—, que es el
+   * mismo patrón del subgrupo silenciado y de la música apagada.
+   *
+   * Lo confirma el trabajo previo: dos implementaciones independientes llaman
+   * a este byte `CompMeterAndGated`, con el bit como bandera de la puerta.
+   *
+   * El campo sigue llamándose sin interpretar porque nadie lo consume todavía
+   * y el nombre crudo no se equivoca.
    */
   readonly indicadorDePuerta: boolean;
 }

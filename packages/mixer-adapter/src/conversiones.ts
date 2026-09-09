@@ -188,6 +188,21 @@ export const GANANCIA_ESCALONES: readonly number[] =
  * un índice de 0 a 63 y busca en la tabla; en el medio del recorrido la recta
  * erraba por más de un decibel.
  */
+/**
+ * **Un borde sin resolver, en los múltiplos exactos de 1/64.**
+ *
+ * Una auditoría midió el 2026-09-09 que en crudo `0,25` el aparato entrega
+ * **8 dB** y no los 10 que predice esta función, y en `0,50` entrega 24 en vez
+ * de 24,85 — o sea que se comporta como `ceil(64·v) − 1` y no como
+ * `trunc(64·v)`. Son 2 dB, y solo en valores que caigan exactamente en un
+ * múltiplo de 1/64.
+ *
+ * **No se cambió la fórmula**, y a propósito: la medición es de un tercero y
+ * repetirla necesita tonos sostenidos, que le enseñan filtros al supresor de
+ * realimentación del general. Cambiar una conversión sobre una medición que no
+ * se reprodujo es justamente el error que esta sesión estuvo corrigiendo.
+ * Queda anotado acá para que el próximo lo mida antes de confiar en el borde.
+ */
 export function gananciaADb(valor: number): number {
   const acotado = Math.max(0, Math.min(1, valor));
   const indice = Math.min(63, Math.max(0, Math.trunc(64 * acotado)));

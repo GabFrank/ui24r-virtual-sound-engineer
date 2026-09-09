@@ -17,6 +17,15 @@
  * `none` es un canal sin previo —las entradas de línea y de medios—: no hay
  * ganancia que ajustar, y la aplicación ya lo mostraba como «Ganancia —» sin
  * saber por qué.
+ *
+ * **`src` no acepta escritura por `SETD`.** Medido el 2026-09-09: se probó con
+ * `none`, `hw.0`, `usb.4`, `p.0`, `ua.4` y `l.0` sobre `i.4` y el testigo no
+ * vio ninguna. En la misma corrida y por el mismo socket, las escrituras a
+ * `stereoIndex` sí se vieron todas, así que no era el testigo fallando.
+ *
+ * Eso acota R-24: el enrutamiento se puede **leer** pero no cambiar por este
+ * camino, así que la aplicación no puede repatchear ni por error ni a
+ * propósito. Quien repatchee lo hace desde la consola.
  */
 
 /** La ruta de la ganancia del previo que alimenta a un canal, si tiene uno. */
