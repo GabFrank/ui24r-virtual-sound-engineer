@@ -172,7 +172,21 @@ deconvertVU_comp(b) = (1 - 0.004167508166392142*b) * COMP_ZOOM
 
 El bit 7 es el **indicador de puerta de ruido**, no el de saturación. En `parseVUdata` sale con `p = 0 != (byte & 128)` y termina en `this.gi.setValue(p)`, donde `gi` es un `GATEind`. Conviene tenerlo escrito porque induce al error: vale 1 en todos los canales quietos, y leerlo como saturación da los veinticuatro canales saturando sin parar. Se probó el 2026-09-08 y así fue.
 
-**Sin decodificar:** la sección posterior a las entradas —media, auxiliares, efectos—. Los 145 bytes restantes no cierran en múltiplo de 6 con la lectura de arriba y el patrón resultante parece desalineado. Queda sin afirmar.
+**La cola, decodificada el 2026-09-09.** La trama son **306 bytes**: 8 de cabecera, 144 de entradas (24 × 6) y **154 de cola**. Antes este documento decía «145 bytes» —que no cierra ni con su propia aritmética— y que el patrón «parece desalineado». No está desalineado: **las secciones no comparten el paso**, y leerlas todas con el 6 de las entradas es lo que las desalineaba.
+
+Reparto, en posiciones relativas al fin de las entradas (byte 152 absoluto):
+
+| Relativo | Contenido | Paso |
+|---|---|---|
+| `0 .. 11` | 2 entradas de línea | 6 |
+| `12 .. 53` | 6 subgrupos | 7 |
+| `54 .. 81` | 4 efectos | 7 |
+| `82 .. 131` | 10 auxiliares | 5 |
+| `132 .. 153` | general | — |
+
+Cada límite se fijó provocando señal en una sola sección y viendo qué bytes se movían: envío a un efecto, asignación a un subgrupo, envío a un auxiliar. Las cuentas cierran sin holgura —2×6 + 6×7 + 4×7 = 82— y el censo del vocabulario (`l.0..1`, `s.0..5`, `f.0..3`, `a.0..9`) llega a los mismos tamaños por otro camino. La sección de línea es la única que no se provocó con señal: sale por resta y por el censo.
+
+**Lo que sí queda abierto es qué es cada byte dentro de un bloque.** En el auxiliar, el `+1` sigue al fader y el `+4` es el 247 de «sin reducción». En el subgrupo, mover `s.0.mix` no movió nada, y no se distinguió si el medidor es anterior al fader o si la escritura no tomó efecto —la consola no le devuelve eco a quien escribe, así que hace falta el testigo para saberlo—. Sin eso, no se afirma ninguna de las dos.
 
 ### 4.3 De posición a decibeles: el medidor es lineal, y no usa la ley del fader
 
@@ -279,9 +293,28 @@ La correspondencia entre lo que muestra el medidor y un **nivel digital real** n
 
 Todo lo demás de 4.3 son **diferencias** —forma, recorrido, balística, respuesta en frecuencia, repetibilidad, techo— y las diferencias no dependen de la ganancia analógica del camino. Por eso quedaron contestadas sin el bucle y el nivel absoluto no.
 
-Sigue sin decodificar la sección de `VU2` posterior a las entradas: media, auxiliares y efectos.
+De la cola de `VU2` está ubicada cada sección (§4.3) y falta el papel de cada byte dentro de los bloques de subgrupo y efecto.
 
 ---
+
+### 4.5 `RTA`: el analizador de espectro
+
+**Medido el 2026-09-09.** Durante meses este flujo se usó solo como señal de vida y se tiraba la carga. No es un latido: es **el analizador de espectro de la consola**, y es la única fuente de información frecuencial que el proyecto tiene sin motor de audio ni micrófono propio.
+
+Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `slice(4)` sobre la carga, y `"VUA^"` y `"RTA^"` miden los dos cuatro caracteres. Leer el código de una y atribuírsela a la otra es un error de una línea que cuesta un hallazgo entero.
+
+| Qué | Cuánto |
+|---|---|
+| Bandas | **122**, un doceavo de octava |
+| Ley de bandas | `banda = 67 + 12·log2(f/1000)` |
+| Alcance | ~20,9 Hz a ~22,6 kHz |
+| Escala | **0,375 dB por byte** — no es la del medidor |
+| Cadencia | ~30 tramas por segundo |
+| Balística | sube al instante, cae 20 dB en ~300 ms |
+
+**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. Aceptan `i.N` y `m` —el general, que devuelve 78 bandas y no 122—; `a.0` no respondió. Mientras esté vacía no llega espectro, solo la trama de vida.
+
+Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
 
 ## 5. Rutas confirmadas contra el aparato
 
@@ -397,6 +430,6 @@ Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia 
 - **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala, su recorrido, su balística, su respuesta en frecuencia y su techo ya están medidos; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
 - **La reconexión con cortes de red reales en los otros dos modos**: apagar el router y cambiar la IP de la tablet. El corte de red inalámbrica sí está medido, 20 de 20 ciclos.
 - **La transición de señal a silencio en `VU2`.**
-- **La sección de `VU2` posterior a las entradas.**
-- **El mapeo `canal → entrada física` con el enrutamiento cambiado.** `i.N.src` existe en el espacio de claves; con el enrutamiento por defecto `i.N` y `hw.N` coinciden y por eso es fácil no notar la diferencia.
+- **El papel de cada byte dentro de un bloque de subgrupo o de efecto.** Las secciones ya están ubicadas; lo que falta es cuál es el nivel y si hay pre y post.
+- **El mapeo `canal → entrada física` con el enrutamiento cambiado.** Medido el 2026-09-09: `src` vale `hw.0`…`hw.19` en los canales 1 a 20 y **`none` en el 21 al 24**, o sea que la segunda mitad de la frase vieja —«`i.N` y `hw.N` coinciden»— es falsa para esos cuatro. Con el enrutamiento por defecto coinciden en los veinte primeros y por eso es fácil no notar la diferencia; el código sigue armando `hw.${canal-1}` (R-24).
 - **Todo lo de SPK-P0.2b y P0.2c:** ecualizador, compresor, puerta, deesser, salidas, retardos, matriz, instantáneas, reproductor, grabación.
