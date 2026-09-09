@@ -174,16 +174,26 @@ export function decodificarVuBuses(base64: string): MedidoresDeSalida {
     efectos: b[3] ?? 0, auxiliares: b[4] ?? 0,
     // **El byte 5 es la cantidad de generales y el 6 la de entradas de línea.**
     //
-    // Antes acá se leía `b[6]`, siguiendo al `mixer.html`, que avanza el
-    // general con `5*charCodeAt(6)`. Dos implementaciones de terceros
-    // independientes entre sí —`MatthewInch/UI24RBridge` y el `DigiMixer` de
-    // Jon Skeet— nombran la cabecera igual y ponen los generales en el **5**:
-    // `NINPUTS, NMEDIA, NSUBGROUPS, NFX, NAUX, NMASTERS, NLINEIN, cero`. Ese
-    // orden es además el de las secciones en la trama, que es lo coherente.
+    // Es la única cosa de la trama donde las fuentes se contradicen, y en una
+    // Ui24R **no se puede resolver midiendo** porque los dos valen 2.
     //
-    // En una Ui24R los dos valen 2, así que **no se puede distinguir midiendo**
-    // y el `charCodeAt(6)` del cliente oficial nunca falla acá. Se sigue a las
-    // dos implementaciones y al orden de las secciones, no al cliente.
+    // - El cliente del fabricante avanza el general con `5·charCodeAt(6)` y no
+    //   usa el byte 5. Igual en el firmware 3.4 —leído del `mixer.html` de esta
+    //   consola— y en el 3.5, según el manual técnico de ese paquete, que dice
+    //   textualmente del byte 5: «no utilizado por este parser».
+    // - Dos implementaciones de terceros, independientes entre sí, nombran la
+    //   cabecera `NINPUTS, NMEDIA, NSUBGROUPS, NFX, NAUX, NMASTERS, NLINEIN` y
+    //   ponen los generales en el **5**: `MatthewInch/UI24RBridge` y el
+    //   `DigiMixer` de Jon Skeet.
+    //
+    // **Se sigue el 5, y la razón es de dónde sale cada lectura.** El autor de
+    // DigiMixer dice en su blog que Soundcraft le entregó la documentación del
+    // protocolo; su nombrado probablemente venga de ahí y no de inferir. Y ese
+    // orden es el mismo de las secciones en la trama, que es lo coherente. La
+    // lectura del cliente oficial se explica como un error latente que en esta
+    // consola no se manifiesta, porque los dos valores son iguales.
+    //
+    // Si alguna vez aparece un modelo donde difieran, esto se decide midiendo.
     general: b[5] ?? 0,
   };
 

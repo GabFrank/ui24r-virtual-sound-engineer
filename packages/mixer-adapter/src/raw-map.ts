@@ -89,6 +89,13 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // que la reduccion no se veia.
   deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
   deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
+  deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
+  // Del manual técnico del firmware 3.5.8328, que confirma las de arriba y
+  // agrega estas. No están medidas contra el aparato: son del cliente, igual
+  // que las otras de esta familia.
+  deLaConsola('i.N.dyn.outgain', 'dB', (a) => 72 * a - 24, (db) => (db + 24) / 72),
+  deLaConsola('i.N.deesser.freq', 'Hz', (a) => 2000 * Math.pow(7.5, a),
+    (hz) => Math.log(hz / 2000) / Math.log(7.5)),
   // `i.N.dyn.ratio` **no esta en la tabla, a proposito.** Su funcion se conoce
   // --`VtoRATIO(a) = 1/a`-- pero el crudo minimo no: en 0 la razon es infinita,
   // asi que no hay rango fisico que declarar sin inventarlo, y una entrada con
