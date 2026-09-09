@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { Ui24rTransport } from '@vse/mixer-adapter';
+import { tomarAnalizador } from './analizador.ts';
 const FM = 48000, SEG = 8, DB = -12;
 function tono(hz: number): string {
   const n = FM * SEG, amp = Math.pow(10, DB / 20) * 32767;
@@ -22,9 +23,10 @@ function tono(hz: number): string {
 const t = new Ui24rTransport();
 let tramas: number[][] = [];
 t.alRecibir((l) => { if (l.startsWith('RTA^')) tramas.push([...Buffer.from(l.slice(4), 'base64')]); });
+const analizador = tomarAnalizador(t);
 await t.conectar('192.168.0.78');
 await new Promise((r) => setTimeout(r, 2500));
-t.enviar('SETS^var.rta^i.9');
+analizador.apuntarA('i.9');
 await new Promise((r) => setTimeout(r, 1200));
 console.log('frecuencia | posicion del pico | valor | ancho de la campana');
 for (const hz of [63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]) {
@@ -41,6 +43,7 @@ for (const hz of [63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]) {
   const ancho = media.filter((v) => v > media[pico] / 2).length;
   console.log(`${String(hz).padStart(10)} | ${String(pico).padStart(17)} | ${media[pico].toFixed(0).padStart(5)} | ${ancho}`);
 }
-t.enviar('SETS^var.rta^');
+analizador.devolver();
+console.log(`fuente del analizador devuelta a ${JSON.stringify(analizador.anterior)}, que es lo que habia`);
 await new Promise((r) => setTimeout(r, 800));
 await t.desconectar();

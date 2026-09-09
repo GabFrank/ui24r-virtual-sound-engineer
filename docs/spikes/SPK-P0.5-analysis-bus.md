@@ -29,6 +29,26 @@
 | 5 | Comportamiento del enlace estéreo sobre los envíos | bloqueante | documentado | | ⬜ |
 | 6 | Tiempo de conmutación de canal | bloqueante | medido; es el número que adopta la historia del gestor del bus | | ⬜ |
 
+## Resultado colateral — 2026-09-09: la consola ya tiene un analizador
+
+**Ninguno de los seis criterios de arriba está medido todavía.** Lo que sí apareció, midiendo otra cosa, es que la pregunta de fondo de este spike —*ver el espectro de un canal*— tiene una segunda respuesta que no necesita el bus auxiliar.
+
+El flujo `RTA`, que el proyecto usaba como latido y tiraba a la basura, es el **analizador de espectro de la consola**: 122 bandas de un doceavo de octava, de ~20,9 Hz a ~22,6 kHz, a 0,375 dB por byte, a unas 30 tramas por segundo. Sube al instante y cae 20 dB en ~300 ms. La fuente se elige con `var.rta`, que acepta `i.N` y `m`. Está en `docs/protocol-spec.md` §4.5 y en `evidence/rta-es-espectro-2026-09-09.txt`.
+
+**Qué cambia para este spike.** El camino del bus auxiliar existía porque se daba por hecho que no había forma de ver un canal aislado. Ahora hay dos caminos, y no son equivalentes:
+
+| | Analizador de la consola (`RTA`) | Bus auxiliar (este spike) |
+|---|---|---|
+| Cuesta cableado | no | sí, ocupa un auxiliar |
+| Se nota en la consola | **sí, `var.rta` es global** | no |
+| Canales a la vez | uno | uno |
+| Resolución | 1/12 de octava, fija | la que se elija al analizar |
+| Punto de derivación | el que la consola use, sin elegir | elegible (antes o después del proceso) |
+
+O sea que el analizador de la consola es más barato y menos flexible, y tiene un costo que el bus auxiliar no tiene: **le cambia la pantalla al operador** (R-28, ADR-025).
+
+**Este spike no se cierra ni se descarta.** Sus criterios 3 y 6 —distinguir los puntos de derivación, y cuánto tarda conmutar de canal— siguen sin respuesta por el camino del `RTA`: la consola no dice de dónde saca su espectro, y no está medido cuánto tarda en asentarse después de cambiar `var.rta`. Lo que sí corresponde es revisar la prioridad: si el analizador de la consola alcanza para la detección de realimentación, el bus auxiliar deja de ser bloqueante y pasa a ser la opción precisa para cuando haga falta elegir el punto de derivación.
+
 ## Evidencia a entregar
 
 - `evidence/bus-isolation.csv`, `evidence/tap-points.png`, `evidence/switch-timing.csv`.

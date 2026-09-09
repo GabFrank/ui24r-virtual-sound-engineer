@@ -6,6 +6,15 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El analizador de espectro se toma prestado con permiso y se devuelve.**
+  `RTA` resultó ser el analizador de la consola y no un latido, pero la fuente
+  se elige con `var.rta`, que es **global**: apuntarlo a un canal le cambia el
+  RTA al operador en su propia pantalla. ADR-025 decide cómo se pide: permiso
+  una vez por sesión, y la fuente vuelve al valor **leído** del volcado. Hoy la
+  aplicación no lo escribe en ningún nivel de autonomía; lo que ya cambió es
+  que los guiones de medición leen antes de escribir en vez de restaurar a un
+  valor reconstruido.
+
 - **Las escrituras se confirman con una segunda conexión testigo.** La consola
   no le devuelve eco a quien escribe, pero sí difunde el cambio a los demás
   clientes: abrir una segunda conexión del mismo proceso y escuchar por ahí ve

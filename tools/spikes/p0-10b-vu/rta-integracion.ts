@@ -12,6 +12,7 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { Ui24rTransport } from '@vse/mixer-adapter';
+import { tomarAnalizador } from './analizador.ts';
 
 const FM = 48000, HZ = 1000, BANDA = 67, MS_TONO = 2000, MS_SILENCIO = 3000;
 function tono(ms: number): string {
@@ -37,9 +38,10 @@ t.alRecibir((l) => {
   const b = Buffer.from(l.slice(4), 'base64');
   serie.push({ ms: Date.now(), v: b[BANDA] ?? 0 });
 });
+const analizador = tomarAnalizador(t);
 await t.conectar('192.168.0.78');
 await new Promise((r) => setTimeout(r, 2500));
-t.enviar('SETS^var.rta^i.9');
+analizador.apuntarA('i.9');
 await new Promise((r) => setTimeout(r, 1200));
 const ruta = tono(MS_TONO);
 
@@ -77,6 +79,7 @@ const mediana = (xs: number[]): string => {
 console.log('');
 console.log(`subida:  ${mediana(subidas)}`);
 console.log(`caida:   ${mediana(caidas)}`);
-t.enviar('SETS^var.rta^');
+analizador.devolver();
+console.log(`fuente del analizador devuelta a ${JSON.stringify(analizador.anterior)}, que es lo que habia`);
 await new Promise((r) => setTimeout(r, 800));
 await t.desconectar();

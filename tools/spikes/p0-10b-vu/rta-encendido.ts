@@ -3,15 +3,18 @@
  *
  * `parseRTAdata` en el mixer.html lee `dataValue["var.rta"]` --el canal que el
  * analizador esta mirando-- y si no hay ninguno, devuelve sin hacer nada. En el
- * volcado de esta consola `var.rta` no existe: nadie lo eligio nunca, y por eso
+ * volcado de esta consola `var.rta` llega vacio --medido el 2026-09-09; una
+ * nota anterior decia que la clave no existia y estaba equivocada--, y por eso
  * la trama llega en ceros.
  */
 import { spawn } from 'node:child_process';
 import { Ui24rTransport } from '@vse/mixer-adapter';
+import { tomarAnalizador } from './analizador.ts';
 
 const t = new Ui24rTransport();
 let tramas: number[][] = [];
 t.alRecibir((l) => { if (l.startsWith('RTA^')) tramas.push([...Buffer.from(l.slice(4), 'base64')]); });
+const analizador = tomarAnalizador(t);
 await t.conectar('192.168.0.78');
 await new Promise((r) => setTimeout(r, 3000));
 
@@ -38,7 +41,7 @@ await medir('sin fuente elegida', true);
 
 console.log('');
 console.log('se elige el canal 10 como fuente del analizador (var.rta = i.9)');
-t.enviar('SETS^var.rta^i.9');
+analizador.apuntarA('i.9');
 await new Promise((r) => setTimeout(r, 1500));
 
 const silencio = await medir('con fuente, en silencio', false);
@@ -52,7 +55,7 @@ console.log('');
 console.log(`posiciones que suben con el tono: ${subidas.length}`);
 for (const s of subidas.slice(0, 10)) console.log(`  [${s.i}] +${s.d.toFixed(0)}`);
 
-t.enviar('SETS^var.rta^');
+analizador.devolver();
+console.log(`fuente del analizador devuelta a ${JSON.stringify(analizador.anterior)}, que es lo que habia`);
 await new Promise((r) => setTimeout(r, 800));
 await t.desconectar();
-console.log('fuente del analizador devuelta a vacio');

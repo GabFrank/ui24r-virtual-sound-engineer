@@ -312,7 +312,7 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 | Cadencia | ~30 tramas por segundo |
 | Balística | sube al instante, cae 20 dB en ~300 ms |
 
-**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. Aceptan `i.N` y `m` —el general, que devuelve 78 bandas y no 122—; `a.0` no respondió. Mientras esté vacía no llega espectro, solo la trama de vida.
+**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. **Llega en el volcado inicial** —`SETS^var.rta^`, medido el 2026-09-09—, así que el valor anterior se puede leer antes de tocarlo. Una nota anterior de este repositorio decía que la clave no existía en el volcado y estaba equivocada; sobre ella se apoyaba la costumbre de «restaurar» a cadena vacía, que es reconstruir y no devolver. Aceptan `i.N` y `m` —el general, que devuelve 78 bandas y no 122—; `a.0` no respondió. Mientras esté vacía no llega espectro, solo la trama de vida.
 
 Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
 

@@ -1,0 +1,30 @@
+QUE HAY EN var.rta ANTES DE TOCARLO — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24. Sonda: tools/spikes/p0-10b-vu/var-rta-estado.ts
+
+RESULTADO
+  en el volcado, lineas de var.rta: 1
+    SETS^var.rta^
+
+O sea que la clave SI llega en el volcado inicial, con el valor vacio.
+
+POR QUE IMPORTA, Y QUE CORRIGE
+Una nota anterior de este repositorio --en rta-encendido.ts-- decia que "en el
+volcado de esta consola var.rta no existe". Estaba equivocada, y sobre esa nota
+se apoyaba una practica: las tres sondas del analizador restauraban a cadena
+vacia, que es una RECONSTRUCCION y no el valor leido.
+
+La regla de la fase de mediciones es anotar el valor anterior antes de tocar.
+Era la unica escritura del proyecto que no la cumplia, y justamente en la unica
+clave que le cambia la pantalla a otra persona.
+
+Desde hoy las sondas usan tools/spikes/p0-10b-vu/analizador.ts, que se suscribe
+ANTES de conectar --el valor viaja una sola vez, dentro del volcado-- guarda lo
+que lee y devuelve eso mismo. Si nunca llego, no restaura nada: dejarlo como
+esta es menos danino que escribir un valor que nadie leyo.
+
+LO QUE ESTO NO DICE
+Hoy var.rta lee vacio, pero NO se puede afirmar que el vacio sea el estado de
+fabrica: pudo quedar asi porque una sesion de medicion anterior lo dejo vacio
+al "restaurar" a un valor que nunca habia leido. Es exactamente el dano que la
+correccion previene de ahora en adelante, y que ya no se puede deshacer para
+atras. Se anota para que nadie lo lea como "el reposo es vacio".
