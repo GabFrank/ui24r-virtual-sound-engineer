@@ -21,7 +21,7 @@
  */
 
 import { WebSocketServer } from 'ws';
-import { CANALES, estadoInicial, nombres, dbAFader, PROCESO } from './state.mjs';
+import { CANALES, estadoInicial, nombres, fuentes, dbAFader, PROCESO } from './state.mjs';
 
 const args = process.argv.slice(2);
 const puerto = Number(args[args.indexOf('--port') + 1]) || 8765;
@@ -192,6 +192,7 @@ function volcadoCompleto(ws) {
   const lineas = [];
   for (const [path, valor] of estado) lineas.push(`SETD^${path}^${valor}`);
   for (const [path, texto] of nombres()) lineas.push(`SETS^${path}^${texto}`);
+  for (const [path, texto] of fuentes()) lineas.push(`SETS^${path}^${texto}`);
   for (let i = 0; i < lineas.length; i += 40) {
     ws.send(envolver(...lineas.slice(i, i + 40)));
   }

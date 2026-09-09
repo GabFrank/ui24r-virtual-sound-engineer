@@ -113,3 +113,23 @@ export function estadoInicial() {
 export function nombres() {
   return CANALES.map((c) => [`i.${c.idx}.name`, c.nombre]);
 }
+
+/**
+ * De que previo viene cada canal, que la consola manda como texto.
+ *
+ * Medido el 2026-09-09: `hw.0` a `hw.19` en los canales 1 a 20 y **`none`** en
+ * los cuatro ultimos, que son las entradas de linea y de medios y no tienen
+ * previo detras.
+ *
+ * El simulador no lo mandaba, y eso importa mas ahora que el adaptador dejo de
+ * suponer enrutamiento identidad: sin `src`, la aplicacion contra el simulador
+ * no sabria de donde leer ninguna ganancia. Va con el reparto de fabrica --que
+ * es la identidad-- porque es el estado en el que esta la consola de prueba;
+ * para ejercitar un repatcheo se cambia esta linea y nada mas.
+ */
+export function fuentes() {
+  return CANALES.map((c) => [
+    `i.${c.idx}.src`,
+    c.idx <= 19 ? `hw.${c.idx}` : 'none',
+  ]);
+}

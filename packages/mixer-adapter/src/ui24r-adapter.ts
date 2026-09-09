@@ -9,6 +9,7 @@ import {
 } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
 import { leerDinamica } from './dinamica.ts';
+import { rutaDeGanancia } from './fuente-de-canal.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
 import type { DinamicaDeCanal } from '@vse/domain';
@@ -164,6 +165,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly ahora: () => number;
 
   private readonly nombresCanal = new Map<number, string>();
+  /** De qué previo viene cada canal, según `i.N.src`. Ver `fuente-de-canal.ts`. */
+  private readonly fuentesCanal = new Map<number, string>();
   /**
    * Cuántos canales tiene la consola de enfrente.
    *
@@ -496,7 +499,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     for (let canal = 1; canal <= cantidad; canal++) {
       const n = indiceDeRuta(canal);
       const fader = this.store.leer(`i.${n}.mix`);
-      const gain = this.store.leer(`hw.${n}.gain`);
+      // **La ganancia se busca donde el canal dice, no donde su número sugiere.**
+      // Antes esto era `hw.${n}.gain`, que supone que el canal N usa el previo
+      // N. Coincide con el enrutamiento de fábrica y por eso nunca se notó.
+      const rutaGain = rutaDeGanancia(this.fuentesCanal.get(canal));
+      const gain = rutaGain === null ? undefined : this.store.leer(rutaGain);
       const mute = this.store.leer(`i.${n}.mute`);
       salida.push({
         indice: canal,
@@ -533,6 +540,15 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
+      const fuente = /^i\.(\d+)\.src$/.exec(m.path);
+      if (fuente) {
+        // La fuente también se guarda por canal y no por índice de ruta, igual
+        // que el nombre: el borde traduce una sola vez y el resto del
+        // adaptador no vuelve a pensar en la base cero.
+        this.fuentesCanal.set(canalDeIndice(Number(fuente[1])), m.texto);
+        return;
+      }
+
       const coincidencia = /^i\.(\d+)\.name$/.exec(m.path);
       // El nombre se guarda por canal, no por índice de ruta: `i.0.name` es el
       // canal 1. Se convierte acá, en el borde, para que el resto del
