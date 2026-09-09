@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Ui24rMixerAdapter } from '../src/ui24r-adapter.ts';
 import { codificarSetd, codificarVu } from '../src/protocol.ts';
+import { CORRECCION_PREVIO_DB } from '../src/conversiones.ts';
 import { TransporteFalso } from './transporte-falso.ts';
 
 /**
@@ -21,8 +22,11 @@ import { TransporteFalso } from './transporte-falso.ts';
 function volcadoDeDosCanales(t: TransporteFalso): void {
   t.entra('SETS^i.0.name^PRUEBA');
   t.entra('SETS^i.1.name^BAJO OKU');
-  t.entra(codificarSetd('hw.0.gain', 0.64));   // 34 dB en el canal 1
-  t.entra(codificarSetd('hw.1.gain', 0.322));  // 14 dB en el canal 2
+  // La consola dice 34 dB para ese valor crudo; el previo entrega 1,15 menos.
+  // Ver `CORRECCION_PREVIO_DB`: la correccion arranca en 26 dB, asi que el
+  // segundo canal --14 dB-- no la lleva.
+  t.entra(codificarSetd('hw.0.gain', 0.64));
+  t.entra(codificarSetd('hw.1.gain', 0.322));
   t.entra(codificarSetd('i.0.mute', 0));
   t.entra(codificarSetd('i.1.mute', 1));
 }
@@ -36,7 +40,7 @@ test('el canal 1 toma su nombre y su ganancia de `i.0` y `hw.0`', async () => {
   const [uno, dos] = a.canales(2);
 
   assert.equal(uno?.nombre, 'PRUEBA', 'el canal 1 es `i.0`, no `i.1`');
-  assert.equal(uno?.gainDb, 34);
+  assert.equal(uno?.gainDb, 34 + CORRECCION_PREVIO_DB);
   assert.equal(dos?.nombre, 'BAJO OKU');
   assert.equal(dos?.gainDb, 14);
   await a.desconectar();

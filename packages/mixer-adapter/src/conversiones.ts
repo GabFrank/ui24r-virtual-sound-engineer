@@ -135,9 +135,51 @@ const GANANCIA_TABLA: readonly number[] = [
   43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
 ].map((g) => g - 1);
 
+/**
+ * Lo que el previo entrega de menos a partir de cierto punto. **Medido.**
+ *
+ * La tabla de arriba es la de la consola y dice lo que la consola cree. Medido
+ * contra el aparato el 2026-09-09, con una fuente de nivel conocido entrando
+ * por el canal 10 y leyendo el medidor de entrada:
+ *
+ * - de −6 a +24 dB la tabla es exacta dentro de 0,33 dB, que es un escalón del
+ *   medidor y por lo tanto el piso de lo que se puede distinguir;
+ * - entre 24 y 26 dB —la tabla no tiene escalón de 25— promete 2 dB y el previo
+ *   entrega 0,71;
+ * - de 26 en adelante el déficit se mantiene en ~1,1 dB y **no crece**.
+ *
+ * O sea una discontinuidad única, no una deriva. Once puntos entre 24 y 54 dB
+ * dieron entre −0,96 y −1,33, con media −1,02; el tramo fino entre 22 y 29 dio
+ * media −1,15. Se toma 1,15 y la incertidumbre es de unas dos décimas.
+ *
+ * **Lo que no se sabe.** Si el salto está en la tabla de la consola o en su
+ * previo. Si está en el previo, la consola también muestra 26 dB entregando 25,
+ * y este número nos aleja de lo que el operador lee en su pantalla. Se corrige
+ * igual, por decisión del usuario: lo que importa es que una propuesta de
+ * cuatro decibeles mueva cuatro decibeles.
+ *
+ * **Tampoco se sabe si los demás previos se comportan igual**: todo esto es del
+ * canal 10, que es donde estaba la fuente, y comprobarlo exige repatchearla.
+ */
+export const CORRECCION_PREVIO_DB = -1.15;
+
+/** El escalón de la tabla a partir del cual se aplica la corrección medida. */
+export const CORRECCION_DESDE_DB = 26;
+
+/**
+ * La tabla de la consola con la corrección medida encima.
+ *
+ * La original se conserva sin tocar: documenta lo que la consola cree, y esa
+ * diferencia es justamente el hallazgo. Todo lo que informa o propone dB usa
+ * esta.
+ */
+const GANANCIA_MEDIDA: readonly number[] = GANANCIA_TABLA.map(
+  (db) => (db >= CORRECCION_DESDE_DB ? db + CORRECCION_PREVIO_DB : db),
+);
+
 /** Los 48 valores de ganancia que la consola puede tomar, en dB, ordenados. */
 export const GANANCIA_ESCALONES: readonly number[] =
-  [...new Set(GANANCIA_TABLA)].sort((a, b) => a - b);
+  [...new Set(GANANCIA_MEDIDA)].sort((a, b) => a - b);
 
 /**
  * Valor de la ganancia (0 a 1) a dB. Copia de `VtoGAIN24`.
@@ -149,7 +191,8 @@ export const GANANCIA_ESCALONES: readonly number[] =
 export function gananciaADb(valor: number): number {
   const acotado = Math.max(0, Math.min(1, valor));
   const indice = Math.min(63, Math.max(0, Math.trunc(64 * acotado)));
-  return GANANCIA_TABLA[indice]!;
+  // La medida y no la de la consola: ver `CORRECCION_PREVIO_DB`.
+  return GANANCIA_MEDIDA[indice]!;
 }
 
 /**
@@ -161,7 +204,16 @@ export function gananciaADb(valor: number): number {
  * intermedio devuelve la posición del escalón que la consola elegiría.
  */
 export function dbAGanancia(db: number): number {
-  const acotado = Math.max(GANANCIA_DB_MINIMA, Math.min(GANANCIA_DB_MAXIMA, db));
+  // Hay dos escalas y conviene no mezclarlas: la aplicacion habla en la
+  // **medida** --lo que el previo entrega de verdad-- y la formula de la
+  // consola espera la **suya**, que por encima de 26 dB dice 1,15 dB de mas.
+  // Se traduce aca, en el borde, para que el resto del sistema tenga una sola.
+  const enEscalaDeLaConsola = db >= CORRECCION_DESDE_DB + CORRECCION_PREVIO_DB
+    ? db - CORRECCION_PREVIO_DB
+    : db;
+  const acotado = Math.max(
+    GANANCIA_DB_MINIMA, Math.min(GANANCIA_DB_MAXIMA, enEscalaDeLaConsola),
+  );
   return Math.max(0, Math.min(1, (acotado + 6) / 63));
 }
 
@@ -203,8 +255,8 @@ export function gananciaAlcanzable(dbObjetivo: number): number {
 export function rawParaGananciaMasCercana(dbObjetivo: number): number {
   let mejorIndice = 0;
   let mejorDistancia = Infinity;
-  for (let i = 0; i < GANANCIA_TABLA.length; i++) {
-    const distancia = Math.abs(GANANCIA_TABLA[i]! - dbObjetivo);
+  for (let i = 0; i < GANANCIA_MEDIDA.length; i++) {
+    const distancia = Math.abs(GANANCIA_MEDIDA[i]! - dbObjetivo);
     if (distancia < mejorDistancia) {
       mejorDistancia = distancia;
       mejorIndice = i;

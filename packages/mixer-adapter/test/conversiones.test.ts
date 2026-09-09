@@ -1,10 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+
+/** Redondeo a n decimales: 24 - 1,15 no da 22,85 exacto en coma flotante. */
+function redondear(v: number, n: number): number {
+  return Math.round(v * 10 ** n) / 10 ** n;
+}
 import {
   FADER_DB_MAXIMO, FADER_DB_MINIMO, FADER_POSICION_0_DB, GANANCIA_DB_MAXIMA,
   GANANCIA_DB_MINIMA, GANANCIA_ESCALONES, ORIGEN_DE_LAS_CURVAS,
   VERIFICADO_CONTRA_CONSOLA, dbAFader, dbAGanancia, faderADb, gananciaADb,
   gananciaAlcanzable, rawParaGananciaMasCercana,
+  CORRECCION_PREVIO_DB,
 } from '../src/conversiones.ts';
 
 test('solo el fader al cero es silencio', () => {
@@ -82,9 +88,11 @@ test('fuera del tramo la vuelta elige el extremo, y esta bien que asi sea', () =
   assert.equal(dbAFader(200), 1);
 });
 
-test('la ganancia recorre el rango confirmado en la matriz', () => {
+test('la ganancia recorre el rango confirmado, con la correccion medida', () => {
+  // El piso no cambia: la correccion empieza en 26 dB. El techo si, y esa
+  // diferencia es el hallazgo: la consola dice 57 y el previo entrega 55,85.
   assert.equal(gananciaADb(0), GANANCIA_DB_MINIMA);
-  assert.equal(gananciaADb(1), GANANCIA_DB_MAXIMA);
+  assert.equal(gananciaADb(1), GANANCIA_DB_MAXIMA + CORRECCION_PREVIO_DB);
 });
 
 test('la ganancia NO es lineal: la consola indexa una tabla', () => {
@@ -94,7 +102,8 @@ test('la ganancia NO es lineal: la consola indexa una tabla', () => {
   // parejo: erra mas en unos tramos que en otros.
   const recta = (v: number): number =>
     GANANCIA_DB_MINIMA + v * (GANANCIA_DB_MAXIMA - GANANCIA_DB_MINIMA);
-  assert.equal(gananciaADb(0.5), 26, 'la tabla da 26 dB en la mitad del recorrido');
+  assert.equal(gananciaADb(0.5), 26 + CORRECCION_PREVIO_DB,
+    'la tabla dice 26 dB en la mitad del recorrido y el previo entrega 1,15 menos');
   assert.equal(recta(0.5), 25.5, 'la recta que se suponia antes daba 25,5');
   let peor = 0;
   for (let i = 0; i <= 1000; i++) {
@@ -108,11 +117,14 @@ test('la ganancia tiene 48 escalones, y no son parejos', () => {
   // Lo que el asistente de ganancia tiene que respetar: no hay medio escalon.
   assert.equal(GANANCIA_ESCALONES.length, 48);
   assert.equal(GANANCIA_ESCALONES[0], GANANCIA_DB_MINIMA);
-  assert.equal(GANANCIA_ESCALONES[GANANCIA_ESCALONES.length - 1], GANANCIA_DB_MAXIMA);
-  // De 2 en 2 hasta +26, de 1 en 1 desde +27.
+  assert.equal(GANANCIA_ESCALONES[GANANCIA_ESCALONES.length - 1],
+    GANANCIA_DB_MAXIMA + CORRECCION_PREVIO_DB);
+  // De 2 en 2 hasta +24, de 1 en 1 desde ahi. El salto de 24 a 26 que la tabla
+  // de la consola declara vale en realidad 0,85: es la discontinuidad medida.
   for (let i = 1; i < GANANCIA_ESCALONES.length; i++) {
-    const salto = GANANCIA_ESCALONES[i]! - GANANCIA_ESCALONES[i - 1]!;
-    const esperado = GANANCIA_ESCALONES[i]! <= 26 ? 2 : 1;
+    const salto = redondear(GANANCIA_ESCALONES[i]! - GANANCIA_ESCALONES[i - 1]!, 2);
+    const anterior = GANANCIA_ESCALONES[i - 1]!;
+    const esperado = anterior === 24 ? 0.85 : (GANANCIA_ESCALONES[i]! <= 24 ? 2 : 1);
     assert.equal(salto, esperado,
       `salto de ${salto} dB hasta ${GANANCIA_ESCALONES[i]}, se esperaba ${esperado}`);
   }
@@ -153,17 +165,20 @@ test('para elegir bien hay que ir al escalon mas cercano, no al de abajo', () =>
     assert.equal(gananciaADb(rawParaGananciaMasCercana(db)), db,
       `${db} dB es un escalon y deberia elegirse a si mismo`);
   }
-  for (let db = GANANCIA_DB_MINIMA; db <= GANANCIA_DB_MAXIMA; db += 0.25) {
+  const techo = GANANCIA_DB_MAXIMA + CORRECCION_PREVIO_DB;
+  for (let db = GANANCIA_DB_MINIMA; db <= techo; db += 0.25) {
     const elegido = gananciaADb(rawParaGananciaMasCercana(db));
     assert.ok(GANANCIA_ESCALONES.includes(elegido));
-    assert.ok(Math.abs(elegido - db) <= 1,
-      `${db} dB fue a ${elegido}, a mas de medio escalon de distancia`);
+    // Un escalon y medio: el salto de 24 a 24,85 es el mas angosto y el de 24
+    // hacia abajo mide 2, asi que en esa zona la mitad de un salto llega a 1.
+    assert.ok(Math.abs(elegido - db) <= 1.05,
+      `${db} dB fue a ${elegido}, demasiado lejos`);
   }
 });
 
 test('la ganancia se acota en vez de salirse del rango', () => {
   assert.equal(gananciaADb(-1), GANANCIA_DB_MINIMA);
-  assert.equal(gananciaADb(2), GANANCIA_DB_MAXIMA);
+  assert.equal(gananciaADb(2), GANANCIA_DB_MAXIMA + CORRECCION_PREVIO_DB);
   assert.equal(dbAGanancia(-100), 0);
   assert.equal(dbAGanancia(100), 1);
 });
