@@ -1,0 +1,42 @@
+LA COLA DE LA TRAMA VU2 — 2026-09-09
+Consola 192.168.0.78, senal conocida por el canal 10.
+
+Hasta hoy `protocol-spec` la dejaba sin afirmar: "los 145 bytes restantes no
+cierran en multiplo de 6 con la lectura de arriba y el patron resultante
+parece desalineado. Queda sin afirmar."
+
+MEDIDO
+  trama completa: 306 bytes
+  cabecera:       8
+  entradas:       24 bloques de 6, del byte 8 al 151
+  cola:           154 bytes, del 152 al 305
+  la cola NO es multiplo de 6 (154 = 25*6 + 4)
+
+Con senal por el canal 10 se movieron los bytes 284 a 292, de ~60 a ~99.
+
+DONDE CAE ESO
+La cabecera declara la configuracion: [24, 2, 6, 4, 10, 2, 2, 0], que se
+corresponde con input:24, linein:2, sub:6, fx:4, aux:10.
+Si esas secciones mantienen el paso de 6 bytes de las entradas:
+    2 linein + 6 sub + 4 fx + 10 aux = 22 bloques * 6 = 132 bytes
+Y los bytes que se movieron arrancan en el 132 RELATIVO al fin de las
+entradas. O sea que ahi empieza el GENERAL, y las secciones anteriores
+mantienen el paso.
+
+Eso explica por que "parecia desalineado": la cola no es una sola tabla, son
+cinco secciones distintas una detras de otra, y los 4 bytes que sobran del
+multiplo de 6 estan en algun lado que todavia no se ubico.
+
+LO QUE FALTA, y es un experimento por seccion
+Cada seccion se identifica igual: provocar senal SOLO ahi y ver que bytes se
+mueven.
+  - auxiliares: subir un envio del canal 10 a un auxiliar
+  - subgrupos:  asignar el canal 10 a un subgrupo
+  - efectos:    subir el envio a un efecto
+Con eso se fija cada limite sin suponer ninguno, que es lo que hasta ahora
+faltaba.
+
+POR QUE IMPORTA
+Es todo lo que hace falta para saber que esta pasando en las SALIDAS y no solo
+en las entradas. Sin esto, la aplicacion puede decir que un canal esta bien
+puesto pero no que el general este saturando.
