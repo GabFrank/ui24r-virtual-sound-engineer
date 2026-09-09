@@ -93,6 +93,28 @@ De estos, la sesión de medición solo usó `ALIVE` e `INIT`, que son de consult
 
 ---
 
+## 2.3 Lo que la consola sirve por HTTP
+
+Medido el 2026-09-09, solo con peticiones de lectura.
+
+**`GET /raw` devuelve el estado entero en formato de protocolo**, sin socket.io, sin apretón de manos y sin WebSocket, más tramas `VU2` y `RTA`. Comprobado capturando los dos transportes **en el mismo momento**: 6728 claves cada uno, diferencia cero. Una comparación contra un volcado archivado de otro día daba 63 claves de diferencia y parecía que HTTP traía más — era el estado que había cambiado, no el protocolo.
+
+**No es una instantánea, es un flujo en vivo**: la conexión no cierra, así que `fetch` se cuelga esperando el fin del cuerpo y `curl` termina con código 28. Los datos llegan igual; hay que leer con límite de tiempo y tolerar ese código.
+
+Sirve para diagnóstico de una línea —`curl -s --max-time 10 http://<consola>/raw`—, para armar fixtures con estado real sin hardware, y para comprobar «lo dejé como lo encontré» comparando dos volcados.
+
+| Ruta | Qué es |
+|---|---|
+| `/raw` | el estado entero, en vivo |
+| `/mixer.html` | el cliente de tableta, 1,2 MB. La fuente más autoritativa del protocolo |
+| `/phone.html` | un **segundo cliente**, 862 KB. Sin explotar: sirve para contrastar conversiones |
+| `/js/initparams.js` | `curSetup` y los valores por defecto de cada clave |
+| `/config.html` | pide autenticación |
+
+`curSetup` declara la topología: `input:24, fx:4, aux:10, sub:6, linein:2, bankSize:8, phantom:20`. Coincide con la cabecera de `VU2` y agrega que **solo 20 de las 24 entradas tienen alimentación fantasma** — coherente con que `i.N.src` valga `none` en los cuatro últimos.
+
+**Familias de claves que este documento no listaba**: `i.N.hiz` (alta impedancia), `hwoutaux.N.src` / `hwoutm.N.src` / `hwouthp.N.src` (qué sale por cada conector físico), `usbdaw.N.src` (32 canales hacia la computadora), `casc.N.src`, `mtk.out.N` y `mtk.scout.N` (multipista), `mg.N.name` y `vg.N.name` (grupos de silencio y de vista), `iso.*`, `firmware`, `model`.
+
 ## 3. Volcado de estado
 
 Al abrir el socket la consola manda su estado completo, sin pedirlo. `INIT` lo vuelve a pedir.
