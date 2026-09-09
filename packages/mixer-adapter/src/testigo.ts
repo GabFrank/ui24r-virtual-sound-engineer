@@ -33,7 +33,9 @@ export interface OpcionesTestigo {
    * Quietud sin líneas de estado que da por terminado el volcado del testigo.
    *
    * Al abrirse, el testigo recibe el volcado entero igual que cualquier
-   * cliente: ~6 665 claves en unos 220 mensajes, completo entre 112 y 158 ms.
+   * cliente: del orden de seis mil claves en unos 220 mensajes, completo entre
+   * 112 y 158 ms. No es un número constante: 6 665 y 6 087 en dos sesiones con
+   * el mismo firmware, y por eso el fin del volcado se detecta por quietud.
    * Es el mismo criterio que usa el adaptador para su propia conexión.
    */
   readonly quietudVolcadoMs?: number;

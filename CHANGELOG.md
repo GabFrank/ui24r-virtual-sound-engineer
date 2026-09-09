@@ -6,6 +6,48 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Las escrituras se confirman con una segunda conexión testigo.** La consola
+  no le devuelve eco a quien escribe, pero sí difunde el cambio a los demás
+  clientes: abrir una segunda conexión del mismo proceso y escuchar por ahí ve
+  la escritura a los 27 ms. Cambia la semántica de `escribir()`: `APPLIED` pasa
+  a ser alcanzable de verdad, aparece `REJECTED` cuando el testigo no abre —se
+  prefiere no escribir antes que escribir a ciegas— y `ECHO` deja de poder
+  producirse. Es ADR-024 en código.
+
+- **Retención y caída del pico en el medidor.** La consola manda el nivel
+  instantáneo y la balística la dibuja su cliente, así que esto es una decisión
+  de producto y no algo heredado: el pico se sostiene 3 ms y cae 24 dB por
+  segundo, que son las constantes del `mixer.html` traducidas a tiempo real
+  suponiendo 60 cuadros por segundo. Antes se guardaba el máximo absoluto hasta
+  que alguien lo reiniciaba, que responde otra pregunta.
+
+- **Aviso cuando el compresor está apretando durante la medición.** El nivel de
+  entrada viene procesado; si el compresor actúa, la lectura dice cuánta señal
+  queda, no cuánta entra.
+
+### Corregido
+
+- **La ganancia informa lo que el previo entrega, no lo que la tabla promete.**
+  Medida la curva completa contra el aparato: de −6 a +24 dB la tabla de la
+  consola es exacta dentro de 0,33 dB, pero el salto de 24 a 26 que promete
+  2 dB entrega 0,71, y de ahí para arriba hay un déficit constante de ~1,15 dB.
+  Se corrige de nuestro lado. **Tiene una consecuencia visible**: por encima de
+  26 dB nuestra lectura deja de coincidir a propósito con la que el operador ve
+  en la pantalla de la consola. Es una decisión tomada sabiendo el costo.
+
+- **Un canal con la puerta trabajando ya no pierde confianza.** Era una
+  inferencia —que la puerta no toca el punto de medición— y pasó a estar
+  medida. Sigue costando confianza el de-esser, que es el único bloque del
+  canal que nadie midió.
+
+- **INV-021 se apagaba sola.** Después de una avalancha, el estado volvía a
+  declararse confirmado a los 250 ms sin que nadie hubiera releído nada, por el
+  temporizador de quietud. Y quedaba un segundo camino por el que pasaba lo
+  mismo: un `DUMP_END` suelto. Los dos llevan ahora el mismo resguardo.
+
+- **«1 integrantes».** Las cuentas concuerdan con su sustantivo.
+
+
 - **Catálogo de instrumentos, para elegirlos en vez de escribirlos.** Cada
   instrumento se describe con tres facetas independientes —qué es, qué clase de
   esa cosa es y para qué se lo usa en el tema— y no con un árbol de tres
@@ -222,7 +264,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   marcaba la conexión como inestable entre tema y tema y durante toda la prueba
   de sonido, justo cuando el operador mira la pantalla. Ahora se vigila el
   analizador, que no hace esa supresión: 30,0 Hz con señal y 30,2 Hz en silencio,
-  con percentil 95 de 37 ms. La opción pasó de `umbralHuecoVuMs` a
+  con percentil 95 de 37 ms. La opción pasó de `umbralHuecoVuMs` a Ese percentil es **el de la laptop**; el que fija el umbral de 99 ms es el de la **tablet**, 40 ms, que es el aparato donde corre la aplicación.
   `umbralHuecoRtaMs`.
 
 ### Cambiado

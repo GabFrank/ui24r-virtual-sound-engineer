@@ -128,7 +128,7 @@ Con `INIT` a los 3 s llegó exactamente **una** `VU2` más. O sea: `VU2` viaja c
 
 No hay comando de suscripción a medidores: ninguno de los dieciséis comandos del cliente oficial los pide. `settings.disableVUs` es una preferencia **del cliente**, que filtra en `parseVUdata()`.
 
-**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**.
+**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**. **Ese umbral está derogado**: sale de la media de `VU2`, y `VU2` se calla en silencio, así que la conexión se declararía inestable entre tema y tema (R-25). El vigente son **99 ms sobre `RTA`**, que es el flujo que no se apaga.
 
 Tres advertencias sobre ese número:
 

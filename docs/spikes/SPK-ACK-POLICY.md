@@ -117,8 +117,8 @@ Elegir el mecanismo no es escribir la política. Faltan los dos criterios:
 
 - **La tabla parámetro a método** —criterio 1—. El testigo cubre todo lo que la consola difunda,
   pero eso hay que comprobarlo familia por familia contra la matriz de capacidades, y hoy solo
-  hay cuatro rutas escritas contra el aparato: `i.9.mute`, `i.9.mix`, `i.9.dyn.bypass` y
-  `i.9.gate.enabled`. Para las demás, que el testigo funcione es una expectativa razonable, no un
+  hay cinco rutas escritas contra el aparato: `i.9.mute`, `i.9.mix`, `i.9.pan`
+  —esta última en la sonda de tres clientes—, `i.9.dyn.bypass` y `i.9.gate.enabled`. Para las demás, que el testigo funcione es una expectativa razonable, no un
   hecho medido.
 - **El texto de INV-011** —criterio 2—, que tiene que decir qué pasa cuando el testigo se cae en
   medio de una transacción. Es un modo de fallo nuevo que las otras opciones no tenían.

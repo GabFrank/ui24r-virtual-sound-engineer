@@ -94,7 +94,7 @@ flujo entrante es idéntico.
 en 90 s con música. Un detector de conexión caída basado en medidores da falso positivo en cada
 silencio, o sea entre tema y tema y en toda la prueba de sonido.
 
-`RTA` no hace esa supresión: 30,2 Hz en silencio y 30,0 Hz con señal, con percentil 95 de 37 ms.
+`RTA` no hace esa supresión: 30,2 Hz en silencio y 30,0 Hz con señal, con percentil 95 de 37 ms. Ese percentil es **el de la laptop**; el que fija el umbral de 99 ms es el de la **tablet**, 40 ms, que es el aparato donde corre la aplicación.
 **El adaptador pasó a vigilar `RTA`.** El umbral de inestabilidad del criterio 4 se calcula
 sobre `RTA`, no sobre `VU2`; sobre `VU2` no hay cadencia que medir cuando no hay audio, que es
 la mitad del tiempo.

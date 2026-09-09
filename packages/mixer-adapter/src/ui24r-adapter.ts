@@ -39,7 +39,8 @@ export interface OpcionesAdapter {
    * consola real no: contra el aparato, el estado confirmado se quedaba en
    * INVALID para siempre y ninguna lectura era confiable.
    *
-   * El volcado son ~6 665 claves en unos 220 mensajes seguidos, y entra
+   * El volcado son del orden de seis mil claves en unos 220 mensajes seguidos
+   * —6 665 y 6 087 en dos sesiones, no es constante—, y entra
    * completo entre 112 y 158 ms (20 de 20 ciclos medidos el 2026-09-08). Un
    * cuarto de segundo sin una sola línea de estado es holgado para ese ritmo y
    * corto para el operador. Las tramas de medidores y de analizador no cuentan:
@@ -202,7 +203,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    * Hoy la aplicación está en nivel OBSERVE: mira, mide y propone, y no escribe
    * un solo parámetro. Abrir el testigo al conectar le cobraría a ese uso un
    * costo que no es simbólico, y está medido: cada sesión recibe el **volcado
-   * completo de ~6 665 claves** —112 a 158 ms de ráfaga— y después los flujos de
+   * completo, del orden de seis mil claves —no es un número fijo—** —112 a 158 ms de ráfaga— y después los flujos de
    * medidores y analizador, que son 30 tramas por segundo de `RTA` más las de
    * `VU2` con señal, sostenidas mientras dure el show. En una tablet sobre la
    * red que levanta la propia consola eso se paga en batería y en ancho de

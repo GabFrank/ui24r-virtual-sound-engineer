@@ -36,7 +36,7 @@ La correlación es por ruta, valor y ventana de tiempo, que es lo que ya hace `C
 
 ## Consecuencias
 
-**El costo del testigo es real, y por eso se paga tarde.** Cada sesión recibe el volcado completo —~6 665 claves en unos 220 mensajes, entre 112 y 158 ms— y después los flujos continuos: `RTA` a 30 Hz pase lo que pase, más `VU2` con señal. Sostenido durante todo un show, en una tablet, sobre la red que levanta la propia consola. Es tráfico y batería que en OBSERVE no compra nada.
+**El costo del testigo es real, y por eso se paga tarde.** Cada sesión recibe el volcado completo —del orden de seis mil claves en unos 220 mensajes, entre 112 y 158 ms; 6 665 y 6 087 en las dos sesiones medidas, o sea que **no es constante**— y después los flujos continuos: `RTA` a 30 Hz pase lo que pase, más `VU2` con señal. Sostenido durante todo un show, en una tablet, sobre la red que levanta la propia consola. Es tráfico y batería que en OBSERVE no compra nada.
 
 - La **primera escritura de la sesión** paga la apertura del testigo y su volcado. Las siguientes no pagan nada.
 - Ese retraso abre un hueco entre la comprobación previa de INV-011 y el envío, así que la comparación contra el valor esperado se repite después de tener el testigo listo.
