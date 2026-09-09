@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MEDIDOR_SATURACION, VU_ESCALA, dbDeMedidor } from '@vse/mixer-adapter';
+import { MEDIDOR_RANGO_DB, MEDIDOR_SATURACION, VU_ESCALA, dbDeMedidor } from '@vse/mixer-adapter';
 import {
   PISO_DB, UMBRAL_RIESGO_DB, UMBRAL_SATURACION_DB, porcentajeDeDb,
 } from '../src/app/telemetry/escala-medidor.ts';
 
-test('la escala del medidor va de -80 a 0, como la de la consola', () => {
-  assert.equal(PISO_DB, -80);
+test('la escala del medidor va del recorrido medido a 0, como la de la consola', () => {
+  // El piso no se escribe a mano: sale del recorrido que se midio contra el
+  // aparato. Si esa medicion se afina, esta escala la sigue sola.
+  assert.equal(PISO_DB, -MEDIDOR_RANGO_DB);
   assert.equal(UMBRAL_SATURACION_DB, 0);
 });
 
@@ -32,8 +34,10 @@ test('la barra ocupa la misma fraccion que la de la consola', () => {
 });
 
 test('es lineal en decibeles: la mitad de la barra es la mitad del recorrido', () => {
-  assert.equal(porcentajeDeDb(-40), 50);
-  assert.equal(porcentajeDeDb(-20), 75);
+  // Las fracciones se calculan del recorrido medido y no se escriben a mano:
+  // el recorrido salio de una medicion y puede afinarse.
+  assert.equal(porcentajeDeDb(-MEDIDOR_RANGO_DB / 2), 50);
+  assert.equal(porcentajeDeDb(-MEDIDOR_RANGO_DB / 4), 75);
   assert.equal(porcentajeDeDb(0), 100);
 });
 
@@ -41,14 +45,14 @@ test('los veinte decibeles bajo -60 se dibujan, no se recortan', () => {
   // El piso anterior estaba en -60 dB: un canal en -70 daba barra vacia,
   // indistinguible del silencio, cuando la consola le dibuja un octavo.
   assert.ok(porcentajeDeDb(-70) > 0, 'un canal en -70 dB tiene que verse');
-  assert.equal(porcentajeDeDb(-70), 13);
-  assert.equal(porcentajeDeDb(-60), 25);
+  assert.equal(porcentajeDeDb(-70), Math.round((1 - 70 / MEDIDOR_RANGO_DB) * 100));
+  assert.equal(porcentajeDeDb(-60), Math.round((1 - 60 / MEDIDOR_RANGO_DB) * 100));
 });
 
 test('el silencio y el fondo de escala no pintan nada', () => {
   assert.equal(porcentajeDeDb(-Infinity), 0);
   assert.equal(porcentajeDeDb(PISO_DB), 0);
-  assert.equal(porcentajeDeDb(-100), 0);
+  assert.equal(porcentajeDeDb(-(MEDIDOR_RANGO_DB + 20)), 0);
   assert.equal(porcentajeDeDb(Number.NaN), 0);
 });
 
@@ -63,5 +67,5 @@ test('la marca de riesgo cae dentro de la barra y por debajo de la punta', () =>
   assert.ok(UMBRAL_RIESGO_DB < UMBRAL_SATURACION_DB);
   const marca = porcentajeDeDb(UMBRAL_RIESGO_DB);
   assert.ok(marca > 0 && marca < 100);
-  assert.equal(marca, 85);
+  assert.equal(marca, Math.round((1 + UMBRAL_RIESGO_DB / MEDIDOR_RANGO_DB) * 100));
 });

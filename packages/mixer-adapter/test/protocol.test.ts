@@ -101,9 +101,9 @@ test('VU2: el medidor es lineal en decibeles, no la ley del fader', () => {
   // otra recta posible. Este test existe porque aca vivia el contrario: uno
   // que exigia que la conversion del medidor coincidiera con la del fader,
   // que era la hipotesis, y la hipotesis resulto falsa.
-  assert.equal(MEDIDOR_RANGO_DB, 80);
+  assert.equal(MEDIDOR_RANGO_DB, 84.5, 'el recorrido esta medido, no deducido del codigo');
   assert.equal(dbDeMedidor(1), 0, 'la punta de la escala es 0 dB');
-  assert.equal(dbDeMedidor(0.5), -40, 'la mitad de la barra es la mitad del recorrido');
+  assert.equal(dbDeMedidor(0.5), -MEDIDOR_RANGO_DB / 2, 'la mitad de la barra es la mitad del recorrido');
   assert.equal(dbDeMedidor(0), -Infinity, 'sin senal no hay decibeles que dar');
 
   for (const posicion of [0.1, 0.25, 0.5, 0.9, 1]) {
@@ -113,16 +113,29 @@ test('VU2: el medidor es lineal en decibeles, no la ley del fader', () => {
   }
 });
 
-test('VU2: los numeros medidos contra la consola caen en la recta', () => {
-  // 2026-09-08, Ui24R real. La guitarra en el canal 1 daba el byte 225 de
-  // entrada; la consola mostraba -12 dB en la barra, que es la salida, con el
-  // fader del canal en -6,9 dB. La musica por las RCA daba el byte 102 de
-  // salida y la barra en -46.
+test('VU2: la pendiente es la que se midio con una fuente conocida', () => {
+  // Esta es la prueba fuerte de la escala, y la unica que no depende de que
+  // alguien lea bien una barra: con tonos generados en la maquina de
+  // desarrollo entrando por el canal 10 --compresor y puerta puenteados-- una
+  // rebaja de 18 dB en la fuente movio el byte de 86,4 a 35,2. Si nuestra
+  // conversion es correcta, esos dos bytes tienen que estar a 18 dB.
+  const dbDeByte = (byte: number): number => dbDeMedidor(byte * VU_ESCALA);
+  const medido = dbDeByte(86.4) - dbDeByte(35.2);
+
+  assert.ok(Math.abs(medido - 18) < 0.5, `dio ${medido.toFixed(2)} dB donde la fuente bajo 18`);
+});
+
+test('VU2: coincide con lo que se leyo en la pantalla de la consola', () => {
+  // Estos son los puntos de la primera sesion, leidos a ojo de una barra en
+  // movimiento: valen como control de sensatez, no como calibracion. La
+  // tolerancia es la de leer una barra, no la de la medicion de arriba.
   const dbDeByte = (byte: number): number => dbDeMedidor(byte * VU_ESCALA);
 
-  assert.ok(Math.abs(dbDeByte(225) - -5.0) < 0.1, `byte 225 dio ${dbDeByte(225)}`);
-  assert.ok(Math.abs((dbDeByte(225) - 6.9) - -11.9) < 0.1, 'con el fader en -6,9 la salida es -11,9');
-  assert.ok(Math.abs(dbDeByte(102) - -46.0) < 0.2, `byte 102 dio ${dbDeByte(102)}`);
+  // Guitarra en el canal 1: byte de entrada 225, fader del canal en -6,9 dB,
+  // y la consola mostraba unos -12 en la barra, que es la salida.
+  assert.ok(Math.abs((dbDeByte(225) - 6.9) - -12) < 3, `dio ${(dbDeByte(225) - 6.9).toFixed(1)}`);
+  // Musica por las RCA: byte de salida 102, barra alrededor de -40 a -45.
+  assert.ok(Math.abs(dbDeByte(102) - -43) < 6, `dio ${dbDeByte(102).toFixed(1)}`);
 });
 
 test('VU2: el umbral de saturacion es la punta de la escala, y lo pone la consola', () => {

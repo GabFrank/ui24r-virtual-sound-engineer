@@ -185,13 +185,37 @@ export const VU_BYTES_POR_CANAL = 6;
 export const VU_ESCALA = 0.004167508166392142;
 
 /**
- * Recorrido del medidor, en decibeles. `VU_RANGE` en `mixer.html`.
+ * Recorrido del medidor, en decibeles. **Medido, no deducido.**
  *
- * La escala impresa va de 0 en la punta a −80 en el fondo, y la barra se dibuja
- * proporcional a la posición, así que un escalón del byte son
- * `80 * VU_ESCALA` = 0,333 dB.
+ * El código de la consola dice 80: `VU_RANGE = 80` y las marcas de la escala
+ * en `-dB * h / VU_RANGE`. De ahí se dedujo primero este número, y **la
+ * medición lo desmintió**. Con una fuente de nivel conocido entrando por una
+ * entrada de la consola —tonos generados en la máquina de desarrollo, salida
+ * analógica al canal 10, compresor y puerta puenteados— la recta salió
+ * impecable pero con la pendiente equivocada:
+ *
+ * | Barrido | Pendiente contra el recorrido de 80 | Recorrido implícito |
+ * |---|---|---|
+ * | 1 kHz, −40 a −3 dBFS | 0,9438 | 84,8 dB |
+ * | 1 kHz, −32 a −14 dBFS, pasos de 2 | 0,9379 | 85,3 dB |
+ * | 400 Hz, −30 a −15 dBFS, pasos de 3 | 0,9507 | 84,1 dB |
+ *
+ * El desvío máximo de la recta en el barrido más fino fue de **0,21 dB**: la
+ * escala es lineal en decibeles, que es lo que el código decía, y sólo estaba
+ * mal el factor.
+ *
+ * **Por qué 80 no era el número.** En `drawVUMarks` las marcas se dibujan
+ * sobre `a.h - 9` píxeles, mientras `paint()` dibuja la barra sobre `a.h`
+ * completo. Los nueve píxeles de diferencia estiran el recorrido efectivo:
+ * `80 * h / (h - 9)` con la altura de tira de la consola da ~85 dB, que es lo
+ * que se midió. La consola arrastra esa inconsistencia entre su barra y sus
+ * propios rótulos; nosotros informamos el número que corresponde a la señal.
+ *
+ * La incertidumbre de los tres barridos es de ±0,6 dB. Si algún día se mide
+ * con un bucle físico calibrado —SPK-P0.10b— este número se afina; hasta
+ * entonces es el mejor que hay y sale de una fuente conocida.
  */
-export const MEDIDOR_RANGO_DB = 80;
+export const MEDIDOR_RANGO_DB = 84.5;
 
 /**
  * Posición desde la que la consola enciende su indicador de saturación.
