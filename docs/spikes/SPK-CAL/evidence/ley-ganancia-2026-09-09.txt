@@ -1,0 +1,38 @@
+Curva de ganancia de entrada, medida contra la Ui24R — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24 · canal 10 (hw.9) · fuente fija por la Scarlett
+Metodo: fuente quieta, mover hw.9.gain en centros de escalon y leer el medidor
+de entrada. La ganancia es anterior al punto donde se toma ese medidor, asi que
+subirla tiene que subir la lectura en la misma cantidad.
+
+IMPORTANTE: hay que escribir CENTROS DE ESCALON (rawParaGananciaMasCercana).
+Con valores crudos arbitrarios la consola los encaja en su escalon y el error
+medido llega a 1,72 dB, que no es de la curva sino del encaje -- el mismo
+desajuste que protocol-spec ya documenta (hasta 1,97 dB).
+
+crudo      | segun el codigo | entrada leida | subida medida | esperada | dif
+0.382813   |         18,0 dB |        -40,66 |          0,00 |     0,00 | +0,00
+0.414063   |         20,0 dB |        -38,66 |          2,00 |     2,00 | +0,00
+0.445313   |         22,0 dB |        -36,63 |          4,03 |     4,00 | +0,03
+0.476563   |         24,0 dB |        -34,62 |          6,04 |     6,00 | +0,04
+0.507813   |         26,0 dB |        -33,66 |          7,00 |     8,00 | -1,00
+0.539063   |         28,0 dB |        -31,99 |          8,67 |    10,00 | -1,33
+0.570313   |         30,0 dB |        -29,66 |         11,00 |    12,00 | -1,00
+
+Dos corridas separadas dieron los mismos valores hasta el centesimo: es
+reproducible, no es ruido.
+
+CONCLUSION
+De 18 a 24 dB la curva del codigo es exacta dentro de 0,05 dB.
+Entre 24 y 26 dB la ganancia real sube ~1 dB MENOS de lo que dice la tabla, y
+el deficit se mantiene hacia arriba (-1,00 a -1,33 dB).
+
+POR QUE IMPORTA
+Es la curva con la que el asistente propone "subi 4 dB". Una propuesta que
+cruce esa zona aterriza ~1 dB corta. Con propuestas tipicas de 3 a 6 dB, es un
+error del 20 al 30 por ciento del movimiento.
+
+LO QUE NO SE SABE TODAVIA
+Si la discontinuidad esta en la tabla de la consola o en su previo. Si esta en
+el previo, la consola tambien muestra 26 dB entregando 25: corregirlo de
+nuestro lado nos alejaria de lo que el operador lee en su pantalla. Es una
+decision de producto, no de medicion.

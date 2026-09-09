@@ -1,6 +1,6 @@
 # SPK-ACK-POLICY — Política de confirmación de escrituras
 
-**Estado:** Desbloqueado, sin decidir — **la entrada que faltaba llegó el 2026-09-08: no hay eco** · **Timebox:** 1 día · **Control:** G-A
+**Estado:** Mecanismo **elegido** el 2026-09-09 —**la segunda conexión testigo**, medida en 27 ms—; falta la tabla parámetro a método y el texto de INV-011, que son los dos criterios · **Timebox:** 1 día · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.9a, S-13.1
 **Montaje:** resultados de SPK-P0.1. No requiere hardware adicional.
 
@@ -20,8 +20,8 @@ El protocolo no tiene confirmación explícita, y **el eco tampoco existe: está
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Tabla parámetro a método de confirmación, completa | bloqueante | 100 % de las filas de la matriz | | ⬜ |
-| 2 | Texto normativo de INV-011 redactado y aprobado | bloqueante | sí | | ⬜ |
+| 1 | Tabla parámetro a método de confirmación, completa | bloqueante | 100 % de las filas de la matriz | Sin escribir. Ya no está bloqueada: el mecanismo está elegido y medido, así que la tabla es trabajo de redacción y no de laboratorio | ⬜ |
+| 2 | Texto normativo de INV-011 redactado y aprobado | bloqueante | sí | Sin escribir | ⬜ |
 
 ## Regla por defecto si no hay eco
 
@@ -54,25 +54,74 @@ Dos consecuencias inmediatas sobre código que ya está escrito:
   suelto que ADR-005 dejó anotado para este spike: la ventana de 300 ms espera un mensaje
   entrante que no llega.
 
-## Las opciones, sin elegir ninguna
-
-Este spike todavía no decide. Lo que sigue es el conjunto de caminos que la medición deja en
-pie, con lo que cada uno cuesta y lo que cada uno no cubre. **La elección es de la persona que
-cierra el spike**, y sale con su ADR si cambia una decisión.
+## Las opciones
 
 | Opción | Qué confirma | Costo | Qué no cubre |
 |---|---|---|---|
 | **A — Medidores** | fader, silencio y ganancia, y solo con señal presente | ninguno: las tramas ya llegan | todo lo que no se ve en un medidor: ecualizador, dinámica, envíos, retardos. Y cualquier parámetro en silencio |
-| **B — Relectura por `INIT`** | cualquier parámetro, con certeza | el volcado entero: **6 665 claves** por cada escritura confirmada, a ~100 ms | no escala a una transacción de varias escrituras ni a nada parecido a una rampa. Ver R-23 |
-| **C — Segunda conexión testigo** | en principio cualquier parámetro, porque la consola sí difunde a los otros clientes | una sesión más, que hay que abrir, mantener viva con `ALIVE` y reconectar; y una instancia más que INV-032 tiene que poder distinguir | **sin medir.** Que difunda a un cliente ajeno no prueba que difunda a una segunda conexión del mismo aparato, ni con qué latencia. Es una opción a evaluar, no un mecanismo verificado |
+| **B — Relectura por `INIT`** | cualquier parámetro, con certeza | el volcado entero por cada escritura confirmada, a ~100 ms: del orden de **seis mil claves** | no escala a una transacción de varias escrituras ni a nada parecido a una rampa. Ver R-23 |
+| **C — Segunda conexión testigo** ✅ | cualquier parámetro que la consola difunda, que hasta donde se midió son todos | una sesión más: abrirla, mantenerla viva con `ALIVE`, reconectarla, y una instancia más que INV-032 tiene que poder distinguir. Y el testigo **recibe el volcado completo al conectar y después los flujos de medidores**, o sea que paga tráfico y batería de forma continua | los parámetros que la consola no difunda, si aparece alguno. Y no cubre el caso de la consola que aplica la escritura y no la difunde, que no se observó pero tampoco se descartó |
 | **D — Ninguna** | nada: `confirmedBy = TIMEOUT` y aviso «no verificable» por cada cambio | ninguno | deja todo parámetro sin verificación inelegible en automático controlado, que es la regla por defecto de más abajo |
 
 Las opciones no son excluyentes: lo más probable es que la tabla final del criterio 1 mezcle
 varias, una por familia de parámetro. Eso es exactamente lo que este spike tiene que escribir.
 
-**Lo que la opción C necesita antes de poder elegirse** es una medición propia: abrir dos
-conexiones desde el mismo aparato, escribir por una y comprobar si la otra lo recibe, con su
-latencia. Mientras eso no esté medido, C no es candidata sino pregunta.
+## La decisión — 2026-09-09: la segunda conexión testigo
+
+**Elegida la opción C.** Lo que le faltaba era una medición propia, y llegó: la opción C se
+apoyaba en que la consola difunde a los otros clientes, pero eso estaba probado contra un cliente
+**ajeno** —la aplicación en la tablet—, no contra una segunda conexión del mismo proceso. Nada
+garantizaba que la consola no las tratara como una sola sesión.
+
+**Medido:** dos conexiones abiertas desde el mismo proceso son **dos clientes distintos** para la
+consola, y **el testigo ve la escritura a los 27 ms**. Con tres clientes a la vez se ve la misma
+regla desde el otro lado: el que escribe registra **0 líneas** de su propia escritura y los otros
+dos **1 cada uno**, o sea que la difusión llega una sola vez y no se le pierde a nadie.
+
+**Por qué esta y no las otras**, en el orden en que pesaron:
+
+1. **Confirma lo que las otras no.** La opción A solo alcanza a fader, silencio y ganancia, y
+   solo con señal: deja el ecualizador, la dinámica y los envíos sin verificar para siempre, que
+   es justamente el problema que este spike existe para resolver.
+2. **Cuesta lo que B no puede costar.** Confirmar por `INIT` significa pedir el volcado entero
+   por cada escritura. Una transacción de varias escrituras secuenciales —que es lo que INV-005
+   obliga a hacer— pediría el volcado tantas veces como escrituras tenga. Es el R-23 en su peor
+   forma. El testigo, en cambio, ya está escuchando: la confirmación no cuesta un pedido, cuesta
+   esperar 27 ms.
+3. **Es la única compatible con el nivel de autonomía al que el producto va.** ADR-023 dice que
+   la aplicación va a automatizar. Un mecanismo que no escala más allá de una escritura suelta
+   cierra esa puerta antes de llegar.
+
+**Lo que cuesta, escrito sin adornos.** El testigo es una conexión de verdad y la consola la
+trata como tal: **le manda el volcado completo al conectar y después le manda los flujos de
+medidores**, `VU2` y `RTA`, exactamente igual que a la conexión principal. Eso es tráfico y
+batería duplicados en un aparato que va a estar sobre una tablet, en una red inalámbrica, durante
+un show entero. No hay forma de pedirle a la consola que mande menos: el protocolo no tiene
+suscripción selectiva. Lo que sí se puede es **descartar temprano en el cliente** y no procesar
+del testigo más que las líneas `SETD`/`SETS` que interesan, que es una decisión de
+implementación, no del protocolo.
+
+**La ambigüedad que el testigo no puede quitar, y hay que escribirla.** Los mensajes de la consola **no identifican al emisor**: eso ya estaba medido. Entonces lo que el testigo confirma es que **la consola difundió esa ruta con ese valor**, no que la línea sea nuestra. Si un operador movió el mismo control al mismo valor en la misma ventana de tiempo, se ve igual. Es exactamente la ambigüedad que ADR-005 ya asume para la correlación temporal, heredada tal cual: el testigo la reduce a milisegundos, no la elimina. Cualquier texto de INV-011 tiene que decir eso en vez de prometer certeza.
+
+**Y suma una instancia más que INV-032 tiene que poder distinguir.** La detección de otra
+instancia de esta aplicación conectada no puede confundir nuestro propio testigo con un segundo
+operador. Eso lo tiene que resolver el mecanismo de presencia que elige SPK-P0.9, y es una
+condición para que esta decisión sea implementable, no un detalle posterior.
+
+**La ADR está en redacción por separado.** Cuando exista, es ella la que manda sobre este
+párrafo; acá queda registrado qué se eligió, con qué medición y a qué costo.
+
+### Lo que la decisión todavía no resuelve
+
+Elegir el mecanismo no es escribir la política. Faltan los dos criterios:
+
+- **La tabla parámetro a método** —criterio 1—. El testigo cubre todo lo que la consola difunda,
+  pero eso hay que comprobarlo familia por familia contra la matriz de capacidades, y hoy solo
+  hay cuatro rutas escritas contra el aparato: `i.9.mute`, `i.9.mix`, `i.9.dyn.bypass` y
+  `i.9.gate.enabled`. Para las demás, que el testigo funcione es una expectativa razonable, no un
+  hecho medido.
+- **El texto de INV-011** —criterio 2—, que tiene que decir qué pasa cuando el testigo se cae en
+  medio de una transacción. Es un modo de fallo nuevo que las otras opciones no tenían.
 
 ## Evidencia a entregar
 

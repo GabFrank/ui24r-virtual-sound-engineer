@@ -31,3 +31,12 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | [LOOP](SPK-LOOP-loopback.md) Loopback e igualación de entradas | G-C | 3 d | ⬜ |
 | [P0.7b](SPK-P0.7b-soundcheck-repetibilidad.md) Soundcheck virtual, repetibilidad | G-D | 3 d | ⬜ |
 | [REPEAT](SPK-REPEAT-repetibilidad-sala.md) Repetibilidad de la medición de sala | G-C | 3 d | ⬜ |
+
+**Ninguno está cerrado, y cuatro tienen resultados parciales.** La columna es binaria a propósito —un spike se cierra o no se cierra— pero un ⬜ no significa lo mismo en todos ellos:
+
+| Spike | Qué ya está contestado | Qué falta para cerrarlo |
+|---|---|---|
+| P0.1 | Cadencia y umbral de inestabilidad (99 ms sobre `RTA`); no hay eco; reconexión con la wifi cortada, 20 de 20 | Los otros dos modos de corte —router apagado y cambio de IP— y los tres clientes durante diez minutos con cambios ocurriendo. Los dos necesitan a alguien delante del aparato |
+| ACK-POLICY | El **mecanismo**: segunda conexión testigo, medida en 27 ms | La tabla parámetro a método y el texto de INV-011. Es redacción, no laboratorio |
+| P0.2a | Rutas confirmadas contra el aparato, y las dos primeras escrituras reales | Reproductor, grabación multipista, punto de derivación y enlace estéreo |
+| P0.10b | Escala y recorrido —80 dB—, balística, tasa, respuesta en frecuencia, techo y repetibilidad | Solo la correspondencia con **dBFS absolutos**, que exige un bucle físico calibrado |

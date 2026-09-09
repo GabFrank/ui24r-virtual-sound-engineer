@@ -1,6 +1,6 @@
 # SPK-P0.10b — Calibración y balística de los medidores de la consola
 
-**Estado:** Pendiente — la **forma** de la escala está medida con tonos (2026-09-08: **es lineal en decibeles**, y su recorrido dio ~84,5 dB en vez de los 80 del código, con una discrepancia sin resolver contra la comprobación cruzada del fader); faltan la correspondencia con dBFS absolutos, la balística y la tasa · **Timebox:** 3 días · **Control:** G-B
+**Estado:** Pendiente — la **forma y el recorrido** de la escala quedaron cerrados el 2026-09-09 (**80 dB**, medidos moviendo el fader, o sea sin cadena analógica en el medio), y con ellos la **balística**, la **tasa**, la **respuesta en frecuencia**, el **techo** y la **repetibilidad**; falta lo único que siempre faltó: la **correspondencia con dBFS absolutos**, que son los criterios 1 y 2 · **Timebox:** 3 días · **Control:** G-B
 **Depende de:** SPK-P0.2a, SPK-P0.6' · **Bloquea a:** S-03.3, S-03.4
 **Montaje:** Ui24R, pendrive con tonos, un cable para el bucle físico desde el auxiliar de análisis a una entrada libre en modo línea.
 
@@ -22,15 +22,15 @@ Todo el asistente de ganancia del primer entregable se apoya en estos medidores.
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Lectura del medidor para −20, −6 y −1 dBFS | bloqueante | tres valores registrados | | ⬜ |
-| 2 | Valor de referencia de saturación, definido como la lectura a −1 dBFS | bloqueante | registrado | | ⬜ |
-| 3 | Balística: tipo, tiempo de subida y de caída | bloqueante | documentados con ráfaga | | ⬜ |
-| 4 | Tasa de tramas de medidores | bloqueante | tramas por segundo, registrado | | ⬜ |
-| 5 | Tabla de conversión si la lectura no es lineal en decibeles a fondo de escala | bloqueante | tabla o constancia de que no hace falta | **No hace falta tabla: la lectura es lineal en decibeles, y ahora está medido, no deducido.** Tres barridos con una fuente de nivel conocido dieron pendientes de 0,9438, 0,9379 y 0,9507 contra un recorrido supuesto de 80 dB, con desvío máximo de **0,21 dB** en el barrido más fino. Lo que estaba mal no era la forma sino el factor: el recorrido real es de **~84,5 dB (±0,6)**. Que esa escala sean dBFS sigue siendo otra afirmación y sigue sin medirse | ✅ |
+| 1 | Lectura del medidor para −20, −6 y −1 dBFS | bloqueante | tres valores registrados | Sigue en blanco, y es lo que impide cerrar el spike. Exige el bucle calibrado del paso 1: sin conocer la ganancia analógica del camino, ningún byte se puede rotular con un dBFS | ⬜ |
+| 2 | Valor de referencia de saturación, definido como la lectura a −1 dBFS | bloqueante | registrado | **El techo del medidor sí está medido** —el byte se clava en 239 y la lectura deja de subir en −0,7 dB, que es el valor 1,0 donde la consola enciende su clip—, pero eso es el tope de la escala, no «la lectura a −1 dBFS». Rotularlo en dBFS depende del criterio 1 | ⬜ |
+| 3 | Balística: tipo, tiempo de subida y de caída | bloqueante | documentados con ráfaga | **Cinco ráfagas de 1 200 ms a −15 dBFS.** Subida: **0 ms**, no se resuelve —la lectura llega a la meseta dentro de una sola trama—. Caída de 20 dB: **mediana 37 ms**, mínimo 33, máximo 66. Nada por debajo de la cadencia de ~44 ms se puede afirmar. **La consola manda nivel instantáneo y la balística la dibuja su cliente** | ✅ |
+| 4 | Tasa de tramas de medidores | bloqueante | tramas por segundo, registrado | **~44 ms entre tramas con señal**, medido en las condiciones de este spike y coincidente con los 44 ms de media que SPK-P0.1 midió desde la tablet. En silencio no hay tasa que medir: la consola suprime `VU2`, y ahí la media se va a 1 231 ms con p95 de 4 730 | ✅ |
+| 5 | Tabla de conversión si la lectura no es lineal en decibeles a fondo de escala | bloqueante | tabla o constancia de que no hace falta | **No hace falta tabla: la lectura es lineal en decibeles y su recorrido es de 80 dB**, y las dos cosas están medidas contra el aparato. La medición que las fija es la del fader —ganancia digital, sin cadena analógica— y cierra en **0,06 dB sobre 38**. El escalón del byte son **0,333 dB**. Que esa escala sean dBFS sigue siendo otra afirmación y sigue sin medirse | ✅ |
 
-## Lo que ya se resolvió el 2026-09-08, sin tonos
+## La escala: 80 dB, y cómo se llegó ahí dos veces
 
-**La ley del medidor sale del `mixer.html` que sirve la propia consola**, no de una hipótesis. Son dos piezas de su código y juntas no dejan otra lectura posible:
+**La ley del medidor sale del `mixer.html` que sirve la propia consola.** Son dos piezas de su código y juntas no dejan otra lectura posible:
 
 ```js
 VU_RANGE = 80
@@ -44,65 +44,117 @@ Barra proporcional a la posición y marcas espaciadas linealmente en decibeles d
 dB = 80 · posicion − 80        // 0 dB en la punta, −80 en el fondo
 ```
 
-Un escalón del byte serían **0,333 dB**.
-
-> ⚠️ **La forma de esta recta es correcta y su factor no.** Los tonos, más abajo, confirmaron que la escala es lineal en decibeles y desmintieron el 80: el recorrido medido es de ~84,5 dB, así que la recta es `dB = 84,5 · posición − 84,5` y el escalón del byte son **0,352 dB**. Lo que sigue en esta sección se conserva porque es cómo se llegó hasta acá, no porque el número sea el bueno.
+Un escalón del byte son **0,333 dB**. Eso es lo que vale `MEDIDOR_RANGO_DB` en el adaptador, y **es lo correcto**.
 
 **Queda falsada la hipótesis anterior**, que era que la consola dibuja sus medidores con la misma regla que sus faders. No es así: con la ley del fader el byte 225 daba +4,6 dB.
 
-**Comprobado contra el aparato en dos puntos independientes**, consola en `192.168.0.78`:
+### El desvío a 84,5 dB, y por qué se volvió atrás
 
-| Fuente | Byte | Según la recta | Lo que mostraba la consola |
+Vale contarlo entero, porque la trampa es sutil y se puede repetir.
+
+El 2026-09-08 tres barridos de tono con una fuente de nivel conocido dieron pendientes de 0,9438, 0,9379 y 0,9507 contra el recorrido de 80, con desvíos máximos de 0,79, **0,21** y 0,39 dB. Rectas impecables, todas apuntando a un recorrido de ~85 dB. Con eso se cambió la constante a **84,5** —commit `7d4c619`— y se escribió ese número en la matriz de capacidades, en la especificación del protocolo y en este mismo documento.
+
+Lo que faltaba mirar es que **esos barridos no coincidían entre sí**. Expresados en dB por escalón del byte:
+
+| Barrido | Zona del medidor | dB por escalón |
+|---|---|---|
+| 1 kHz, −32 a −14 dBFS, pasos de 2, ganancia +10 | lecturas bajas | 0,3516 |
+| 1 kHz, −40 a −3 dBFS, ganancia +10 | lecturas bajas | 0,3582 |
+| 1 kHz, −33 a −6 dBFS, pasos de 3, ganancia +40 | lecturas altas | 0,3644 |
+
+**Una escala tiene un solo factor.** Tres factores distintos según el nivel al que se mida no son una escala: son la cadena analógica metiendo la cola —el conversor, el cable, el previo, el ruido sumándose abajo—. El cuarto barrido, el de ganancia +40 y lecturas altas, es el que lo dejó a la vista: cambiar la zona del medidor cambiaba el factor.
+
+### La medición que sí fija la escala
+
+**Sin cadena analógica.** El fader del canal es una ganancia **digital dentro de la consola**: entre la fuente y el medidor no hay nada que pueda mentir. Con la fuente fija y el **medidor de entrada como testigo** —se mantuvo clavado en **−20,76 dB en las quince posiciones**, o sea que la fuente no se movió—, se recorrió el fader y se leyó el medidor de salida:
+
+| | |
+|---|---|
+| crudo 0,7647 | byte de salida **181,0** |
+| crudo 0,2000 | byte de salida **66,3** |
+| recorrido del medidor | **114,7 escalones** |
+| atenuación según la ley de fader de la consola | **38,19 dB** |
+| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,25 dB** |
+
+**Coincide en 0,06 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
+
+La constante volvió a 80 en el commit `98d59af`, y el test fuerte de la escala pasó a ser este y no el de la fuente externa: ata la conversión del medidor a la ley del fader con bytes medidos.
+
+### La lección, que es lo único que aportan los barridos
+
+> **Una fuente externa mide la cadena entera, no el medidor. Para medir el medidor hay que mover algo que ya esté adentro.**
+
+Los datos de los barridos quedan archivados en `evidence/barridos-2026-09-08.txt` con el motivo por el que no sirven para fijar la escala. El episodio vale como advertencia; el número, no.
+
+Como consecuencia, **también queda resuelta la discrepancia que este documento y `protocol-spec.md` dejaron abierta**: la comprobación cruzada entre los dos medidores y el fader daba 79–80 dB y los tonos daban 84–85. No había dos respuestas: había una medición limpia y otra contaminada, y la contaminada era la de los tonos. La hipótesis de que `faderADb` arrastrara un error de escala del mismo orden **queda descartada**, porque la medición del fader la habría amplificado y no lo hizo.
+
+Cae con ella la «causa probable» que se había escrito para explicar los 84,5 —los nueve píxeles de diferencia entre `drawVUMarks` y `paint()`—. Era una explicación razonable para un número que no existía. Se anota acá para que nadie la vuelva a encontrar en un archivo viejo y la tome por buena.
+
+## Comprobado contra el aparato
+
+**En dos puntos independientes**, consola en `192.168.0.78`. Son lecturas a ojo de una barra en movimiento, así que valen con esa tolerancia:
+
+| Fuente | Byte | Según la recta de 80 dB | Lo que mostraba la consola |
 |---|---|---|---|
 | Guitarra en el canal 1 | entrada 225 | −5,0 dB de entrada; con el fader en −6,9 dB, **−11,9 a la salida** | −12 |
 | Música por las RCA | salida 102 | **−46 dB** | coincide con la barra |
 
-**Y comprobado de forma cruzada.** La consola dibuja la **salida** en la barra y la **entrada** como marca fantasma, así que la diferencia entre las dos tiene que ser el fader del canal:
+**Y de forma cruzada.** La consola dibuja la **salida** en la barra y la **entrada** como marca fantasma, así que la diferencia entre las dos tiene que ser el fader del canal:
 
-| Canal | Diferencia con recorrido 80 | Diferencia con recorrido 84,5 | `i.N.mix` |
-|---|---|---|---|
-| 21 | 11,6 dB | 12,3 dB | −11,6 dB |
-| 22 | 11,6 dB | 12,3 dB | −11,5 dB |
-
-El reparto de bytes y la relación entre barra, fantasma y fader quedan comprobados: la diferencia entre los dos medidores *es* el fader, y eso no depende del recorrido.
-
-> ⚠️ **El recorrido, en cambio, no cierra con el de los tonos, y queda como pregunta abierta.** Esta comprobación implica 79–80 dB; los barridos, 84–85. Está desarrollado en la sección 4.3 de [protocol-spec.md](../protocol-spec.md) y en «lo que sigue sin medirse», más abajo.
-
-**Saturación:** la consola enciende su indicador cuando el medidor llega a la punta de la escala —`1 <= valor`, o sea 0 dB—, no por un umbral elegido a mano. Y el **bit 7 del último byte del canal es el indicador de puerta** (`GATEind`), **no saturación**: vale 1 en todos los canales quietos, y leerlo como clip da los veinticuatro canales saturando sin parar.
-
-El detalle completo está en la sección 4 de [protocol-spec.md](../protocol-spec.md).
-
-## Los tonos — 2026-09-08, criterio 5 contestado
-
-### Montaje
-
-Consola en `192.168.0.78`, firmware `3.4.8318-ui24`. Los tonos se generan en la iMac —seno de amplitud exacta, `amplitud = 10^(dB/20)` sobre el fondo de escala, sin nada en el medio— y salen por una interfaz **Focusrite Scarlett** hacia el **canal 10** de la consola: ganancia **+10 dB**, fader **0 dB**, alimentación fantasma **apagada**.
-
-**El canal se puenteó antes de medir**, escribiendo `i.9.dyn.bypass = 1` y `i.9.gate.enabled = 0` directo por protocolo desde `tools/spikes/p0-10b-vu/escribir.ts`. Por qué importa está en la trampa de más abajo, y no es un detalle de procedimiento: es la diferencia entre medir el medidor y medir el compresor.
-
-### Los tres barridos
-
-Cada nivel suena cinco segundos, se descartan los primeros 1 500 ms —eso es la balística, no el nivel— y se promedia el byte `+1` de entrada del canal. La pendiente es una recta de mínimos cuadrados entre el nivel de la fuente y el nivel leído **con la conversión vieja**, la del recorrido de 80 dB. Una pendiente de 1,0 significaría que ese recorrido era el correcto.
-
-| Barrido | Recorrido de la fuente | Pendiente | Desvío máximo | Recorrido implícito |
+| Canal | Entrada (byte) | Salida (byte) | Diferencia con recorrido 80 | `i.N.mix` |
 |---|---|---|---|---|
-| 1 kHz | −40 a −3 dBFS | 0,9438 | 0,79 dB | 84,8 dB |
-| 1 kHz | −32 a −14 dBFS, pasos de 2 | **0,9379** | **0,21 dB** | 85,3 dB |
-| 400 Hz | −30 a −15 dBFS, pasos de 3 | 0,9507 | 0,39 dB | 84,1 dB |
+| 21 | 171,9 | 137,1 | **11,6 dB** | −11,6 dB |
+| 22 | 174,9 | 140,1 | **11,6 dB** | −11,5 dB |
 
-El barrido del medio es el que manda, y por eso está en negrita: se hizo a propósito **sin los extremos**, donde cerca del fondo manda el ruido de la sala y cerca del tope cualquier eslabón de la cadena analógica puede estar limitando sin avisar. En esa zona, la única donde la cadena es indudable, la recta tiene un desvío máximo de **0,21 dB**.
+Cierra en una décima de decibel. El reparto de bytes, la relación entre barra, fantasma y fader, y el recorrido de 80 dB quedan comprobados a la vez.
 
-Como control de sensatez del mismo dato: una rebaja de **18 dB** en la fuente movió el byte medio de **86,4 a 35,2**, que con el recorrido medido son 18 dB. Ese par está en un test del adaptador.
+## Lo demás que se midió el 2026-09-09
 
-### Qué contesta y qué no
+Todo contra la consola en `192.168.0.78`, firmware `3.4.8318-ui24`, canal 10 —rutas `i.9`—, con la fuente entrando desde la iMac por una Focusrite Scarlett.
 
-**La escala es lineal en decibeles, y ahora está medido.** Hasta hoy eso era una lectura del código de la consola: dos líneas de `mixer.html` que no dejaban otra interpretación posible. Leer bien un código y que el aparato haga lo que el código dice son dos afirmaciones distintas, y esta es la segunda. Tres barridos, dos frecuencias y desvíos por debajo de 0,8 dB —0,21 en el mejor— dicen que sí.
+### Respuesta en frecuencia: plana
 
-**El recorrido no son 80 dB sino ~84,5 (±0,6).** Los tres barridos lo sitúan entre 84,1 y 85,3; la constante `MEDIDOR_RANGO_DB` del adaptador pasó de 80 a **84,5** por esta medición, y con ella el escalón del byte pasó de 0,333 a **0,352 dB**. En la mitad de la barra la diferencia entre una y otra son más de dos decibeles.
+Mismo nivel de fuente a tres frecuencias:
 
-**Causa probable, y se escribe como probable.** En `drawVUMarks` las marcas de la escala se dibujan sobre `a.h - 9` píxeles, mientras `paint()` dibuja la barra sobre `a.h` completo. Los nueve píxeles de diferencia estirarían el recorrido efectivo: `80 · h/(h − 9)` con la altura de tira de la consola da ~85 dB, que es del orden de lo medido. Nadie comprobó esa hipótesis contra el aparato —lo medido es el número, no su causa— y si resultara falsa el número sigue en pie. La consola arrastraría entonces una inconsistencia entre su propia barra y sus propios rótulos.
+| Frecuencia | Byte |
+|---|---|
+| 100 Hz | 160,3 |
+| 1 kHz | 160,7 |
+| 10 kHz | 160,0 |
 
-### La trampa: el primer barrido midió el procesamiento del canal, no el medidor
+**0,23 dB de dispersión. No hay ponderación por frecuencia.** El medidor lee nivel y no un nivel ponderado, así que un pico de graves y uno de agudos cuentan lo mismo.
+
+**Salvedad honesta:** la medición incluye la cadena analógica, que también es plana. Lo que se puede afirmar es que **no hay ponderación apreciable en el conjunto**, no que el medidor por separado sea plano. Para el uso que le damos —comparar el mismo canal consigo mismo— la distinción no cambia nada; si algún día hace falta afirmarlo del medidor solo, hay que moverlo desde adentro, como con el fader.
+
+### Techo del medidor: `MEDIDOR_SATURACION = 1`, comprobado
+
+Con la ganancia del canal al máximo —**57 dB**— y la fuente subiendo, **el byte se clava en 239 y la lectura deja de subir en −0,7 dB**. Coincide con el valor 1,0 —byte ~240— donde la consola enciende su indicador de clip.
+
+Hasta hoy `MEDIDOR_SATURACION = 1` era una lectura de `setVU` en el `mixer.html`. Ahora está **comprobado contra el aparato**: el medidor no informa nada por encima de esa posición, así que no hay margen escondido arriba ni conviene elegir un umbral propio más bajo. El indicador de la consola y el tope de su escala son el mismo punto.
+
+### Repetibilidad: 0,3 dB
+
+El mismo tono medido en **tres corridas separadas en el tiempo** dio bytes **69,9 / 69,1 / 70,0**: **0,3 dB de dispersión**. Es el piso de ruido de la medición entera, montaje incluido, y es el número contra el que hay que comparar cualquier diferencia que el asistente de ganancia quiera declarar significativa.
+
+### Balística: la dibuja el cliente, no la consola
+
+Cinco ráfagas de **1 200 ms a −15 dBFS**:
+
+| | |
+|---|---|
+| Subida | **0 ms** — no se resuelve: la lectura llega a la meseta dentro de una sola trama |
+| Caída de 20 dB | **mediana 37 ms**, mínimo 33, máximo 66 |
+| Cadencia con señal | ~44 ms |
+
+**Nada por debajo de los 44 ms se puede afirmar**: la subida de 0 ms no significa que sea instantánea, significa que el muestreo no la ve.
+
+La conclusión importa más que los números: **la consola manda nivel instantáneo y la balística la dibuja su cliente.** En el `mixer.html` eso son `GLOBAL_VU_FALL_SPEED = 0.01` y `PEAK_HOLD_TIME = 3`.
+
+**Consecuencia para el producto:** la retención de picos es **una decisión nuestra, no algo heredado**. No hay una balística «de la consola» que haya que imitar para que los números coincidan con los de su pantalla; hay un nivel instantáneo y dos constantes de dibujo que el cliente oficial eligió. Podemos elegir otras —más lentas para leer de un vistazo a un metro de distancia, más rápidas para cazar picos— y seguir siendo fieles a lo que la consola informa. Lo que no podemos es presentar un pico retenido sin decir que es retenido.
+
+Esto también responde por qué el criterio 3 se podía contestar sin el bucle calibrado: los tiempos son diferencias, y las diferencias no dependen de la ganancia del camino.
+
+### La trampa que costó el primer barrido: el procesamiento del canal
 
 Vale documentarla porque el resultado **parecía razonable** y no lo era.
 
@@ -110,28 +162,21 @@ El primer intento dio pendiente **0,9155** y desvío máximo **1,59 dB**, con el
 
 El canal tenía su propio procesamiento activo: `i.9.gate.enabled = 1`, `i.9.dyn.bypass = 0`, `dyn.threshold = 0,875` y la relación en el máximo. La puerta recorta abajo y el compresor aplasta arriba, y las dos cosas juntas doblan la recta por las dos puntas.
 
-**Medir el medidor de un canal con su propio procesamiento activo mide el procesamiento, no el medidor.** Con el compresor puenteado y la puerta apagada, el mismo barrido de 1 kHz pasó de 1,59 dB de desvío a 0,79, y el barrido acotado a 0,21.
+**Medir el medidor de un canal con su propio procesamiento activo mide el procesamiento, no el medidor.** Con el compresor puenteado —`i.9.dyn.bypass = 1`— y la puerta apagada —`i.9.gate.enabled = 0`—, el mismo barrido pasó de 1,59 dB de desvío a 0,79.
 
 Lo que hay que leer de acá para la próxima: antes de medir cualquier cosa en un canal, imprimir qué tiene puesto ese canal. Para eso están `estado-canal.ts` y `rutas-canal.ts`, y por eso `escribir.ts` imprime siempre el valor anterior antes de tocar nada.
 
+Es la misma trampa que la de los barridos, un escalón más afuera: la primera vez se coló el procesamiento del canal, la segunda la cadena analógica. **Lo que estorba siempre es lo que está entre la fuente y el medidor.**
+
 ## Lo que sigue sin medirse
 
-**La correspondencia con dBFS absolutos, que es justamente lo que los tonos no contestaron.** El camino lleva una ganancia analógica **desconocida** —la perilla de la interfaz Scarlett más el previo del canal— que se mantuvo fija durante toda la corrida. Eso hace válidas las **diferencias**: la forma de la escala, su linealidad y su recorrido en decibeles. No hace válido ningún valor absoluto: «este tono de −20 dBFS llega como −20 a la entrada» exige conocer esa ganancia, y no sale de acá. En los propios barridos, el corte de la recta *es* la ganancia analógica del camino, o sea un dato del montaje y no del medidor.
+**La correspondencia con dBFS absolutos, y nada más que eso.** El camino lleva una ganancia analógica **desconocida** —la perilla de la interfaz Scarlett más el previo del canal— que se mantuvo fija durante toda la corrida. Eso hace válidas las **diferencias**: la forma de la escala, su linealidad, su recorrido en decibeles, la balística, la respuesta en frecuencia y la repetibilidad. No hace válido ningún valor absoluto: «este tono de −20 dBFS llega como −20 a la entrada» exige conocer esa ganancia, y no sale de acá.
 
 Contestarlo exige un **bucle calibrado**: la ruta del paso 1, tonos de −20, −6 y −1 dBFS desde el auxiliar de análisis a una entrada en modo línea, sin perilla desconocida en el medio. Hasta que eso esté medido, «pico a menos un decibel» sigue sin significar nada y **este spike no se cierra**. Los criterios 1 y 2 siguen en blanco.
 
 Y si alguien mueve la perilla de la interfaz en medio de una corrida, la corrida entera se descarta: no hay forma de notarlo en los números.
 
-**El recorrido, que quedó con dos respuestas.** Los tonos dan 84–85 dB. La comprobación cruzada de la sesión anterior —diferencia entre los dos medidores contra el fader del canal— da 79–80, que es justo el `VU_RANGE` del código. Un 6 % de diferencia, y alguna de las dos mediciones lo tiene mal:
-
-| Medición | Recorrido implícito | Qué compara | Fortaleza |
-|---|---|---|---|
-| Tres barridos de tonos | 84,1 a 85,3 dB | un medidor contra una fuente de nivel exacto | muchos puntos, pasos finos, desvío máximo de 0,21 dB |
-| Comprobación cruzada | 79,3 a 80,0 dB | dos medidores entre sí, contra `faderADb` | dos puntos de una señal de música, y depende de una ley de fader que también es lectura de código |
-
-Se adoptó el número de los tonos porque es la medición más fuerte y la única con una fuente conocida, pero **esto no está cerrado**. La hipótesis más económica es que `faderADb` tenga un error de escala del mismo orden, que la comprobación cruzada no puede ver porque afecta a sus dos términos por igual. El bucle calibrado del paso 1 resuelve las dos cosas de una vez: fija el recorrido en absoluto y de paso pone a prueba la ley del fader contra algo que no sea su propio código fuente.
-
-Tampoco están medidas la balística —criterio 3— ni la tasa de tramas de medidores en las condiciones de este spike —criterio 4—. De la tasa hay un dato de contexto en SPK-P0.1: `VU2` se suprime en silencio, así que cualquier medida de tasa tiene que decir si había señal.
+**Qué evidencia falta archivar.** `evidence/barridos-2026-09-08.txt` cubre los barridos, la medición del fader y la balística. **La respuesta en frecuencia, el techo y la repetibilidad están medidos y anotados acá, pero su salida cruda no está archivada**, así que no cumplen el segundo punto de la definición de terminado de un spike. Ninguno de los tres es bloqueante, pero mientras no estén archivados valen como lo que son: números escritos a mano en un documento.
 
 ## Herramientas ya escritas
 
@@ -152,11 +197,16 @@ Tampoco están medidas la balística —criterio 3— ni la tasa de tramas de me
 | `restaurar.ts` | devuelve una lista de rutas a su valor previo y comprueba por `INIT` que hayan quedado |
 | `eco.ts` | el criterio 3 de SPK-P0.1: escribe, escucha seis segundos y después pide `INIT` |
 | `probar-escritura.ts` | qué envoltorio acepta la consola para una escritura, probando cinco variantes |
+| `tres-clientes.ts` | tres conexiones a la vez, con una escribiendo: huellas del volcado y quién ve la escritura |
 
 ## Evidencia a entregar
 
-- `evidence/vu-calibration.csv`, `evidence/vu-ballistics.png`.
+- `evidence/barridos-2026-09-08.txt` — **entregada.** Barridos, la medición del fader que fija la escala, y la balística.
+- `evidence/vu-calibration.csv` — pendiente: es la del bucle calibrado, criterios 1 y 2.
+- La salida cruda de la respuesta en frecuencia, el techo y la repetibilidad — pendiente de archivar.
 
 ## Acción ante fallo
 
 Si el medidor resulta demasiado lento para detectar picos cortos, la probabilidad de saturación se calcula sobre el conteo de eventos y no sobre el valor de pico, y se documenta la limitación en el asistente de ganancia.
+
+**Lo medido dice que el medidor no es el cuello de botella: la cadencia sí.** La lectura llega a la meseta dentro de una sola trama, así que el límite no es la balística de la consola sino los ~44 ms entre tramas. Un pico más corto que eso puede caer entre dos tramas y no verse. Esa es la limitación real que el asistente de ganancia tiene que declarar.

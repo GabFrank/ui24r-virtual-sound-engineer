@@ -99,7 +99,7 @@ Al abrir el socket la consola manda su estado completo, sin pedirlo. `INIT` lo v
 
 | | |
 |---|---|
-| claves distintas | **6 665** |
+| claves distintas | **6 665** en la sesión del 2026-09-08; **6 087** en la del 2026-09-09 |
 | líneas `SETD` / `SETS` | 6 025 / 640 |
 | reparto | ~220 mensajes de ~2 KB |
 | tiempo hasta el volcado completo | **112–158 ms**, mediana 118 ms, 20 de 20 ciclos |
@@ -109,6 +109,8 @@ Prefijos de clave por cantidad: `i` 3252, `a` 1330, `s` 612, `f` 452, `l` 246, `
 > **El firmware solo se conoce después de conectarse.** No está expuesto por HTTP: `version.txt`, `VERSION`, `js/version.js`, `firmware.txt`, `info.json`, `/api/version` y `sel/version.js` devuelven todas `301`. Aparece como una clave más de este volcado. Es un problema de orden para INV-033, que deshabilita escrituras si el firmware no coincide con la matriz: cuando hace falta la decisión, todavía no hay dato.
 
 **No se observó ninguna marca de fin de volcado.** El adaptador espera una línea `DUMP_END` que **esta consola no manda**. Hay que detectarlo por conteo o por quietud, no por centinela.
+
+> **El tamaño del volcado no es una constante, y este documento lo escribió como si lo fuera.** El 2026-09-08 dio 6 665 claves, en tres clientes a la vez y en veinte reconexiones seguidas; el 2026-09-09, con la consola en el mismo firmware, dio **6 087**, otra vez idénticas entre los tres clientes de esa sesión. O sea que es estable **dentro** de una sesión y no **entre** sesiones: depende de lo que la consola tenga configurado —efectos, subgrupos, lo que sea que haya cambiado en el medio—, y nadie lo acotó todavía. Consecuencia práctica: **nada puede detectar el fin del volcado comparando contra un número escrito a mano.** El desglose por prefijo de más arriba es el de la sesión del 2026-09-08 y vale como retrato, no como especificación.
 
 ---
 
@@ -185,35 +187,41 @@ paint()          { c = h * this.value }   // alto de la barra, proporcional a la
 Si la barra es proporcional a la posición y las marcas están espaciadas linealmente en decibeles, la correspondencia es una recta:
 
 ```
-dB = RECORRIDO · posicion − RECORRIDO      // 0 dB en la punta, −RECORRIDO en el fondo
+dB = 80 · posicion − 80        // 0 dB en la punta, −80 en el fondo
 ```
 
-**La forma es esa, y `VU_RANGE` no es el valor de `RECORRIDO`.** Medido el 2026-09-08 con una fuente de nivel conocido —tonos generados en la máquina de desarrollo, salida analógica al canal 10 de la consola, compresor y puerta puenteados—:
+Un escalón del byte son `80 × 0,004167` = **0,333 dB**. Eso es lo que vale `MEDIDOR_RANGO_DB` en el adaptador.
 
-| Barrido | Pendiente contra un recorrido de 80 | Desvío máximo | Recorrido implícito |
+**El recorrido está medido, y da 80.** No es solo lectura de código. Medido el 2026-09-09 contra la consola en `192.168.0.78`, moviendo **el fader del canal**, que es una ganancia digital *dentro* de la consola: entre la fuente y el medidor no hay nada analógico que pueda mentir. Fuente fija, y el medidor de entrada como testigo —se mantuvo clavado en **−20,76 dB en las quince posiciones**—:
+
+| | |
+|---|---|
+| crudo 0,7647 | byte de salida **181,0** |
+| crudo 0,2000 | byte de salida **66,3** |
+| recorrido del medidor | **114,7 escalones** |
+| atenuación según la ley de fader de la consola | **38,19 dB** |
+| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,25 dB** |
+
+**Coincide en 0,06 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
+
+> **El recorrido estuvo escrito como 84,5 dB en este documento durante unas horas, y era falso.** Venía de tres barridos de tono con una fuente externa conocida, cada uno una recta impecable —pendientes de 0,9438, 0,9379 y 0,9507 contra el recorrido de 80, desvíos de 0,79, 0,21 y 0,39 dB—. Lo que faltaba mirar es que **no coincidían entre sí**: en dB por escalón del byte daban 0,3516, 0,3582 y 0,3644 según la zona del medidor en la que se midiera, y un cuarto barrido a niveles altos confirmó el 0,3644. Una escala tiene un solo factor; tres factores según el nivel son la cadena analógica —conversor, cable, previo, ruido— metiéndose en el medio.
+>
+> **Una fuente externa mide la cadena entera, no el medidor. Para medir el medidor hay que mover algo que ya esté adentro.** Los datos crudos quedan en `docs/spikes/SPK-P0.10b/evidence/barridos-2026-09-08.txt` con el motivo por el que no fijan la escala. Cae con ellos la «causa probable» que se les había buscado —los nueve píxeles de diferencia entre `drawVUMarks` y `paint()`—: era una explicación razonable para un número que no existía.
+
+**Lo que esta medición no contesta:** la correspondencia con dBFS absolutos. El camino de la fuente llevaba una ganancia analógica desconocida —perilla de la interfaz más previo del canal— que se mantuvo fija, así que valen las diferencias y no los valores absolutos. Eso exige un bucle calibrado y lo sigue debiendo SPK-P0.10b.
+
+**Control de sensatez contra el aparato en dos puntos**, con la consola en `192.168.0.78`. Son lecturas a ojo de una barra en movimiento, así que valen con esa tolerancia:
+
+| Fuente | Byte | Según la recta de 80 dB | Lo que mostraba la consola |
 |---|---|---|---|
-| 1 kHz, −40 a −3 dBFS | 0,9438 | 0,79 dB | 84,8 dB |
-| 1 kHz, −32 a −14 dBFS, pasos de 2 | 0,9379 | **0,21 dB** | 85,3 dB |
-| 400 Hz, −30 a −15 dBFS, pasos de 3 | 0,9507 | 0,39 dB | 84,1 dB |
+| Guitarra en el canal 1 | entrada 225 | −5,0 dB de entrada; con el fader en −6,9 dB, **−11,9 a la salida** | −12 |
+| Música por las RCA (21 y 22) | salida 102 | **−46 dB** | coincide con la barra |
 
-La escala **es lineal en decibeles**, que es lo que el código decía, y solo estaba mal el factor. El recorrido es de **84,5 dB (±0,6)**, que es lo que vale `MEDIDOR_RANGO_DB` en el adaptador:
+**Respuesta en frecuencia: plana.** Mismo nivel de fuente a tres frecuencias dio bytes **160,3** a 100 Hz, **160,7** a 1 kHz y **160,0** a 10 kHz: **0,23 dB de dispersión**, o sea que no hay ponderación por frecuencia. La medición incluye la cadena analógica, que también es plana, así que lo afirmable es que **no hay ponderación apreciable en el conjunto**.
 
-```
-dB = 84,5 · posicion − 84,5
-```
+**Repetibilidad: 0,3 dB.** El mismo tono en tres corridas separadas en el tiempo dio bytes 69,9, 69,1 y 70,0. Es el piso de ruido del montaje entero, y el número contra el que hay que comparar cualquier diferencia que se quiera declarar significativa.
 
-Un escalón del byte son `84,5 × 0,004167` = **0,352 dB**, no los 0,333 que salían de 80.
-
-**Causa probable, escrita como probable.** En `drawVUMarks` las marcas se dibujan sobre `a.h - 9` píxeles mientras `paint()` usa `a.h` completo; `80 · h/(h − 9)` con la altura de tira de la consola da ~85 dB. La consola arrastraría así una inconsistencia entre su barra y sus propios rótulos. Nadie comprobó esa hipótesis contra el aparato: lo medido es el número, no su causa.
-
-**Lo que esta medición no contesta:** la correspondencia con dBFS absolutos. El camino llevaba una ganancia analógica desconocida —perilla de la interfaz más previo del canal— que se mantuvo fija, así que valen las diferencias y no los valores absolutos. Eso exige un bucle calibrado y lo sigue debiendo SPK-P0.10b.
-
-**Control de sensatez contra el aparato en dos puntos**, con la consola en `192.168.0.78`. Son lecturas a ojo de una barra en movimiento, así que valen con la tolerancia de leer una barra y **no** como calibración —esa es la de los tonos de arriba—:
-
-| Fuente | Byte | Según la recta medida | Lo que mostraba la consola |
-|---|---|---|---|
-| Guitarra en el canal 1 | entrada 225 | −5,3 dB de entrada; con el fader en −6,9 dB, **−12,2 a la salida** | ≈ −12 dB |
-| Música por las RCA (21 y 22) | salida 102 | **−48,6 dB** | barra entre −40 y −45 aprox. |
+**Balística: la consola manda nivel instantáneo.** Cinco ráfagas de 1 200 ms a −15 dBFS: subida de **0 ms** —no se resuelve, la lectura llega a la meseta dentro de una sola trama— y caída de 20 dB con **mediana de 37 ms**, mínimo 33 y máximo 66. La cadencia con señal es de ~44 ms, así que nada por debajo de eso se puede afirmar. La balística la dibuja el **cliente**: en el `mixer.html` son `GLOBAL_VU_FALL_SPEED = 0.01` y `PEAK_HOLD_TIME = 3`. Para nuestra aplicación eso significa que **la retención de picos es una decisión de producto, no algo heredado del protocolo**.
 
 Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis —escrita como tal— de que la consola dibuja sus medidores con la misma regla que sus faders. **Es falsa.** Con esa ley el byte 225 daba +4,6 dB, recortado a +10 en pantalla.
 
@@ -227,27 +235,28 @@ Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis 
 
 **Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
 
+**Y está comprobado contra el aparato**, no solo leído del código. Con la ganancia del canal al máximo —57 dB— y la fuente subiendo, **el byte se clava en 239 y la lectura deja de subir en −0,7 dB**, que es el valor 1,0 —byte ~240— donde la consola enciende su clip. El medidor no informa nada por encima de esa posición: no hay margen escondido arriba. `MEDIDOR_SATURACION = 1` en el adaptador es ese punto.
+
 **Comprobación cruzada del modelo entero.** Si la barra es la salida y el fantasma la entrada, la diferencia entre las dos tiene que ser exactamente el fader del canal. Medido el 2026-09-08 con música por las RCA:
 
-| Canal | Entrada (byte) | Salida (byte) | Diferencia con recorrido 80 | Diferencia con recorrido 84,5 | `i.N.mix` |
-|---|---|---|---|---|---|
-| 21 | 171,9 | 137,1 | **11,6 dB** | 12,3 dB | −11,6 dB |
-| 22 | 174,9 | 140,1 | **11,6 dB** | 12,3 dB | −11,5 dB |
+| Canal | Entrada (byte) | Salida (byte) | Diferencia con recorrido 80 | `i.N.mix` |
+|---|---|---|---|---|
+| 21 | 171,9 | 137,1 | **11,6 dB** | −11,6 dB |
+| 22 | 174,9 | 140,1 | **11,6 dB** | −11,5 dB |
 
-El reparto de bytes y la relación entre la barra, el fantasma y el fader quedan comprobados: la diferencia entre los dos medidores *es* el fader del canal, y eso no depende de cuánto valga el recorrido.
+Cierra en una décima de decibel. El reparto de bytes, la relación entre la barra, el fantasma y el fader, y el recorrido de 80 dB quedan comprobados a la vez.
 
-> ⚠️ **Pero el recorrido que sale de acá no es el que salió de los tonos, y la discrepancia está sin resolver.** Esta comprobación cruzada da un recorrido implícito de **79 a 80 dB** —justo `VU_RANGE`— mientras los tres barridos con fuente conocida dan **84 a 85**. Con 80 cerraba en una décima de decibel; con 84,5 queda a 0,65 y 0,75 dB del fader. Un 6 % de diferencia que alguna de las dos mediciones tiene mal, y no se sabe cuál:
->
-> - Los **tonos** son la medición más fuerte: nivel de fuente exacto, muchos puntos, pasos finos, recta de mínimos cuadrados y desvío máximo de 0,21 dB. Pero miden **un solo medidor** contra una fuente externa.
-> - La **comprobación cruzada** compara **dos medidores entre sí** y contra `faderADb`, que es otra lectura del código de la consola y no una medición. Si la ley del fader tiene un error de escala del mismo orden, esta comprobación lo absorbe sin notarlo: los dos números están afectados por el mismo factor. Además son dos puntos de una señal de música en movimiento, no un barrido.
->
-> Por eso el adaptador se quedó con el número de los tonos —84,5— y esta comprobación deja de ser una confirmación del recorrido para pasar a ser una **pregunta abierta**. La zanja la cierra el bucle calibrado que SPK-P0.10b sigue debiendo, y de paso pondría a prueba `faderADb` contra algo que no sea su propio código fuente.
+> **Esta comprobación estuvo marcada como «pregunta abierta» y ya no lo está.** Daba un recorrido implícito de 79 a 80 dB mientras los barridos de tono daban 84 a 85, y se anotó como una discrepancia del 6 % sin resolver, adoptando el número de los tonos por ser la medición «más fuerte». No había dos respuestas: había una medición limpia y otra contaminada por la cadena analógica, y la contaminada era la de los tonos. La hipótesis que se había escrito para salvarla —que `faderADb` arrastrara un error de escala del mismo orden, invisible porque afecta a sus dos términos por igual— **queda descartada**: la medición del fader de 4.3 la habría amplificado, y cerró en 0,06 dB.
 
 **La aplicación muestra la entrada**, no la salida: lo que le importa es el margen del previo, y ese no cambia porque alguien mueva un fader. El operador que compare con la barra de su consola va a ver un número más alto en la aplicación, por lo que baje el fader; la pantalla lo dice.
 
 ### 4.4 Lo que `VU2` sigue sin decir
 
-La correspondencia entre lo que muestra el medidor y un **nivel digital real** no está medida. La recta de 4.3 da el número que ve el operador en su pantalla, que es lo que hace falta para hablar su mismo idioma; que ese número sean dBFS es otra afirmación, y la mide SPK-P0.10b con tonos de −20, −6 y −1 dBFS por un bucle físico.
+La correspondencia entre lo que muestra el medidor y un **nivel digital real** no está medida, y a esta altura es lo **único** que falta. La recta de 4.3 da el número que ve el operador en su pantalla, que es lo que hace falta para hablar su mismo idioma; que ese número sean dBFS es otra afirmación, y la mide SPK-P0.10b con tonos de −20, −6 y −1 dBFS por un bucle físico calibrado.
+
+Todo lo demás de 4.3 son **diferencias** —forma, recorrido, balística, respuesta en frecuencia, repetibilidad, techo— y las diferencias no dependen de la ganancia analógica del camino. Por eso quedaron contestadas sin el bucle y el nivel absoluto no.
+
+Sigue sin decodificar la sección de `VU2` posterior a las entradas: media, auxiliares y efectos.
 
 ---
 
@@ -283,7 +292,7 @@ Una sesión posterior sí escribió, desde un script de spike y no desde la apli
 | ¿Se la devuelve a quien escribió? | **No.** Seis segundos escuchando, cero líneas para esa ruta |
 | ¿Se la manda a los demás clientes? | **Sí.** La aplicación conectada en la tablet lo registró en el mismo instante |
 
-La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la difunde al resto. Con eso, **la única forma de que un cliente verifique su propia escritura es pedir `INIT`**, que trae el valor nuevo y con él las 6 665 claves enteras. Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY.
+La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la difunde al resto. Con eso, **un cliente solo puede verificar su propia escritura de dos maneras**: pidiendo `INIT`, que trae el valor nuevo y con él el volcado entero —del orden de seis mil claves—, o **abriendo una segunda conexión que haga de testigo**. Lo segundo estaba anotado como pregunta y el 2026-09-09 quedó medido: dos conexiones del mismo proceso son dos clientes distintos para la consola, y el testigo ve la escritura a los **27 ms**. Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY, que con este dato ya eligió.
 
 Se escribió además en `i.9.dyn.bypass` y `i.9.gate.enabled` para puentear el procesamiento del canal antes de medir su medidor. Las dos claves existen y aceptan escritura; su efecto se verificó de forma indirecta, por lo que le pasó a la recta del §4.3, y no se midió ninguna curva ni ningún rango.
 
@@ -349,9 +358,12 @@ Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el apara
 
 ## 7. Concurrencia y reconexión
 
-- **Tres clientes simultáneos** durante 120 s: las mismas 6 665 claves y la misma huella SHA-256 en los tres. **Vale poco**: el estado no cambió durante la ventana, así que demuestra que el volcado es determinista, no que no se pierda estado. La prueba que pide el criterio 5 de SPK-P0.1 necesita cambios ocurriendo, tres clientes distintos y diez minutos.
-- **La consola acepta al menos tres sesiones a la vez** sin rechazar ninguna ni degradar el volcado.
-- **Reconexión:** 20 de 20 ciclos de apretón de manos a volcado completo, entre 112 y 158 ms. Es el piso del protocolo desde una laptop por cable, **no** la reconexión de una tablet tras un corte de red, que es lo que pide el charter.
+- **La consola acepta al menos tres sesiones a la vez** sin rechazar ninguna ni degradar el volcado. Probado dos veces, en sesiones distintas.
+- **Tres clientes simultáneos, con el estado quieto** (2026-09-08, 120 s): mismas claves y misma huella SHA-256 en los tres. Demuestra que el volcado es determinista, no que no se pierda estado.
+- **Tres clientes simultáneos, con uno escribiendo** (2026-09-09): los tres recibieron **6 087 claves** y la **misma huella exacta**. Y con los tres conectados, **el que escribe ve 0 líneas de su propia escritura mientras los otros dos ven 1 cada uno.** Es la regla del §5.1 confirmada con tres testigos a la vez: la difusión llega a todo el mundo menos al origen, y llega **una sola vez**, sin repeticiones ni pérdidas. La prueba duró minutos y no los diez que pide el criterio 5 de SPK-P0.1, así que el criterio sigue abierto.
+- **Dos conexiones del mismo proceso son dos clientes distintos para la consola.** Medido el 2026-09-09: se escribe por una y la otra recibe el cambio a los **27 ms**. Es lo que faltaba para que la opción de la segunda conexión testigo dejara de ser una pregunta; ver SPK-ACK-POLICY.
+- **Reconexión, piso del protocolo:** 20 de 20 ciclos de apretón de manos a volcado completo, entre 112 y 158 ms, desde una laptop por cable y sin cortar nada.
+- **Reconexión real tras cortar la red inalámbrica**, desde la tablet: 20 de 20 ciclos, **mediana 3,7 s**, mínimo 3,7 y máximo 5,0, todos por debajo del umbral de 10 s del criterio 1 de SPK-P0.1. Faltan los otros dos modos de corte.
 
 ---
 
@@ -359,11 +371,8 @@ Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el apara
 
 Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia no se lea como verificación.
 
-- **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala ya está medida; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
-- **El recorrido del medidor, que tiene dos respuestas** (79–80 dB por la comprobación cruzada, 84–85 por los tonos). Ver 4.3.
-- **La balística de los medidores** (SPK-P0.10b, criterio 3). Necesita ráfagas.
-- **La cadencia de medidores desde la tablet.**
-- **La reconexión con cortes de red reales.**
+- **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala, su recorrido, su balística, su respuesta en frecuencia y su techo ya están medidos; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
+- **La reconexión con cortes de red reales en los otros dos modos**: apagar el router y cambiar la IP de la tablet. El corte de red inalámbrica sí está medido, 20 de 20 ciclos.
 - **La transición de señal a silencio en `VU2`.**
 - **La sección de `VU2` posterior a las entradas.**
 - **El mapeo `canal → entrada física` con el enrutamiento cambiado.** `i.N.src` existe en el espacio de claves; con el enrutamiento por defecto `i.N` y `hw.N` coinciden y por eso es fácil no notar la diferencia.

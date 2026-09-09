@@ -1,6 +1,6 @@
 # SPK-P0.1 — Conectividad, reconexión, eco y cadencia de medidores
 
-**Estado:** Parcial — criterios 4 y 3 contestados el 2026-09-08 (el 3 con un **no**); **1 y 5, los dos bloqueantes que faltan, siguen abiertos** · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial — criterios 4 y 3 contestados el 2026-09-08 (el 3 con un **no**); el **1 quedó contestado el 2026-09-09 para uno de sus tres modos de corte** y el **5 sigue abierto**. Los dos son bloqueantes, así que el spike no se cierra · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** S-00.3 · **Bloquea a:** SPK-ACK-POLICY, SPK-P0.2a, SPK-P0.9, S-02.5b, S-02.7
 **Montaje:** Ui24R, router dedicado, laptop con Node. No hace falta interfaz de audio.
 
@@ -22,11 +22,11 @@ La respuesta al eco determina cómo se confirma cada escritura, y la cadencia de
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | 20 de 20 ciclos de apretón a volcado, 112–158 ms, **desde una laptop por cable y sin cortar la red**. Con cortes de red inalámbrica de verdad se hicieron **unos pocos** ciclos, con vueltas de **3,8 a 4,9 s**: dentro del umbral, y muy lejos de los veinte por modo que pide el criterio | ⬜ |
-| 2 | Volcado completo recibido tras cada reconexión | bloqueante | 20 de 20 | 20 de 20, 6 665 claves cada vez | ⬜ |
+| 1 | Reconexión automática, por cada modo de corte | bloqueante | 20 de 20 en menos de 10 s desde que la red vuelve | **Modo «wifi cortada»: 20 de 20**, medido el 2026-09-09 desde la tablet. Mediana **3,7 s**, mínimo 3,7, máximo 5,0 — todos por debajo del umbral de diez segundos. `evidence/ciclos-wifi-cortada.txt`. **Faltan los otros dos modos**: apagar el router y cambiar la IP de la tablet. Un tercio del criterio, y el criterio pide los tres | ⬜ |
+| 2 | Volcado completo recibido tras cada reconexión | bloqueante | 20 de 20 | 20 de 20, con el volcado entero cada vez. El tamaño **no es constante entre sesiones**: 6 665 claves el 2026-09-08 y 6 087 el 2026-09-09 | ⬜ |
 | 3 | La consola devuelve eco al emisor de su propia escritura | informativo | sí o no, con captura | **NO.** Medido el 2026-09-08 en `i.9.mute` y en `i.9.mix`: se escribe, se escucha seis segundos y **no llega ninguna línea para esa ruta**; un `INIT` posterior trae el valor nuevo a los ~100 ms, o sea que la escritura **sí se aplicó**. A los demás clientes **sí se la difunde**: la aplicación en la tablet lo registró como `cambio_externo` en el mismo instante | ✅ |
 | 4 | Cadencia de medidores: intervalo medio, mediana, percentil 95 | bloqueante | los tres valores registrados; umbral de inestabilidad = 3 veces el intervalo medio | **Desde la tablet** —Motorola Edge 60 Pro contra la consola en `192.168.0.78`, firmware `3.4.8318-ui24`, Ajustes → Prueba de conexión—: **`RTA` media 33 ms, p95 40 ms, idéntico en silencio y con guitarra sonando → umbral 99 ms.** `VU2`: media 1 231 ms y p95 4 730 ms en silencio, media 44 ms y p95 69 ms con señal. Mediana de `RTA`, desde la laptop por cable: 33 ms | ✅ |
-| 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | 3 clientes, 120 s, misma huella SHA-256 y mismas 6 665 claves — **con el estado quieto, así que no prueba lo que el criterio pregunta** | ⬜ |
+| 5 | Tres clientes simultáneos sin pérdida de estado | bloqueante | estado final idéntico entre clientes tras 10 min | Dos corridas. **2026-09-08, estado quieto:** 3 clientes, 120 s, misma huella SHA-256 y mismas 6 665 claves; no prueba lo que el criterio pregunta. **2026-09-09, con uno escribiendo:** los tres recibieron **6 087 claves** y la **misma huella exacta**, y el que escribe vio **0 líneas** de su propia escritura mientras los otros dos vieron **1 cada uno**. Ahora sí hay estado moviéndose, pero la prueba duró **minutos y no diez**, con una escritura y no con cambios ocurriendo todo el tiempo | ⬜ |
 
 ## Quién mide
 
@@ -153,11 +153,13 @@ marcaría `SELF`**, porque el mensaje con el que se correlacionaría no llega ja
   código muerto contra esta consola.
 - **La política de confirmación no puede basarse en el eco.** Es la entrada que le faltaba a
   SPK-ACK-POLICY, y ahí están escritas las opciones. Este spike no elige ninguna.
-- **Confirmar por relectura significa `INIT`**, que es el volcado entero: 6 665 claves. Funciona
-  —los ~100 ms lo demuestran— pero es caro para confirmar una sola escritura.
-- **Hay una tercera vía que la medición sugiere**, y se registra como opción a evaluar y no como
-  decisión tomada: una **segunda conexión como testigo**, ya que la consola sí difunde a los
-  otros clientes.
+- **Confirmar por relectura significa `INIT`**, que es el volcado entero: del orden de seis mil
+  claves. Funciona —los ~100 ms lo demuestran— pero es caro para confirmar una sola escritura.
+- **Hay una tercera vía que la medición sugiere**: una **segunda conexión como testigo**, ya que
+  la consola sí difunde a los otros clientes. El 2026-09-08 se registró como opción a evaluar y
+  no como decisión tomada, porque faltaba comprobar que la consola tratara dos conexiones del
+  mismo proceso como dos clientes. **El 2026-09-09 quedó comprobado**: las trata como clientes
+  distintos y el testigo ve la escritura a los **27 ms**. Con eso SPK-ACK-POLICY eligió.
 
 #### Un hallazgo de protocolo que salió de la misma prueba
 
@@ -169,28 +171,96 @@ prefijo especial ni ninguna forma reservada para las escrituras.
 Y **no hace falta ningún `INIT` previo** para que una escritura sea aceptada. El `INIT` es la
 única forma de *verificarla*, no una condición para que se aplique.
 
+---
+
+## Resultado parcial — 2026-09-09
+
+### El criterio 1, contestado para un modo de corte de tres
+
+**Modo «wifi cortada»: 20 de 20 ciclos, todos por debajo del umbral.** Medido desde la tablet
+contra la consola en `192.168.0.78`, con cortes de seis segundos y cronometrando desde que se
+reactiva la wifi hasta que la aplicación dice CONECTADO:
+
+| | |
+|---|---|
+| ciclos dentro del umbral de 10 s | **20 de 20** |
+| mediana | **3,7 s** |
+| mínimo | 3,7 s |
+| máximo | **5,0 s** |
+
+Evidencia en `evidence/ciclos-wifi-cortada.txt`. Esto reemplaza a los «unos pocos ciclos, 3,8 a
+4,9 s» de la tanda anterior: ahora son los veinte que el criterio pide, con la dispersión
+apretada —dieciocho de los veinte entre 3,7 y 3,8 s— y un solo valor suelto en 5,0.
+
+**Pero el criterio pide tres modos y hay uno.** Faltan **apagar el router** y **cambiar la IP de
+la tablet**, y no faltan por falta de tiempo: los dos necesitan a alguien físicamente delante del
+router o del aparato, y no se pueden guionar desde una máquina. **Por eso el spike no se cierra.**
+
+Vale anotar por qué el criterio pide los tres y no se conforma con el más fácil: los tres cortes
+rompen cosas distintas. Cortar la wifi tira el socket y deja la IP intacta; apagar el router tira
+además la concesión de DHCP y puede devolver otra dirección; cambiar la IP de la tablet deja el
+socket vivo apuntando a una ruta que ya no existe, que es el caso donde un cliente se puede
+quedar esperando para siempre sin enterarse. Veinte ciclos del modo benigno no dicen nada de los
+otros dos.
+
+### El criterio 5, con estado moviéndose pero corto
+
+**Tres clientes simultáneos, uno de ellos escribiendo.** Los tres recibieron **6 087 claves** y
+la **misma huella exacta**. Y con los tres conectados a la vez:
+
+> **el que escribe ve 0 líneas de su propia escritura, mientras los otros dos ven 1 cada uno.**
+
+Es la respuesta del criterio 3 confirmada con tres testigos simultáneos, y agrega algo que la
+prueba de dos clientes no podía dar: la difusión llega **una sola vez** a cada uno de los demás,
+sin repeticiones y sin que a ninguno se le pierda.
+
+**Salvedad, y es la que impide cerrar el criterio:** la prueba duró **minutos y no los diez** que
+pide el charter, y hubo una escritura, no cambios ocurriendo todo el tiempo. Sigue ⬜.
+
+### El tamaño del volcado no es constante entre sesiones
+
+Un dato que sale de comparar las dos corridas de tres clientes y que este documento —y
+`protocol-spec.md`, y la matriz— venían escribiendo como si fuera fijo: el 2026-09-08 el volcado
+traía **6 665** claves, y el 2026-09-09, con la misma consola y el mismo firmware, **6 087**.
+
+Dentro de una sesión es estable: los tres clientes de cada corrida coincidieron hasta la huella.
+Entre sesiones, no. Depende de lo que la consola tenga configurado en el momento, y nadie acotó
+todavía de qué. **Consecuencia práctica: nada puede detectar el fin del volcado comparando contra
+un número escrito a mano**, que es justamente lo que el adaptador no hace —espera un `DUMP_END`
+que esta consola tampoco manda— y lo que alguien podría sentirse tentado de hacer al leer las
+tablas viejas.
+
+### La segunda conexión testigo, medida
+
+Dos conexiones abiertas **desde el mismo proceso** son **dos clientes distintos** para la
+consola: se escribe por una y la otra recibe el cambio a los **27 ms**. Era la única pregunta que
+quedaba para que la opción C de SPK-ACK-POLICY dejara de ser una hipótesis, y con esto ese spike
+eligió. Lo que cuesta —el testigo recibe el volcado completo y los flujos de medidores— está
+escrito allá.
+
 ### Qué falta para cerrar el spike
 
 Dos criterios, los dos bloqueantes:
 
-- **Criterio 1**: los veinte ciclos **por cada modo de corte** —router apagado, cambio de IP de
-  la tablet, corte de la red inalámbrica—, con cortes de red reales y desde la tablet. Lo medido
-  hasta ahora son veinte ciclos de apretón a volcado sin cortar nada, más **unos pocos** ciclos
-  de corte de red inalámbrica de verdad, con vueltas de **3,8 a 4,9 s**. Esos tiempos entran
-  holgados en el umbral de 10 s, pero un puñado de ciclos de un solo modo no es lo que el
-  criterio pide, y el criterio pide veinte por modo justamente porque lo que se busca es el caso
-  raro.
-- **Criterio 5**: los tres clientes simultáneos **con el estado moviéndose**. La comparación de
-  huellas se hizo con el estado quieto, que no prueba lo que el criterio pregunta.
+- **Criterio 1**: los dos modos de corte que faltan, **router apagado** y **cambio de IP de la
+  tablet**, veinte ciclos cada uno. Necesitan a alguien físicamente ahí.
+- **Criterio 5**: los tres clientes **diez minutos y con cambios ocurriendo todo el tiempo**, no
+  con una escritura en una ventana de minutos.
 
 El criterio 3 ya no está en esta lista: quedó contestado. Era informativo, así que no bloqueaba
-el cierre, pero sí bloqueaba a SPK-ACK-POLICY, que ahora tiene su entrada.
+el cierre, pero sí bloqueaba a SPK-ACK-POLICY, que ahora tiene su entrada **y su decisión**.
 
 ### Evidencia
 
 `evidence/` — volcados crudos, inventario de claves, capturas de medidores con y sin señal,
 ciclos de reconexión y huellas de los tres clientes.
 
-**Falta archivar `evidence/echo-capture.txt`**, la salida de `eco.ts` para las dos rutas con sus
-tiempos. Sin ella el criterio 3 está contestado en este documento pero no cumple el segundo
-punto de la definición de terminado de un spike, que pide la evidencia archivada.
+- `evidence/ciclos-wifi-cortada.txt` — **entregada**: los veinte ciclos del criterio 1 en su
+  único modo medido.
+- **Falta archivar `evidence/echo-capture.txt`**, la salida de `eco.ts` para las dos rutas con
+  sus tiempos. Sin ella el criterio 3 está contestado en este documento pero no cumple el segundo
+  punto de la definición de terminado de un spike, que pide la evidencia archivada.
+- **Falta archivar la corrida de tres clientes del 2026-09-09** —las 6 087 claves, la huella
+  compartida y el reparto 0/1/1 de líneas vistas—. `evidence/tres-clientes-diff.txt` es la
+  corrida vieja, la del estado quieto.
+- **Falta archivar la medición de la segunda conexión testigo**, con sus 27 ms.
