@@ -5,7 +5,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  crearIntegrante, reunirErrores, validarNombre, validarUnico,
+  crearIntegrante, editarIntegrante, instrumentosDesdeTexto, reunirErrores, textoDeInstrumentos,
+  validarNombre, validarUnico,
   type BandMember, type BandMemberId, type BandProfile, type BandProfileId,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
@@ -14,6 +15,13 @@ import {
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
   PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService, intentarGuardar,
 } from '../ui';
+
+/** Un integrante tal como lo muestra la lista: con los instrumentos ya unidos. */
+interface FilaDeIntegrante {
+  readonly id: BandMemberId;
+  readonly nombre: string;
+  readonly instrumentos: string;
+}
 
 /**
  * Edición de una banda.
@@ -75,9 +83,17 @@ import {
                         <span class="instrumentos">{{ m.instrumentos }}</span>
                       }
                     </div>
-                    <ui-button class="solo-icono" variante="sutil" icono="borrar"
-                               [rotuloAccesible]="'Quitar a ' + m.nombre"
-                               (pulsado)="quitar(m.id)">Quitar</ui-button>
+                    <div class="fila-acciones">
+                      <!-- Editar, y no borrar y volver a cargar: el
+                           identificador del integrante es lo que enlaza a la
+                           persona con su asignación de canal. -->
+                      <ui-button class="solo-icono" variante="sutil" icono="editar"
+                                 [rotuloAccesible]="'Editar a ' + m.nombre"
+                                 (pulsado)="abrirEdicion(m)">Editar</ui-button>
+                      <ui-button class="solo-icono" variante="sutil" icono="borrar"
+                                 [rotuloAccesible]="'Quitar a ' + m.nombre"
+                                 (pulsado)="quitar(m.id)">Quitar</ui-button>
+                    </div>
                   </li>
                 }
               </ul>
@@ -95,22 +111,25 @@ import {
       }
     </div>
 
-    <ui-dialog titulo="Nuevo integrante" [abierto]="nuevoAbierto()"
-               (cerrado)="nuevoAbierto.set(false)">
+    <!-- Un solo diálogo para el alta y para la corrección. Son el mismo
+         formulario, y dos diálogos gemelos se convierten en dos formularios
+         distintos al primer campo que se agregue. -->
+    <ui-dialog [titulo]="tituloDelDialogo()" [abierto]="dialogoAbierto()"
+               (cerrado)="cerrarDialogo()">
       <div class="pila">
-        <ui-field rotulo="Nombre" idControl="int-nombre" [error]="errorNuevoVisible()">
-          <input id="int-nombre" type="text" [(ngModel)]="nuevoNombre"
+        <ui-field rotulo="Nombre" idControl="int-nombre" [error]="errorDelIntegranteVisible()">
+          <input id="int-nombre" type="text" [(ngModel)]="nombreDelIntegrante"
                  (blur)="tocadosDialogo.marcar('nombre')" />
         </ui-field>
         <ui-field rotulo="Instrumentos" idControl="int-instr" [opcional]="true"
                   ayuda="Separados por comas: voz, guitarra acústica.">
-          <input id="int-instr" type="text" [(ngModel)]="nuevoInstrumentos" />
+          <input id="int-instr" type="text" [(ngModel)]="instrumentosDelIntegrante" />
         </ui-field>
       </div>
       <div pie>
-        <ui-button variante="sutil" (pulsado)="nuevoAbierto.set(false)">Cancelar</ui-button>
-        <ui-button variante="primario" [deshabilitado]="errorNuevo() !== null"
-                   (pulsado)="agregar()">Agregar</ui-button>
+        <ui-button variante="sutil" (pulsado)="cerrarDialogo()">Cancelar</ui-button>
+        <ui-button variante="primario" [deshabilitado]="errorDelIntegrante() !== null"
+                   (pulsado)="confirmarIntegrante()">{{ accionDelDialogo() }}</ui-button>
       </div>
     </ui-dialog>
 
@@ -141,6 +160,10 @@ import {
     .quien { display: flex; flex-direction: column; min-width: 0; }
     .nombre { overflow: hidden; text-overflow: ellipsis; }
     .instrumentos { font-size: var(--txt-sm); color: var(--muted); }
+    /* Editar y quitar quedan juntos, pero no pegados: los dos miden lo mínimo
+       táctil y uno de ellos borra. A un metro y con poca luz, el espacio entre
+       ambos es lo que evita el toque equivocado. */
+    .fila-acciones { display: flex; flex: none; gap: var(--sp-3); }
   `],
 })
 export class BandaEditComponent implements PuedeSalir, OnDestroy {
@@ -160,14 +183,34 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   readonly integrantesConTexto = computed(() => this.integrantes().map((m) => ({
     id: m.id,
     nombre: m.nombre,
-    instrumentos: m.instrumentos.join(', '),
+    instrumentos: textoDeInstrumentos(m.instrumentos),
   })));
   private readonly otrosNombres = signal<readonly string[]>([]);
 
-  readonly nuevoAbierto = signal(false);
-  readonly nuevoNombre = signal('');
-  readonly nuevoInstrumentos = signal('');
+  readonly dialogoAbierto = signal(false);
+  readonly nombreDelIntegrante = signal('');
+  readonly instrumentosDelIntegrante = signal('');
+  /**
+   * A quién se está corrigiendo, o `null` si es un alta.
+   *
+   * Es lo único que distingue los dos usos del diálogo, y es también lo que
+   * hace que corregir conserve el identificador: sin él, la única salida era
+   * quitar al integrante y cargarlo de nuevo, y eso le da un identificador
+   * nuevo que deja huérfana su asignación de canal.
+   */
+  readonly integranteEditado = signal<BandMemberId | null>(null);
   readonly confirmarBorrado = signal(false);
+
+  readonly tituloDelDialogo = computed(
+    () => (this.integranteEditado() === null ? 'Nuevo integrante' : 'Corregir integrante'));
+
+  /**
+   * «Agregar» y «Actualizar», no «Guardar»: el diálogo cambia la lista que está
+   * en pantalla, y lo que persiste es el «Guardar» de la banda. Llamar
+   * «Guardar» a los dos haría creer que corregir un nombre ya quedó guardado.
+   */
+  readonly accionDelDialogo = computed(
+    () => (this.integranteEditado() === null ? 'Agregar' : 'Actualizar'));
 
   /**
    * Una señal calculada por campo, en vez de un mapa consultado desde la
@@ -181,7 +224,8 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   readonly sePuedeGuardar = computed(
     () => Object.keys(reunirErrores({ nombre: this.errorNombre() })).length === 0);
 
-  readonly errorNuevo = computed(() => validarNombre(this.nuevoNombre(), 'El nombre'));
+  readonly errorDelIntegrante = computed(
+    () => validarNombre(this.nombreDelIntegrante(), 'El nombre'));
 
   /**
    * Los errores no se muestran hasta que el campo se abandona o se intenta
@@ -191,7 +235,8 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   readonly tocados = new CamposTocados();
   readonly tocadosDialogo = new CamposTocados();
   readonly errorNombreVisible = this.tocados.visible('nombre', this.errorNombre);
-  readonly errorNuevoVisible = this.tocadosDialogo.visible('nombre', this.errorNuevo);
+  readonly errorDelIntegranteVisible =
+    this.tocadosDialogo.visible('nombre', this.errorDelIntegrante);
 
   /** Estado de la lectura: mientras lee no dice que no existe. */
   readonly lectura = new Lectura();
@@ -254,16 +299,48 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   }
 
   abrirNuevo(): void {
-    this.nuevoNombre.set('');
-    this.nuevoInstrumentos.set('');
+    this.nombreDelIntegrante.set('');
+    this.instrumentosDelIntegrante.set('');
+    this.integranteEditado.set(null);
     this.tocadosDialogo.reiniciar();
-    this.nuevoAbierto.set(true);
+    this.dialogoAbierto.set(true);
   }
 
-  agregar(): void {
-    const instrumentos = this.nuevoInstrumentos().split(',');
-    this.integrantes.update((l) => [...l, crearIntegrante(this.nuevoNombre(), instrumentos)]);
-    this.nuevoAbierto.set(false);
+  /**
+   * Abre el mismo diálogo con lo que ya está cargado.
+   *
+   * Recibe la fila que la plantilla ya tiene calculada, con los instrumentos
+   * unidos: volver a buscarlos por identificador sería recorrer la lista para
+   * conseguir algo que estaba a mano.
+   */
+  abrirEdicion(m: FilaDeIntegrante): void {
+    this.nombreDelIntegrante.set(m.nombre);
+    this.instrumentosDelIntegrante.set(m.instrumentos);
+    this.integranteEditado.set(m.id);
+    this.tocadosDialogo.reiniciar();
+    this.dialogoAbierto.set(true);
+  }
+
+  /**
+   * Cerrar sin confirmar deja la lista como estaba y olvida a quién se estaba
+   * corrigiendo: si no, el siguiente «Agregar» heredaría el modo edición y
+   * sobreescribiría a esa persona en vez de sumar una nueva.
+   */
+  cerrarDialogo(): void {
+    this.dialogoAbierto.set(false);
+    this.integranteEditado.set(null);
+  }
+
+  confirmarIntegrante(): void {
+    const instrumentos = instrumentosDesdeTexto(this.instrumentosDelIntegrante());
+    const nombre = this.nombreDelIntegrante();
+    const editado = this.integranteEditado();
+    if (editado === null) {
+      this.integrantes.update((l) => [...l, crearIntegrante(nombre, instrumentos)]);
+    } else {
+      this.integrantes.update((l) => editarIntegrante(l, editado, nombre, instrumentos));
+    }
+    this.cerrarDialogo();
   }
 
   quitar(id: BandMemberId): void {

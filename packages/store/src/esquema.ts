@@ -152,6 +152,49 @@ export const MIGRACIONES: readonly Migracion[] = [
       `CREATE INDEX IF NOT EXISTS idx_log_nivel ON log_event(level);`,
     ],
   },
+  {
+    version: 4,
+    descripcion: 'los instrumentos de cada integrante pasan de texto suelto a objeto',
+    sentencias: [
+      // `BandMember.instrumentos` era una lista de cadenas escritas a mano y
+      // pasa a ser una lista de instrumentos con fuente, variante y rol. Las
+      // columnas no cambian --el documento entero vive en `datos`-- pero la
+      // forma del documento sí, y los perfiles ya guardados quedarían con
+      // cadenas donde el dominio espera objetos.
+      //
+      // Esta migración **no clasifica**: SQL no sabe qué es un djembe. Lo
+      // único que hace es darle forma al documento sin tocar el contenido,
+      // dejando el texto en `textoOriginal` y las tres facetas en nulo. La
+      // clasificación la hace `normalizarInstrumentos()` del dominio la
+      // primera vez que el perfil se edita y se guarda. Separarlas es
+      // deliberado: una conversión que sí interpreta es una conversión que
+      // puede equivocarse, y equivocarse dentro de una migración deja al
+      // usuario sin forma de volver atrás.
+      //
+      // Elemento por elemento y no fila por fila: se convierte lo que sea
+      // texto y se deja igual lo que ya sea objeto. Así es idempotente, y una
+      // base a medio migrar --por una instalación anterior o por un perfil
+      // importado-- termina bien igual.
+      //
+      // `i.type` y no `json_type(i.value)`: para un elemento de texto,
+      // `value` es la cadena ya sin comillas, y `json_type()` sobre «voz»
+      // falla con «malformed JSON». La columna `type` de `json_each` da lo
+      // mismo sin ese riesgo.
+      //
+      // `json_valid(datos)` deja fuera cualquier fila ilegible en vez de
+      // hacer fallar la migración entera: una base que no abre cancela un
+      // show, y una fila rota se ve y se corrige.
+      `UPDATE band_profile SET datos = json_replace(datos, '$.integrantes', json((
+         SELECT json_group_array(json_replace(m.value, '$.instrumentos', json((
+           SELECT json_group_array(CASE WHEN i.type = 'text'
+             THEN json_object('fuente', NULL, 'variante', NULL, 'rol', NULL,
+                              'textoOriginal', i.value)
+             ELSE json(i.value) END)
+           FROM json_each(m.value, '$.instrumentos') i))))
+         FROM json_each(band_profile.datos, '$.integrantes') m)))
+       WHERE json_valid(datos);`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;
