@@ -265,17 +265,16 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
 }
 
 /**
- * Nivel de entrada de cada canal, en dB.
+ * Nivel de entrada de cada canal, en dB de la escala de la consola.
  *
- * Se mantiene la forma que ya consumía el adaptador —un dB por canal— pero el
- * número sale ahora del formato real y de la ley de fader de la consola.
+ * Un dB por canal, que es la forma que el adaptador ya consumía, sacado del
+ * formato real de la trama y de la recta del medidor —ver `dbDeMedidor`—.
  *
- * **Lo que este dB no es.** La consola dibuja sus medidores sobre la misma
- * regla que sus faders, así que convertir la posición con la ley del fader da
- * el número que muestra la consola. Que ese número corresponda a un nivel
- * digital real no está medido: es exactamente lo que pide SPK-P0.10b, con tonos
- * de −20, −6 y −1 dBFS por un bucle físico. Hasta que ese spike cierre, esto
- * sirve para coincidir con lo que ve el operador, no para afirmar dBFS.
+ * **Lo que este dB no es.** No es dBFS. Es el número que la consola dibuja en
+ * su propia escala, de 0 en la punta a −80 en el fondo, y sirve para hablarle
+ * al operador en los términos que él está viendo. Qué nivel digital real le
+ * corresponde a cada punto de esa escala **no está medido**: lo mide
+ * SPK-P0.10b, con tonos de −20, −6 y −1 dBFS por un bucle físico.
  */
 export function decodificarVu(base64: string): number[] {
   return decodificarVuCanales(base64).map((c) => dbDeMedidor(c.entrada));

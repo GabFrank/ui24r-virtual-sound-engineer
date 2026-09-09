@@ -203,7 +203,10 @@ test('la razón explica el porqué, con números', () => {
   const p = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 34, {
     repetidoEnDosCapturas: true, snrDb: 40, calibracionValida: true,
   });
-  assert.match(p.razon, /-18\.0 dBFS/);
+  // «dB en la escala de la consola», no dBFS: la correspondencia con un nivel
+  // digital real la mide SPK-P0.10b, y decirle dBFS al usuario afirma una
+  // referencia de fondo de escala que nadie midio.
+  assert.match(p.razon, /-18\.0 dB en la escala de la consola/);
   assert.match(p.razon, /18\.0 dB de margen/);
   assert.match(p.razon, /busca 12 dB/);
 });

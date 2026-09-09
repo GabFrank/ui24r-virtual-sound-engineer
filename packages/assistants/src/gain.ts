@@ -206,7 +206,7 @@ export function proponerGanancia(
     : 'INSUFFICIENT_DATA';
 
   const razon =
-    `El pico llegó a ${analisis.picoDb.toFixed(1)} dBFS, lo que deja ` +
+    `El pico llegó a ${analisis.picoDb.toFixed(1)} dB en la escala de la consola, lo que deja ` +
     `${analisis.margenDb.toFixed(1)} dB de margen. El perfil ${perfil.nombre} ` +
     `busca ${margenObjetivo} dB, así que la ganancia ` +
     (Math.abs(delta) < 0.05

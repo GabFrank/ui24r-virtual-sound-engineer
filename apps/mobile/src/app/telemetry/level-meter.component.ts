@@ -1,18 +1,14 @@
 import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
-
-/** −60 dB es el piso visible; por debajo no aporta información útil. */
-const MIN_DB = -60;
-
-/** Por encima de −1 dBFS el canal está prácticamente en el fondo de escala. */
-const UMBRAL_SATURACION_DB = -1;
+import {
+  PISO_DB, UMBRAL_RIESGO_DB, UMBRAL_SATURACION_DB, porcentajeDeDb,
+} from './escala-medidor.ts';
 
 /**
  * Medidor de nivel de un canal.
  *
- * Escala de -60 a 0 dBFS con resolución no lineal: la zona entre -20 y 0, que
- * es donde se decide si hay margen suficiente, ocupa más de la mitad del
- * recorrido. Un medidor lineal en decibeles deja esa zona apretada, que es
- * justo la que hay que leer de un vistazo.
+ * La escala y los umbrales viven en `escala-medidor.ts`, que los saca de la
+ * consola: de −80 dB en el fondo a 0 dB en la punta, lineal en decibeles, que
+ * es como la Ui24R dibuja su propia barra. Acá solo queda el pintado.
  */
 @Component({
   selector: 'app-level-meter',
@@ -21,7 +17,7 @@ const UMBRAL_SATURACION_DB = -1;
   template: `
     <div class="pista" role="meter"
          [attr.aria-label]="etiqueta()"
-         [attr.aria-valuemin]="MIN_DB" aria-valuemax="0"
+         [attr.aria-valuemin]="PISO_DB" [attr.aria-valuemax]="TOPE_DB"
          [attr.aria-valuenow]="nivelRedondeado()"
          [attr.aria-valuetext]="textoAccesible()">
       <div class="relleno" [class.alto]="enRiesgo()" [class.saturando]="saturando()"
@@ -32,8 +28,11 @@ const UMBRAL_SATURACION_DB = -1;
              −22 mostraba la marca en blanco. -->
         <div class="pico" [class.saturando]="picoSaturado()" [style.left.%]="anchoPico()"></div>
       }
-      <div class="marca" style="left: 66.7%"></div>
-      <div class="marca" style="left: 83.3%"></div>
+      <!-- Una sola marca, y donde la barra cambia de color. Antes había dos en
+           el 66,7 % y el 83,3 %, que con esta escala caen en −26,6 y −13,3 dB:
+           números que no significan nada. Copiar la escala impresa de la
+           consola pediría saber qué valores rotula, y eso no está medido. -->
+      <div class="marca" [style.left.%]="marcaRiesgo"></div>
     </div>
   `,
   styles: [`
@@ -66,23 +65,17 @@ export class LevelMeterComponent {
   readonly picoDb = input<number>(-Infinity);
   readonly etiqueta = input<string>('nivel');
 
-  private static readonly PISO_DB = MIN_DB;
-
-  private static aPorcentaje(db: number): number {
-    if (!Number.isFinite(db) || db <= LevelMeterComponent.PISO_DB) return 0;
-    const acotado = Math.min(0, db);
-    // Curva que expande la zona alta: raíz del recorrido normalizado.
-    const norm = (acotado - LevelMeterComponent.PISO_DB) / -LevelMeterComponent.PISO_DB;
-    return Math.round(Math.pow(norm, 0.65) * 100);
-  }
-
-  readonly anchoNivel = computed(() => LevelMeterComponent.aPorcentaje(this.nivelDb()));
-  readonly anchoPico = computed(() => LevelMeterComponent.aPorcentaje(this.picoDb()));
-  readonly enRiesgo = computed(() => this.nivelDb() >= -12 && this.nivelDb() < -1);
+  readonly anchoNivel = computed(() => porcentajeDeDb(this.nivelDb()));
+  readonly anchoPico = computed(() => porcentajeDeDb(this.picoDb()));
+  readonly enRiesgo = computed(
+    () => this.nivelDb() >= UMBRAL_RIESGO_DB && this.nivelDb() < UMBRAL_SATURACION_DB,
+  );
   readonly saturando = computed(() => this.nivelDb() >= UMBRAL_SATURACION_DB);
   readonly picoSaturado = computed(() => this.picoDb() >= UMBRAL_SATURACION_DB);
 
-  protected readonly MIN_DB = MIN_DB;
+  protected readonly PISO_DB = PISO_DB;
+  protected readonly TOPE_DB = UMBRAL_SATURACION_DB;
+  protected readonly marcaRiesgo = porcentajeDeDb(UMBRAL_RIESGO_DB);
 
   protected readonly nivelRedondeado = computed(() => Math.round(this.nivelDb()));
 
@@ -93,7 +86,10 @@ export class LevelMeterComponent {
    */
   protected readonly textoAccesible = computed(() => {
     const db = this.nivelDb();
-    if (!Number.isFinite(db) || db <= MIN_DB) return 'silencio';
-    return `${db.toFixed(1)} dBFS`;
+    if (!Number.isFinite(db) || db <= PISO_DB) return 'silencio';
+    // dB de la escala de la consola, no dBFS: la correspondencia con un
+    // nivel digital real la mide SPK-P0.10b y hasta entonces decir «dBFS»
+    // seria afirmar una referencia de fondo de escala que nadie midio.
+    return `${db.toFixed(1)} dB`;
   });
 }

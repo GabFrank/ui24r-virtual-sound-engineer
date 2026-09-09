@@ -123,7 +123,7 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                          (pulsado)="medir(f.asignacion)">{{ f.accion }}</ui-button>
               @if (f.medido) {
                 <div class="numeros">
-                  <ui-stat rotulo="Pico" [valor]="f.pico" unidad=" dBFS" />
+                  <ui-stat rotulo="Pico" [valor]="f.pico" unidad=" dB" />
                   <ui-stat rotulo="Margen" [valor]="f.margen" unidad=" dB" />
                   <ui-stat rotulo="Propuesta" [valor]="f.delta" unidad=" dB"
                            [tono]="f.baja ? 'aviso' : 'senal'" />

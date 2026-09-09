@@ -95,7 +95,7 @@ const PASOS: readonly PasoDeAsistente[] = [
 
         <ui-card titulo="Números" subtitulo="El producto de la aplicación">
           <div class="rejilla">
-            <ui-stat rotulo="Pico" valor="-4.2" unidad=" dBFS" tono="aviso" nota="cerca de saturar" />
+            <ui-stat rotulo="Pico" valor="-4.2" unidad=" dB" tono="aviso" nota="cerca de saturar" />
             <ui-stat rotulo="Margen" valor="12.0" unidad=" dB" tono="ok" />
             <ui-stat rotulo="Puntaje de sala" valor="79" tono="senal" nota="σ ± 3" />
             <ui-stat rotulo="Retardo" valor="8.4" unidad=" ms" />
