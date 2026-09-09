@@ -6,6 +6,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Detección de realimentación sobre el espectro de la consola.** La regla es
+  «no cayó como debía», no «creció»: cualquier golpe de música crece, lo que
+  distingue a una resonancia es que **se queda**. Como la balística del
+  analizador está medida —cae 20 dB en unos 300 ms— hay un valor esperado para
+  cuánto tendría que haber bajado una banda, y se avisa de la que no bajó eso
+  y además sobresale de sus vecinas. Comprobado contra la consola: un tono
+  sostenido en el canal 10 sale como **una** candidata en 1000 Hz exactos, y
+  doce segundos de música no dan ninguna. **Devuelve candidatas, no un
+  veredicto**: sin micrófono de medición no se puede distinguir por señal una
+  resonancia de la sala de una nota tenida, porque el analizador mira el canal
+  y no el aire.
+
 - **Los pares estéreo se leen de la consola en vez de declararse a mano.** El
   plan era pedirle al usuario que dijera qué canales forman un par —era lo
   primero de la lista de lo que faltaba para el panorama—. Resultó que la

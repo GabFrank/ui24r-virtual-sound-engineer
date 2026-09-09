@@ -10,4 +10,5 @@ export * from './clasificar-ruta.ts';
 export * from './dinamica.ts';
 export * from './fuente-de-canal.ts';
 export * from './pares-estereo.ts';
+export * from './espectro.ts';
 export * from './retencion-pico.ts';
