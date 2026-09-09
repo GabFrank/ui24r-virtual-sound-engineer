@@ -62,3 +62,35 @@ test('INV-021: releer si devuelve el estado a valido', async () => {
     assert.equal(a.leer('i.0.mix').storeState, 'VALID', 'un INIT si vuelve a validar');
   });
 });
+
+/**
+ * El segundo camino a la revalidacion, que la primera correccion no cubrio.
+ *
+ * `completarVolcado()` se alcanza por el temporizador de quietud --que solo se
+ * arma con un volcado en curso-- y tambien por un `DUMP_END` suelto. Ese
+ * segundo camino no comprobaba nada, asi que con el estado invalidado por una
+ * avalancha bastaba un `DUMP_END` para declararlo valido sin que nadie
+ * hubiera releido: INV-021 apagada por la otra puerta.
+ *
+ * Contra la consola real no pasa, porque no manda `DUMP_END`. Contra el
+ * simulador si, y el simulador es donde se descubrio el defecto original: un
+ * test que solo ejercite el temporizador no protege del escenario que ya
+ * fallo una vez.
+ */
+test('INV-021: un DUMP_END suelto no revalida un estado invalidado', async () => {
+  await conAdaptador(async (t, a) => {
+    t.entra(codificarSetd('i.0.mix', 0.5));
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(a.leer('i.0.mix').storeState, 'VALID');
+
+    avalancha(t);
+    assert.notEqual(a.leer('i.0.mix').storeState, 'VALID', 'la avalancha invalida');
+
+    t.entra('DUMP_END');
+    await new Promise((r) => setTimeout(r, 60));
+    assert.notEqual(
+      a.leer('i.0.mix').storeState, 'VALID',
+      'un DUMP_END sin volcado en curso no puede dar por bueno lo que nadie releyo',
+    );
+  });
+});

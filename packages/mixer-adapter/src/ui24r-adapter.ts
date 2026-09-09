@@ -647,6 +647,16 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       clearTimeout(this.temporizadorVolcado);
       this.temporizadorVolcado = null;
     }
+    // **El mismo resguardo que `reiniciarQuietudDeVolcado`, y por lo mismo.**
+    // A esto se llega por dos caminos: el temporizador de quietud, que solo se
+    // arma con un volcado en curso, y un `DUMP_END` suelto desde `procesar()`,
+    // que no comprobaba nada. Con el estado invalidado por una avalancha y sin
+    // volcado en curso, ese segundo camino declaraba el almacén válido sin que
+    // nadie hubiera releído: INV-021 apagada, igual que antes pero por la otra
+    // puerta. Contra la consola real es inalcanzable —no manda `DUMP_END`—;
+    // contra el simulador, que sí lo manda, no lo es, y el simulador es donde
+    // se descubrió el defecto original.
+    if (!this.store.recibiendoVolcado) return;
     if (this.store.storeState === 'VALID') return;
     this.store.volcadoCompletoRecibido();
     this.cambiarEstado('CONNECTED');
