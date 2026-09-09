@@ -28,7 +28,27 @@
 | 7 | Ida y vuelta de la conversión | bloqueante | 1 % o menos | | ⬜ |
 | 8 | Escritura de prueba verificada por lectura | bloqueante | dentro del 1 % | | ⬜ |
 
-## Evidencia a entregar
+## Resultado colateral — 2026-09-09: los medidores de las salidas, ubicados
+
+**Ninguno de los ocho criterios de arriba está medido.** Este spike pregunta por el *procesamiento* de las salidas —ecualizador, pasa altos y bajos, retardo, polaridad— y eso sigue sin tocarse.
+
+Lo que sí se midió, viniendo de otro lado, es **dónde están los medidores de cada salida** dentro de la trama `VU2`, que es infraestructura necesaria para varios de estos criterios pero no responde ninguno.
+
+La cola de la trama son 154 bytes y sus secciones **no comparten el paso**:
+
+| Relativo al fin de las entradas | Contenido | Paso |
+|---|---|---|
+| `0 .. 11` | 2 entradas de línea | 6 |
+| `12 .. 53` | 6 subgrupos | 7 |
+| `54 .. 81` | 4 efectos | 7 |
+| `82 .. 131` | 10 auxiliares | 5 |
+| `132 .. 153` | general | — |
+
+Detalle y método en `docs/protocol-spec.md` §4.3 y en `evidence/cola-vu2-2026-09-09.txt`.
+
+**Queda abierto qué es cada byte dentro de un bloque.** En el auxiliar, el `+1` sigue al fader. En el subgrupo, mover `s.0.mix` no movió nada, y no se distinguió si el medidor es anterior al fader o si la escritura no tomó efecto — hace falta la conexión testigo para saberlo.
+
+## Evidencia a entregar## Evidencia a entregar
 
 - `evidence/output-raw-tables/`, `evidence/geq-search.md`.
 

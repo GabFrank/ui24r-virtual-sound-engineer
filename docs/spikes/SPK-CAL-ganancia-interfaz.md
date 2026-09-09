@@ -17,7 +17,13 @@ Sin esto, ninguna medición es comparable entre sesiones.
 3. Ajustar el nivel fino con el **fader del bus de análisis**, que sí es controlable por software, hasta que la entrada 2 lea −20 dBFS.
 4. Repetir el procedimiento completo en diez sesiones distintas, apagando y encendiendo entre una y otra.
 
-## Criterios
+## Nota de archivo — 2026-09-09
+
+Este spike tuvo durante un día dos archivos de evidencia que **no le corresponden**: `ley-ganancia-2026-09-09.txt` y `curva-ganancia-completa-2026-09-09.txt`. Miden la curva de ganancia del **previo de la consola**, que no responde ninguno de los tres criterios de acá —este spike pregunta cómo fijar un nivel repetible con el potenciómetro de la **interfaz de audio**—. Se movieron a `SPK-P0.2a/evidence/`, que es el spike de curvas.
+
+Queda anotado en vez de borrado porque el error es instructivo: la evidencia estaba archivada, el spike parecía tener trabajo hecho, y **ninguno de sus criterios estaba medido**. Los tres siguen sin medir.
+
+## Criterios## Criterios
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|

@@ -74,10 +74,29 @@ const REDUCCION_RANGO_DB = MEDIDOR_RANGO_DB / COMP_ZOOM;
  * invierte por busqueda, igual que en el adaptador, para no despejar a mano una
  * cuenta con un bit doblado adentro.
  */
+/**
+ * El bit 7 es el indicador de puerta, y se pone aparte a proposito.
+ *
+ * Este bucle buscaba entre 128 y 255, asi que TODOS los canales del simulador
+ * salian con el bit 7 puesto --por el rango de busqueda, no por modelar nada--.
+ * Coincidia con lo que hace la consola en los canales quietos, pero por
+ * accidente: quien mirara el indicador contra el simulador habria visto 24
+ * puertas en el mismo estado y lo habria tomado por normal.
+ *
+ * Ahora la reduccion se busca en 0..127, que es donde vive de verdad --la
+ * consola hace `a = (b & 127) << 1`-- y el bit se agrega despues.
+ *
+ * **Que significa que valga 1 no esta medido.** Se pone en todos los canales
+ * porque es lo que se observo en la consola con los canales quietos, y nada
+ * mas que por eso. No se debe leer como "puerta abierta": ver
+ * `MedidorCanal.indicadorDePuerta` en el adaptador.
+ */
+const BIT_INDICADOR_DE_PUERTA = 128;
+
 function byteDeReduccion(db) {
-  let mejor = 247;
+  let mejor = 119;
   let menorError = Infinity;
-  for (let b = 128; b <= 255; b++) {
+  for (let b = 0; b <= 127; b++) {
     const a = (b & 127) << 1;
     let fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM;
     if (fraccion < 0.008) fraccion = 0;
@@ -85,7 +104,7 @@ function byteDeReduccion(db) {
     const error = Math.abs(fraccion * REDUCCION_RANGO_DB - db);
     if (error < menorError) { menorError = error; mejor = b; }
   }
-  return mejor;
+  return mejor | BIT_INDICADOR_DE_PUERTA;
 }
 
 function aByte(db) {
