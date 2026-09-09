@@ -333,9 +333,10 @@ export function proponerGanancia(
 
   if (puertaActiva) {
     avisos.push(
-      'la puerta de ruido está activa. La ganancia se mide antes del bloque dinámico, ' +
-      'pero que la puerta no toque ese punto está inferido y no medido, así que este ' +
-      'canal no llega a la confianza más alta hasta comprobarlo',
+      'la puerta de ruido está activa. No afecta a la medición —está comprobado que ' +
+      'no toca el punto donde se mide la ganancia— pero sí a lo que se escucha: por ' +
+      'debajo de su umbral el canal se calla, así que subir la ganancia también hace ' +
+      'que la puerta abra con señal más débil',
     );
   }
 
@@ -393,13 +394,16 @@ export function proponerGanancia(
       })
     : 'INSUFFICIENT_DATA';
 
-  // **Solo lo inferido cuesta confianza.** Que el compresor no toca el punto de
-  // medición está medido contra la consola, así que un canal comprimiendo mide
-  // tan bien como cualquier otro y no baja de escalón. Que la puerta y el
-  // de-esser tampoco lo tocan es una inferencia que nadie comprobó: mientras lo
-  // sea, esos canales no llegan a ALTA, que es la confianza con la que el
-  // usuario aplica sin verificar. El día que se mida, esta línea desaparece.
-  const inferido = puertaActiva || deesserActivo;
+  // **Solo lo inferido cuesta confianza.** Que el compresor, el ecualizador y
+  // la puerta no tocan el punto de medición está **medido** contra la consola:
+  // con la puerta cerrada del todo, el nivel de entrada cayó a −∞ y el punto de
+  // medición no se movió un decimal. Esos canales miden tan bien como
+  // cualquiera y no bajan de escalón.
+  //
+  // Del de-esser no hay medición: no reporta cuánto atenúa y no se probó con
+  // sibilancia. Mientras siga así, esos canales no llegan a ALTA, que es la
+  // confianza con la que el usuario aplica sin verificar.
+  const inferido = deesserActivo;
   const confianza: Confidence =
     inferido && confianzaMedida === 'HIGH' ? 'MEDIUM' : confianzaMedida;
 

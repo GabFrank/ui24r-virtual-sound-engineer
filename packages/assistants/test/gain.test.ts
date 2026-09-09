@@ -369,12 +369,12 @@ test('una reducción por debajo del escalón de la perilla se trata como cero', 
   assert.deepEqual(p.condicionadaPor, []);
 });
 
-test('la puerta baja la confianza porque su caso está inferido, no medido', () => {
-  // Que el punto de medición es anterior al compresor está comprobado contra la
-  // consola. Que también es anterior a la puerta es una inferencia razonable
-  // --viven en el mismo bloque-- que nadie midió. Mientras siga inferido, este
-  // canal no llega a ALTA, que es la confianza con la que se aplica sin
-  // verificar. El día que se mida, esta diferencia desaparece.
+test('la puerta ya no baja la confianza: se midio', () => {
+  // Estuvo en MEDIUM mientras el caso de la puerta era una inferencia. Se midio
+  // el 2026-09-09 contra la consola: con la puerta cerrada del todo, el nivel
+  // de entrada cayo a -Infinity y el punto de medicion no se movio un decimal.
+  // El aviso se queda igual, pero por otro motivo: la puerta no afecta a la
+  // medicion y si a lo que se escucha.
   const a = analizarVentana(ventanaDeVoz({ picoDb: -25 }));
   const p = proponerGanancia(a, perfilPorTipo('BASS'), 18, {
     repetidoEnDosCapturas: true, snrDb: 30, calibracionValida: true,
@@ -382,8 +382,8 @@ test('la puerta baja la confianza porque su caso está inferido, no medido', () 
   });
 
   assert.ok(p.deltaDb > 0, 'sigue proponiendo');
-  assert.equal(p.confianza, 'MEDIUM', 'pero no llega a ALTA');
-  assert.ok(p.avisos.some((x) => /inferido y no medido/.test(x)));
+  assert.equal(p.confianza, 'HIGH', 'y ahora si llega a la mas alta');
+  assert.ok(p.avisos.some((x) => /afecta a la medición/i.test(x)));
   assert.deepEqual(p.condicionadaPor, ['puerta de ruido']);
 });
 
@@ -416,9 +416,10 @@ test('el de-esser cuesta confianza por la misma razón que la puerta', () => {
 });
 
 test('solo lo inferido cuesta confianza; lo medido no', () => {
-  // La regla entera en un test. Un canal comprimiendo mide tan bien como uno
-  // limpio, porque se comprobó dónde está el medidor. Un canal con puerta no,
-  // porque eso todavía no se comprobó.
+  // La regla entera en un test. El compresor, el ecualizador y la puerta estan
+  // MEDIDOS --ninguno toca el punto de medicion-- asi que ninguno cuesta
+  // confianza. El de-esser no: no reporta cuanto atenua y no se probo con
+  // sibilancia, y mientras siga asi cuesta un escalon.
   const a = analizarVentana(ventanaDeVoz({ picoDb: -4, reduccionEnPicoDb: 6 }));
   const comun = { repetidoEnDosCapturas: true, snrDb: 40, calibracionValida: true };
 
@@ -430,10 +431,13 @@ test('solo lo inferido cuesta confianza; lo medido no', () => {
     { ...comun, dinamica: conProceso({ compresor: 'ACTIVO' }) });
   const conPuerta = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 34,
     { ...comun, dinamica: conProceso({ puerta: 'ACTIVO' }) });
+  const conDeesser = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 34,
+    { ...comun, dinamica: conProceso({ deesser: 'ACTIVO' }) });
 
   assert.equal(limpio.confianza, 'HIGH');
   assert.equal(comprimiendo.confianza, 'HIGH', 'medido: no cuesta confianza');
-  assert.equal(conPuerta.confianza, 'MEDIUM', 'inferido: cuesta un escalón');
+  assert.equal(conPuerta.confianza, 'HIGH', 'medido tambien: dejo de costar');
+  assert.equal(conDeesser.confianza, 'MEDIUM', 'lo unico que sigue inferido');
 });
 
 test('no saber si hay proceso se dice, pero no se bloquea ni se penaliza', () => {

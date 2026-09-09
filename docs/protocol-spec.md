@@ -248,7 +248,9 @@ Consecuencia para cualquiera que mida niveles: **`entrada` viene procesado**. Si
 
 Con eso, `pre` queda como el punto más limpio que la consola ofrece: **después del previo y antes de todo el procesamiento del canal**. Es exactamente lo que necesita un asistente de ganancia, que tiene que medir el margen del previo sin que lo coloreen decisiones de timbre ni de dinámica.
 
-La medición es del compresor y del ecualizador. Que la puerta también quede después del punto `+0` es una **inferencia** razonable —está en el mismo bloque dinámico que el compresor— y no está comprobada con la puerta cerrándose.
+**La puerta tampoco.** Medido el 2026-09-09 subiendo su umbral por encima de la señal: `entrada` cayó a −∞ —la puerta cierra con su atenuación máxima— y `pre` se quedó en −48,66 sin moverse. Con esto los tres bloques del canal están comprobados y ninguno toca el punto `+0`.
+
+Dos trampas de escala que costaron una corrida cada una, y que conviene tener escritas: la ruta del umbral es `gate.thresh`, no `gate.threshold`; y `VtoGATE_DEPTH(a) = 60a − 60`, o sea que **profundidad 0 es atenuación máxima y 1 es ninguna**. Es la tercera escala invertida de esta consola, después de `VtoRATIO(a) = 1/a`.
 
 **La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
 
