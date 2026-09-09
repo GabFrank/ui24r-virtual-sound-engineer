@@ -55,7 +55,7 @@ delante.
 |---|---|---|---|
 | 3.1 | Un cambio hecho en la consola aparece en la app | ⬜ | Mover un fader desde `mixer.html` y ver que la app lo refleja como cambio externo |
 | 3.2 | Silenciar un canal en la consola se ve en la app | ⬜ | |
-| 3.3 | Cambiar un nombre de canal se ve en la app | ⬜ | |
+| 3.3 | Cambiar un nombre de canal se ve en la app | 🟡 | El nombre correcto ya se lee: con `PRUEBA` en el CH 1 de la consola, la app muestra `1 PRUEBA`. Falta ver que un renombre **en caliente** se refleje sin reconectar |
 | 3.4 | Releer el estado, ahora por `INIT` | ⬜ | Antes reconectaba, y **eso ya no funcionaba** con un identificador de sesión de un solo uso |
 | 3.5 | Una avalancha de cambios invalida el estado (INV-021) | ⬜ | Cargar una instantánea distinta desde la consola |
 | 3.6 | La ganancia y el fader se muestran **sin** el «≈» | ✅ | Se vio «Ganancia 14», no «≈14». La marca vuelve sola si alguien pone `VERIFICADO_CONTRA_CONSOLA` en falso |

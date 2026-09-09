@@ -1,0 +1,85 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Ui24rMixerAdapter } from '../src/ui24r-adapter.ts';
+import { codificarSetd, codificarVu } from '../src/protocol.ts';
+import { TransporteFalso } from './transporte-falso.ts';
+
+/**
+ * Las rutas del protocolo son de base cero y los canales de la consola empiezan
+ * en uno.
+ *
+ * Medido contra el aparato el 2026-09-08 y escrito en `docs/protocol-spec.md`:
+ * el canal 1 es `i.0.mix`, `hw.0.gain` e `i.0.name`. El adaptador componía
+ * `i.1` para el canal 1, y como la trama `VU2` **sí** trae el canal 1 en la
+ * posición 0, la interfaz mostraba en la misma fila el medidor de un canal con
+ * el nombre y la ganancia del siguiente. Con la guitarra en el canal 1 de una
+ * Ui24R real, la aplicación decía «BAJO OKU · Ganancia 14» —los datos del canal
+ * 2— junto al nivel de la guitarra.
+ */
+
+/** El volcado mínimo de dos canales, con valores crudos como los de la consola. */
+function volcadoDeDosCanales(t: TransporteFalso): void {
+  t.entra('SETS^i.0.name^PRUEBA');
+  t.entra('SETS^i.1.name^BAJO OKU');
+  t.entra(codificarSetd('hw.0.gain', 0.64));   // 34 dB en el canal 1
+  t.entra(codificarSetd('hw.1.gain', 0.322));  // 14 dB en el canal 2
+  t.entra(codificarSetd('i.0.mute', 0));
+  t.entra(codificarSetd('i.1.mute', 1));
+}
+
+test('el canal 1 toma su nombre y su ganancia de `i.0` y `hw.0`', async () => {
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+  volcadoDeDosCanales(t);
+
+  const [uno, dos] = a.canales(2);
+
+  assert.equal(uno?.nombre, 'PRUEBA', 'el canal 1 es `i.0`, no `i.1`');
+  assert.equal(uno?.gainDb, 34);
+  assert.equal(dos?.nombre, 'BAJO OKU');
+  assert.equal(dos?.gainDb, 14);
+  await a.desconectar();
+});
+
+test('el silencio también sale de la ruta del canal, no de la siguiente', async () => {
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+  volcadoDeDosCanales(t);
+
+  const [uno, dos] = a.canales(2);
+
+  assert.equal(uno?.silenciado, false, 'i.0.mute = 0');
+  assert.equal(dos?.silenciado, true, 'i.1.mute = 1');
+  await a.desconectar();
+});
+
+test('el medidor y el nombre de una fila son del mismo canal', async () => {
+  // Es la afirmación que la interfaz hace con solo poner las dos cosas juntas,
+  // y la que estaba rota: el medidor venía del canal 1 y el nombre del 2.
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+  volcadoDeDosCanales(t);
+  // Señal solo en la posición 0 de la trama, que es el canal 1.
+  t.entra(`VU2^${codificarVu([0.9, 0])}`);
+
+  const [uno, dos] = a.canales(2);
+
+  assert.equal(uno?.nombre, 'PRUEBA');
+  assert.ok(uno !== undefined && uno.nivelDb > -90, 'el canal con señal es el 1');
+  assert.equal(dos?.nivelDb, -Infinity, 'el canal 2 está en silencio');
+  await a.desconectar();
+});
+
+test('un canal sin nombre en el volcado se llama por su número de consola', async () => {
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+
+  const [uno] = a.canales(1);
+
+  assert.equal(uno?.nombre, 'CANAL 1', 'el número que se muestra es el de la serigrafía, no el de la ruta');
+  await a.desconectar();
+});

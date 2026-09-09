@@ -6,6 +6,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La aplicación mostraba, en una misma fila, el medidor de un canal junto al
+  nombre y la ganancia del siguiente.** Las rutas del protocolo son de base
+  cero —el canal 1 es `i.0.mix`, `hw.0.gain`, `i.0.name`— y estaba medido y
+  escrito en [docs/protocol-spec.md](docs/protocol-spec.md) desde el
+  2026-09-08, pero el adaptador componía `i.1` para el canal 1. La trama `VU2`
+  **sí** trae el canal 1 en su posición 0, así que el nivel caía en la fila
+  correcta y todo lo demás corrido uno.
+
+  Con una guitarra en el canal 1 de una Ui24R real, la aplicación decía «BAJO
+  OKU · Ganancia 14» —los datos del canal 2— al lado del nivel de la guitarra.
+  Un asistente que propusiera bajar la ganancia de ese canal habría nombrado el
+  canal equivocado, y en el nivel ASISTIDO habría escrito en el equivocado.
+
+  **Ningún test lo agarró porque el simulador cargaba la misma suposición**, así
+  que los dos errores se cancelaban. Se corrigieron los dos: el adaptador
+  convierte canal ↔ índice en un solo lugar, y el simulador numera sus rutas
+  desde cero como la consola. Los tests nuevos van contra un transporte falso,
+  no contra el simulador.
+
 - **La prueba de conexión medía el flujo equivocado.** Contaba tramas `VU2`,
   que la consola **deja de emitir cuando no hay señal**, y presentaba su
   cadencia como la de la conexión. En una sala callada eso da un percentil 95

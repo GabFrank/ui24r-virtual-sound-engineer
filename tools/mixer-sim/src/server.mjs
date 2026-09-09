@@ -132,7 +132,7 @@ const escenarios = {
 
   /** Un canal empieza a saturar. */
   clipping: () => {
-    canalSaturando = canalSaturando === null ? 1 : null;
+    canalSaturando = canalSaturando === null ? 0 : null;  // idx 0 = canal 1
     log(`escenario: saturación en el canal 1 ${canalSaturando ? 'activada' : 'desactivada'}`);
   },
 

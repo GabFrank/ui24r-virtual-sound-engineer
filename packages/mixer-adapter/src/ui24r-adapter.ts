@@ -326,19 +326,20 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
   canales(cantidad = 12): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
-    for (let i = 1; i <= cantidad; i++) {
-      const fader = this.store.leer(`i.${i}.mix`);
-      const gain = this.store.leer(`hw.${i}.gain`);
-      const mute = this.store.leer(`i.${i}.mute`);
+    for (let canal = 1; canal <= cantidad; canal++) {
+      const n = indiceDeRuta(canal);
+      const fader = this.store.leer(`i.${n}.mix`);
+      const gain = this.store.leer(`hw.${n}.gain`);
+      const mute = this.store.leer(`i.${n}.mute`);
       salida.push({
-        indice: i,
-        nombre: this.nombresCanal.get(i) ?? `CANAL ${i}`,
+        indice: canal,
+        nombre: this.nombresCanal.get(canal) ?? `CANAL ${canal}`,
         faderDb: fader ? faderADb(fader.valor) : -Infinity,
         gainDb: gain ? gananciaADb(gain.valor) : null,
         silenciado: (mute?.valor ?? 0) > 0.5,
-        nivelDb: this.nivelesVu.get(i) ?? -Infinity,
-        picoDb: this.picosVu.get(i) ?? -Infinity,
-        eventosSaturacion: this.saturaciones.get(i) ?? 0,
+        nivelDb: this.nivelesVu.get(canal) ?? -Infinity,
+        picoDb: this.picosVu.get(canal) ?? -Infinity,
+        eventosSaturacion: this.saturaciones.get(canal) ?? 0,
       });
     }
     return salida;
@@ -356,7 +357,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
       const coincidencia = /^i\.(\d+)\.name$/.exec(m.path);
-      if (coincidencia) this.nombresCanal.set(Number(coincidencia[1]), m.texto);
+      // El nombre se guarda por canal, no por índice de ruta: `i.0.name` es el
+      // canal 1. Se convierte acá, en el borde, para que el resto del
+      // adaptador hable un solo idioma.
+      if (coincidencia) this.nombresCanal.set(canalDeIndice(Number(coincidencia[1])), m.texto);
       return;
     }
 
@@ -473,3 +477,28 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   }
 }
 
+/**
+ * Canal de la consola —el número de la serigrafía, desde 1— al índice que usan
+ * las rutas del protocolo.
+ *
+ * **Las rutas son de base cero.** El canal 1 es `i.0.mix`, `hw.0.gain` e
+ * `i.0.name`. Está medido contra el aparato y escrito en
+ * `docs/protocol-spec.md`, pero este adaptador componía `i.1` para el canal 1,
+ * y el resultado era una fila de la interfaz que mezclaba dos canales
+ * distintos: el medidor del canal 1 —que sí llega en la posición 0 de la trama
+ * `VU2`, y por eso se veía correcto— junto al nombre, la ganancia, el fader y
+ * el silencio del canal 2.
+ *
+ * **Por qué no lo agarró ningún test.** El simulador construía su estado con
+ * la misma suposición equivocada, así que los dos errores se cancelaban y
+ * contra el simulador todo cuadraba. Es el caso exacto que advierte
+ * CONTRIBUTING: un test que pasa contra el simulador no cierra nada.
+ */
+function indiceDeRuta(canal: number): number {
+  return canal - 1;
+}
+
+/** La vuelta: índice de ruta a canal. */
+function canalDeIndice(indice: number): number {
+  return indice + 1;
+}

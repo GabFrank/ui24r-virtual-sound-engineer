@@ -1,19 +1,25 @@
 // Estado de la consola simulada. Los nombres y niveles son los de una banda
 // real, para que las pantallas se vean como se van a ver de verdad.
+//
+// `idx` es el indice de la RUTA del protocolo, que es de base cero: el canal 1
+// de la consola es `i.0.mix`. Estuvo de base uno hasta el 2026-09-08, y como el
+// adaptador cargaba el mismo error los dos se cancelaban: contra el simulador
+// la aplicacion se veia bien, y contra la consola real mostraba el medidor de
+// un canal junto al nombre y la ganancia del siguiente.
 
 export const CANALES = [
-  { idx: 1,  nombre: 'VOZ PRINCIPAL', gainDb: 34, faderDb: -2.5,  nivelBase: -18, dinamica: 9 },
-  { idx: 2,  nombre: 'CORO 1',        gainDb: 32, faderDb: -6.0,  nivelBase: -24, dinamica: 7 },
-  { idx: 3,  nombre: 'CORO 2',        gainDb: 32, faderDb: -6.5,  nivelBase: -25, dinamica: 7 },
-  { idx: 4,  nombre: 'GUITARRA AC',   gainDb: 26, faderDb: -4.0,  nivelBase: -20, dinamica: 6 },
-  { idx: 5,  nombre: 'GUITARRA EL',   gainDb: 22, faderDb: -5.5,  nivelBase: -21, dinamica: 5 },
-  { idx: 6,  nombre: 'BAJO',          gainDb: 18, faderDb: -3.0,  nivelBase: -16, dinamica: 4 },
-  { idx: 7,  nombre: 'CAJON',         gainDb: 28, faderDb: -4.5,  nivelBase: -19, dinamica: 12 },
-  { idx: 8,  nombre: 'CONGA',         gainDb: 30, faderDb: -7.0,  nivelBase: -23, dinamica: 11 },
-  { idx: 9,  nombre: 'SHAKER',        gainDb: 38, faderDb: -9.0,  nivelBase: -28, dinamica: 8 },
-  { idx: 10, nombre: 'FLAUTA',        gainDb: 33, faderDb: -5.0,  nivelBase: -22, dinamica: 8 },
-  { idx: 11, nombre: 'TECLADO L',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
-  { idx: 12, nombre: 'TECLADO R',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
+  { idx: 0,  nombre: 'VOZ PRINCIPAL', gainDb: 34, faderDb: -2.5,  nivelBase: -18, dinamica: 9 },
+  { idx: 1,  nombre: 'CORO 1',        gainDb: 32, faderDb: -6.0,  nivelBase: -24, dinamica: 7 },
+  { idx: 2,  nombre: 'CORO 2',        gainDb: 32, faderDb: -6.5,  nivelBase: -25, dinamica: 7 },
+  { idx: 3,  nombre: 'GUITARRA AC',   gainDb: 26, faderDb: -4.0,  nivelBase: -20, dinamica: 6 },
+  { idx: 4,  nombre: 'GUITARRA EL',   gainDb: 22, faderDb: -5.5,  nivelBase: -21, dinamica: 5 },
+  { idx: 5,  nombre: 'BAJO',          gainDb: 18, faderDb: -3.0,  nivelBase: -16, dinamica: 4 },
+  { idx: 6,  nombre: 'CAJON',         gainDb: 28, faderDb: -4.5,  nivelBase: -19, dinamica: 12 },
+  { idx: 7,  nombre: 'CONGA',         gainDb: 30, faderDb: -7.0,  nivelBase: -23, dinamica: 11 },
+  { idx: 8,  nombre: 'SHAKER',        gainDb: 38, faderDb: -9.0,  nivelBase: -28, dinamica: 8 },
+  { idx: 9,  nombre: 'FLAUTA',        gainDb: 33, faderDb: -5.0,  nivelBase: -22, dinamica: 8 },
+  { idx: 10, nombre: 'TECLADO L',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
+  { idx: 11, nombre: 'TECLADO R',     gainDb: 12, faderDb: -6.0,  nivelBase: -22, dinamica: 5 },
 ];
 
 export function dbAFader(db) {
@@ -34,7 +40,7 @@ export function estadoInicial() {
     estado.set(`i.${c.idx}.mute`, 0);
     estado.set(`i.${c.idx}.pan`, 0.5);
     estado.set(`hw.${c.idx}.gain`, gainANormalizado(c.gainDb));
-    estado.set(`hw.${c.idx}.phantom`, c.idx <= 4 ? 1 : 0);
+    estado.set(`hw.${c.idx}.phantom`, c.idx <= 3 ? 1 : 0);  // los cuatro primeros
   }
   estado.set('m.mix', dbAFader(0));
   estado.set('m.mute', 0);
