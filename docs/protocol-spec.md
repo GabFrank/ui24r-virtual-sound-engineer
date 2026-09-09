@@ -153,7 +153,7 @@ Bloque del canal `g`, en el desplazamiento `8 + 6·g`:
 | `+2` | nivel de salida, después del fader |
 | `+3` | entrada del dinámico (solo lo llena el canal seleccionado) |
 | `+4` | salida del dinámico |
-| `+5` | bits 0-6 reducción de ganancia del compresor, bit 7 una bandera |
+| `+5` | bits 0-6 reducción de ganancia del compresor, bit 7 **indicador de puerta** |
 
 Escala, literal del código de la consola:
 
@@ -162,17 +162,67 @@ deconvertVU(b)      = 0.004167508166392142 * b            // ~ b/239,95 -> 0..1
 deconvertVU_comp(b) = (1 - 0.004167508166392142*b) * COMP_ZOOM
 ```
 
-**Lo que devuelve `deconvertVU` es una posición normalizada de 0 a 1, no decibeles.** Es la misma escala con la que se dibuja un fader.
+**Lo que devuelve `deconvertVU` es una posición normalizada de 0 a 1, no decibeles.** No es la escala del fader: ver 4.3.
 
 **Verificación contra una fuente conocida.** Con música entrando solo por las entradas RCA, la trama dio nivel en los canales 21 y 22 y cero en los otros veintidós; las RCA de esta consola son exactamente esos dos canales. El canal 21 dio `pre=120, entrada=120, salida=86`, con la salida por debajo de la entrada, coherente con el fader por debajo de 0 dB. Máximos en 90 s: `pre=entrada=142` (0,592 normalizado), `salida=108`.
 
-**Sobre el byte `+5`:** se observaron solo dos valores, `247` y `119`, y `247` en casi todo. Como `247 = 119 | 128`, los siete bits bajos fueron siempre 119. La interpretación de la tabla sale del código de la consola, **no de haber visto variar el valor**.
+**Sobre el byte `+5`:** se observaron solo dos valores, `247` y `119`, y `247` en casi todo. Como `247 = 119 | 128`, los siete bits bajos fueron siempre 119.
+
+El bit 7 es el **indicador de puerta de ruido**, no el de saturación. En `parseVUdata` sale con `p = 0 != (byte & 128)` y termina en `this.gi.setValue(p)`, donde `gi` es un `GATEind`. Conviene tenerlo escrito porque induce al error: vale 1 en todos los canales quietos, y leerlo como saturación da los veinticuatro canales saturando sin parar. Se probó el 2026-09-08 y así fue.
 
 **Sin decodificar:** la sección posterior a las entradas —media, auxiliares, efectos—. Los 145 bytes restantes no cierran en múltiplo de 6 con la lectura de arriba y el patrón resultante parece desalineado. Queda sin afirmar.
 
-### 4.3 Lo que `VU2` no dice
+### 4.3 De posición a decibeles: el medidor es lineal, y no usa la ley del fader
 
-La correspondencia entre la posición del medidor y un nivel digital real **no está medida**. Es lo que pide SPK-P0.10b, con tonos de −20, −6 y −1 dBFS por un bucle físico. Hasta que ese spike cierre, «pico a menos un decibel» no significa nada verificable.
+Leído del `mixer.html` de la consola el 2026-09-08. Son dos piezas y juntas no dejan otra lectura posible:
+
+```js
+VU_RANGE = 80
+vuPosMark(dB, h) = -dB * h / VU_RANGE     // donde va cada marca de la escala
+paint()          { c = h * this.value }   // alto de la barra, proporcional a la posicion
+```
+
+Si la barra es proporcional a la posición y las marcas están espaciadas linealmente en decibeles, la correspondencia es una recta:
+
+```
+dB = VU_RANGE · posicion − VU_RANGE       // 0 dB en la punta, −80 en el fondo
+```
+
+Un escalón del byte son `80 × 0,004167` = **0,333 dB**.
+
+**Comprobado contra el aparato en dos puntos independientes**, con la consola en `192.168.0.78`:
+
+| Fuente | Byte | Según esta recta | Lo que mostraba la consola |
+|---|---|---|---|
+| Guitarra en el canal 1 | entrada 225 | −5,0 dB de entrada; con el fader en −6,9 dB, **−11,9 a la salida** | ≈ −12 dB |
+| Música por las RCA (21 y 22) | salida 102 | **−46 dB** | barra en −45 aprox. |
+
+Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis —escrita como tal— de que la consola dibuja sus medidores con la misma regla que sus faders. **Es falsa.** Con esa ley el byte 225 daba +4,6 dB, recortado a +10 en pantalla.
+
+**Qué medidor dibuja cada widget**, de `parseVUdata` y `setVU`:
+
+| Widget | Byte | Nota |
+|---|---|---|
+| Barra de la tira | `+2` salida | `setValueExt(a, b)` guarda `this.value = b` |
+| Fantasma de la tira | `+1` entrada | el segundo valor de `setValueExt` |
+| Página de ganancia | `+0` pre | `setVUPre(m)` |
+
+**Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
+
+**Comprobación cruzada del modelo entero.** Si la barra es la salida y el fantasma la entrada, la diferencia entre las dos tiene que ser exactamente el fader del canal. Medido el 2026-09-08 con música por las RCA:
+
+| Canal | Entrada | Salida | Diferencia | `i.N.mix` |
+|---|---|---|---|---|
+| 21 | −22,7 dB | −34,3 dB | 11,7 dB | −11,6 dB |
+| 22 | −21,7 dB | −33,3 dB | 11,7 dB | −11,5 dB |
+
+Una décima de decibel. La recta de conversión, el reparto de bytes y la ley del fader quedan comprobados a la vez, y con una fuente que no hizo falta calibrar.
+
+**La aplicación muestra la entrada**, no la salida: lo que le importa es el margen del previo, y ese no cambia porque alguien mueva un fader. El operador que compare con la barra de su consola va a ver un número más alto en la aplicación, por lo que baje el fader; la pantalla lo dice.
+
+### 4.4 Lo que `VU2` sigue sin decir
+
+La correspondencia entre lo que muestra el medidor y un **nivel digital real** no está medida. La recta de 4.3 da el número que ve el operador en su pantalla, que es lo que hace falta para hablar su mismo idioma; que ese número sean dBFS es otra afirmación, y la mide SPK-P0.10b con tonos de −20, −6 y −1 dBFS por un bucle físico.
 
 ---
 

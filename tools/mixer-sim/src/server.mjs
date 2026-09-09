@@ -46,10 +46,18 @@ const VU_ESCALA = 0.004167508166392142;
  * Antes se mandaba un byte por canal sin cabecera, mapeado de −80 a 0 dB. Eso
  * era la hipótesis, y estaba equivocada en las tres cosas.
  */
+// El medidor es lineal en decibeles: 0 dB arriba, -80 abajo. Sale del propio
+// `mixer.html` de la consola, que dibuja la barra proporcional a la posicion y
+// pone las marcas en `-dB * h / 80`. Hasta el 2026-09-08 el simulador emitia
+// con la ley del fader, que es otra cosa.
+const MEDIDOR_RANGO_DB = 80;
+
 function codificarVu(nivelesDb) {
   const bytes = [nivelesDb.length, 0, 0, 0, 0, 0, 0, 0];
   for (const db of nivelesDb) {
-    const posicion = (!Number.isFinite(db) || db <= -90) ? 0 : dbAFader(db);
+    const posicion = (!Number.isFinite(db) || db <= -MEDIDOR_RANGO_DB)
+      ? 0
+      : (db + MEDIDOR_RANGO_DB) / MEDIDOR_RANGO_DB;
     const b = Math.max(0, Math.min(255, Math.round(posicion / VU_ESCALA)));
     // pre, entrada, salida, dinámico entrada, dinámico salida, reducción.
     // 247 en el último byte es "sin reducción de ganancia", como en la consola.

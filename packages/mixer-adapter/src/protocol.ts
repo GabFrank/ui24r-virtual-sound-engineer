@@ -177,9 +177,31 @@ export const VU_BYTES_POR_CANAL = 6;
  * Escala de los medidores, de `deconvertVU` en `mixer.html`.
  *
  * Un byte de 0 a ~240 se convierte en una posición de 0 a 1. **No son
- * decibeles**: es la misma posición normalizada con la que se dibuja un fader.
+ * decibeles**, pero tampoco es la posición de un fader: la consola dibuja la
+ * barra con `c = h * value` y coloca las marcas de su escala con
+ * `vuPosMark(dB, h) = -dB * h / VU_RANGE`, con `VU_RANGE = 80`. Las dos cosas
+ * juntas dicen que **el medidor es lineal en decibeles**: ver `MEDIDOR_RANGO_DB`.
  */
 export const VU_ESCALA = 0.004167508166392142;
+
+/**
+ * Recorrido del medidor, en decibeles. `VU_RANGE` en `mixer.html`.
+ *
+ * La escala impresa va de 0 en la punta a −80 en el fondo, y la barra se dibuja
+ * proporcional a la posición, así que un escalón del byte son
+ * `80 * VU_ESCALA` = 0,333 dB.
+ */
+export const MEDIDOR_RANGO_DB = 80;
+
+/**
+ * Posición desde la que la consola enciende su indicador de saturación.
+ *
+ * `setVU` hace `1 <= b ? this.clip.clip() : ...` sobre el valor del medidor, y
+ * `setVUPre` lo mismo con el nivel del previo. O sea: satura cuando la barra
+ * llega a la punta de la escala, que son 0 dB. No es un umbral elegido por
+ * nosotros.
+ */
+export const MEDIDOR_SATURACION = 1;
 
 /** Lectura de un canal dentro de una trama `VU2`, en posición normalizada. */
 export interface MedidorCanal {
@@ -195,6 +217,17 @@ export interface MedidorCanal {
   readonly dinamicoSalida: number;
   /** Byte crudo de reducción de ganancia y bandera, sin interpretar. */
   readonly byteReduccion: number;
+  /**
+   * Puerta de ruido abierta, según la consola.
+   *
+   * Es el bit 7 del último byte del canal. `parseVUdata` lo saca con
+   * `p = 0 != (byte & 128)` y termina en `this.gi.setValue(...)`, que es un
+   * `GATEind`: el indicador de puerta, **no** el de saturación. Vale anotarlo
+   * porque invita al error: el byte vale 247 en todos los canales quietos, con
+   * el bit 7 puesto, y leerlo como saturación da todos los canales saturando
+   * todo el tiempo.
+   */
+  readonly puertaAbierta: boolean;
 }
 
 /**
@@ -225,6 +258,7 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
       dinamicoEntrada: (bytes[o + 3] ?? 0) * VU_ESCALA,
       dinamicoSalida: (bytes[o + 4] ?? 0) * VU_ESCALA,
       byteReduccion: bytes[o + 5] ?? 0,
+      puertaAbierta: ((bytes[o + 5] ?? 0) & 128) !== 0,
     });
   }
   return canales;
@@ -244,25 +278,38 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
  * sirve para coincidir con lo que ve el operador, no para afirmar dBFS.
  */
 export function decodificarVu(base64: string): number[] {
-  return decodificarVuCanales(base64).map((c) => posicionADb(c.entrada));
+  return decodificarVuCanales(base64).map((c) => dbDeMedidor(c.entrada));
 }
 
 /**
- * Posición normalizada de medidor a dB, con la ley de fader de la consola.
+ * Posición normalizada de medidor a decibeles.
  *
- * Duplica la fórmula de `conversiones.ts` a propósito: este módulo decodifica
- * el protocolo y no debería depender del que interpreta unidades físicas. Si
- * alguna vez divergen, el test de `protocol.test.ts` que las compara falla.
+ * **Medido en el código de la consola el 2026-09-08, no supuesto.** Antes esto
+ * convertía con la ley del fader, sobre la hipótesis de que la consola dibuja
+ * sus medidores con la misma regla que sus faders. Es falsa, y el error no era
+ * chico: con la guitarra en el canal 1 de una Ui24R real, el byte 225 daba
+ * +4,6 dB —recortado a +10 en pantalla, con mil saturaciones inventadas—
+ * cuando la consola mostraba −12.
+ *
+ * Lo que hace `mixer.html`: dibuja la barra con `c = h * value`, proporcional a
+ * la posición, y coloca las marcas de la escala con `-dB * h / VU_RANGE`. De
+ * ahí sale una recta, y solo una:
+ *
+ *     dB = VU_RANGE * posicion - VU_RANGE
+ *
+ * Comprobada contra el aparato en dos puntos independientes: byte 225 en la
+ * guitarra da −5,0 dB de entrada, que con el fader del canal en −6,9 dB deja
+ * −11,9 a la salida —los «−12» que mostraba la consola—; y la música por las
+ * RCA, con salida en el byte 102, da −46 dB, que es la barra de la captura.
+ *
+ * **Esto sigue sin ser dBFS verificado.** Es lo que ve el operador en su
+ * pantalla, que es lo que hace falta para hablar el mismo idioma que él. La
+ * correspondencia con un nivel digital real la mide SPK-P0.10b, con tonos por
+ * un bucle físico.
  */
-function posicionADb(posicion: number): number {
+export function dbDeMedidor(posicion: number): number {
   if (posicion <= 0) return -Infinity;
-  const v = Math.min(1, posicion);
-  const exponente = v * (23.90844819639692
-    + v * (-26.23877598214595 + (12.195249692570245 - 0.4878099877028098 * v) * v));
-  const base = 2.676529517952372e-4 * Math.exp(exponente);
-  const lineal = v < 0.055 ? base * Math.sin(28.559933214452666 * v) : base;
-  if (lineal <= 0) return -Infinity;
-  return Math.max(-90, Math.min(10, 20 * Math.log10(lineal)));
+  return MEDIDOR_RANGO_DB * posicion - MEDIDOR_RANGO_DB;
 }
 
 /**

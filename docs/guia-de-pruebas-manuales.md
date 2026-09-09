@@ -42,8 +42,8 @@ delante.
 
 | # | Qué probar | Estado | Cómo, y qué se vio |
 |---|---|---|---|
-| 2.1 | Los medidores se mueven con señal real | ✅ | Con música por las RCA, el canal 1 mostró pico −72,2 dB y subiendo |
-| 2.2 | La señal aparece en el canal correcto | ✅ | Música solo por RCA → nivel solo en los canales 21 y 22, cero en los otros 22 |
+| 2.1 | Los medidores se mueven con señal real | ✅ | 2026-09-08: guitarra en el CH 1 y música por las RCA. Los decibeles coinciden con los de la consola desde que la conversión se tomó de su propio `mixer.html` |
+| 2.2 | La señal aparece en el canal correcto | ✅ | Música solo por RCA → nivel solo en los canales 21 y 22. Antes la app leía doce canales y esos dos ni se mostraban |
 | 2.3 | **Qué pasa en la pantalla cuando se hace silencio** | ⬜ | Importante: la consola **deja de mandar `VU2`**. Hay que ver que la app no diga que se cayó la conexión ni congele un pico viejo sin decirlo |
 | 2.4 | Reiniciar picos | ⬜ | |
 | 2.5 | Calibración de los medidores contra nivel real | ⬜ | SPK-P0.10b. Necesita tonos de −20, −6 y −1 dBFS por un bucle físico |

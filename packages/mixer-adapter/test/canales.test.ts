@@ -83,3 +83,30 @@ test('un canal sin nombre en el volcado se llama por su número de consola', asy
   assert.equal(uno?.nombre, 'CANAL 1', 'el número que se muestra es el de la serigrafía, no el de la ruta');
   await a.desconectar();
 });
+
+test('la cantidad de canales la dice la consola, no el adaptador', async () => {
+  // Estaba fija en doce. Una Ui24R tiene veinticuatro entradas y sus dos RCA
+  // son los canales 21 y 22, asi que con doce no se veia justamente la fuente
+  // con la que se prueba.
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+
+  assert.equal(a.canales().length, 12, 'antes de saber, lo que entra en una pantalla');
+
+  t.entra('SETS^i.23.name^CH 24');
+  assert.equal(a.canales().length, 24, 'el volcado dice cuantas entradas hay');
+
+  await a.desconectar();
+});
+
+test('la cabecera de la trama de medidores tambien cuenta canales', async () => {
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t);
+  await a.conectar('ws://prueba');
+
+  t.entra(`VU2^${codificarVu(new Array(24).fill(0.2))}`);
+
+  assert.equal(a.canales().length, 24);
+  await a.desconectar();
+});

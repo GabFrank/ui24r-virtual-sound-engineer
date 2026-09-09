@@ -150,7 +150,7 @@ function db(v: number): string {
                 <th scope="col" class="izq">Canal</th>
                 <th scope="col" class="medidor">Nivel</th>
                 <th scope="col" class="num">Actual</th>
-                <th scope="col" class="num">Pico</th>
+                <th scope="col" class="num">Pico ent.</th>
                 <th scope="col" class="num">Margen</th>
                 <th scope="col" class="num">Ganancia</th>
                 <th scope="col" class="num">Fader</th>
@@ -199,7 +199,7 @@ function db(v: number): string {
                 <app-level-meter [nivelDb]="f.nivelDb" [picoDb]="f.picoDb"
                                  [etiqueta]="'nivel de ' + f.nombre" />
                 <div class="fila2 num">
-                  <span>Pico {{ f.pico }}</span>
+                  <span>Pico ent. {{ f.pico }}</span>
                   <span [class.escaso]="f.margenEscaso">Margen {{ f.margen }}</span>
                   <span>Ganancia {{ f.ganancia }}</span>
                 </div>
@@ -366,7 +366,8 @@ export class TelemetryComponent {
   );
 
   readonly resumen = computed(
-    () => `${this.filas().length} canales · solo lectura · esta versión no escribe nada en la consola`,
+    () => `${this.filas().length} canales · niveles de entrada, antes del fader · solo lectura: `
+      + 'esta versión no escribe nada en la consola',
   );
 
   /** Se apaga solo el día que SPK-P0.2a mida las curvas. */

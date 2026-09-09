@@ -6,6 +6,36 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Los medidores mostraban decibeles que no eran los de la consola, y contaban
+  saturaciones que no existían.** La conversión usaba la ley del fader, sobre la
+  hipótesis —escrita como tal en el código— de que la consola dibuja sus
+  medidores con la misma regla que sus faders. Es falsa. Con la guitarra en el
+  canal 1 de una Ui24R real, el byte 225 daba «+4,6 dB», recortado a +10 en
+  pantalla y con mil saturaciones por minuto, mientras la consola mostraba −12.
+
+  La ley sale ahora del `mixer.html` de la propia consola, que dibuja la barra
+  proporcional a la posición y coloca las marcas de su escala en
+  `-dB · h / VU_RANGE`, con `VU_RANGE = 80`. Eso deja una sola recta posible:
+  `dB = 80 · posición − 80`, o sea 0,333 dB por escalón del byte. Comprobada
+  contra el aparato en dos puntos independientes: la guitarra, con el fader en
+  −6,9 dB, da −11,9 a la salida —los «−12» de la consola—; y la música por las
+  RCA da −46 dB, que es la barra que se ve en pantalla.
+
+  La saturación tampoco se deduce ya de un umbral propio: la consola enciende su
+  indicador cuando el medidor llega a la punta de la escala. Y el bit 7 del
+  último byte del canal, que invita a leerse como saturación, es el **indicador
+  de puerta de ruido**: vale 1 en todos los canales quietos.
+
+  Sigue sin ser dBFS verificado. Es lo que ve el operador en su pantalla, que es
+  lo que hace falta para hablarle en sus términos; la correspondencia con un
+  nivel digital real la mide SPK-P0.10b.
+
+- **La aplicación leía doce canales de una consola de veinticuatro.** El número
+  estaba fijo en el adaptador, así que las dos entradas RCA —los canales 21 y
+  22, que son con los que se prueba con música— no se veían. Ahora sale de lo
+  que informa la consola: la cabecera de cada trama `VU2` trae la cantidad de
+  entradas y el volcado manda un `i.N.name` por cada una.
+
 - **La aplicación mostraba, en una misma fila, el medidor de un canal junto al
   nombre y la ganancia del siguiente.** Las rutas del protocolo son de base
   cero —el canal 1 es `i.0.mix`, `hw.0.gain`, `i.0.name`— y estaba medido y

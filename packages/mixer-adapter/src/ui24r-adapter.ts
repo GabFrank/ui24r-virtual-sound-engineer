@@ -3,7 +3,9 @@ import type {
   ReadResult, WriteResult,
 } from './api.ts';
 import { ConfirmedStateStore, type EntradaEstado } from './confirmed-store.ts';
-import { codificarSetd, decodificar, decodificarVu } from './protocol.ts';
+import {
+  codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
+} from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
 import type { Transport } from './transport.ts';
 
@@ -86,6 +88,15 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly ahora: () => number;
 
   private readonly nombresCanal = new Map<number, string>();
+  /**
+   * Cuántos canales tiene la consola de enfrente.
+   *
+   * No se supone: la cabecera de cada trama `VU2` lo dice, y el volcado manda
+   * un `i.N.name` por cada entrada. Estaba fijo en doce, y una Ui24R tiene
+   * veinticuatro: las dos entradas RCA son los canales 21 y 22, así que con
+   * doce no se veía justamente la fuente que se usa para probar.
+   */
+  private canalesDetectados = 0;
   private readonly nivelesVu = new Map<number, number>();
   private readonly picosVu = new Map<number, number>();
   private readonly saturaciones = new Map<number, number>();
@@ -324,7 +335,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   }
 
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
-  canales(cantidad = 12): readonly EstadoCanal[] {
+  canales(cantidad = this.canalesDetectados || CANALES_HASTA_SABER): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
     for (let canal = 1; canal <= cantidad; canal++) {
       const n = indiceDeRuta(canal);
@@ -360,7 +371,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       // El nombre se guarda por canal, no por índice de ruta: `i.0.name` es el
       // canal 1. Se convierte acá, en el borde, para que el resto del
       // adaptador hable un solo idioma.
-      if (coincidencia) this.nombresCanal.set(canalDeIndice(Number(coincidencia[1])), m.texto);
+      if (coincidencia) {
+        const canal = canalDeIndice(Number(coincidencia[1]));
+        this.nombresCanal.set(canal, m.texto);
+        this.canalesDetectados = Math.max(this.canalesDetectados, canal);
+      }
       return;
     }
 
@@ -391,19 +406,28 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // no caida. Quien decide sobre la conexion es el analizador.
     this.ultimaTramaVuMs = this.ahora();
 
-    const niveles = decodificarVu(base64);
-    for (let i = 0; i < niveles.length; i++) {
+    const medidores = decodificarVuCanales(base64);
+    this.canalesDetectados = Math.max(this.canalesDetectados, medidores.length);
+    for (let i = 0; i < medidores.length; i++) {
       const canal = i + 1;
-      const db = niveles[i]!;
+      const medidor = medidores[i]!;
+      const db = dbDeMedidor(medidor.entrada);
       this.nivelesVu.set(canal, db);
 
       const picoPrevio = this.picosVu.get(canal) ?? -Infinity;
       this.picosVu.set(canal, Math.max(picoPrevio, db));
 
-      // Saturación por telemetría: el valor de referencia se calibra en
-      // SPK-P0.10b. Hasta entonces se usa -1 dB, y el número real lo fija
-      // ese spike.
-      if (db >= -1) {
+      // Saturación: la consola enciende su indicador cuando el medidor llega a
+      // la punta de la escala —`1 <= valor` en `setVU`—, que son 0 dB. Antes
+      // acá había un umbral de -1 dB elegido a mano y, con la conversión
+      // equivocada, un canal 12 dB por debajo del tope acumulaba mil
+      // saturaciones por minuto.
+      //
+      // Se mira `entrada`, que es el nivel que esta fila muestra. La consola
+      // vigila además `pre` para el clip del previo, en su página de ganancia;
+      // cuál de los dos debe mirar un asistente de ganancia lo decide
+      // SPK-P0.10b, que es el que mide qué significa cada uno en dBFS.
+      if (medidor.entrada >= MEDIDOR_SATURACION) {
         this.saturaciones.set(canal, (this.saturaciones.get(canal) ?? 0) + 1);
       }
     }
@@ -502,3 +526,12 @@ function indiceDeRuta(canal: number): number {
 function canalDeIndice(indice: number): number {
   return indice + 1;
 }
+
+/**
+ * Cuántos canales mostrar mientras la consola todavía no dijo cuántos tiene.
+ *
+ * Pasa solo entre que se abre el socket y llega la primera línea. Doce es lo
+ * que entra en una pantalla sin desplazar; en cuanto llega el volcado o una
+ * trama de medidores, manda el número real.
+ */
+const CANALES_HASTA_SABER = 12;
