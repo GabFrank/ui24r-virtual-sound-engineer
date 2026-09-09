@@ -111,9 +111,22 @@ export class MixerService {
    * se abre con el transporte simple. Es lo que sostiene el desarrollo sin
    * consola a mano.
    */
-  async conectar(direccion: string): Promise<void> {
+  /**
+   * @param automatico Si el intento lo hizo la aplicacion y no la persona.
+   *
+   * La distincion existe por un defecto que aparecio al capturar las pantallas:
+   * el reintento automatico dejaba `conectando` en verdadero casi todo el
+   * tiempo --intentos de hasta tres segundos, uno por segundo-- y el boton
+   * "Conectar" de Ajustes se pasaba deshabilitado. Quien hubiera escrito mal la
+   * direccion quedaba atrapado en el reintento sin poder corregirla, que es
+   * exactamente cuando mas falta hace poder tocarlo.
+   */
+  async conectar(direccion: string, automatico = false): Promise<void> {
     this.quiereConectado = true;
-    this.conectando.set(true);
+    // Un intento nuevo manda sobre el reintento en curso: si la persona
+    // escribio otra direccion, la vieja deja de tener sentido.
+    if (!automatico) this.detenerReintento();
+    if (!automatico) this.conectando.set(true);
     this.ultimoError.set(null);
     const url = direccion;
 
@@ -190,7 +203,7 @@ export class MixerService {
       this.reconectarSiCorresponde(url);
       throw e;
     } finally {
-      this.conectando.set(false);
+      if (!automatico) this.conectando.set(false);
     }
   }
 
@@ -235,8 +248,11 @@ export class MixerService {
     this.reintento = setInterval(() => {
       // Un intento por vez: el apretón de manos puede tardar más que el
       // intervalo, y dos en paralelo se pisan el adaptador.
-      if (this.conectando()) return;
-      void this.conectar(url).catch(() => { /* sigue sin haber consola */ });
+      if (this.reintentoEnCurso) return;
+      this.reintentoEnCurso = true;
+      void this.conectar(url, true)
+        .catch(() => { /* sigue sin haber consola */ })
+        .finally(() => { this.reintentoEnCurso = false; });
     }, REINTENTO_MS);
   }
 
@@ -268,6 +284,8 @@ export class MixerService {
    */
   private quiereConectado = false;
   private reintento: ReturnType<typeof setInterval> | null = null;
+  /** Un intento automatico por vez: el apreton puede tardar mas que el intervalo. */
+  private reintentoEnCurso = false;
 
   /** Si hay una reconexión en curso, para poder decirlo en pantalla. */
   readonly reconectando = signal(false);

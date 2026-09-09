@@ -312,7 +312,18 @@ export class AjustesComponent {
     return n === 0 ? 'Sin eventos' : `${n} evento${n === 1 ? '' : 's'}`;
   });
 
-  readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
+  /**
+   * Conectada de verdad, no «en camino».
+   *
+   * Decia `!== 'DISCONNECTED'`, y con eso RECONNECTING contaba como conectada.
+   * Mientras eso solo pasaba durante un intento manual --un instante-- no se
+   * notaba. Desde que la aplicacion reintenta sola cada segundo, el estado es
+   * RECONNECTING casi siempre que no hay consola: la tarjeta ofrecia
+   * «Desconectar» de forma permanente y **no habia manera de conectar a otra
+   * direccion**. Lo encontro el guion de capturas, que es exactamente para lo
+   * que sirve.
+   */
+  readonly conectado = computed(() => this.conexion.estado() === 'CONNECTED');
 
   readonly errorHost = computed(() => validarDireccionDeConsola(this.host()));
 
