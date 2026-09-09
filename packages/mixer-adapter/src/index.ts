@@ -12,4 +12,5 @@ export * from './fuente-de-canal.ts';
 export * from './pares-estereo.ts';
 export * from './espectro.ts';
 export * from './vu-buses.ts';
+export * from './confirmacion-por-medidor.ts';
 export * from './retencion-pico.ts';
