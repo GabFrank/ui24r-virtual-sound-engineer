@@ -120,7 +120,10 @@ test('la ganancia tiene 48 escalones, y no son parejos', () => {
   assert.equal(GANANCIA_ESCALONES[GANANCIA_ESCALONES.length - 1],
     GANANCIA_DB_MAXIMA + CORRECCION_PREVIO_DB);
   // De 2 en 2 hasta +24, de 1 en 1 desde ahi. El salto de 24 a 26 que la tabla
-  // de la consola declara vale en realidad 0,85: es la discontinuidad medida.
+  // de la consola declara como de 2 dB vale en realidad mucho menos. Este 0,85
+  // es lo que da la correccion de 1,15; lo MEDIDO contra el aparato fue 0,71, y
+  // la diferencia cae dentro de las dos decimas de incertidumbre que declara la
+  // evidencia. O sea que el numero es derivado, no medido.
   for (let i = 1; i < GANANCIA_ESCALONES.length; i++) {
     const salto = redondear(GANANCIA_ESCALONES[i]! - GANANCIA_ESCALONES[i - 1]!, 2);
     const anterior = GANANCIA_ESCALONES[i - 1]!;

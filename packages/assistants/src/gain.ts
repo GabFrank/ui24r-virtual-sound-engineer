@@ -237,13 +237,16 @@ export const DELTA_MAXIMO_DB = 3;
  *
  * ## Qué le cuesta confianza a una propuesta
  *
- * Solo lo que está **inferido y no medido**. Que el compresor no toca el punto
- * de medición está comprobado contra la consola, así que un canal comprimiendo
- * no baja de confianza: la medición es tan buena como cualquier otra. Que la
- * **puerta** y el **de-esser** tampoco lo tocan es una inferencia razonable
- * —viven en el mismo bloque— que nadie midió todavía. Mientras siga siendo una
- * inferencia, un canal con puerta o de-esser activos no alcanza la confianza
- * más alta, que es la que hace que el usuario aplique sin comprobar.
+ * Solo lo que está **inferido y no medido**. Que el compresor, el ecualizador y
+ * la **puerta** no tocan el punto de medición está comprobado contra la
+ * consola, así que un canal comprimiendo o con la puerta trabajando no baja de
+ * confianza: la medición es tan buena como cualquier otra.
+ *
+ * Queda un solo bloque sin medir, el **de-esser**: no informa cuánto atenúa y
+ * no se probó con sibilancia, así que sigue siendo una inferencia que viva en
+ * el mismo lugar que los otros tres. Mientras siga inferido, un canal con
+ * de-esser activo no alcanza la confianza más alta, que es la que hace que el
+ * usuario aplique sin comprobar.
  */
 export function proponerGanancia(
   analisis: AnalisisDeGanancia,

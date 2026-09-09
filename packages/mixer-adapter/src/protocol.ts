@@ -328,11 +328,15 @@ export interface MedidorCanal {
    * tira y sirve para hablar el mismo idioma que el operador, pero llega con el
    * proceso encima.
    *
-   * **Lo que está medido y lo que no.** Que el compresor no la toca está
-   * medido. Que la **puerta** tampoco está *inferido*: las dos viven en el mismo
-   * bloque dinámico y esto debería ser anterior a las dos, pero no se comprobó
-   * con la puerta cerrándose. Mientras siga inferido, el asistente no le da a
-   * un canal con puerta activa la confianza más alta.
+   * **Lo que está medido y lo que no.** Que el compresor, el **ecualizador** y
+   * la **puerta** no la tocan está medido contra el aparato el 2026-09-09: con
+   * el umbral de la puerta por encima de la señal, `entrada` se fue a −∞ y esto
+   * quedó clavado en −48,66 dB.
+   *
+   * Sin medir queda el **de-esser**, que es un cuarto bloque y no un detalle del
+   * dinámico: no reporta cuánto atenúa y no se probó con sibilancia. Mientras
+   * siga inferido, el asistente no le da a un canal con de-esser activo la
+   * confianza más alta.
    */
   readonly pre: number;
   /**

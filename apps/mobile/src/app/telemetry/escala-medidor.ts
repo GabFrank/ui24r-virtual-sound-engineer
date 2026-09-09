@@ -9,9 +9,14 @@ import { MEDIDOR_RANGO_DB, MEDIDOR_SATURACION, dbDeMedidor } from '@vse/mixer-ad
  * **De dónde sale.** La Ui24R dibuja la barra de su medidor con `c = h * value`
  * —altura proporcional a la posición normalizada— y coloca las marcas de su
  * escala linealmente en decibeles. La barra es entonces lineal en decibeles, y
- * el recorrido exacto está **medido con una fuente conocida**, no deducido del
- * código: ver `MEDIDOR_RANGO_DB` en el adaptador, que es de donde sale el piso
- * de esta escala.
+ * el recorrido sale de `VU_RANGE` en el código de la consola, corroborado
+ * moviendo el fader —que es ganancia digital interna, sin cadena analógica en
+ * el medio—: ver `MEDIDOR_RANGO_DB` en el adaptador, que es de donde sale el
+ * piso de esta escala.
+ *
+ * **Y no al revés, que es el error que ya se cometió una vez.** Medirlo con una
+ * fuente conocida por la entrada dio 84,5 dB y hubo que revertirlo: una fuente
+ * externa mide la cadena entera, no el medidor.
  *
  * Antes esta escala era propia: piso en −60 dB y `pow(norm, 0.65)`, con un
  * comentario que decía expandir la zona de −20 a 0 «a más de la mitad del

@@ -150,7 +150,7 @@ Bloque del canal `g`, en el desplazamiento `8 + 6·g`:
 
 | Desplazamiento | Contenido |
 |---|---|
-| `+0` | nivel previo a la ganancia del previo |
+| `+0` | nivel **después** del previo y **antes** del procesamiento del canal — compresor, ecualizador y puerta comprobados; el de-esser no se midió. Ver §4.3 |
 | `+1` | nivel de entrada |
 | `+2` | nivel de salida, después del fader |
 | `+3` | entrada del dinámico (solo lo llena el canal seleccionado) |
@@ -248,7 +248,7 @@ Consecuencia para cualquiera que mida niveles: **`entrada` viene procesado**. Si
 
 Con eso, `pre` queda como el punto más limpio que la consola ofrece: **después del previo y antes de todo el procesamiento del canal**. Es exactamente lo que necesita un asistente de ganancia, que tiene que medir el margen del previo sin que lo coloreen decisiones de timbre ni de dinámica.
 
-**La puerta tampoco.** Medido el 2026-09-09 subiendo su umbral por encima de la señal: `entrada` cayó a −∞ —la puerta cierra con su atenuación máxima— y `pre` se quedó en −48,66 sin moverse. Con esto los tres bloques del canal están comprobados y ninguno toca el punto `+0`.
+**La puerta tampoco.** Medido el 2026-09-09 subiendo su umbral por encima de la señal: `entrada` cayó a −∞ —la puerta cierra con su atenuación máxima— y `pre` se quedó en −48,66 sin moverse. Con esto son tres los bloques comprobados —compresor, ecualizador y puerta— y ninguno toca el punto `+0`. **El cuarto, el de-esser, sigue sin medir**: no informa cuánto atenúa y no se probó con sibilancia, así que «el bloque dinámico está comprobado» sería decir de más.
 
 Dos trampas de escala que costaron una corrida cada una, y que conviene tener escritas: la ruta del umbral es `gate.thresh`, no `gate.threshold`; y `VtoGATE_DEPTH(a) = 60a − 60`, o sea que **profundidad 0 es atenuación máxima y 1 es ninguna**. Es la tercera escala invertida de esta consola, después de `VtoRATIO(a) = 1/a`.
 

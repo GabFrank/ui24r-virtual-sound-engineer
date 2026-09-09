@@ -404,7 +404,7 @@ test('con la puerta activa no se culpa al músico por la variación de la puerta
   assert.ok(!conPuerta.avisos.some((x) => /más de lo esperado/.test(x)));
 });
 
-test('el de-esser cuesta confianza por la misma razón que la puerta', () => {
+test('el de-esser cuesta confianza porque es el unico bloque sin medir', () => {
   const a = analizarVentana(ventanaDeVoz({ picoDb: -25 }));
   const p = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 34, {
     repetidoEnDosCapturas: true, snrDb: 40, calibracionValida: true,

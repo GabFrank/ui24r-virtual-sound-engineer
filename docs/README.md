@@ -39,5 +39,5 @@
 | [autonomy-matrix.md](autonomy-matrix.md) | Propiedad de parámetros y nivel de autonomía por versión |
 | [logging.md](logging.md) | Formato del registro estructurado |
 | [domain-model.md](domain-model.md) | Entidades y relaciones. Se genera desde los tipos |
-| [ack-policy.md](ack-policy.md) | Vacío hasta SPK-ACK-POLICY |
-| [protocol-spec.md](protocol-spec.md) | Vacío hasta SPK-P0.2a |
+| [ack-policy.md](ack-policy.md) | Cómo se da por aplicada una escritura. El mecanismo está elegido y medido: segunda conexión testigo, ADR-024 |
+| [protocol-spec.md](protocol-spec.md) | El protocolo de la Ui24R medido contra el aparato: verbos, tramas, medidores, curvas |

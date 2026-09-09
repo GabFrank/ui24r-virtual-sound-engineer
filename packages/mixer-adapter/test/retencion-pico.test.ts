@@ -39,7 +39,7 @@ test('dentro de la retencion el pico no se mueve', () => {
   assert.equal(enseguida.desdeMs, 0, 'y no se reinicia la cuenta de la retencion');
 });
 
-test('la caida sale de las constantes de la consola', () => {
+test('la caida sale de las constantes de la consola y de nuestros 60 cuadros por segundo', () => {
   // GLOBAL_VU_FALL_SPEED = 0.01 aplicada como la mitad al pico, a 60 cuadros
   // por segundo, sobre un recorrido de 80 dB.
   assert.ok(Math.abs(CAIDA_PICO_DB_POR_S - 24) < 0.001, `dio ${CAIDA_PICO_DB_POR_S}`);
