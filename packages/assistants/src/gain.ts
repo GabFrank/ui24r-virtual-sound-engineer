@@ -76,11 +76,30 @@ export interface AnalisisDeGanancia {
 /**
  * Umbral por encima del cual una muestra cuenta como riesgo de saturación.
  *
- * Provisional. El valor real se calibra en SPK-P0.10b enviando un tono de
- * −1 dBFS y leyendo qué marca el medidor: no está confirmado que la lectura
- * de cero del medidor corresponda al fondo de escala digital.
+ * **Cuelga del techo medido del medidor, no es un número suelto.** El techo
+ * está medido: el byte se clava en 239 y la lectura deja de subir, y en la
+ * escala de la consola ese tope es 0 dB. Lo que se elige acá es el **margen**
+ * que se le deja antes de avisar, y eso sí es una decisión nuestra.
+ *
+ * El techo se escribe acá en vez de importarse del adaptador porque los
+ * asistentes no pueden hablar con la consola —lo comprueba
+ * `validate-limites`—. Que el tope de la escala sea 0 dB no es un detalle del
+ * transporte sino de la escala misma, así que no se pierde nada.
+ *
+ * Lo que sigue sin estar confirmado —y por eso el margen no es más fino— es
+ * que la lectura de cero del medidor corresponda al fondo de escala digital.
+ * Esa correspondencia la mide SPK-P0.10b con un tono de −1 dBFS por un bucle
+ * físico. Mientras tanto el aviso se da antes de llegar al techo, que es el
+ * lado seguro: avisar de más molesta, avisar de menos deja pasar un recorte.
+ *
+ * El margen es de 1 dB **para que el umbral siga siendo el mismo −1 dB de
+ * antes**. Derivarlo de una medición era el punto; cambiar de paso cuándo
+ * avisa la aplicación, no. Si algún día se afina, que sea una decisión
+ * deliberada y no el efecto colateral de una limpieza.
  */
-export const UMBRAL_RIESGO_DB = -1;
+const TECHO_DEL_MEDIDOR_DB = 0;
+const MARGEN_ANTES_DEL_TECHO_DB = 1;
+export const UMBRAL_RIESGO_DB = TECHO_DEL_MEDIDOR_DB - MARGEN_ANTES_DEL_TECHO_DB;
 
 /** Por debajo de esto se considera que la fuente no está sonando. */
 export const UMBRAL_SILENCIO_DB = -50;

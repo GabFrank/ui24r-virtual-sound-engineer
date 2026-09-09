@@ -363,7 +363,7 @@ export interface MedidorCanal {
    */
   readonly reduccionDb: number;
   /**
-   * Puerta de ruido abierta, según la consola.
+   * El indicador de puerta, crudo y sin interpretar.
    *
    * Es el bit 7 del último byte del canal. `parseVUdata` lo saca con
    * `p = 0 != (byte & 128)` y termina en `this.gi.setValue(...)`, que es un
@@ -371,8 +371,15 @@ export interface MedidorCanal {
    * porque invita al error: el byte vale 247 en todos los canales quietos, con
    * el bit 7 puesto, y leerlo como saturación da todos los canales saturando
    * todo el tiempo.
+   *
+   * **Qué significa que valga 1 no está medido, y por eso este campo no se
+   * llama `puertaAbierta`.** Ese nombre afirmaba una polaridad que nadie
+   * comprobó, y la evidencia disponible apunta más bien al revés: el bit está
+   * puesto en todos los canales quietos, y un canal quieto tiene la puerta
+   * *cerrada*. Se resuelve con una medición —puerta armada, señal entrando y
+   * saliendo— y hasta entonces esto viaja crudo y no lo consume nadie.
    */
-  readonly puertaAbierta: boolean;
+  readonly indicadorDePuerta: boolean;
 }
 
 /**
@@ -404,7 +411,7 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
       dinamicoSalida: (bytes[o + 4] ?? 0) * VU_ESCALA,
       byteReduccion: bytes[o + 5] ?? 0,
       reduccionDb: dbDeReduccion(bytes[o + 5] ?? 0),
-      puertaAbierta: ((bytes[o + 5] ?? 0) & 128) !== 0,
+      indicadorDePuerta: ((bytes[o + 5] ?? 0) & 128) !== 0,
     });
   }
   return canales;

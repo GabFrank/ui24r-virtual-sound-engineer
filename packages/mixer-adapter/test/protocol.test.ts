@@ -162,8 +162,10 @@ test('VU2: el bit 7 del ultimo byte es la puerta, no la saturacion', () => {
   const conPuerta = decodificarVuCanales(bytesABase64([...cabecera, 100, 100, 100, 0, 0, 247]));
   const sinPuerta = decodificarVuCanales(bytesABase64([...cabecera, 100, 100, 100, 0, 0, 119]));
 
-  assert.equal(conPuerta[0]?.puertaAbierta, true);
-  assert.equal(sinPuerta[0]?.puertaAbierta, false);
+  // Se comprueba que el bit se lee, no que signifique "abierta": la polaridad
+  // no esta medida y el nombre del campo ya no la afirma.
+  assert.equal(conPuerta[0]?.indicadorDePuerta, true);
+  assert.equal(sinPuerta[0]?.indicadorDePuerta, false);
   assert.ok(
     (conPuerta[0]?.entrada ?? 1) < MEDIDOR_SATURACION,
     'y con el bit puesto el canal ni siquiera esta cerca de saturar',

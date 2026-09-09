@@ -26,6 +26,28 @@ export interface RawMapEntry {
   fromRaw(raw: number): number;
 }
 
+/**
+ * Conversión leída del `mixer.html` de la consola.
+ *
+ * No es lo mismo que `PROBADO` —nadie la comprobó contra el aparato midiendo—
+ * pero tampoco es una suposición nuestra: es la función que usa el cliente
+ * oficial. Queda en `INFERIDO`, que es lo que `aRaw()` sigue rechazando para
+ * escribir, y con eso la tabla deja de mentir en las dos direcciones.
+ */
+function deLaConsola(
+  path: string,
+  unidad: string,
+  fromRaw: (raw: number) => number,
+  toRaw: (fisico: number) => number,
+): RawMapEntry {
+  return {
+    path, unidad, rawMin: 0, rawMax: 1,
+    fisicoMin: fromRaw(0), fisicoMax: fromRaw(1),
+    estado: 'INFERIDO', spike: 'SPK-P0.2b',
+    toRaw, fromRaw,
+  };
+}
+
 /** Conversión lineal. Sirve de punto de partida hasta que un spike mida la curva real. */
 function lineal(
   path: string,
@@ -56,9 +78,22 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
   lineal('i.N.eq.b1.freq', 'Hz', 20, 20000, 'DESCONOCIDO', 'SPK-P0.2b'),
   lineal('i.N.eq.b1.q', 'Q', 0.3, 10, 'DESCONOCIDO', 'SPK-P0.2b'),
-  lineal('i.N.dyn.threshold', 'dB', -60, 0, 'DESCONOCIDO', 'SPK-P0.2b'),
-  lineal('i.N.dyn.ratio', ':1', 1, 20, 'DESCONOCIDO', 'SPK-P0.2b'),
-  lineal('i.N.gate.thresh', 'dB', -80, 0, 'DESCONOCIDO', 'SPK-P0.2b'),
+  // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
+  // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
+  // entradas salen de mediciones. Las funciones reales estan leidas del
+  // `mixer.html` de la consola y escritas en `protocol-spec.md` §4.4.
+  //
+  // La del ratio es la que mas dano hace: el crudo 1 es **1:1, o sea sin
+  // comprimir**, no el maximo. Suponerlo al reves costo una corrida entera de
+  // esta sesion, hecha con el compresor puesto en "no comprimir" y concluyendo
+  // que la reduccion no se veia.
+  deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
+  deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
+  // `i.N.dyn.ratio` **no esta en la tabla, a proposito.** Su funcion se conoce
+  // --`VtoRATIO(a) = 1/a`-- pero el crudo minimo no: en 0 la razon es infinita,
+  // asi que no hay rango fisico que declarar sin inventarlo, y una entrada con
+  // el rango inventado es justamente lo que se acaba de sacar de aca. Entra
+  // cuando SPK-P0.2b mida hasta donde llega el crudo contra el aparato.
 ];
 
 const PORPATH = new Map(RAW_MAP.map((e) => [e.path, e]));

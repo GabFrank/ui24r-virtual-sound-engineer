@@ -8,6 +8,7 @@ import {
   BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent, PageHeaderComponent,
 } from '../ui';
 import { LevelMeterComponent } from './level-meter.component';
+import { PISO_DB } from './escala-medidor';
 
 /**
  * Por debajo de este pico el margen se marca como escaso.
@@ -123,9 +124,13 @@ function procesosDe(c: EstadoCanal): string {
 }
 
 function db(v: number): string {
-  // Por debajo de −80 dB el medidor de la consola ya no distingue señal de
+  // En el piso de la escala el medidor de la consola ya no distingue señal de
   // silencio, así que se dice «−∞» en vez de un número que no significa nada.
-  if (!Number.isFinite(v) || v <= -80) return '−∞';
+  //
+  // El piso se importa, no se copia: era el único −80 escrito a mano que
+  // quedaba, y el recorrido del medidor ya se movió una vez. Si vuelve a
+  // moverse, esta función lo sigue sola en lugar de quedarse atrás en silencio.
+  if (!Number.isFinite(v) || v <= PISO_DB) return '−∞';
   return v.toFixed(1);
 }
 
