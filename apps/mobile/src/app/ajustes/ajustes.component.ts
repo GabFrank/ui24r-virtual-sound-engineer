@@ -94,13 +94,25 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
               }
             </div>
 
-            @if (error(); as e) {
-              <p class="error">{{ e }}</p>
+            @if (reconectando()) {
               <p class="nota">
-                Comprobá que la consola esté encendida y que la tablet esté en
-                su red. Si la Ui24R levanta su propia red, hay que conectarse a
-                ella desde los ajustes de wifi del sistema.
+                Se cortó la conexión y la aplicación está reintentando sola,
+                una vez por segundo. Vuelve apenas la consola conteste; no hace
+                falta tocar nada.
               </p>
+            } @else {
+              <!-- El «as» solo se admite en el «@if» primario, nunca en un
+                   «@else if»: ahí el compilador de plantillas falla con
+                   NG5002 y la compilación entera se cae. Por eso el error va
+                   en un «@if» anidado y no en la rama del «@else if». -->
+              @if (error(); as e) {
+                <p class="error">{{ e }}</p>
+                <p class="nota">
+                  Comprobá que la consola esté encendida y que la tablet esté en
+                  su red. Si la Ui24R levanta su propia red, hay que conectarse a
+                  ella desde los ajustes de wifi del sistema.
+                </p>
+              }
             }
           </div>
         </ui-card>
@@ -266,6 +278,16 @@ export class AjustesComponent {
   readonly host = this.prefs.host;
   readonly conectando = this.mixer.conectando;
   readonly error = this.mixer.ultimoError;
+  /**
+   * Mientras reintenta, el error de cada intento no se muestra.
+   *
+   * Cada intento fallido deja un mensaje técnico —«TimeoutError» y parecidos—
+   * y verlos aparecer y desaparecer en bucle durante un corte de red asusta sin
+   * informar: quien lo mira no tiene nada que hacer al respecto, la aplicación
+   * ya se está ocupando. El error vuelve a mostrarse cuando no hay reintento en
+   * curso, que es cuando sí dice algo.
+   */
+  readonly reconectando = this.mixer.reconectando;
   readonly exportando = signal(false);
 
   readonly conteos = signal({ bandas: 0, locales: 0, pas: 0, sesiones: 0 });

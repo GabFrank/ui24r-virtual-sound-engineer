@@ -28,6 +28,16 @@ export interface AvisoCambioExterno {
  */
 const ESPERA_VOLCADO_MS = 5000;
 
+/**
+ * Cada cuánto se reintenta conectar mientras la consola no está.
+ *
+ * Un segundo: lo bastante seguido para no inflar la medición del criterio 1 de
+ * SPK-P0.1 —su umbral son diez segundos— y lo bastante espaciado para no
+ * castigar la batería con intentos que van a fallar igual. Es el mismo número
+ * que usaba la prueba de diagnóstico, que era donde vivía este reintento.
+ */
+const REINTENTO_MS = 1000;
+
 @Injectable({ providedIn: 'root' })
 export class MixerService {
   private readonly log = inject(Logger);
@@ -102,9 +112,19 @@ export class MixerService {
    * consola a mano.
    */
   async conectar(direccion: string): Promise<void> {
+    this.quiereConectado = true;
     this.conectando.set(true);
     this.ultimoError.set(null);
     const url = direccion;
+
+    // El adaptador anterior se cierra antes de crear otro. Cada uno deja un
+    // temporizador vigilando la cadencia del analizador, y reconectar sin
+    // cerrarlo dejaba uno vivo por intento: en un show con la red inestable,
+    // decenas de temporizadores mirando un socket muerto.
+    const anterior = this.adapter;
+    this.adapter = null;
+    if (anterior !== null) await anterior.desconectar().catch(() => { /* ya estaba caido */ });
+
     try {
       const transporte = esSimulador(direccion)
         ? new WebSocketTransport()
@@ -113,8 +133,13 @@ export class MixerService {
       this.adapter = adapter;
 
       adapter.alCambiarConexion((e: ConnectionState) => {
+        // Un adaptador que ya fue reemplazado sigue emitiendo mientras se
+        // cierra. Sin esta guarda, su `DISCONNECTED` de despedida apagaba la
+        // conexión nueva que acababa de reemplazarlo.
+        if (this.adapter !== adapter) return;
         this.sincronizarConexion(e);
         this.log.info('mixer', 'conexion_cambio', { estado: e });
+        if (e === 'DISCONNECTED') this.reconectarSiCorresponde();
         for (const cb of this.oyentesConexion) cb(e);
       });
 
@@ -150,9 +175,19 @@ export class MixerService {
       await adapter.conectar(url);
       this.direccion.set(url);
       this.canales.set(adapter.canales());
+      this.detenerReintento();
     } catch (e) {
       this.ultimoError.set(String(e));
       this.log.error('mixer', 'conexion_fallida', { url, error: String(e) });
+      // El adaptador emitio RECONNECTING al empezar y, si el intento fallo,
+      // nunca llega a DISCONNECTED: se queda en un estado que promete algo que
+      // no esta pasando. Medido en el telefono el 2026-09-08 -- la aplicacion
+      // decia RECONECTANDO con la red ya restablecida y nadie reintentando,
+      // porque el reintento solo se programaba al recibir DISCONNECTED, que en
+      // este camino no llega. Hay que decir la verdad y programarlo aca.
+      this.adapter = null;
+      this.sincronizarConexion('DISCONNECTED');
+      this.reconectarSiCorresponde(url);
       throw e;
     } finally {
       this.conectando.set(false);
@@ -160,9 +195,58 @@ export class MixerService {
   }
 
   async desconectar(): Promise<void> {
+    // Primero se apaga la intención y el reintento. Al revés, el
+    // `DISCONNECTED` que produce el cierre dispararía una reconexión contra la
+    // voluntad de quien acaba de tocar Desconectar.
+    this.quiereConectado = false;
+    this.detenerReintento();
     await this.adapter?.desconectar();
     this.adapter = null;
     this.canales.set([]);
+  }
+
+  /**
+   * Vuelve a intentar mientras el usuario quiera estar conectado.
+   *
+   * **Por qué existe.** El adaptador no reconecta: al cerrarse el socket queda
+   * en DISCONNECTED y ahí se queda. Hasta hoy el único reintento del sistema
+   * vivía dentro de la prueba de diagnóstico, así que la aplicación de un show
+   * se quedaba mirando una consola que había vuelto. Un músico que está
+   * tocando no va a ir a Ajustes a tocar «Conectar».
+   *
+   * **Lo que este reintento no decide.** Cada cuánto reintentar y cuándo
+   * rendirse son números que fija el criterio 1 de SPK-P0.1, que todavía no se
+   * midió: pide veinte ciclos por cada forma de corte. Mientras tanto se
+   * reintenta cada segundo y no se rinde nunca, que es lo que hacía la prueba
+   * de diagnóstico y lo único que se puede sostener sin medición: rendirse a
+   * los N intentos sería elegir un N inventado, y en un show el costo de
+   * rendirse es quedarse ciego.
+   */
+  private reconectarSiCorresponde(direccion?: string): void {
+    if (!this.quiereConectado || this.reintento !== null) return;
+    // La direccion del argumento es la del intento que acaba de fallar: si es
+    // el primero, `direccion()` todavia es null porque solo se fija al
+    // conectar bien, y sin esto la primera caida no reintentaba nunca.
+    const url = direccion ?? this.direccion();
+    if (url === null) return;
+
+    this.reconectando.set(true);
+    this.log.warn('mixer', 'reconexion_iniciada', { url, intervaloMs: REINTENTO_MS });
+    this.reintento = setInterval(() => {
+      // Un intento por vez: el apretón de manos puede tardar más que el
+      // intervalo, y dos en paralelo se pisan el adaptador.
+      if (this.conectando()) return;
+      void this.conectar(url).catch(() => { /* sigue sin haber consola */ });
+    }, REINTENTO_MS);
+  }
+
+  private detenerReintento(): void {
+    if (this.reintento !== null) {
+      clearInterval(this.reintento);
+      this.reintento = null;
+      this.log.info('mixer', 'reconexion_lograda', {});
+    }
+    this.reconectando.set(false);
   }
 
   reiniciarPicos(): void {
@@ -174,6 +258,19 @@ export class MixerService {
   }
 
   readonly releyendo = signal(false);
+
+  /**
+   * Si el usuario quiere estar conectado.
+   *
+   * No es lo mismo que estarlo. Distingue «se cayó la red» de «tocó
+   * Desconectar», que es lo único que separa una reconexión necesaria de una
+   * que pelea contra la voluntad de quien la apagó.
+   */
+  private quiereConectado = false;
+  private reintento: ReturnType<typeof setInterval> | null = null;
+
+  /** Si hay una reconexión en curso, para poder decirlo en pantalla. */
+  readonly reconectando = signal(false);
 
   /**
    * Vuelve a leer el estado entero de la consola.

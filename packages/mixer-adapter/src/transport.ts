@@ -59,7 +59,9 @@ export async function resolverDireccionUi24r(
   buscar: typeof fetch = fetch,
 ): Promise<string> {
   const limpia = maquina.trim().replace(/^wss?:\/\//, '').replace(/\/+$/, '');
-  const respuesta = await buscar(`http://${limpia}/socket.io/1/`);
+  const respuesta = await buscar(`http://${limpia}/socket.io/1/`, {
+    signal: AbortSignal.timeout(APRETON_TIMEOUT_MS),
+  });
   if (!respuesta.ok) {
     throw new Error(
       `la consola en ${limpia} respondio ${respuesta.status} al apreton de manos`,
@@ -72,6 +74,33 @@ export async function resolverDireccionUi24r(
   }
   return `ws://${limpia}/socket.io/1/websocket/${sesion}`;
 }
+
+/**
+ * Cuánto se espera el apretón de manos antes de darlo por perdido.
+ *
+ * **Sin esto la reconexión no funciona**, y el síntoma engaña: medido el
+ * 2026-09-08 contra el teléfono con la red cortada, el `fetch` del apretón se
+ * quedaba colgado sin resolver ni fallar, así que el intento de conexión nunca
+ * terminaba, el reintento siguiente se saltaba por haber uno en curso, y la
+ * aplicación se quedaba en RECONECTANDO para siempre aunque la red ya hubiera
+ * vuelto. No era el reintento el que fallaba: era el primer intento que nunca
+ * moría.
+ *
+ * Tres segundos: la consola contesta en menos de dos milisegundos en la misma
+ * red —medido—, así que tres segundos son mil veces su tiempo de respuesta y
+ * siguen siendo menos de la mitad del umbral de diez segundos que fija el
+ * criterio 1 de SPK-P0.1.
+ */
+export const APRETON_TIMEOUT_MS = 3000;
+
+/**
+ * Cuánto se espera a que el socket abra.
+ *
+ * Mismo problema que el apretón: un `WebSocket` contra una máquina que no
+ * contesta no dispara `onerror` en un plazo acotado. Sin este corte, un
+ * intento fallido dejaba el reintento clavado.
+ */
+export const SOCKET_TIMEOUT_MS = 3000;
 
 /** Transporte sobre WebSocket, que es lo que habla la consola. */
 export class WebSocketTransport implements Transport {
@@ -89,12 +118,22 @@ export class WebSocketTransport implements Transport {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
+      // Un intento que no termina es peor que uno que falla: bloquea al
+      // siguiente. Ver `SOCKET_TIMEOUT_MS`.
+      const corte = setTimeout(() => {
+        ws.close();
+        reject(new Error(`la consola en ${url} no abrio el socket en ${SOCKET_TIMEOUT_MS} ms`));
+      }, SOCKET_TIMEOUT_MS);
       ws.onopen = () => {
+        clearTimeout(corte);
         this.arrancarLatido();
         for (const cb of this.abrir) cb();
         resolve();
       };
-      ws.onerror = () => reject(new Error(`no se pudo conectar a ${url}`));
+      ws.onerror = () => {
+        clearTimeout(corte);
+        reject(new Error(`no se pudo conectar a ${url}`));
+      };
       ws.onclose = (e) => {
         this.detenerLatido();
         for (const cb of this.cerrar) cb(e.reason || 'cerrado');
