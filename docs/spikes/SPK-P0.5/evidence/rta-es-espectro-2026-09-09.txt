@@ -89,3 +89,22 @@ vaciarla. Queda dicho para que nadie lo lea como un cambio del aparato.
    "que esta saliendo" que hay sin microfono de medicion.
 
 QUEDA SIN MEDIR: el tiempo de integracion de cada trama.
+
+=== TIEMPO DE INTEGRACION (la ultima pregunta abierta) ===
+Cinco rafagas de 2 s a 1 kHz, midiendo la banda 67.
+
+  subida al 90% de la meseta: 0 a 34 ms -> DENTRO DE UNA SOLA TRAMA
+  caida de 20 dB: mediana 300 ms (minimo 267, maximo 304)
+  cadencia: 30,2 tramas por segundo, estable en las cinco
+
+Ataque instantaneo y caida lenta: ~67 dB por segundo. Es una balistica de
+retencion con decaimiento, no un promedio deslizante.
+
+LO QUE ESTO FIJA PARA LA DETECCION DE REALIMENTACION
+El decaimiento es la memoria del analizador. Un golpe de caja va a quedar
+visible unos 300 ms por cada 20 dB, sin que haya nada sonando. Entonces:
+- Nada por debajo de ~0,5 s puede distinguirse de la propia cola del medidor.
+- Una banda que sigue arriba pasado ese tiempo ya no es memoria: es senal.
+- Un acople se distingue de un golpe justamente ahi: el golpe cae con la
+  pendiente del analizador, ~67 dB/s, y el acople no cae o crece.
+La regla candidata, entonces, no es "crecio" sino "no cayo como deberia".
