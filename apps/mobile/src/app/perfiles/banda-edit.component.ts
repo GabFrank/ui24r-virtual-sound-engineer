@@ -5,9 +5,9 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  crearIntegrante, editarIntegrante, instrumentosDesdeTexto, reunirErrores, textoDeInstrumentos,
+  crearIntegrante, editarIntegrante, reunirErrores, textoDeInstrumentos,
   validarNombre, validarUnico,
-  type BandMember, type BandMemberId, type BandProfile, type BandProfileId,
+  type BandMember, type BandMemberId, type BandProfile, type BandProfileId, type Instrumento,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import {
@@ -15,12 +15,23 @@ import {
   EmptyStateComponent, FalloComponent, FieldComponent, Lectura, PageHeaderComponent,
   PuedeSalir, SalidaSinGuardar, SalirSinGuardarComponent, ToastService, intentarGuardar,
 } from '../ui';
+import { ElegirInstrumentosComponent } from './elegir-instrumentos.component';
 
 /** Un integrante tal como lo muestra la lista: con los instrumentos ya unidos. */
 interface FilaDeIntegrante {
   readonly id: BandMemberId;
   readonly nombre: string;
-  readonly instrumentos: string;
+  /** Cómo se leen en la lista, en una línea. */
+  readonly texto: string;
+  /**
+   * Los instrumentos tal como están guardados.
+   *
+   * La fila los lleva además del texto porque es lo que el diálogo necesita al
+   * corregir: volver a interpretar la línea que se muestra sería releer nuestra
+   * propia salida, y un instrumento escrito a mano perdería su texto en el
+   * viaje de ida y vuelta.
+   */
+  readonly instrumentos: readonly Instrumento[];
 }
 
 /**
@@ -35,9 +46,9 @@ interface FilaDeIntegrante {
   selector: 'app-banda-edit',
   standalone: true,
   imports: [
-    ButtonComponent, CardComponent, CargandoComponent, DialogComponent, EmptyStateComponent,
-    FalloComponent, FieldComponent, FormsModule, PageHeaderComponent,
-    SalirSinGuardarComponent,
+    ButtonComponent, CardComponent, CargandoComponent, DialogComponent,
+    ElegirInstrumentosComponent, EmptyStateComponent, FalloComponent, FieldComponent, FormsModule,
+    PageHeaderComponent, SalirSinGuardarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -79,8 +90,8 @@ interface FilaDeIntegrante {
                   <li>
                     <div class="quien">
                       <span class="nombre">{{ m.nombre }}</span>
-                      @if (m.instrumentos) {
-                        <span class="instrumentos">{{ m.instrumentos }}</span>
+                      @if (m.texto) {
+                        <span class="instrumentos">{{ m.texto }}</span>
                       }
                     </div>
                     <div class="fila-acciones">
@@ -121,10 +132,8 @@ interface FilaDeIntegrante {
           <input id="int-nombre" type="text" [(ngModel)]="nombreDelIntegrante"
                  (blur)="tocadosDialogo.marcar('nombre')" />
         </ui-field>
-        <ui-field rotulo="Instrumentos" idControl="int-instr" [opcional]="true"
-                  ayuda="Separados por comas: voz, guitarra acústica.">
-          <input id="int-instr" type="text" [(ngModel)]="instrumentosDelIntegrante" />
-        </ui-field>
+        <app-elegir-instrumentos [instrumentos]="instrumentosDelIntegrante()"
+                                 (cambiado)="instrumentosDelIntegrante.set($event)" />
       </div>
       <div pie>
         <ui-button variante="sutil" (pulsado)="cerrarDialogo()">Cancelar</ui-button>
@@ -180,16 +189,26 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
 
   /** La lista de instrumentos, ya unida: unirla en la plantilla la volvería a
    *  unir en cada ciclo de detección de cambios. */
-  readonly integrantesConTexto = computed(() => this.integrantes().map((m) => ({
-    id: m.id,
-    nombre: m.nombre,
-    instrumentos: textoDeInstrumentos(m.instrumentos),
-  })));
+  readonly integrantesConTexto = computed<readonly FilaDeIntegrante[]>(
+    () => this.integrantes().map((m) => ({
+      id: m.id,
+      nombre: m.nombre,
+      texto: textoDeInstrumentos(m.instrumentos),
+      instrumentos: m.instrumentos,
+    })));
   private readonly otrosNombres = signal<readonly string[]>([]);
 
   readonly dialogoAbierto = signal(false);
   readonly nombreDelIntegrante = signal('');
-  readonly instrumentosDelIntegrante = signal('');
+  /**
+   * Los instrumentos que se están eligiendo, ya clasificados.
+   *
+   * Se guardan como instrumentos y no como la línea de texto que se mostraba
+   * antes: la línea era una interpretación de ida y una reinterpretación de
+   * vuelta, y en ese viaje un instrumento escrito a mano en un perfil viejo
+   * perdía su texto original en cuanto alguien abría el diálogo y confirmaba.
+   */
+  readonly instrumentosDelIntegrante = signal<readonly Instrumento[]>([]);
   /**
    * A quién se está corrigiendo, o `null` si es un alta.
    *
@@ -300,7 +319,7 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
 
   abrirNuevo(): void {
     this.nombreDelIntegrante.set('');
-    this.instrumentosDelIntegrante.set('');
+    this.instrumentosDelIntegrante.set([]);
     this.integranteEditado.set(null);
     this.tocadosDialogo.reiniciar();
     this.dialogoAbierto.set(true);
@@ -310,8 +329,12 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
    * Abre el mismo diálogo con lo que ya está cargado.
    *
    * Recibe la fila que la plantilla ya tiene calculada, con los instrumentos
-   * unidos: volver a buscarlos por identificador sería recorrer la lista para
+   * dentro: volver a buscarlos por identificador sería recorrer la lista para
    * conseguir algo que estaba a mano.
+   *
+   * Se cargan los instrumentos tal cual están guardados, no la línea que se ve
+   * en la lista. Un integrante migrado de texto libre se abre con su texto
+   * intacto, se ve como lo escribió su dueño y vuelve a guardarse igual.
    */
   abrirEdicion(m: FilaDeIntegrante): void {
     this.nombreDelIntegrante.set(m.nombre);
@@ -332,7 +355,9 @@ export class BandaEditComponent implements PuedeSalir, OnDestroy {
   }
 
   confirmarIntegrante(): void {
-    const instrumentos = instrumentosDesdeTexto(this.instrumentosDelIntegrante());
+    // Sin convertir: ya son instrumentos del catálogo. El dominio los vuelve a
+    // normalizar en «crearIntegrante» y «editarIntegrante», que es idempotente.
+    const instrumentos = this.instrumentosDelIntegrante();
     const nombre = this.nombreDelIntegrante();
     const editado = this.integranteEditado();
     if (editado === null) {

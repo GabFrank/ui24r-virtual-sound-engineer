@@ -139,8 +139,13 @@ async function recorrer(contexto, tamanio) {
   await p.click('ui-card[titulo="Integrantes"] ui-button button');
   await p.waitForSelector('#int-nombre');
   await p.fill('#int-nombre', 'Ana');
-  await p.fill('#int-instr', 'voz, guitarra acústica');
-  await paso(4, 'integrante', 'alta de integrante en diálogo');
+  // Los instrumentos se eligen del catálogo, no se escriben. Un toque en la
+  // grilla deja la fuente elegida; la variante y el rol aparecen recién
+  // después, y solo los que esa fuente declara.
+  await p.click('app-elegir-instrumentos [data-fuente="VOZ"]');
+  await p.click('app-elegir-instrumentos [data-fuente="GUITARRA"]');
+  await p.click('app-elegir-instrumentos li:last-child .ficha:has-text("de nylon")');
+  await paso(4, 'integrante', 'alta de integrante: instrumentos elegidos del catálogo');
   await p.click('ui-dialog ui-button.primario button, ui-dialog [pie] ui-button:last-child button');
   await esperar(300);
   await paso(5, 'banda-con-integrante', 'la banda ya tiene integrantes');
