@@ -23,7 +23,16 @@ export class DiagnosticoService {
   private readonly mixer = inject(MixerService);
   private readonly log = inject(Logger);
 
-  private tramos: number[][] = [[]];
+  /**
+   * Marcas de tiempo por tramo, separadas por flujo.
+   *
+   * Son dos porque miden cosas distintas: `RTA` no se apaga nunca y por eso
+   * juzga la conexión; `VU2` se apaga en silencio y por eso juzga cuánto audio
+   * hubo. Mezclarlas daba un solo número que no contestaba ninguna de las dos
+   * preguntas, y que en una sala callada parecía una conexión rota.
+   */
+  private tramosRta: number[][] = [[]];
+  private tramosVu: number[][] = [[]];
   private desuscribir: (() => void)[] = [];
   private comenzoEnMs = 0;
   private caidaEnMs: number | null = null;
@@ -34,14 +43,23 @@ export class DiagnosticoService {
   private reintento: ReturnType<typeof setInterval> | null = null;
 
   readonly midiendo = signal(false);
+  /** Tramas del analizador: la señal de vida. */
+  readonly latidos = signal(0);
+  /** Tramas de medidores: hay audio o no lo hay. */
   readonly tramas = signal(0);
   readonly ciclos = signal<readonly CicloDeReconexion[]>([]);
   readonly esperandoReconexion = signal(false);
   readonly modo = signal<ModoDeCorte>('router-apagado');
 
+  /** La que contesta el criterio 4. */
+  readonly cadenciaDelAnalizador = computed(() => {
+    this.latidos();
+    return estadisticaDeSegmentos(this.tramosRta);
+  });
+
   readonly cadencia = computed(() => {
     this.tramas();
-    return estadisticaDeSegmentos(this.tramos);
+    return estadisticaDeSegmentos(this.tramosVu);
   });
 
   /**
@@ -54,13 +72,20 @@ export class DiagnosticoService {
    */
   iniciar(): void {
     if (this.midiendo()) return;
-    this.tramos = [[]];
+    this.tramosRta = [[]];
+    this.tramosVu = [[]];
+    this.latidos.set(0);
     this.tramas.set(0);
     this.comenzoEnMs = Date.now();
     this.midiendo.set(true);
 
+    this.desuscribir.push(this.mixer.observarLatido(() => {
+      this.tramosRta[this.tramosRta.length - 1]!.push(Date.now());
+      this.latidos.update((n) => n + 1);
+    }));
+
     this.desuscribir.push(this.mixer.observarTelemetria(() => {
-      this.tramos[this.tramos.length - 1]!.push(Date.now());
+      this.tramosVu[this.tramosVu.length - 1]!.push(Date.now());
       this.tramas.update((n) => n + 1);
     }));
 
@@ -75,7 +100,8 @@ export class DiagnosticoService {
         this.esperandoReconexion.set(true);
         // Tramo nuevo: el hueco entre la última trama de antes de la caída y la
         // primera de después es el corte, no la cadencia de la consola.
-        this.tramos.push([]);
+        this.tramosRta.push([]);
+        this.tramosVu.push([]);
         this.escucharVuelta();
         this.reintentarHastaVolver();
       }
@@ -111,7 +137,10 @@ export class DiagnosticoService {
     this.dejarDeReintentar();
     this.midiendo.set(false);
     this.esperandoReconexion.set(false);
-    this.log.info('mixer', 'medicion_detenida', { tramas: this.tramas() });
+    this.log.info('mixer', 'medicion_detenida', {
+      latidos: this.latidos(),
+      tramas: this.tramas(),
+    });
   }
 
   /**
@@ -138,7 +167,7 @@ export class DiagnosticoService {
     for (const [clave, entrada] of volcado) valores.set(clave, entrada.valor);
 
     return {
-      version: 1,
+      version: 2,
       generadoEn: new Date().toISOString(),
       dispositivo: {
         modelo: info?.modelo ?? null,
@@ -146,6 +175,7 @@ export class DiagnosticoService {
         direccion: this.mixer.direccion() ?? 'sin conectar',
         agente: navigator.userAgent,
       },
+      cadenciaDelAnalizador: this.cadenciaDelAnalizador(),
       cadenciaDeMedidores: this.cadencia(),
       duracionDeLaMedicionMs: this.comenzoEnMs === 0 ? 0 : Date.now() - this.comenzoEnMs,
       ciclos: this.ciclos(),

@@ -6,6 +6,21 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La prueba de conexión medía el flujo equivocado.** Contaba tramas `VU2`,
+  que la consola **deja de emitir cuando no hay señal**, y presentaba su
+  cadencia como la de la conexión. En una sala callada eso da un percentil 95
+  de varios segundos y parece una conexión moribunda; con música, 44 ms. El
+  criterio 4 de SPK-P0.1 se decide sobre `RTA`, que llega igual siempre, y era
+  el único flujo que la prueba no miraba.
+
+  El adaptador expone ahora `alLatido()` para `RTA`, separado de la telemetría,
+  y el informe —versión 2— trae las dos cadencias con su significado: la del
+  analizador juzga la conexión, la de los medidores dice cuánto audio hubo.
+
+  Medido desde el Motorola Edge 60 Pro contra la consola: `RTA` a **33 ms de
+  media, p95 40 ms**, idéntico en silencio y con la guitarra sonando. `VU2`
+  pasó de 1 231 ms a 44 ms entre una cosa y la otra.
+
 - **La base local no se creaba nunca, en ninguna instalación.** La migración
   abría su propia transacción con `BEGIN;`, pero el `execute()` del complemento
   de SQLite ya abre una y la cierra con `COMMIT`. SQLite rechazaba la

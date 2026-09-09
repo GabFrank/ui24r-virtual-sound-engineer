@@ -21,26 +21,24 @@ export function informeEnMarkdown(informe: InformeDeDiagnostico): string {
   l.push(`**Aparato:** ${informe.dispositivo.agente}`);
   l.push('');
 
-  l.push('## Cadencia de los medidores');
+  const duracion = (informe.duracionDeLaMedicionMs / 1000).toFixed(0);
+
+  l.push('## Cadencia del analizador (`RTA`)');
   l.push('');
-  if (informe.cadenciaDeMedidores === null) {
-    l.push('No se midió, o llegaron menos de dos tramas. Sin dos tramas no hay ningún intervalo que medir.');
-  } else {
-    const c = informe.cadenciaDeMedidores;
-    l.push(`Medido durante ${(informe.duracionDeLaMedicionMs / 1000).toFixed(0)} s.`);
+  l.push('Es la que contesta el criterio 4 de SPK-P0.1: el analizador llega con señal y sin ella, así que su intervalo mide la conexión y no el silencio.');
+  l.push('');
+  l.push(...tablaDeCadencia(informe.cadenciaDelAnalizador, duracion));
+  if (informe.cadenciaDelAnalizador !== null) {
     l.push('');
-    l.push('| Medida | Valor |');
-    l.push('|---|---|');
-    l.push(`| Muestras (intervalos) | ${c.muestras} |`);
-    l.push(`| Intervalo medio | ${c.mediaMs.toFixed(1)} ms |`);
-    l.push(`| Mediana | ${c.medianaMs.toFixed(1)} ms |`);
-    l.push(`| Percentil 95 | ${c.p95Ms.toFixed(1)} ms |`);
-    l.push(`| Fluctuación | ${c.fluctuacionMs.toFixed(1)} ms |`);
-    l.push(`| Mínimo / máximo | ${c.minimoMs.toFixed(1)} / ${c.maximoMs.toFixed(1)} ms |`);
-    l.push(`| **Umbral de inestabilidad** | **${c.umbralDeInestabilidadMs.toFixed(1)} ms** |`);
-    l.push('');
-    l.push('El umbral es tres veces el intervalo medio, como fija el criterio 4 de SPK-P0.1: por encima de eso la conexión se declara inestable.');
+    l.push('El umbral es tres veces el intervalo medio, como fija el criterio 4: por encima de eso la conexión se declara inestable. Es el mismo flujo que vigila el adaptador.');
   }
+  l.push('');
+
+  l.push('## Cadencia de los medidores (`VU2`)');
+  l.push('');
+  l.push('**No juzga la conexión.** La consola deja de emitir `VU2` cuando no hay señal, así que este número dice cuánto audio hubo mientras se medía. Un percentil 95 de varios segundos en una sala callada es lo esperado, no una conexión enferma.');
+  l.push('');
+  l.push(...tablaDeCadencia(informe.cadenciaDeMedidores, duracion));
   l.push('');
 
   l.push('## Ciclos de reconexión');
@@ -76,6 +74,26 @@ export function informeEnMarkdown(informe: InformeDeDiagnostico): string {
   for (const pendiente of informe.sinMedir) l.push(`- ${pendiente}`);
   l.push('');
   return l.join('\n');
+}
+
+/** Una cadencia como tabla, o la explicación de por qué no hay tabla. */
+function tablaDeCadencia(c: EstadisticaDeCadencia | null, duracionEnS: string): string[] {
+  if (c === null) {
+    return ['No se midió, o llegaron menos de dos tramas. Sin dos tramas no hay ningún intervalo que medir.'];
+  }
+  return [
+    `Medido durante ${duracionEnS} s.`,
+    '',
+    '| Medida | Valor |',
+    '|---|---|',
+    `| Muestras (intervalos) | ${c.muestras} |`,
+    `| Intervalo medio | ${c.mediaMs.toFixed(1)} ms |`,
+    `| Mediana | ${c.medianaMs.toFixed(1)} ms |`,
+    `| Percentil 95 | ${c.p95Ms.toFixed(1)} ms |`,
+    `| Fluctuación | ${c.fluctuacionMs.toFixed(1)} ms |`,
+    `| Mínimo / máximo | ${c.minimoMs.toFixed(1)} / ${c.maximoMs.toFixed(1)} ms |`,
+    `| **Umbral de inestabilidad** | **${c.umbralDeInestabilidadMs.toFixed(1)} ms** |`,
+  ];
 }
 
 function veredicto(c: CicloDeReconexion): string {

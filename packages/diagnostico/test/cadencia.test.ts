@@ -86,9 +86,10 @@ function ciclo(ms: number | null): CicloDeReconexion {
 
 function informe(ciclos: readonly CicloDeReconexion[]): InformeDeDiagnostico {
   return {
-    version: 1,
+    version: 2,
     generadoEn: '2026-09-08T12:00:00.000Z',
     dispositivo: { modelo: 'Ui24R', firmware: '3.5', direccion: 'ws://10.10.1.1', agente: 'prueba' },
+    cadenciaDelAnalizador: null,
     cadenciaDeMedidores: null,
     duracionDeLaMedicionMs: 0,
     ciclos,

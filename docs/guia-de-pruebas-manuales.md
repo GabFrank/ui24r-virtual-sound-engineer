@@ -33,7 +33,7 @@ delante.
 | 1.6 | El campo Dirección rechaza una URL con ruta | ✅ | Pegar `192.168.0.49/socket.io/...` da error de validación |
 | 1.7 | Una preferencia vieja `ws://10.10.1.1` se migra sola | ✅ | El campo mostró `192.168.0.49` partiendo de `ws://192.168.0.49` guardado |
 | 1.8 | **Reconexión tras cortar la red**, 20 ciclos por modo | ⬜ | Es el criterio 1 de SPK-P0.1. Apagar el router, cambiar la IP del teléfono, cortar el wifi. **Ahora es posible: antes la app no conectaba** |
-| 1.9 | Cadencia de medidores **medida desde el teléfono** | ⬜ | Ajustes → Diagnóstico → Iniciar. Es el criterio 4 de SPK-P0.1; el número de la laptop no sirve |
+| 1.9 | Cadencia **medida desde el teléfono** | ✅ | 2026-09-08, con la consola en `192.168.0.78`: `RTA` a 33 ms de media y p95 40 ms, igual en silencio que con guitarra. `VU2` pasó de 1 231 ms a 44 ms. Antes la prueba medía sólo `VU2` y por eso no contestaba el criterio 4 |
 | 1.10 | Tres clientes a la vez **con cambios ocurriendo** | 🟡 | Se probaron tres clientes 120 s con el estado quieto y coincidieron. Falta con alguien moviendo controles, 10 min, y con app + navegador + teléfono |
 | 1.11 | Conectar con la consola apagada da un error que se entiende | ⬜ | |
 | 1.12 | Conectar a una IP que no es una consola | ⬜ | |

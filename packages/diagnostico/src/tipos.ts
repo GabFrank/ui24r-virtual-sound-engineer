@@ -54,9 +54,34 @@ export interface DatosDelDispositivo {
 }
 
 export interface InformeDeDiagnostico {
-  readonly version: 1;
+  /**
+   * Versión 2: antes había una sola cadencia, la de los medidores, y se leía
+   * como si fuera la de la conexión. Son dos flujos distintos y ahora van
+   * separados.
+   */
+  readonly version: 2;
   readonly generadoEn: string;
   readonly dispositivo: DatosDelDispositivo;
+  /**
+   * Cadencia del analizador (`RTA`), que es la que contesta el criterio 4 de
+   * SPK-P0.1.
+   *
+   * Llega con señal y sin ella —30 Hz medidos, p95 de 37 ms— así que su
+   * intervalo mide la conexión. Es también el flujo sobre el que el adaptador
+   * decide si la conexión está inestable, de modo que el umbral que sale de
+   * acá es el que ese vigilante usa.
+   */
+  readonly cadenciaDelAnalizador: EstadisticaDeCadencia | null;
+  /**
+   * Cadencia de los medidores (`VU2`).
+   *
+   * **No sirve para juzgar la conexión.** La consola deja de emitir `VU2`
+   * cuando no hay señal: una trama en treinta segundos de silencio contra más
+   * de veinte por segundo con música. Medida a solas, un ensayo callado da un
+   * percentil 95 de varios segundos y parece una conexión moribunda. Se
+   * conserva porque dice otra cosa que sí importa: cuánto audio hubo mientras
+   * se medía.
+   */
   readonly cadenciaDeMedidores: EstadisticaDeCadencia | null;
   readonly duracionDeLaMedicionMs: number;
   readonly ciclos: readonly CicloDeReconexion[];

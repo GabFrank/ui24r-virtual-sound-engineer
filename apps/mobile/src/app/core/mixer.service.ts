@@ -51,12 +51,22 @@ export class MixerService {
    * justo lo que el diagnóstico mide-- los dejaría sin oír nada.
    */
   private readonly oyentesTelemetria: (() => void)[] = [];
+  private readonly oyentesLatido: (() => void)[] = [];
   private readonly oyentesVolcado: (() => void)[] = [];
   private readonly oyentesConexion: ((estado: ConnectionState) => void)[] = [];
 
   observarTelemetria(cb: () => void): () => void {
     this.oyentesTelemetria.push(cb);
     return () => quitar(this.oyentesTelemetria, cb);
+  }
+
+  /**
+   * Cada trama del analizador. Es la señal de vida de la conexión, y llega
+   * igual en silencio; los medidores no. La distinción está en el adaptador.
+   */
+  observarLatido(cb: () => void): () => void {
+    this.oyentesLatido.push(cb);
+    return () => quitar(this.oyentesLatido, cb);
   }
 
   observarVolcado(cb: () => void): () => void {
@@ -117,6 +127,10 @@ export class MixerService {
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
         for (const cb of this.oyentesTelemetria) cb();
+      });
+
+      adapter.alLatido(() => {
+        for (const cb of this.oyentesLatido) cb();
       });
 
       adapter.alCambiarExterno((parametro, valor) => {

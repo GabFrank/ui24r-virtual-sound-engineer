@@ -24,7 +24,7 @@ import { DiagnosticoService } from './diagnostico.service';
   template: `
     <div class="pagina pagina-angosta">
       <ui-page-header titulo="Prueba de conexión"
-        descripcion="Mide la cadencia de los medidores y el tiempo de reconexión desde esta tablet. No escribe nada en la consola: sólo escucha y cronometra.">
+        descripcion="Mide la cadencia de los dos flujos que manda la consola y el tiempo de reconexión desde esta tablet. No escribe nada: sólo escucha y cronometra.">
       </ui-page-header>
 
       @if (!conectado()) {
@@ -36,9 +36,16 @@ import { DiagnosticoService } from './diagnostico.service';
 
       <ui-card>
         <div class="fila">
-          <ui-stat rotulo="Tramas recibidas" [valor]="tramas().toString()" />
-          <ui-stat rotulo="Cadencia" [valor]="cadencia()" />
+          <ui-stat rotulo="Analizador (RTA)" [valor]="latidos().toString()" />
+          <ui-stat rotulo="Cadencia del analizador" [valor]="cadenciaDelAnalizador()" />
+          <ui-stat rotulo="Medidores (VU2)" [valor]="tramas().toString()" />
+          <ui-stat rotulo="Cadencia de medidores" [valor]="cadencia()" />
         </div>
+        <p class="nota">
+          La conexión se juzga por el analizador, que llega igual en silencio.
+          Los medidores se apagan cuando no hay señal: su cadencia dice cuánto
+          audio hubo, no cómo está la conexión.
+        </p>
         <div class="acciones">
           @if (midiendo()) {
             <ui-button variante="secundario" (pulsado)="detener()">Detener</ui-button>
@@ -152,10 +159,14 @@ export class DiagnosticoComponent {
 
   readonly midiendo = this.diag.midiendo;
   readonly tramas = this.diag.tramas;
+  readonly latidos = this.diag.latidos;
   readonly ciclos = this.diag.ciclos;
   readonly esperando = this.diag.esperandoReconexion;
   readonly conectado = computed(() => this.conexion.estado() === 'CONNECTED');
   readonly cadencia = computed(() => resumenDeCadencia(this.diag.cadencia()));
+  readonly cadenciaDelAnalizador = computed(
+    () => resumenDeCadencia(this.diag.cadenciaDelAnalizador()),
+  );
 
   iniciar(): void { this.diag.iniciar(); }
   detener(): void { this.diag.detener(); }

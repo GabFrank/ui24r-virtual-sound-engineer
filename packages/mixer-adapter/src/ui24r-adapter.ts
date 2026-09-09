@@ -93,6 +93,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private info: DeviceInfo = { modelo: 'desconocido', firmware: 'desconocido' };
   private oyentesConexion: ((e: ConnectionState) => void)[] = [];
   private oyentesTelemetria: (() => void)[] = [];
+  private oyentesLatido: (() => void)[] = [];
   private desuscribir: (() => void)[] = [];
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
   private temporizadorVolcado: ReturnType<typeof setTimeout> | null = null;
@@ -306,6 +307,22 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return () => { this.oyentesTelemetria = this.oyentesTelemetria.filter((f) => f !== cb); };
   }
 
+  /**
+   * Cada trama del analizador (`RTA`).
+   *
+   * Es un aviso distinto del de telemetria a proposito. `VU2` **se apaga en
+   * silencio** --una trama en treinta segundos sin senal, frente a mas de
+   * veinte por segundo con musica-- asi que su cadencia mide cuanto silencio
+   * hubo, no como esta la conexion. `RTA` no se apaga: llega a 30 Hz con senal
+   * y sin ella, y por eso es el flujo sobre el que este adaptador ya decide si
+   * la conexion esta inestable. Quien quiera medir la salud de la conexion
+   * tiene que escuchar aca; quien quiera saber si habia audio, alla.
+   */
+  alLatido(cb: () => void): () => void {
+    this.oyentesLatido.push(cb);
+    return () => { this.oyentesLatido = this.oyentesLatido.filter((f) => f !== cb); };
+  }
+
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
   canales(cantidad = 12): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
@@ -353,6 +370,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (m.tipo === 'RTA') {
       this.ultimaTramaRtaMs = this.ahora();
       if (this._estadoConexion === 'UNSTABLE') this.cambiarEstado('CONNECTED');
+      for (const cb of this.oyentesLatido) cb();
       return;
     }
 
@@ -454,3 +472,4 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.saturaciones.clear();
   }
 }
+
