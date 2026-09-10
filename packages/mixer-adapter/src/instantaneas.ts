@@ -11,10 +11,22 @@
  * Los shows del usuario —con sus instantáneas, sus nombres y su trabajo— no se
  * tocan ni por error ni a propósito.
  *
- * **Y no hay forma de borrar.** El protocolo tiene `DELETESNAPSHOT` y este
- * módulo no lo construye: la retención de INV-003 es una decisión que todavía
- * no se tomó, y hasta que se tome, acumular instantáneas es preferible a
- * borrar la equivocada. Un test lo fija.
+ * **Se puede borrar, pero solo las propias y solo las fechables.** Al principio
+ * este módulo no construía `DELETESNAPSHOT` en absoluto, porque la retención
+ * parecía una decisión pendiente. No lo era: INV-003 ya la tenía decidida
+ * —máximo 20 automáticas, solo nombres `VSE_`— y el dominio ya tenía
+ * `snapshotsABorrar()` con sus tests. Lo que faltaba era conectarlo.
+ *
+ * El borrado va con tres guardas, y ninguna es un comentario pidiendo cuidado:
+ *
+ * 1. El **show no es un parámetro**, igual que al guardar.
+ * 2. Solo se construye el comando para nombres que se puedan **fechar**, o sea
+ *    los que la aplicación creó sola. Una instantánea guardada a mano en el
+ *    show `VSE` no se toca: no es de nadie más que del usuario.
+ * 3. Qué borrar lo decide el dominio, no este archivo.
+ *
+ * Sin esto, con una instantánea por aplicación de ganancia, una sesión de
+ * veinte canales deja sesenta y la consola termina llena.
  *
  * Gramática, leída del `mixer.html` de la consola y confirmada contra el manual
  * del firmware 3.5:
@@ -113,6 +125,23 @@ export function comandoGuardar(nombre: string): string {
  */
 export function comandoDevolverEtiqueta(nombre: string): string {
   return `SETS^var.currentSnapshot^${nombre}`;
+}
+
+/**
+ * El comando para borrar una instantánea **propia y fechable**.
+ *
+ * Devuelve `null` para cualquier otra cosa, y ese `null` es la guarda: un
+ * nombre que no se puede fechar no es una automática nuestra, y borrar lo que
+ * el usuario guardó a mano sería el peor fallo posible de esta aplicación.
+ *
+ * Se comprueba acá y no solo en quien llama porque la lista viene de la
+ * consola: si alguien guardó algo a mano en el show `VSE`, va a estar en esa
+ * lista, y la única defensa que no depende de que el llamador se acuerde es
+ * que el comando no se pueda construir.
+ */
+export function comandoBorrar(nombre: string): string | null {
+  if (fechaDeSnapshotAutomatica(nombre) === null) return null;
+  return `DELETESNAPSHOT^${SHOW_RESERVADO}^${nombre}`;
 }
 
 /** El comando para pedir la lista, que es con lo que se verifica. */

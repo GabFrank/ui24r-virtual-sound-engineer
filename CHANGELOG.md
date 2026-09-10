@@ -33,6 +33,13 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Las instantáneas automáticas dejan de acumularse.** Se conservan las 20 más
+  recientes, que es lo que INV-003 ya tenía decidido. **Solo se borran las
+  propias y solo las que se pueden fechar**: una instantánea que guardaste a
+  mano no se puede borrar ni por error, porque el comando ni siquiera se
+  construye para ella. Sin esto, con una instantánea por aplicación de ganancia,
+  una sesión de veinte canales dejaba sesenta.
+
 - **Guardar una instantánea ya no te cambia cuál es la actual.** Se descubrió
   midiendo: al crear su punto de retorno, la aplicación hacía que la consola
   pasara a considerar «actual» la automática en vez de la tuya. Si después

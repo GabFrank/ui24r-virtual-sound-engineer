@@ -14,11 +14,12 @@ import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
 import { decodificarEspectro, hayEspectro } from './espectro.ts';
 import {
   nombreDeInstantanea, comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
-  comandoDevolverEtiqueta,
+  comandoDevolverEtiqueta, comandoBorrar,
 } from './instantaneas.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
 import type { DinamicaDeCanal } from '@vse/domain';
+import { snapshotsABorrar } from '@vse/domain';
 
 export interface OpcionesAdapter {
   /**
@@ -470,6 +471,16 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (anterior !== null && anterior !== nombre) {
       this.transporte.enviar(comandoDevolverEtiqueta(anterior));
       this.instantaneaActual = anterior;
+    }
+
+    // **La retención, después de guardar y nunca antes.** Si se borrara primero
+    // y el guardado fallara, se habría perdido un punto de retorno sin ganar
+    // ninguno. Qué borrar lo decide el dominio (INV-003, máximo 20): acá solo
+    // se manda, y `comandoBorrar` se niega a construir nada que no sea una
+    // automática nuestra.
+    for (const vieja of snapshotsABorrar(lista)) {
+      const orden = comandoBorrar(vieja);
+      if (orden !== null) this.transporte.enviar(orden);
     }
 
     return quedo ? nombre : null;

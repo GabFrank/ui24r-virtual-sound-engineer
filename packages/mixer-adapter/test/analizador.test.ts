@@ -88,3 +88,49 @@ test('una trama en ceros no despierta a nadie', async () => {
     assert.equal(recibidas.length, 0);
   });
 });
+
+/**
+ * La retencion de INV-003: maximo 20 automaticas, y NUNCA nada ajeno.
+ */
+test('al guardar se borran las mas viejas, y solo las propias', async () => {
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t, { esperaGuardadoMs: 1, timeoutConfirmacionMs: 60 });
+  await a.conectar('ws://prueba');
+  try {
+    // La consola responde con 22 automaticas mas dos del usuario en el mismo
+    // show. Con el maximo en 20, sobran dos --las mas viejas-- y las del
+    // usuario NO se tocan pase lo que pase.
+    const viejas = Array.from({ length: 22 }, (_, i) => `VSE_AUTO_${1000 + i}`);
+    const quitar = t.alRecibir((l) => {
+      if (l.startsWith('SNAPSHOTLIST^')) return;
+      if (!l.startsWith('SAVESNAPSHOT^') && !l.startsWith('CREATESHOW')) return;
+    });
+    // Se contesta la lista cada vez que la piden.
+    const original = t.enviar.bind(t);
+    (t as unknown as { enviar: (l: string) => void }).enviar = (l: string): void => {
+      original(l);
+      if (l.startsWith('SNAPSHOTLIST^')) {
+        setTimeout(() => t.entra(
+          ['SNAPSHOTLIST', 'VSE', ...viejas, 'Alma caninde', 'VSE_a_mano'].join('^'),
+        ), 1);
+      }
+    };
+
+    await a.guardarInstantanea();
+    quitar();
+
+    const borrados = t.enviadas.filter((l) => l.startsWith('DELETESNAPSHOT^'));
+    assert.equal(borrados.length, 2, 'sobraban dos sobre el maximo de 20');
+    assert.deepEqual(borrados, [
+      'DELETESNAPSHOT^VSE^VSE_AUTO_1000',
+      'DELETESNAPSHOT^VSE^VSE_AUTO_1001',
+    ], 'las mas viejas primero');
+
+    for (const l of t.enviadas) {
+      assert.ok(!l.includes('Alma caninde'), 'jamas una instantanea del usuario');
+      assert.ok(!l.includes('VSE_a_mano'), 'ni una VSE_ que no sea automatica');
+    }
+  } finally {
+    await a.desconectar();
+  }
+});

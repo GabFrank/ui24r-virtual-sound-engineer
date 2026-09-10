@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   SHOW_DE_LA_APLICACION, nombreDeInstantanea, esDeLaAplicacion, fechaDeInstantanea,
   comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
-  comandoDevolverEtiqueta,
+  comandoDevolverEtiqueta, comandoBorrar,
 } from '../src/instantaneas.ts';
 
 test('el nombre lleva la marca en milisegundos', () => {
@@ -43,14 +43,29 @@ test('de la lista se toman solo las nuestras', () => {
 });
 
 /**
- * ESTE TEST ES UNA GARANTIA, NO UNA COMPROBACION DE COMPORTAMIENTO.
+ * ESTOS TESTS SON UNA GARANTIA, NO UNA COMPROBACION DE COMPORTAMIENTO.
  *
- * El usuario pidio expresamente cuidar sus instantaneas. El protocolo tiene
- * DELETESNAPSHOT y DELETESHOW; este modulo no los construye. La retencion de
- * INV-003 es una decision que todavia no se tomo, y hasta que se tome,
- * acumular es preferible a borrar la equivocada.
+ * El usuario pidio expresamente cuidar sus instantaneas. Ahora el modulo SI
+ * sabe borrar --INV-003 lo pide, maximo 20 automaticas-- asi que la garantia
+ * cambia de forma: no es "no puede borrar" sino "solo puede borrar las suyas".
  */
-test('este modulo NO SABE BORRAR, y es a proposito', () => {
+test('NO se puede construir un borrado de algo que no sea nuestro', () => {
+  // Un nombre que no se puede fechar no es una automatica nuestra. Si el
+  // usuario guardo algo a mano en el show VSE, va a estar en la lista que
+  // devuelve la consola, y la unica defensa que no depende de que el llamador
+  // se acuerde es que el comando NO SE PUEDA CONSTRUIR.
+  assert.equal(comandoBorrar('Alma caninde'), null);
+  assert.equal(comandoBorrar('Prueba asistente'), null);
+  assert.equal(comandoBorrar('VSE_a_mano'), null, 'ni siquiera con nuestro prefijo');
+  assert.equal(comandoBorrar('VSE_AUTO_'), null);
+  assert.equal(comandoBorrar('VSE_AUTO_abc'), null);
+});
+
+test('una automatica nuestra si se puede borrar, y solo en nuestro show', () => {
+  assert.equal(comandoBorrar('VSE_AUTO_123'), 'DELETESNAPSHOT^VSE^VSE_AUTO_123');
+});
+
+test('el modulo no sabe borrar SHOWS ni renombrar', () => {
   const fuente = readFileSync(new URL('../src/instantaneas.ts', import.meta.url), 'utf8');
 
   // **Se miran solo las lineas de codigo.** Nombrar DELETESNAPSHOT en un
@@ -64,7 +79,11 @@ test('este modulo NO SABE BORRAR, y es a proposito', () => {
     })
     .join('\n');
 
-  for (const peligroso of ['DELETESNAPSHOT', 'DELETESHOW', 'RENAMESNAPSHOT', 'LOADSNAPSHOT']) {
+  // DELETESNAPSHOT ahora si esta, acotado por comandoBorrar. Los otros tres no
+  // tienen ningun motivo para aparecer: borrar un show entero, renombrar, o
+  // CARGAR una instantanea --que aplicaria todo su contenido y cambiaria el
+  // estado entero de la consola-- no son cosas que esta aplicacion haga.
+  for (const peligroso of ['DELETESHOW', 'RENAMESNAPSHOT', 'LOADSNAPSHOT']) {
     assert.ok(!codigo.includes(peligroso),
       `${peligroso} aparece en el codigo de instantaneas.ts, y no deberia`);
   }
