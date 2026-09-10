@@ -35,6 +35,7 @@
 | [house-curves.md](house-curves.md) | Curvas objetivo, por banda |
 | [channel-profiles.md](channel-profiles.md) | Perfiles de canal, con rangos y objetivos |
 | [instrumentos.md](instrumentos.md) | Catálogo de instrumentos por fuente, variante y rol, y su enlace con los perfiles |
+| [microfonos](microfonos.md) | Qué números cambian con cada micrófono y cuáles no. Fase futura, anotada ahora porque decide dónde vive una constante |
 | [session-lifecycle.md](session-lifecycle.md) | Estados de la sesión y sus transiciones |
 | [autonomy-matrix.md](autonomy-matrix.md) | Propiedad de parámetros y nivel de autonomía por versión |
 | [logging.md](logging.md) | Formato del registro estructurado |
