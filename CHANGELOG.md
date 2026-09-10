@@ -6,6 +6,32 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Qué devuelve de verdad una recuperación de instantánea, campo por campo.**
+  Era la pregunta más importante que quedaba sin contestar, porque el punto de
+  retorno que la aplicación guarda antes de escribir promete «se puede
+  deshacer». Medido con un `LOADSNAPSHOT` real: **44 de 45 campos vuelven**,
+  incluidas ganancia, alimentación fantasma, patcheo de salida, retardos y
+  reproductor, y sin un solo efecto colateral sobre 6.700 claves.
+
+  **La excepción es `m.afs.enabled`**, la supresión de realimentación — y no es
+  un campo cualquiera: ese supresor le pone filtros de −18 dB al audio por su
+  cuenta, así que su estado cambia lo que la consola hace. Si algo lo mueve,
+  recuperar la instantánea no lo deshace. Queda dicho en la promesa.
+
+- **Y el mismo recall destapó que la mitad de INV-021 nunca se ejecutó.** El
+  almacén confirmado compara la ruta `var.currentSnapshot` para detectar un
+  recall, pero se llega a esa comparación solo desde `procesarLinea`, que
+  arranca descartando todo lo que no sea `SETD` — y el puntero de instantánea
+  viaja como `SETS`. La consola **sí** lo difunde, comprobado contra el aparato;
+  el almacén lo tiraba.
+
+  El comentario que acompaña a ese código ya decía por qué importaba: *«un recall
+  chico es el que nadie nota»*. Y el mismo día se midió que un recall difunde
+  solo lo que cambió, así que un recall chico es, efectivamente, un puñado de
+  mensajes por debajo del umbral de avalancha. El diagnóstico estaba escrito
+  hace tiempo; lo que faltaba era que el dato llegara a la rama que lo esperaba.
+  **Sin arreglar todavía**: se mide acá y se corrige aparte.
+
 - **La avalancha, medida contra la consola de verdad.** Estaba probada solo
   contra el simulador — que la dispara porque nosotros se lo pedimos, así que
   probaba que la pantalla dibuja el aviso y nada más. Ahora un segundo cliente

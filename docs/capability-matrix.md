@@ -86,8 +86,8 @@
 
 | Función | API tipada | Ruta cruda | Estado | Probado | Spike |
 |---|---|---|---|---|---|
-| Instantáneas: guardar, recuperar, listar | `shows.*` | `SAVESNAPSHOT`, `LOADSNAPSHOT`, `SNAPSHOTLIST` | CONFIRMADO. Sobrescribe sin pedir confirmación | ⬜ | P0.8 |
-| Alcance de la recuperación | — | — | DESCONOCIDO | ⬜ | P0.8 |
+| Instantáneas: guardar, recuperar, listar | `shows.*` | `SAVESNAPSHOT`, `LOADSNAPSHOT`, `SNAPSHOTLIST` | CONFIRMADO, y `LOADSNAPSHOT` **ejecutado contra el aparato** el 2026-09-10 por primera vez. Un recall difunde **solo lo que cambió** —45 rutas movidas, 45 mensajes— y no el volcado de 6.700 claves. Sobrescribe sin pedir confirmación. Evidencia: `spikes/SPK-P0.8/evidence/alcance-recall-booleanos-2026-09-10.txt` | ✅ | P0.8 |
+| Alcance de la recuperación | — | — | **MEDIDO el 2026-09-10, campo por campo: 44 de 45 vuelven.** Vuelven ganancia, fantasma, patcheo de salida, retardos, reproductor, ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares, y no hay efectos colaterales. **No vuelve `m.afs.enabled`**, la supresión de realimentación — el único de los 45, y el que más cambia lo que la consola le hace al audio. Evidencia: `spikes/SPK-P0.8/evidence/alcance-recall-booleanos-2026-09-10.txt` | ✅ 44 de 45, ⬜ el supresor | P0.8 |
 | Borrado de instantánea | — | `DELETESNAPSHOT^show^nombre` | **MEDIDO el 2026-09-10.** Se guarda una automática nuestra y se borra esa misma: la consola la saca de la lista y el show queda como estaba. `SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt`. **Se midió porque el repaso del acta G-A descubrió que la retención lo mandaba desde el día anterior sin que nadie lo hubiera ejecutado nunca contra el aparato** | ✅ | P0.8 |
 | Retención de automáticas | — | `SNAPSHOTLIST` tras `DELETESNAPSHOT` | **MEDIDO el 2026-09-10 desde el adaptador**, con el show lleno a propósito: al guardar la 21 se borra la más vieja y quedan 20. Antes iba a ciegas y nunca había borrado nada fuera de un arnés | ✅ | P0.8 |
 | Renombrado de instantánea | — | — | DESCONOCIDO. Sin clave conocida y sin probar | ⬜ | P0.8 |

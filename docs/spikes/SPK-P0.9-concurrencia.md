@@ -23,7 +23,7 @@
 | 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt`; la corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt` | ✅ |
 | 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
-| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **La mitad medible sin pedir permiso, cerrada: 10 de 10 contra la consola el 2026-09-10.** Un segundo cliente escribió 16 rutas distintas de golpe y el detector avisó las diez veces, con las 16 restauradas y comprobadas por HTTP. Lo que **sigue sin medirse contra el aparato** es el disparador que el criterio nombra: una **recuperación de instantánea** de verdad, que además cambia `var.currentSnapshot` y debería dar la causa `SNAPSHOT_RECALL` en vez de `DESCONOCIDA`. Recuperar una instantánea es la operación de mayor alcance que expone el protocolo y la aplicación no la manda nunca: hacerlo contra la consola del usuario es decisión suya, no nuestra. `evidence/avalancha-real-2026-09-10.txt` | 🟡 |
+| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **Detectada sí, pero por el camino equivocado — y eso destapó un defecto.** Un `LOADSNAPSHOT` real contra la consola dispara el aviso, porque mueve más de diez rutas. Lo que **no** ocurre nunca es la causa `SNAPSHOT_RECALL`: la consola difunde `var.currentSnapshot` —comprobado— pero llega como `SETS`, y `ConfirmedStateStore.procesarLinea` corta con `if (m.tipo !== 'SETD') return`. **La rama de instantánea de INV-021 es código inalcanzable**, así que un recall de menos de diez rutas no invalida nada. Evidencia: `../SPK-P0.8/evidence/alcance-recall-booleanos-2026-09-10.txt` | 🟡 |
 | 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
 | 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Sin elegir, pero ya no por falta de datos: medido el 2026-09-10, la consola no ofrece presencia.** Tres ciclos de un cliente entrando y saliendo mientras un observador escuchaba por la principal: **cero** líneas difundidas al entrar y cero al salir, y ninguna de las seis claves cuyo nombre sugería presencia —`settings.maxconn`, `var.present`, `var.pongtime`, `var.asosec`, `var.cascade.connected`, `settings.cascade.remote`— se movió. O sea que el mecanismo hay que **construirlo**, y cuál construir es una decisión de producto con alternativas de costo muy distinto. Sigue el requisito de distinguir nuestro testigo de un segundo operador. `evidence/hay-presencia-2026-09-10.txt` | ⬜ |
 
@@ -148,3 +148,40 @@ alternativas que quedan sobre la mesa son de costo y alcance muy distintos:
 escucha y no escribe nunca, así que toda escritura que llega por la principal es
 de un tercero de verdad. No hay que distinguir nada — no hay nada nuestro que
 confundir.
+
+
+---
+
+## El recall dispara el aviso, y la causa no llega nunca — 2026-09-10
+
+Con el recall medido de verdad (ver SPK-P0.8, que lo ejecutó para otra
+pregunta), el criterio 4 tiene por fin una respuesta — y la respuesta trae un
+defecto.
+
+**Lo que funciona.** Un `LOADSNAPSHOT` mueve 45 rutas y el detector avisa. La
+avalancha se reconoce.
+
+**Lo que no.** La causa sale `DESCONOCIDA` en vez de `SNAPSHOT_RECALL`, y el
+motivo no es un umbral mal puesto: `RUTA_INSTANTANEA_ACTIVA` se compara dentro
+de `registrarCambioReciente`, al que solo se llega desde `aplicar`, al que solo
+se llega desde `procesarLinea`, que arranca con `if (m.tipo !== 'SETD') return`.
+Y `var.currentSnapshot` viaja como **`SETS`**. La rama nunca se ejecuta.
+
+La consola **sí** difunde el puntero: está comprobado, en cuanto el recall lo
+cambia de verdad. El mensaje llega y el almacén lo tira.
+
+**Lo grave no es la etiqueta de la causa.** INV-021 dice «cambio masivo **o**
+cambio de `currentSnapshot`», y la segunda mitad existe por una razón que el
+propio código explica: *«un recall desde el navegador de la consola cambia la
+instantánea activa y después los parámetros que difieran: si difieren menos de
+diez, la avalancha no se detectaba y el estado local seguía dándose por bueno
+cuando ya no describía la consola. Es peor que la avalancha grande, porque un
+recall chico es el que nadie nota.»*
+
+Ese párrafo describe con exactitud lo que sigue pasando. **El comentario acertó
+el diagnóstico y el arreglo no llegó a la ruta por donde entra el dato.** Y el
+mismo día se midió que un recall difunde solo lo que cambió —45 rutas, 45
+mensajes— así que un recall chico es, efectivamente, un puñado de mensajes por
+debajo del umbral.
+
+Se corrige aparte, no acá.

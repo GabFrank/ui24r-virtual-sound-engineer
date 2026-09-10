@@ -1,0 +1,50 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T22:30:51.199Z
+# comando: node --experimental-strip-types tools/spikes/p0-8/alcance-recall.ts 192.168.0.78
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78
+campos a mover: 36 numericos y 4 de texto, sobre los canales 21, 22, 23, 24
+
+volcado inicial: 6728 claves
+
+== 1. Guardar la instantanea, que es el estado de AHORA ==
+  show VSE, instantanea VSE_AUTO_1789079466209
+  verificada releyendo la lista: SI  (21 automaticas nuestras en el show)
+
+== 2. Mover campos de familias distintas ==
+  claves que de verdad cambiaron: 37
+  no aceptaron el cambio: hw.20.gain hw.21.gain hw.22.gain hw.23.gain
+
+== 3. LOADSNAPSHOT: la avalancha de verdad ==
+  rutas difundidas por el recall: 36 distintas, 36 mensajes
+  aviso de avalancha: si
+  rutas que informa el aviso: 10
+  causa: DESCONOCIDA   <- se espera SNAPSHOT_RECALL
+  ¿difundio var.currentSnapshot? no
+  tardo 3000 ms en total
+
+== 4. Alcance de la recuperacion, campo por campo ==
+  campo                | volvieron | NO volvieron
+  aux.N.value          |         4 |            0
+  delay                |         4 |            0
+  dyn.bypass           |         4 |            0
+  eq.bN.gain           |         4 |            0
+  gate.enabled         |         4 |            0
+  mix                  |         4 |            0
+  mute                 |         4 |            0
+  name                 |         4 |            0
+  pan                  |         4 |            0
+
+== 5. ¿El recall movio algo que nosotros no tocamos? ==
+  nada
+
+== 6. Dejar todo como estaba ==
+  instantanea borrada: si  (quedan 20 automaticas)
+
+== Comprobacion final, por HTTP ==
+  la consola quedo EXACTAMENTE como estaba
+
+
+# salida del proceso: 0

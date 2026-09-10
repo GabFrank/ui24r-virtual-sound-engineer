@@ -31,7 +31,7 @@ Lo segundo importa porque el retroceso por instantánea es la última red de seg
 |---|---|---|---|---|---|
 | 1 | Ciclos de guardar y recuperar correctos | bloqueante | 50 de 50 | | ⬜ |
 | 2 | Instantáneas manuales intactas | bloqueante | hash idéntico antes y después de 50 ciclos | | ⬜ |
-| 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | lista completa campo por campo | | ⬜ |
+| 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | campo por campo | **Cerrado el 2026-09-10, campo por campo: 44 de 45 vuelven.** Las seis familias que el criterio nombra, medidas: ganancia ✅, fantasma ✅, patcheo ✅, retardos ✅, reproductor ✅ — y **supresión de realimentación NO**. `m.afs.enabled` es el único campo de los 45 que un `LOADSNAPSHOT` no devuelve. También vuelven ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares, y **el recall no movió nada que no hubiéramos tocado**. `evidence/alcance-recall-booleanos-2026-09-10.txt` | 🟡 |
 | 4 | Comportamiento al guardar sobre un nombre existente | bloqueante | documentado | | ⬜ |
 | 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`. **Renombrar: sin clave conocida y sin probar** | ✅ |
 | 6 | Corte audible al guardar con audio pasando | informativo | sí o no | | ⬜ |
@@ -43,3 +43,98 @@ Lo segundo importa porque el retroceso por instantánea es la última red de seg
 ## Acción ante fallo
 
 Si la recuperación no restaura la ganancia de entrada, el retroceso por instantánea deja de ser red de seguridad para ese parámetro y el retroceso transaccional pasa a ser obligatorio antes de habilitar cualquier escritura de ganancia.
+
+
+---
+
+## Qué devuelve una recuperación, campo por campo — 2026-09-10
+
+El criterio nombra seis familias y pregunta si la recuperación las incluye. La
+pregunta importa más que su lugar en la tabla: **si el punto de retorno que la
+aplicación guarda antes de escribir (INV-001) no devuelve todo, entonces no es
+un punto de retorno**, y la promesa de «se puede deshacer» tiene una letra chica
+que nadie escribió.
+
+Método: guardar una instantánea **del estado de ahora**, mover 45 campos de
+quince familias distintas, guardar una segunda, y recuperar la primera — con lo
+cual la propia recuperación es la restauración. Antes y después se leen los
+~6.700 valores por `GET /raw`. Evidencia: `evidence/alcance-recall-booleanos-2026-09-10.txt`
+
+### La respuesta: 44 de 45, y la excepción importa
+
+| Familia | ¿Vuelve? |
+|---|---|
+| Ganancia del previo (`hw.N.gain`) | sí |
+| Alimentación fantasma (`hw.N.phantom`) | sí |
+| Patcheo de salida física (`hwoutaux.N.src`) | sí |
+| Retardos (`i.N.delay`) | sí |
+| Reproductor (`p.0.mix`, `p.0.mute`) | sí |
+| Fader, silencio, panorama, envío auxiliar, nombre | sí |
+| Ecualizador, puerta, dinámica | sí |
+| **Supresión de realimentación (`m.afs.enabled`)** | **no** |
+
+Y **el recall no tocó ninguna clave que no hubiéramos movido nosotros**: cero
+efectos colaterales sobre 6.700.
+
+**`m.afs.enabled` es la única excepción, y no es una cualquiera.** El supresor
+de realimentación ya nos había arruinado una ronda entera de mediciones: toma
+los tonos de prueba por acople y les pone un filtro de −18 dB mientras uno mide.
+O sea que su estado **cambia materialmente lo que la consola le hace al audio**,
+y es justo lo que el punto de retorno no devuelve. Si algo lo apaga o lo
+enciende, recuperar la instantánea no lo deshace.
+
+### Un recall difunde lo que cambió, no el volcado entero
+
+45 rutas movidas, **45 mensajes difundidos**. No manda las 6.700 claves: manda
+la diferencia. Eso confirma lo que el almacén confirmado ya suponía en un
+comentario — que **un recall chico es un puñado de mensajes** — y por eso mismo
+puede pasar por debajo del umbral de avalancha sin que nadie lo note.
+
+### Tres formas de medir esto mal, las tres cometidas acá
+
+**1. Un campo que no se movió no prueba nada.** La primera corrida usó los
+canales 21 a 24 y mostró nueve familias en verde. Pero esos canales **no tienen
+previo** —la consola declara veinte previos para veinticuatro entradas— así que
+los cuatro `hw.N.gain` no existían, la consola los ignoró en silencio, y la
+familia **ganancia**, que es la única que la aplicación escribe de verdad, quedó
+sin medir mientras la tabla se veía completa. El guion ahora lo dice a los
+gritos: *«no aceptaron el cambio, y por eso no prueban nada del recall»*.
+
+**2. Recuperar la instantánea que acabás de guardar no contesta si el puntero
+cambia.** Guardar deja `var.currentSnapshot` apuntando a la recién guardada; al
+recuperar esa misma, el puntero ya estaba donde tenía que estar y la consola no
+tenía nada que difundir. La corrida concluyó «no difunde el puntero» cuando lo
+único que había demostrado es que no había nada que difundir. Con una segunda
+instantánea de por medio, **sí lo difunde**.
+
+**3. A un booleano no se le escribe 0,8.** El perturbador genérico movía todo
+±0,2. Sobre un interruptor eso manda un valor que la consola tiene que
+interpretar, y después «el recall no lo devolvió» es indistinguible de «la
+consola nunca aceptó lo que le mandamos». Con `m.afs.enabled` importaba de
+verdad, porque es el único que no vuelve: se remidió con 1↔0 y **el hallazgo se
+sostiene**.
+
+
+## Evidencia archivada
+
+Las cuatro primeras corridas del alcance del recall están acá con nombre y
+apellido, y no se borraron: **cada una es el registro de una forma distinta de
+medir esto mal**, y la sección de arriba las explica una por una. Un archivo que
+solo dice el resultado bueno deja al que venga sin saber qué trampas hay.
+
+- `evidence/alcance-recall-2026-09-10.txt` — la primera. Canales 21 a 24, que
+  **no tienen previo**: los cuatro `hw.N.gain` no existían y la familia
+  ganancia quedó sin medir mientras la tabla mostraba nueve familias en verde
+- `evidence/alcance-recall-ganancia-2026-09-10.txt` — con previos de verdad. La
+  ganancia entra, pero se recupera **la instantánea recién guardada**, así que
+  el puntero no tenía a dónde volver y la pregunta de la causa quedó tapada
+- `evidence/alcance-recall-puntero-2026-09-10.txt` — con dos instantáneas: acá
+  sí se ve que la consola **difunde `var.currentSnapshot`**. Faltaban cuatro de
+  las seis familias que el criterio nombra
+- `evidence/alcance-recall-completo-2026-09-10.txt` — las seis familias, pero
+  moviendo los booleanos con ±0,2, con lo que «no volvió» no se distinguía de
+  «nunca lo aceptó»
+- `evidence/alcance-recall-booleanos-2026-09-10.txt` — **la buena.** Booleanos
+  con 0↔1, las seis familias, 44 de 45 campos vuelven y `m.afs.enabled` no
+- `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática
+  nuestra, ejecutado contra el aparato
