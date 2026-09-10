@@ -87,7 +87,61 @@ entre 250 Hz y 8 kHz.
 falsos positivos que nunca se había hecho con una fuente real: el ruido sube
 todas las bandas a la vez, y una realimentación es una sola que no baja.
 
+### El supresor de la consola nos estaba midiendo a nosotros — 2026-09-10
+
+**Es el hallazgo más importante de esta sesión de medición, y llegó destruyendo
+una conclusión propia.**
+
+`var.afsdata` publica la pila de filtros del supresor de realimentación:
+frecuencia, profundidad y nivel detectado, en **dos pilas separadas** —los
+automáticos y los fijos—. Comparando volcados de antes y después de una tanda de
+tonos:
+
+```
+                 automáticos                           fijos
+antes:   1000 Hz(−18)                            200 Hz(−6)  1000 Hz(−18)
+después: 1000  500  250  125  63  40  (−18 c/u)  200 Hz(−6)  1000 Hz(−18)
+```
+
+**El supresor escuchó los tonos de prueba, los tomó por realimentación y le puso
+un notch de −18 dB a cada uno.** Y tiene razón desde su punto de vista: un tono
+sostenido es, para un supresor, indistinguible de un acople.
+
+**Qué invalida.** Toda la tabla de graves de más abajo: la consola iba notcheando
+cada tono *mientras se reproducía*. Y peor —**ya había un filtro de 1000 Hz a
+−18 dB antes de empezar**, así que la primera medición de 1 kHz salió por un
+notch. Eso explica una rareza que se vio y se dejó pasar: el pico no cayó en la
+banda 67. **Se dejó pasar una anomalía que era la punta de esto.**
+
+**Qué sobrevive.** Que de 250 Hz a 1 kHz el tono aparece en la banda que predice
+la ley medida. Eso es una comprobación de *dónde* cae la energía y no de cuánta,
+así que un notch no la afecta.
+
+**Qué obliga.** Cualquier medición acústica por el general de esta consola tiene
+que hacerse **con el supresor apagado**, y volver a encenderlo al terminar. Sin
+eso, el instrumento se defiende de la medición.
+
+**Y qué regala.** El asistente de realimentación puede leer `var.afsdata` y saber
+qué frecuencias la consola ya mató. Avisar de una que la consola resolvió es
+ruido; y que la consola esté peleando es, en sí, información que hoy tiramos.
+
+Los cinco filtros agregados se borraron con `m.afs.clearlive`, que limpia la pila
+de automáticos y **no toca la de fijos**. `evidence/limpiar-afs-2026-09-10.txt`.
+
+**Cómo se destapó**, porque el camino importa: se repitió la tanda de tonos
+esperando ver mejorar los graves y **empeoró todo, incluido 1 kHz**, que no tenía
+por qué moverse. Esa asimetría —1 kHz cayendo 15 dB mientras 500 y 250 caían 4,7—
+fue lo que hizo mirar el supresor en vez de seguir culpando al equipo.
+`evidence/tono-por-el-aire-2026-09-10b.txt`. En la misma tanda se remidió el
+fondo y estaba plano en ~0 dB: había parado de llover, lo que confundía todavía
+más la lectura hasta separar las dos cosas.
+`evidence/espectro-microfono-2026-09-10b.txt`.
+
 ### Los graves: dónde se pierden, y dónde NO — 2026-09-10
+
+> **Todo lo que sigue está contaminado por lo de arriba y hay que rehacerlo con
+> el supresor apagado.** Se deja porque el método vale y porque la contaminación
+> misma fue el hallazgo.
 
 Se mandaron tonos conocidos por el aire: PC → Scarlett → canal 10 → general →
 Rockit → **aire** → B2 → canal 9 → analizador, con el canal del micrófono en

@@ -33,6 +33,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Se descubrió que el supresor de realimentación de la consola reacciona a los
+  tonos de prueba.** Los toma por acople y les pone un filtro de −18 dB a cada
+  uno, así que cualquier medición acústica que pase por el general se altera sola
+  mientras ocurre. La consola además publica qué frecuencias ya filtró, que es
+  información que el aviso de realimentación puede usar en vez de duplicarla.
+
 - **El analizador quedó comprobado contra frecuencias conocidas por el aire**: de
   250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
   que predice la ley medida, y es el pico del espectro.

@@ -9,6 +9,26 @@ Este documento describe **lo que la consola hace**. Lo que la aplicación tiene 
 
 ---
 
+## `var.afsdata`: el supresor publica sus filtros
+
+**Descubierto el 2026-09-10.** La clave `var.afsdata` trae la pila de filtros del
+supresor de realimentación del general, como texto: `fstack;;` seguido de
+registros `v1,<hz>,<dB>,<Q?>,...` separados por `:`, y **varias pilas** separadas
+por `fstack/fstack`. Las que importan son dos: la de filtros **automáticos** —los
+que la consola coloca sola— y la de **fijos**.
+
+De cada registro se leyeron con confianza los dos primeros campos: **frecuencia
+en Hz** y **profundidad en dB**. El resto no se decodificó.
+
+**Por qué importa más de lo que parece.** Un tono sostenido es, para un supresor,
+indistinguible de una realimentación: reproducir tonos de prueba por el general
+hace que la consola les ponga un notch de −18 dB a cada uno, y las mediciones
+siguientes salen por esos notches. Cualquier medición acústica por este general
+necesita `m.afs.enabled = 0` mientras dura.
+
+`m.afs.clearlive` borra la pila de automáticos sin tocar la de fijos.
+Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt`.
+
 ## La consola difunde en un tic de ~34 ms
 
 **Medido el 2026-09-10** sobre `i.16.mix`, escribiendo desde un cliente y
