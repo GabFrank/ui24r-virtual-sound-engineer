@@ -130,8 +130,10 @@ de automáticos y **no toca la de fijos**. `evidence/limpiar-afs-2026-09-10.txt`
 
 **Cómo se destapó**, porque el camino importa: se repitió la tanda de tonos
 esperando ver mejorar los graves y **empeoró todo, incluido 1 kHz**, que no tenía
-por qué moverse. Esa asimetría —1 kHz cayendo 15 dB mientras 500 y 250 caían 4,7—
-fue lo que hizo mirar el supresor en vez de seguir culpando al equipo.
+por qué moverse. Esa asimetría fue lo que hizo mirar el supresor en vez de
+seguir culpando al equipo: **1 kHz pasó de 28,9 a 13,8 dB**, mientras 500 pasaba
+de 30,7 a 26,1 y 250 de 28,4 a 23,6. El de 1 kHz se movió mucho más que los
+otros dos, y no tenía por qué moverse en absoluto.
 `evidence/tono-por-el-aire-2026-09-10b.txt`. En la misma tanda se remidió el
 fondo y estaba plano en ~0 dB: había parado de llover, lo que confundía todavía
 más la lectura hasta separar las dos cosas.
