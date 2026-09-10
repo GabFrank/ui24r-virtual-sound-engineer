@@ -97,3 +97,19 @@ digital real. Eso lo mide SPK-P0.10b.
 - **Paso 2 del charter, la escritura y su verificación por lectura**: exige escribir, y el nivel
   es OBSERVE.
 - **`evidence/roundtrip.jsonl`** no existe por lo mismo.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/curva-ganancia-completa-2026-09-09.txt` — captura archivada
+- `evidence/enlace-estereo-2026-09-09.txt` — captura archivada
+- `evidence/fuentes-de-canal-2026-09-09.txt` — qué fuente toma cada canal (`i.N.src`)
+- `evidence/http-servido-2026-09-09.txt` — qué sirve la consola por HTTP, incluido `/raw`
+- `evidence/ley-ganancia-2026-09-09.txt` — captura archivada
+- `evidence/manual-fw-3.5-que-aporta-2026-09-09.txt` — qué confirma y qué agrega el manual del firmware 3.5
+- `evidence/manual-tecnico-fw-3.5.8328.txt` — captura archivada
+- `evidence/prueba-A-pasivo-claves.tsv` — el volcado en tabla, clave por clave
+- `evidence/trabajo-previo-2026-09-09.txt` — qué hay publicado sobre este protocolo y qué no
+- `evidence/trabajo3-cambios.txt` — cambios observados durante una sesión de trabajo

@@ -56,3 +56,12 @@ O sea que el analizador de la consola es más barato y menos flexible, y tiene u
 ## Acción ante fallo
 
 Si el aislamiento no llega a −80 dBFS, el análisis por canal se marca con confianza limitada y se documenta el suelo real. Si la conmutación tarda demasiado, se reduce el número de canales del bus o se acepta el tiempo y se comunica en la interfaz.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/realimentacion-2026-09-09.txt` — el detector de realimentación contra el espectro real
+- `evidence/rta-no-es-espectro-2026-09-09.txt` — **conclusión retractada** el mismo día: decía que el `RTA` no traía espectro. Se conserva porque el error es instructivo
+- `evidence/var-rta-2026-09-09.txt` — qué hay en `var.rta` antes de tocarlo

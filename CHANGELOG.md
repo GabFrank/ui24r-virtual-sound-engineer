@@ -6,6 +6,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación aplica la ganancia en la consola.** Hasta ahora medía,
+  proponía y ahí se cortaba: el cambio lo hacía el usuario a mano. El
+  mecanismo estaba entero desde antes —motor de seguridad, ejecutor de
+  transacciones, tabla del diario— y **nadie lo instanciaba**. Se aplica con
+  confianza ALTA o MEDIA, un canal por vez, solo en configuración de canales, y
+  se verifica volviendo a medir: que el valor haya llegado prueba que la
+  perilla se movió, no que haya servido (ADR-026).
+
+- **El diario de transacciones se guarda en la base.** Había uno en memoria,
+  que sirve para los tests y el simulador. Pero ADR-013 pide anotar **antes**
+  de escribir para que, si la aplicación se cae a mitad de una transacción, al
+  volver se sepa qué quedó tocado — y un diario en memoria se lleva esa
+  información en la misma caída que tenía que sobrevivir.
+
+- **Sin conexión testigo, la escritura se confirma por el medidor.** Es lo que
+  INV-011 ya contemplaba para la ganancia con señal presente: si se subió 3 dB,
+  el nivel tiene que subir 3 dB. Comprueba el efecto y no el valor, así que se
+  anota como `VU` y nunca como `WITNESS`. Sin señal no hay confirmación posible
+  y no se escribe.
+
 - **Los medidores de las salidas se leen: general, subgrupos, efectos,
   auxiliares y reproductor.** La cola de `VU2` estuvo meses declarada
   indescifrable porque se la leía con el paso de las entradas y las secciones

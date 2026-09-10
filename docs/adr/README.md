@@ -27,3 +27,6 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [021](ADR-021-publicacion-automatica.md) | La versión la deciden los commits, no una etiqueta a mano | Aceptada |
 | [022](ADR-022-contexto-musical-por-puerto.md) | Qué canción se está tocando entra por un puerto, no por la interfaz | Aceptada |
 | [023](ADR-023-destino-automatizacion.md) | El destino es la automatización, y se llega por niveles | Aceptada |
+| [024](ADR-024-confirmacion-por-testigo.md) | Las escrituras se confirman por una segunda conexión testigo | Aceptada |
+| [025](ADR-025-analizador-prestado.md) | El analizador se toma prestado con permiso, una vez por sesión | Aceptada |
+| [026](ADR-026-cerrar-el-lazo.md) | Cerrar el lazo: la aplicación escribe la ganancia | Aceptada |

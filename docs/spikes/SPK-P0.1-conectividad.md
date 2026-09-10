@@ -264,3 +264,16 @@ ciclos de reconexión y huellas de los tres clientes.
   compartida y el reparto 0/1/1 de líneas vistas—. `evidence/tres-clientes-diff.txt` es la
   corrida vieja, la del estado quieto.
 - **Falta archivar la medición de la segunda conexión testigo**, con sus 27 ms.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/handshake.txt` — el apretón de manos de socket.io, capturado
+- `evidence/prueba-A-pasivo.txt` — captura archivada
+- `evidence/prueba-B-alive.txt` — captura con `ALIVE`, para comparar contra la pasiva
+- `evidence/reconexion-desde-imac.jsonl` — ciclos de reconexión desde la laptop
+- `evidence/recorrido-tablet-2026-09-09.txt` — recorrido de la aplicación en la tablet, con los tres defectos que solo se ven con el aparato en la mano
+- `evidence/volcado-inicial.txt` — el volcado inicial completo, con sus tiempos por mensaje
+- `evidence/vu-con-senal.txt` — tramas `VU2` con música entrando por las RCA — la que destapó los dos rótulos invertidos de la cola
