@@ -79,17 +79,17 @@ import { AnalizadorService, FUENTE_GENERAL } from './analizador.service';
   styles: [`
     @use 'tokens' as *;
 
-    .permiso, .alarma { padding: var(--sp-4); border-radius: var(--r-2); margin-bottom: var(--sp-4); }
-    .permiso { background: var(--c-superficie-2); }
-    .alarma { background: var(--c-aviso-suave, var(--c-superficie-2)); }
+    .permiso, .alarma { padding: var(--sp-4); border-radius: var(--radio-md); margin-bottom: var(--sp-4); }
+    .permiso { background: var(--surface-2); }
+    .alarma { background: var(--warn-tenue); }
     .permiso h2, .alarma h2 { margin: 0 0 var(--sp-2); font-size: 1.1rem; }
     .detalle { font-size: .85rem; opacity: .8; line-height: 1.4; }
     .banda { font-size: 1.05rem; margin: var(--sp-1) 0; }
     .botones { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
     .barras { display: flex; align-items: flex-end; gap: 1px; height: 220px;
-              padding: var(--sp-2); background: var(--c-superficie-2); border-radius: var(--r-2); }
-    .barra { flex: 1; background: var(--c-senal, currentColor); min-height: 1px; border-radius: 1px 1px 0 0; }
-    .barra.pico { background: var(--c-aviso, currentColor); }
+              padding: var(--sp-2); background: var(--surface-2); border-radius: var(--radio-md); }
+    .barra { flex: 1; background: var(--signal); min-height: 1px; border-radius: 1px 1px 0 0; }
+    .barra.pico { background: var(--warn); }
     .pie { font-size: .8rem; opacity: .7; margin-top: var(--sp-2); }
   `],
 })

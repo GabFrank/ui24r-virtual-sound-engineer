@@ -33,6 +33,13 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **El aviso de realimentación ya señala qué banda es.** La barra tenía que
+  salir en color de aviso y salía blanca como todas: la pantalla usaba cuatro
+  fichas de diseño que no existen, y `var()` con valor de reserva no falla. El
+  aviso decía «1 banda sostenida» y no marcaba cuál. Había otras doce fichas
+  inventadas en cuatro pantallas más, y ahora la verificación falla si alguna
+  ficha usada no está declarada.
+
 - **Las instantáneas automáticas dejan de acumularse.** Se conservan las 20 más
   recientes, que es lo que INV-003 ya tenía decidido. **Solo se borran las
   propias y solo las que se pueden fechar**: una instantánea que guardaste a

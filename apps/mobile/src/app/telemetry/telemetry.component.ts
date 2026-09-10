@@ -302,7 +302,7 @@ function db(v: number): string {
 
     /* La salida es dato de contexto: el que decide la ganancia es el de
      * entrada, y dos cifras con el mismo peso invitan a mirar la que no es. */
-    .suave { color: var(--texto-suave); }
+    .suave { color: var(--muted); }
 
     .nota-estimado {
       color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea);
