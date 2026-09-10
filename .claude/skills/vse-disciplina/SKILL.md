@@ -113,3 +113,20 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 > **Lo que pasó.** Un lote de tres correcciones abortó en la primera. Se volvió a correr con dos, y la tercera —la polaridad del indicador de puerta— nunca llegó al archivo. El commit decía haberla hecho.
 
 **Después de un lote, comprobá que cada edición esté**, con `grep`, no de memoria.
+
+## El límite que se comprueba tarde no es un límite
+
+`npm run verificar:commits` revisaba la convención de los mensajes, pero corre
+**después**: el commit ya existe, muchas veces ya se empujó, y arreglarlo cuesta
+una enmienda y un `--force-with-lease`. Pasó dos veces en la misma sesión, las
+dos por uno o dos caracteres de más en el asunto. Y la segunda vez, al poner la
+guarda, apareció un error que ninguna de las dos revisiones había mostrado: el
+ámbito era `gates` y el válido es `gate`, en singular.
+
+Hay un gancho `commit-msg` en `.githooks/` y `npm install` lo engancha con
+`core.hooksPath`. Si el mensaje no cumple, **el commit no llega a existir**.
+
+La regla general, que vale para más cosas que los mensajes: **una comprobación
+que llega después del hecho es un reproche, no una guarda.** Cuando algo se
+repite, la pregunta no es «cómo me acuerdo la próxima» sino «dónde se pone para
+que no dependa de que me acuerde».

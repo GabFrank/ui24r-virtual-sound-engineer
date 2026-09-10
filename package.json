@@ -10,6 +10,7 @@
     "tools/mixer-sim"
   ],
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "pretest:dsp": "node tools/spikes/p0-10a-dsp/src/generate-signals.mjs",
