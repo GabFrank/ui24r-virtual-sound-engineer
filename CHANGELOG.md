@@ -30,7 +30,20 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   solo lo que cambió, así que un recall chico es, efectivamente, un puñado de
   mensajes por debajo del umbral de avalancha. El diagnóstico estaba escrito
   hace tiempo; lo que faltaba era que el dato llegara a la rama que lo esperaba.
-  **Sin arreglar todavía**: se mide acá y se corrige aparte.
+
+### Corregido
+
+- **Un recall chico ya no pasa desapercibido.** El almacén confirmado ahora
+  reconoce el `SETS` de `var.currentSnapshot` y el adaptador se lo pasa, con lo
+  que la mitad de INV-021 que habla de la recuperación de instantánea deja de
+  ser código inalcanzable. Contra la consola: **diez recuperaciones, diez
+  avisos, diez veces con la causa correcta**, y la consola quedó con cero claves
+  distintas de como estaba.
+
+  Los tests de esa rama llevaban tiempo en verde **probando algo que no pasa**:
+  construían la línea con `codificarSetd` y la consola manda `SETS`. Ahora usan
+  la forma real, y sin el arreglo fallan ocho. Un test que fabrica su propia
+  entrada solo prueba lo que el que lo escribió creía del protocolo.
 
 - **La avalancha, medida contra la consola de verdad.** Estaba probada solo
   contra el simulador — que la dispara porque nosotros se lo pedimos, así que

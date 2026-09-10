@@ -135,11 +135,14 @@ store.alCambioMasivo((e) => { avisos.push(e); });
 let difundidas: string[] = [];
 let anotando = false;
 observador.alRecibir((linea) => {
+  // Se le pasa la linea entera y no solo los `SETD`, que es lo que hace el
+  // adaptador de verdad. La primera version llamaba a `aplicar` a mano para los
+  // numericos y descartaba los textos: con eso el guion reproducia el mismo
+  // defecto que estaba midiendo, y la causa salia DESCONOCIDA por culpa del
+  // instrumento tanto como del programa.
+  store.procesarLinea(linea);
   const m = decodificar(linea);
-  if (m.tipo === 'SETD') {
-    store.aplicar(m.path, m.valor);
-    if (anotando) difundidas.push(m.path);
-  } else if (m.tipo === 'SETS' && anotando) difundidas.push(m.path);
+  if (anotando && (m.tipo === 'SETD' || m.tipo === 'SETS')) difundidas.push(m.path);
 });
 
 const actor = new Ui24rTransport();

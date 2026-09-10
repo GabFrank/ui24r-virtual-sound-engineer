@@ -1,6 +1,6 @@
 # SPK-P0.9 — Concurrencia y presencia
 
-**Estado:** Parcial — **criterios 1, 2, 3 y 5 cerrados contra la consola el 2026-09-10**; el 4 a medias —la avalancha por cambio masivo ya está medida contra el aparato, la recuperación de instantánea no— y el 6 necesita elegir el mecanismo de presencia · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial — **criterios 1, 2, 3, 4 y 5 cerrados contra la consola el 2026-09-10**; solo queda el 6, el mecanismo de presencia, que ya no espera datos sino una decisión · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.5b
 **Montaje:** Ui24R, router, laptop con Node, navegador oficial abierto en otro equipo, teléfono con la aplicación oficial.
 
@@ -23,7 +23,7 @@
 | 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt`; la corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt` | ✅ |
 | 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
-| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **Detectada sí, pero por el camino equivocado — y eso destapó un defecto.** Un `LOADSNAPSHOT` real contra la consola dispara el aviso, porque mueve más de diez rutas. Lo que **no** ocurre nunca es la causa `SNAPSHOT_RECALL`: la consola difunde `var.currentSnapshot` —comprobado— pero llega como `SETS`, y `ConfirmedStateStore.procesarLinea` corta con `if (m.tipo !== 'SETD') return`. **La rama de instantánea de INV-021 es código inalcanzable**, así que un recall de menos de diez rutas no invalida nada. Evidencia: `../SPK-P0.8/evidence/alcance-recall-booleanos-2026-09-10.txt` | 🟡 |
+| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **10 de 10 contra la consola el 2026-09-10, con la causa correcta las diez veces.** Diez `LOADSNAPSHOT` reales, diez avisos, diez `SNAPSHOT_RECALL`; once instantáneas creadas y las once borradas; **cero claves distintas de como estaban** al terminar. Cerrarlo exigió antes arreglar el defecto que este mismo criterio destapó: el puntero llega como `SETS` y el almacén solo procesaba `SETD`. `evidence/recall-diez-veces-2026-09-10.txt` | ✅ |
 | 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
 | 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Sin elegir, pero ya no por falta de datos: medido el 2026-09-10, la consola no ofrece presencia.** Tres ciclos de un cliente entrando y saliendo mientras un observador escuchaba por la principal: **cero** líneas difundidas al entrar y cero al salir, y ninguna de las seis claves cuyo nombre sugería presencia —`settings.maxconn`, `var.present`, `var.pongtime`, `var.asosec`, `var.cascade.connected`, `settings.cascade.remote`— se movió. O sea que el mecanismo hay que **construirlo**, y cuál construir es una decisión de producto con alternativas de costo muy distinto. Sigue el requisito de distinguir nuestro testigo de un segundo operador. `evidence/hay-presencia-2026-09-10.txt` | ⬜ |
 
@@ -178,10 +178,38 @@ diez, la avalancha no se detectaba y el estado local seguía dándose por bueno
 cuando ya no describía la consola. Es peor que la avalancha grande, porque un
 recall chico es el que nadie nota.»*
 
-Ese párrafo describe con exactitud lo que sigue pasando. **El comentario acertó
+Ese párrafo describe con exactitud lo que seguía pasando. **El comentario acertó
 el diagnóstico y el arreglo no llegó a la ruta por donde entra el dato.** Y el
 mismo día se midió que un recall difunde solo lo que cambió —45 rutas, 45
 mensajes— así que un recall chico es, efectivamente, un puñado de mensajes por
 debajo del umbral.
 
-Se corrige aparte, no acá.
+### Por qué los tests no lo vieron
+
+Los cuatro tests de esta rama construían la línea con **`codificarSetd`**:
+`SETD^var.currentSnapshot^3`. La consola manda `SETS^var.currentSnapshot^<nombre>`.
+La rama funcionaba con la forma inventada y era inalcanzable con la real, así
+que el archivo pasaba en verde probando algo que no ocurre. Es el mismo error
+que dejó vivo un factor mil en la retención de picos: **una comprobación de
+coherencia interna no puede ver un error de lectura de la fuente**. Ahora usan
+`codificarSets`, y sin el arreglo fallan ocho.
+
+### Arreglado y contado hasta diez
+
+`procesarLinea` reconoce el `SETS` de esa ruta y el adaptador se la pasa. Contra
+la consola: **diez recuperaciones, diez avisos, diez veces `SNAPSHOT_RECALL`**,
+once instantáneas creadas y las once borradas, y cero claves distintas de como
+estaban. Evidencia: `evidence/recall-diez-veces-2026-09-10.txt`
+
+La primera comprobación del arreglo, con una sola recuperación, está en
+`evidence/recall-causa-arreglada-2026-09-10.txt`. Vale la pena guardarla aparte
+porque en esa corrida se arregló también **el instrumento**: el guion llamaba a
+`aplicar` a mano para los números y descartaba los textos, o sea que reproducía
+el mismo defecto que estaba midiendo. Un medidor que comparte el error del
+programa lo confirma en vez de encontrarlo.
+
+Una nota sobre el número que informa el aviso: en un recall vale **1**, porque
+el puntero llega primero y dispara solo. No llega a la pantalla —el texto de
+`SNAPSHOT_RECALL` no lo usa, dice «cambió la instantánea activa, así que
+cualquier parámetro pudo moverse», que es lo correcto—. El caso donde el número
+estaría más equivocado es justo el que no lo muestra.

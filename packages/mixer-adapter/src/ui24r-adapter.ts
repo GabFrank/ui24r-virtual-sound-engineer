@@ -978,7 +978,14 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
-      if (m.path === 'var.currentSnapshot') this.instantaneaActual = m.texto;
+      if (m.path === 'var.currentSnapshot') {
+        this.instantaneaActual = m.texto;
+        // Y va también al almacén confirmado, que es quien vigila INV-021. Esta
+        // línea faltaba: el almacén solo recibía los `SETD`, así que el cambio
+        // de instantánea —que viaja como texto— no llegaba nunca a la rama que
+        // lo esperaba, y un recall chico no invalidaba nada.
+        this.store.procesarLinea(linea);
+      }
       // Solo la primera: las siguientes pueden ser nuestras propias escrituras
       // rebotando por otros clientes, y guardarlas sería devolver lo que
       // nosotros mismos pusimos.

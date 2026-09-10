@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ConfirmedStateStore, RUTA_INSTANTANEA_ACTIVA } from '../src/confirmed-store.ts';
 import type { BulkExternalChange } from '../src/api.ts';
-import { codificarSetd } from '../src/protocol.ts';
+import { codificarSetd, codificarSets } from '../src/protocol.ts';
 
 /** Reloj controlado: probar tiempo esperándolo es lento y frágil. */
 /**
@@ -253,6 +253,15 @@ test('terminado el volcado, una avalancha real sí se detecta', () => {
 
 // --- INV-021: "cambio masivo O cambio de currentSnapshot" ------------------
 //
+// **Estos tests estuvieron verdes un mes probando algo que no pasa.** Construian
+// la linea con `codificarSetd`, o sea `SETD^var.currentSnapshot^3`, y la consola
+// manda `SETS^var.currentSnapshot^<nombre>`. La rama funcionaba con la forma
+// inventada y era inalcanzable con la real. Lo destapo ejecutar un LOADSNAPSHOT
+// contra el aparato el 2026-09-10 y ver la causa salir DESCONOCIDA.
+//
+// Ahora usan `codificarSets`. Un test que fabrica su propia entrada solo prueba
+// lo que el que lo escribio creia del protocolo.
+//
 // Solo estaba la primera mitad. Un recall desde el navegador de la consola
 // cambia la instantanea activa y despues los parametros que difieran: si
 // difieren menos de diez, la avalancha no se detectaba y el estado local se
@@ -264,7 +273,7 @@ test('INV-021: cambiar la instantanea activa invalida, aunque cambie sola', () =
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
 
   assert.equal(rafagas.length, 1, 'una sola ruta, pero es la que cuenta');
   assert.equal(store.storeState, 'INVALID');
@@ -275,7 +284,7 @@ test('INV-021: un recall chico se detecta igual que uno grande', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   for (let canal = 1; canal <= 3; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
@@ -293,7 +302,7 @@ test('el volcado inicial incluye la instantanea activa y no es una avalancha', (
   store.alCambioMasivo((e) => rafagas.push(e));
 
   store.volcadoIniciado();
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
   store.volcadoCompletoRecibido();
 
   assert.equal(rafagas.length, 0);
@@ -338,9 +347,9 @@ test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   reloj.avanzar(100);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 1);
 
   reloj.avanzar(2000);
@@ -362,7 +371,7 @@ test('si la instantanea llega despues de los parametros, se corrige la causa', (
   }
   assert.equal(rafagas[0]?.probableCausa, 'GRUPO_DE_CANALES', 'con lo visto hasta acá, eso parecía');
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
   assert.equal(rafagas.length, 2);
   assert.equal(rafagas[1]?.probableCausa, 'SNAPSHOT_RECALL');
 });
@@ -375,9 +384,9 @@ test('la correccion de causa se avisa una sola vez', () => {
   for (let canal = 1; canal <= 12; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 2);
 });
 
@@ -386,7 +395,7 @@ test('INV-021: el estado invalido vuelve a ser valido con la relectura', () => {
   // estaba; la segunda no existia, y el estado se quedaba invalido para
   // siempre: la unica salida era desconectar y volver a conectar a mano.
   const { store } = nuevoStore();
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(store.storeState, 'INVALID');
 
   // Lo que hace una relectura: el volcado entero, otra vez.
@@ -402,14 +411,14 @@ test('la relectura no se anuncia como una avalancha nueva', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 1);
 
   store.volcadoIniciado();
   for (let canal = 1; canal <= 24; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.5));
   }
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   store.volcadoCompletoRecibido();
 
   assert.equal(rafagas.length, 1, 'el volcado de la relectura no es un cambio de nadie');
@@ -422,7 +431,7 @@ test('una avalancha dentro de la ventana de silencio invalida igual', () => {
   // estado valido se puede escribir.
   const reloj = relojFalso();
   const { store } = nuevoStore(reloj);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(store.storeState, 'INVALID');
 
   // El usuario relee: el estado vuelve a ser valido dentro de la ventana.

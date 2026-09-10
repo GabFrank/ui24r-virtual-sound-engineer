@@ -217,8 +217,39 @@ export class ConfirmedStateStore {
   /** Procesa una línea entrante del protocolo. */
   procesarLinea(linea: string): void {
     const m = decodificar(linea);
+    // **La instantánea activa viaja como texto, y por eso esta rama no existía.**
+    // Durante meses la mitad de INV-021 que habla del recall fue código
+    // inalcanzable: se llegaba a ella solo desde `aplicar`, y a `aplicar` solo
+    // desde acá, que descartaba todo lo que no fuera `SETD`. La consola manda
+    // `SETS^var.currentSnapshot^<nombre>`.
+    //
+    // Y los tests no lo atrapaban porque **construían la línea con
+    // `codificarSetd`**: probaban la rama con una forma de mensaje que el
+    // aparato no produce. Es el mismo error que dejó vivo el factor mil de la
+    // retención de picos — una comprobación de coherencia interna no puede ver
+    // un error de lectura de la fuente. Lo destapó ejecutar un `LOADSNAPSHOT`
+    // real el 2026-09-10 y ver que la causa salía `DESCONOCIDA`.
+    if (m.tipo === 'SETS' && m.path === RUTA_INSTANTANEA_ACTIVA) {
+      this.notarInstantaneaActiva();
+      return;
+    }
     if (m.tipo !== 'SETD') return;
     this.aplicar(m.path, m.valor);
+  }
+
+  /**
+   * La consola cambió de instantánea activa.
+   *
+   * No se guarda el nombre —este almacén es de números— pero sí cuenta como
+   * cambio a los efectos de INV-021: **invalida aunque sea el único mensaje**.
+   * Un recall difunde solo las rutas que difieren, medido el 2026-09-10 contra
+   * el aparato, así que uno chico son unos pocos mensajes y no llega al umbral
+   * de avalancha por su cuenta.
+   */
+  private notarInstantaneaActiva(): void {
+    if (this.cargandoVolcado) return;
+    if (this.deducirOrigen() !== 'EXTERNAL') return;
+    this.registrarCambioReciente(RUTA_INSTANTANEA_ACTIVA, this.ahora());
   }
 
   aplicar(path: string, valor: number): void {
