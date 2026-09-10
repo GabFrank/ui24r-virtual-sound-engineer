@@ -105,4 +105,12 @@ cómo está construido, por qué está construido así, cómo se usa y qué regl
 se pueden romper. El fichero `referencia.md` de esa misma carpeta guarda el
 detalle numérico —estados, invariantes, protocolo, DSP, publicación—.
 
-Si vas a tocar este repositorio por primera vez, empezá por ahí.
+Y hay una segunda,
+[`.claude/skills/vse-disciplina/`](.claude/skills/vse-disciplina/SKILL.md), con
+**cómo se trabaja**: commits granulares, ningún commit sin su documentación,
+cómo medir sin engañarse, cómo tratar la consola de alguien, y qué preguntar en
+vez de decidir. Cada regla lleva al lado el error real que la produjo, porque
+una regla sin su cicatriz se lee y se olvida.
+
+Si vas a tocar este repositorio por primera vez, empezá por la primera. Si vas a
+escribir algo, leé la segunda.
