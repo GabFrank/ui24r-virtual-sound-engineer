@@ -25,7 +25,7 @@
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
 | 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **La mitad medible sin pedir permiso, cerrada: 10 de 10 contra la consola el 2026-09-10.** Un segundo cliente escribió 16 rutas distintas de golpe y el detector avisó las diez veces, con las 16 restauradas y comprobadas por HTTP. Lo que **sigue sin medirse contra el aparato** es el disparador que el criterio nombra: una **recuperación de instantánea** de verdad, que además cambia `var.currentSnapshot` y debería dar la causa `SNAPSHOT_RECALL` en vez de `DESCONOCIDA`. Recuperar una instantánea es la operación de mayor alcance que expone el protocolo y la aplicación no la manda nunca: hacerlo contra la consola del usuario es decisión suya, no nuestra. `evidence/avalancha-real-2026-09-10.txt` | 🟡 |
 | 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
-| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | Sin elegir, y ahora con un requisito más: tiene que distinguir **nuestra propia conexión testigo** de un segundo operador. Ver R-27 | ⬜ |
+| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Sin elegir, pero ya no por falta de datos: medido el 2026-09-10, la consola no ofrece presencia.** Tres ciclos de un cliente entrando y saliendo mientras un observador escuchaba por la principal: **cero** líneas difundidas al entrar y cero al salir, y ninguna de las seis claves cuyo nombre sugería presencia —`settings.maxconn`, `var.present`, `var.pongtime`, `var.asosec`, `var.cascade.connected`, `settings.cascade.remote`— se movió. O sea que el mecanismo hay que **construirlo**, y cuál construir es una decisión de producto con alternativas de costo muy distinto. Sigue el requisito de distinguir nuestro testigo de un segundo operador. `evidence/hay-presencia-2026-09-10.txt` | ⬜ |
 
 ## Los criterios 1 y 5 están en tensión, y se eligió — 2026-09-10
 
@@ -120,3 +120,31 @@ show `VSE`, mover unas rutas, y recuperarla — la propia recuperación sería l
 restauración. Pero recuperar una instantánea es **la operación de mayor alcance
 que expone el protocolo**, la aplicación no la manda nunca, y se haría sobre la
 consola del usuario. Eso se pregunta antes, no se decide por él.
+
+
+---
+
+## No hay presencia por protocolo — 2026-09-10
+
+Tres ciclos de un cliente entrando y saliendo, con un observador escuchando por
+la conexión principal: **cero líneas difundidas** en los seis eventos, y
+ninguna de las claves candidatas se movió. Evidencia: `evidence/hay-presencia-2026-09-10.txt`
+
+`settings.maxconn` vale 48, así que la consola **sabe** cuántas conexiones
+admite; simplemente no cuenta ni publica cuántas hay. `var.present` vale 0 y no
+cambió con tres clientes entrando: no es lo que el nombre sugiere.
+
+**Esto convierte el criterio en una decisión y no en una medición.** Las
+alternativas que quedan sobre la mesa son de costo y alcance muy distintos:
+
+| Camino | Qué ve | Qué cuesta | Qué NO ve |
+|---|---|---|---|
+| **Inferir del tráfico ajeno** | A quien *toca* algo | Nada: ya está medido que todo lo que entra por la principal es ajeno, y el testigo nunca escribe | Al que **solo mira** — y ése es justo el que se sorprende cuando la aplicación mueve un fader |
+| **Un tablero en la consola** | A todos los que se anuncien | Escribir periódicamente una clave que no es de audio, y ensuciar el estado del usuario | A la interfaz web oficial, que no se anuncia |
+| **Anuncio en la red, fuera de la consola** | A otras instancias nuestras | Descubrimiento en la red local | A la interfaz web oficial, que es el caso que importa |
+| **Cambiar la pregunta** | «¿alguien tocó esto?», no «¿hay alguien?» | Nada: ya está cerrado y medido —0 sobrescrituras, 100 % de cambios ajenos etiquetados— | Nada que hoy se necesite; lo que se pierde es el aviso *anticipado* |
+
+**El requisito nuevo lo cumple el primero por construcción**: nuestro testigo
+escucha y no escribe nunca, así que toda escritura que llega por la principal es
+de un tercero de verdad. No hay que distinguir nada — no hay nada nuestro que
+confundir.
