@@ -40,7 +40,7 @@
 | Silencio, panorama, nombre | sí | `i.N.mute`, `i.N.pan`, `i.N.name` | booleano, 0..1, texto | CONFIRMADO. **Escritura verificada contra el aparato** el 2026-09-08 en `i.9.mute`, con el mismo comportamiento: se aplica, sin eco y con difusión. `i.N.pan` e `i.N.name` siguen probados solo en lectura | ✅ lectura; escritura solo `i.N.mute` | P0.2a, P0.1 |
 | Solo de canal | sí | `i.N.solo` | booleano | CONFIRMADO | ⬜ | P0.2a |
 | Ganancia de entrada | `hw(n).setGainDB` | `hw.N.gain` | dB, de −6 a 57, **escalonada en 48 valores** | CONFIRMADO | ✅ | P0.2a |
-| Alimentación fantasma | `hw(n).setPhantom` | `hw.N.phantom` | booleano | CONFIRMADO, solo lectura por INV-007 | ⬜ | P0.2a |
+| Alimentación fantasma | `hw(n).setPhantom` | `hw.N.phantom` | booleano | CONFIRMADO en lectura contra el aparato el 2026-09-10, y con la trampa medida: **`i.N.phantom` existe y dice otra cosa**. Con el condensador alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el mismo momento. Quien lea la ruta del canal en vez de la del previo va a decir «sin fantasma» sobre un micrófono alimentado. Sigue siendo **solo lectura** por INV-007. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ lectura | P0.2a |
 | Alta impedancia | — | `hw.N.hiz` | booleano | INFERIDO | ⬜ | P0.2a |
 | Retardo de canal | `master.input(n).setDelay` | `i.N.delay` | ms, de 0 a 250 | CONFIRMADO | ⬜ | P0.2a |
 | Filtro pasa altos | — | `i.N.eq.hpf.freq`, `.slope` | desconocida | INFERIDO | ⬜ | P0.2b |
@@ -57,13 +57,13 @@
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |
 |---|---|---|---|---|---|---|
 | Envío auxiliar: nivel | `aux(b).input(n)` | `i.N.aux.B.value` | dB | CONFIRMADO | ✅ | P0.2a |
-| Envío auxiliar: silencio | `aux(b).input(n)` | `i.N.aux.B.mute` | booleano | CONFIRMADO | ⬜ | P0.2a |
-| Envío auxiliar: antes o después del fader | `pre()/post()` | `i.N.aux.B.post` | booleano | CONFIRMADO | ⬜ | P0.2a |
-| Envío auxiliar: antes o después del proceso | `preProc()/postProc()` | `i.N.aux.B.postproc` | booleano | CONFIRMADO | ⬜ | P0.2a |
-| Configuración global de punto de derivación | — | `settings.auxsendpoint`, `mtxsendpoint` | enumerado | DESCONOCIDO | ⬜ | P0.2a |
-| Matriz, con el general como fuente | `mtx(b).master()` | `m.mtx.B.*` | dB | CONFIRMADO | ⬜ | P0.2a |
-| Salida: fader, silencio, retardo | `master.aux(b)` | `a.B.mix/mute/delay` | dB, ms | CONFIRMADO | ⬜ | P0.2a |
-| Retardo general por lado | `setDelayL/R` | `m.delayL`, `m.delayR` | ms, de 0 a 500 | CONFIRMADO | ⬜ | P0.2a |
+| Envío auxiliar: silencio | `aux(b).input(n)` | `i.N.aux.B.mute` | booleano | CONFIRMADO. Escrito y difundido el 2026-09-10 en `i.9.aux.0.mute`, restaurado y comprobado por HTTP | ✅ | P0.2a |
+| Envío auxiliar: antes o después del fader | `pre()/post()` | `i.N.aux.B.post` | booleano | CONFIRMADO. Escrito y difundido el 2026-09-10 en `i.9.aux.0.post`, restaurado | ✅ | P0.2a |
+| Envío auxiliar: antes o después del proceso | `preProc()/postProc()` | `i.N.aux.B.postproc` | booleano | CONFIRMADO. Escrito y difundido el 2026-09-10 en `i.9.aux.0.postproc`, restaurado. Existe por envío en los canales y en los buses, **menos en `i.9` e `i.19`**, los dos únicos canales con envío a la matriz | ✅ | P0.2a |
+| Configuración global de punto de derivación | — | `settings.auxsendpoint`, `mtxsendpoint` | booleano | CONFIRMADO como ruta el 2026-09-10: se escribe y se difunde en 29 ms. Y se midió lo que **no** hace: al cambiarlo, la consola difundió **cero** rutas más, así que **no reescribe los `post`/`postproc` de cada envío**. Cuál de los dos manda en el audio no está medido y no se puede deducir del estado. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ ruta | P0.2a |
+| Matriz, con el general como fuente | `mtx(b).master()` | `m.mtx.B.value/mute/pan/postproc` | dB | CONFIRMADO el 2026-09-10 en `m.mtx.0.value` y `m.mtx.0.mute`, escritos, difundidos y restaurados. **La matriz no es `hwoutaux.N.src`**, que es el jack físico. Tienen envío a la matriz 19 fuentes: los 10 auxiliares, los 6 subgrupos, el general y **solo dos canales, `i.9` e `i.19`**. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ | P0.2a |
+| Salida: fader, silencio, retardo | `master.aux(b)` | `a.B.mix/mute/delay` | dB, y el retardo en unidad **sin medir** | CONFIRMADO. `a.0.delay` escrito, difundido y restaurado el 2026-09-10 | ✅ | P0.2a |
+| Retardo general por lado | `setDelayL/R` | `m.delayL`, `m.delayR` | crudo de 0 a 1. **«De 0 a 500 ms» sale de la API tipada de terceros, no de una medición nuestra** | CONFIRMADO como ruta el 2026-09-10: los dos aceptaron 0,25, lo difundieron y volvieron a 0. Cuántos milisegundos son esos 0,25 **no está medido**: la ley de conversión no aparece en el código que la consola sirve. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ ruta, ⬜ unidad | P0.2a |
 | Ecualizador de salida | — | `a.B.eq.*`, `m.eq.*` | desconocida | INFERIDO | ⬜ | P0.2c |
 | Ecualizador gráfico de 31 bandas | — | sin clave conocida | — | DESCONOCIDO | ⬜ | P0.2c |
 | Polaridad de salida | — | `a.B.invert`, `m.l.invert` | booleano | INFERIDO | ⬜ | P0.2c |

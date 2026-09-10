@@ -535,6 +535,43 @@ La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la 
 
 Se escribió además en `i.9.dyn.bypass` y `i.9.gate.enabled` para puentear el procesamiento del canal antes de medir su medidor. Las dos claves existen y aceptan escritura; su efecto se verificó de forma indirecta, por lo que le pasó a la recta del §4.3, y no se midió ninguna curva ni ningún rango.
 
+### 5.2 Las seis que faltaban, medidas el 2026-09-10
+
+Nueve escrituras desde un guion, cada una con su valor anterior leído por
+`GET /raw` antes, confirmada por una **segunda conexión testigo**, restaurada en
+el acto y comprobada de nuevo por HTTP. Nueve de nueve difundidas, nueve de
+nueve restauradas. Mediana de difusión 13 ms, mínimo 4, máximo 29 ms.
+Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt`.
+
+| Qué | Ruta | Verbo | Qué se midió |
+|---|---|---|---|
+| Silencio de envío auxiliar | `i.N.aux.B.mute` | `SETD` | booleano, escrito y difundido |
+| Derivación antes o después del fader | `i.N.aux.B.post` | `SETD` | booleano, escrito y difundido |
+| Derivación antes o después del proceso | `i.N.aux.B.postproc` | `SETD` | booleano, escrito y difundido |
+| Punto de derivación global | `settings.auxsendpoint`, `settings.mtxsendpoint` | `SETD` | booleano, escrito y difundido |
+| Matriz con el general como fuente | `m.mtx.B.value`, `m.mtx.B.mute` | `SETD` | escritos y difundidos |
+| Retardo general por lado | `m.delayL`, `m.delayR` | `SETD` | aceptan 0,25 y lo difunden. **Unidad sin medir** |
+| Retardo de salida auxiliar | `a.B.delay` | `SETD` | igual: ruta sí, unidad no |
+| Alimentación fantasma | `hw.N.phantom` | — | **solo lectura**, por INV-007 |
+
+**`i.N.phantom` existe y no es lo mismo que `hw.N.phantom`.** Con el condensador
+del puerto 9 alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el
+mismo instante, y el juego de parámetros de fábrica que la consola sirve trae
+esos dos valores tal cual. La alimentación fantasma vive en el previo y **hay
+que resolver antes qué previo alimenta al canal**: `i.N.src` no es la identidad.
+Leer la ruta del canal devuelve «sin fantasma» sobre un micrófono alimentado.
+
+**La matriz no es `hwoutaux.N.src`.** Esa familia dice qué bus sale por cada
+conector físico —el patchbay de salida—. La matriz es `<fuente>.mtx.<destino>.*`
+y la alcanzan **19 fuentes**: los diez auxiliares, los seis subgrupos, el
+general y **solo dos de los veinticuatro canales, `i.9` e `i.19`**. Esas dos son
+además las únicas fuentes cuyo envío a la matriz **no tiene `postproc` propio**.
+
+**El ajuste global de derivación no reescribe los de cada envío.** Al cambiar
+`settings.auxsendpoint`, la consola difundió **cero** rutas más: los dos niveles
+conviven en el estado. Cuál manda en el audio no se puede deducir de esto y
+queda para SPK-P0.2b, que sí puede escuchar la diferencia.
+
 ---
 
 ## 6. Curvas de conversión

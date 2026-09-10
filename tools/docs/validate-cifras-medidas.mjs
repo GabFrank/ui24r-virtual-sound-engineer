@@ -145,6 +145,13 @@ const CIFRAS_DELIBERADAS = new Map([
     + 'medidor estuvo escrito como 84,5 dB y era falso: venía de barridos con una fuente '
     + 'externa, que mide la cadena entera y no el medidor. Que no esté en la evidencia es lo '
     + 'que el propio párrafo está diciendo.'],
+  ['docs/capability-matrix.md:500', 'Cifra AJENA. La celda dice, con todas las letras, que '
+    + 'el rango «de 0 a 500 ms» sale de la API tipada de terceros y NO de una medición nuestra: '
+    + 'lo que se midió es que la ruta acepta el valor crudo y lo difunde, y que la unidad sigue '
+    + 'sin medir. Que 500 no esté en la evidencia es exactamente lo que la celda afirma. '
+    + 'Ojo con el alcance: la clave es por documento y cifra, así que esto exime a CUALQUIER '
+    + '«500» de esta matriz. Es el mismo trato que las otras dos excepciones y la limitación '
+    + 'es del mecanismo, no de esta entrada.'],
 ]);
 
 const problemas = [];

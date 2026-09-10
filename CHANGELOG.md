@@ -6,6 +6,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Las seis capacidades que le faltaban al primer entregable, medidas contra el
+  aparato.** Alimentación fantasma en lectura, silencio de envío auxiliar, los
+  dos puntos de derivación, matriz con el general como fuente y retardos de
+  salida. Nueve escrituras, nueve difundidas, nueve restauradas, con la
+  restauración comprobada por HTTP —un camino distinto del que escribió—.
+
+  Y tres cosas que nadie había anticipado. **`i.N.phantom` existe y contradice a
+  `hw.N.phantom`**: con el condensador alimentado, una decía 1 y la otra 0 en el
+  mismo instante. Quien lea la del canal va a diagnosticar «este micrófono no
+  tiene fantasma» sobre uno que sí la tiene. **La matriz solo la alcanzan dos de
+  los veinticuatro canales**, y no es la familia que parecía serlo:
+  `hwoutaux.N.src` es el patchbay físico, no la matriz. Y **la unidad de los
+  retardos sigue sin medirse**: la ruta acepta el valor y lo difunde, pero el
+  «de 0 a 500 ms» que decía la matriz de capacidades salía de una API de
+  terceros, no de una medición nuestra. Quedó dicho así.
+
 - **Con una pista de soundcheck sonando, la ganancia no se aplica.** El canal
   reproduce lo grabado, así que mover la perilla del previo no cambia nada de lo
   que se escucha: el consejo no es impreciso, es **inaplicable**. Dejar aplicar y
