@@ -278,3 +278,4 @@ cita es una medición que nadie va a encontrar cuando la necesite.
 - `evidence/volcado-inicial.txt` — el volcado inicial completo, con sus tiempos por mensaje
 - `evidence/vu-con-senal.txt` — tramas `VU2` con música entrando por las RCA — la que destapó los dos rótulos invertidos de la cola
 - `evidence/lazo-contra-consola-2026-09-09.txt` — el primer intento del lazo completo: rechazado por INV-001, que exige un punto de retorno que todavía no se sabe crear
+- `evidence/lazo-cerrado-2026-09-09.txt` — el lazo completo funcionando contra la consola: medir, proponer, escribir y verificar, con el punto de retorno de INV-001 creado por primera vez

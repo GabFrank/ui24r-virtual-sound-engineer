@@ -1,0 +1,71 @@
+EL LAZO SE CERRO — 2026-09-09
+Tablet LINK 8 (192.168.0.160), consola 192.168.0.78 fw 3.4.8318-ui24.
+Tono de 1 kHz sostenido por el canal 10.
+
+PRIMERA VEZ que la aplicacion mide, propone, ESCRIBE y verifica sola.
+
+    midio     margen 30,7 dB    objetivo del perfil 14 dB
+    propuso   +3,0 dB           (el ideal era 16,7, acotado para poder verificar)
+    aplico    hw.9.gain 0.58 -> 0.6328125     o sea 30 -> 33 dB
+    remidio   margen 27,7 dB
+    veredicto "Mejoro: quedo en 27,7 dB de margen y todavia faltan 13,7.
+               Podes volver a medir y aplicar otro paso."
+
+EL MARGEN BAJO EXACTAMENTE LOS 3 dB QUE SE APLICARON. La verificacion no se
+limito a decir que el valor llego: comparo el margen contra su objetivo y dijo
+cuanto falta.
+
+=== LA CADENA COMPLETA, PASO POR PASO ===
+1. Sesion llevada de Creada a Configurando canales desde la pantalla. Ahi
+   desaparecio el aviso de "la ganancia esta congelada", que es INV-006.
+2. Dos mediciones: la primera da confianza BAJA y la segunda ALTA. HIGH y
+   MEDIUM exigen repetidoEnDosCapturas, asi que LA PRIMERA MEDICION NUNCA
+   HABILITA APLICAR.
+3. Al pulsar Aplicar: se creo el punto de retorno (INV-001), se leyo el valor
+   actual antes de escribir (INV-011), se escribio, se confirmo por la
+   conexion testigo, y se anoto en el diario.
+4. Segunda ventana de medicion y veredicto.
+
+=== EL PUNTO DE RETORNO ===
+INV-001 exige una instantanea verificada en la lista releida. Nunca se habia
+implementado: listarSnapshots() lanzaba "todavia no esta implementado".
+
+Gramatica, del mixer.html de esta consola y confirmada contra el manual del
+firmware 3.5:
+    CREATESHOW^<show>
+    SAVESNAPSHOT^<show>^<instantanea>
+    SNAPSHOTLIST^<show>   -> la consola responde con la lista
+
+LA APLICACION GUARDA EN SU PROPIO SHOW, "VSE", Y NUNCA EN LOS DEL USUARIO. No
+es una convencion: el show NO ES UN PARAMETRO de comandoGuardar(), asi que no
+hay forma de que un llamador distraido escriba encima del trabajo de alguien.
+Y el modulo NO SABE BORRAR: el protocolo tiene DELETESNAPSHOT y este modulo no
+lo construye, con un test que lo fija leyendo su propio codigo fuente.
+
+Estado de los shows al terminar:
+    Default : * Init *
+    Prueba  : Alma caninde, Prueba asistente     <- los del usuario, intactos
+    VSE     : VSE_AUTO_1789002978618, VSE_AUTO_1789003364992
+
+=== UN EFECTO SECUNDARIO QUE NO ESTABA PREVISTO ===
+GUARDAR UNA INSTANTANEA CAMBIA CUAL ES LA "ACTUAL" en la consola:
+var.currentSnapshot paso de "Prueba asistente" a la nuestra.
+
+Importa porque si el operador toca "actualizar instantanea actual" en su
+consola despues de que la aplicacion guardo una, estaria escribiendo sobre la
+automatica en vez de sobre la suya.
+
+Se devolvio escribiendo SOLO LA ETIQUETA --SETS^var.currentSnapshot^-- y NO
+LOADSNAPSHOT, que habria aplicado la instantanea y cambiado el estado entero.
+Despues de eso el volcado quedo IDENTICO al inicial, clave por clave.
+
+PENDIENTE: que la aplicacion devuelva ese puntero sola despues de guardar.
+Hoy lo hice a mano.
+
+=== ESTADO EN QUE QUEDO LA CONSOLA ===
+Volcado completo comparado contra el tomado antes de empezar: SIN UNA SOLA
+CLAVE DISTINTA. Lo unico nuevo es el show VSE con sus dos instantaneas, que es
+el area de trabajo de la aplicacion y no aparece en el volcado de estado.
+
+El usuario pidio expresamente cuidar la instantanea "Alma caninde". Esta donde
+estaba, en el show Prueba, sin tocar.

@@ -6,6 +6,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El lazo se cerró: medir, proponer, aplicar y verificar.** Comprobado contra
+  la consola real: midió 30,7 dB de margen, propuso +3, escribió la ganancia de
+  30 a 33 dB, volvió a medir y dijo «mejoró, quedó en 27,7 y faltan 13,7». El
+  margen bajó exactamente los 3 dB aplicados.
+
+- **La aplicación crea su propio punto de retorno antes de escribir.** INV-001
+  lo exigía y no estaba implementado. Guarda en un show propio llamado `VSE`
+  —**nunca en los del usuario**, y no por convención sino porque el show no es
+  un parámetro del comando— y lo verifica releyendo la lista de la consola. **No
+  sabe borrar**: el protocolo tiene `DELETESNAPSHOT` y el módulo no lo
+  construye, con un test que lo fija leyendo su propio código.
+
 - **La aplicación aplica la ganancia en la consola.** Hasta ahora medía,
   proponía y ahí se cortaba: el cambio lo hacía el usuario a mano. El
   mecanismo estaba entero desde antes —motor de seguridad, ejecutor de

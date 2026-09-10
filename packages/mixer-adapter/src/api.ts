@@ -118,6 +118,15 @@ export interface MixerDomainAPI {
    */
   listarSnapshots(): Promise<readonly string[]>;
 
+  /**
+   * Crea el punto de retorno que INV-001 exige, y lo verifica releyendo.
+   *
+   * Devuelve el nombre si quedó en la lista de la consola, o `null`. **No
+   * recibe el show**: se guarda siempre en el de la aplicación, para que no
+   * haya forma de escribir encima del trabajo del usuario.
+   */
+  guardarInstantanea(): Promise<string | null>;
+
   /** Suscripción a cambios externos y a avalanchas. */
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void;
   /**

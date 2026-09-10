@@ -55,6 +55,22 @@ export class MezcladoraFalsa implements MixerDomainAPI {
     return this.snapshots;
   }
 
+  /**
+   * La mezcladora falsa guarda igual que la de verdad: agrega a la lista.
+   *
+   * Se le pone un nombre fijo para que los tests puedan predecirlo. Devolver
+   * `null` se consigue vaciando `puedeGuardarInstantanea`, que es como se
+   * prueba el camino en el que no hay punto de retorno.
+   */
+  puedeGuardarInstantanea = true;
+
+  async guardarInstantanea(): Promise<string | null> {
+    if (!this.puedeGuardarInstantanea) return null;
+    const nombre = 'VSE_AUTO_1';
+    if (!this.snapshots.includes(nombre)) this.snapshots = [...this.snapshots, nombre];
+    return nombre;
+  }
+
   leer(parametro: string): ReadResult {
     const tiene = this.confirmados.has(parametro);
     return {

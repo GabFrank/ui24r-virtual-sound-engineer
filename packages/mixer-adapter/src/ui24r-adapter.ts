@@ -11,6 +11,9 @@ import { faderADb, gananciaADb } from './conversiones.ts';
 import { leerDinamica } from './dinamica.ts';
 import { rutaDeGanancia } from './fuente-de-canal.ts';
 import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
+import {
+  nombreDeInstantanea, comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
+} from './instantaneas.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
 import type { DinamicaDeCanal } from '@vse/domain';
@@ -49,6 +52,8 @@ export interface OpcionesAdapter {
    * llegan siempre y no dirían nada.
    */
   readonly quietudVolcadoMs?: number;
+  /** Cuánto esperar a que la consola escriba una instantánea antes de verificarla. */
+  readonly esperaGuardadoMs?: number;
   readonly ahora?: () => number;
   /**
    * Cómo se abre la **segunda conexión testigo**, la que confirma las
@@ -223,6 +228,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
   private temporizadorVolcado: ReturnType<typeof setTimeout> | null = null;
   private readonly quietudVolcadoMs: number;
+  private readonly esperaGuardadoMs: number;
   /** La última dirección conectada, para poder releer el estado. */
   private url: string | null = null;
 
@@ -263,6 +269,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.umbralHuecoRtaMs = opciones.umbralHuecoRtaMs ?? 300;
     this.timeoutMs = opciones.timeoutConfirmacionMs ?? 500;
     this.quietudVolcadoMs = opciones.quietudVolcadoMs ?? 250;
+    // Cuánto se le da a la consola para escribir la instantánea en su disco
+    // antes de preguntarle si quedó. No está medido: es una espera prudente.
+    this.esperaGuardadoMs = opciones.esperaGuardadoMs ?? 800;
     this.store = new ConfirmedStateStore({ ahora: this.ahora });
   }
 
@@ -369,11 +378,63 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    */
   private readonly oyentesVolcado: (() => void)[] = [];
 
+  /**
+   * Las instantáneas de la aplicación que hay **ahora** en la consola.
+   *
+   * Se pide y se espera la respuesta; no se cachea. El punto de INV-001 es
+   * justamente que alguien pudo borrar la instantánea desde el navegador de la
+   * consola entre que se guardó y ahora, así que una lista guardada en memoria
+   * respondería la pregunta equivocada.
+   *
+   * Devuelve **solo las nuestras**. Si el usuario guardó algo a mano en el show
+   * de la aplicación, no es un punto de retorno que le corresponda usar a
+   * nadie más.
+   */
   async listarSnapshots(): Promise<readonly string[]> {
-    throw new Error(
-      'listarSnapshots todavía no está implementado: depende de SPK-P0.4. ' +
-      'Hasta entonces ninguna transacción con instantánea puede verificarse.',
-    );
+    if (this._estadoConexion !== 'CONNECTED') return [];
+    return this.pedirLista();
+  }
+
+  /**
+   * Crea el punto de retorno que INV-001 exige, y lo verifica.
+   *
+   * Tres pasos, y el tercero es el que importa: se pide el show —la consola lo
+   * ignora si ya existe—, se guarda, y **se relee la lista** para confirmar que
+   * está. Sin ese último paso esto sería una escritura con esperanza, que es
+   * exactamente lo que la invariante prohíbe.
+   *
+   * Devuelve el nombre si quedó, o `null`. Un `null` no es un fallo silencioso:
+   * el ejecutor lo va a leer como «no hay instantánea» y va a rechazar la
+   * transacción, que es lo correcto.
+   */
+  async guardarInstantanea(): Promise<string | null> {
+    if (this._estadoConexion !== 'CONNECTED') return null;
+
+    const nombre = nombreDeInstantanea(this.ahora());
+    this.transporte.enviar(comandoCrearShow());
+    this.transporte.enviar(comandoGuardar(nombre));
+
+    // La consola no acusa recibo de estas órdenes, así que se le da tiempo a
+    // que escriba en su disco antes de preguntar. Es el mismo criterio que el
+    // resto del adaptador: preguntar en vez de suponer.
+    await new Promise((r) => setTimeout(r, this.esperaGuardadoMs));
+
+    const lista = await this.pedirLista();
+    return lista.includes(nombre) ? nombre : null;
+  }
+
+  /** Pide `SNAPSHOTLIST` y espera la respuesta, con un tope de paciencia. */
+  private pedirLista(): Promise<readonly string[]> {
+    return new Promise((resolver) => {
+      const vencimiento = setTimeout(() => { quitar(); resolver([]); }, this.timeoutMs);
+      const quitar = this.transporte.alRecibir((linea) => {
+        if (!linea.startsWith('SNAPSHOTLIST^')) return;
+        clearTimeout(vencimiento);
+        quitar();
+        resolver(instantaneasDeLaLista(linea));
+      });
+      this.transporte.enviar(comandoListar());
+    });
   }
 
   leer(parametro: string): ReadResult {

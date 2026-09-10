@@ -145,6 +145,20 @@ export class AplicarGananciaService {
       canal: p.canal, ruta: p.rutaGanancia, pedidoDb: p.gainPropuestoDb, quedoEnDb, confianza: p.confianza,
     });
 
+    // **El punto de retorno, antes de nada.** INV-001 no deja que ninguna
+    // transacción escriba sin una instantánea verificada en la lista releída de
+    // la consola. Se crea en el show de la aplicación —nunca en los del
+    // usuario— y si no queda, no se escribe: sin red no se camina por la
+    // cornisa.
+    const instantanea = await api.guardarInstantanea();
+    if (instantanea === null) {
+      this.log.warn('safety', 'sin_punto_de_retorno', { canal: p.canal });
+      return {
+        estado: 'NO_SE_PUEDE',
+        motivo: 'no se pudo crear el punto de retorno en la consola, así que no se escribe nada',
+      };
+    }
+
     const ejecutor = this.seguridad.crearEjecutor(api, this.diario);
     const r = await ejecutor.ejecutar(
       `ganancia-${p.canal}-${Date.now()}`,
@@ -160,7 +174,7 @@ export class AplicarGananciaService {
       this.contexto(p.confianza),
       {
         conexionPermiteEscribir: true,
-        snapshotRef: null,
+        snapshotRef: instantanea,
         tipoDeOperacion: 'PREAMP_GAIN',
       },
     );
