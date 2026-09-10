@@ -33,6 +33,39 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Se descubrió que el supresor de realimentación de la consola reacciona a los
+  tonos de prueba.** Los toma por acople y les pone un filtro de −18 dB a cada
+  uno, así que cualquier medición acústica que pase por el general se altera sola
+  mientras ocurre. La consola además publica qué frecuencias ya filtró, que es
+  información que el aviso de realimentación puede usar en vez de duplicarla.
+
+- **El analizador quedó comprobado contra frecuencias conocidas por el aire**: de
+  250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
+  que predice la ley medida, y es el pico del espectro.
+
+- **El aviso de realimentación mide lo mismo en graves que en agudos**, y ahora
+  está comprobado: la escala del analizador se había establecido solo a 1 kHz.
+  Entre 125 Hz y 8 kHz no se desvía más de 0,3 dB.
+
+- **La confirmación por medidor ya no supone que el canal 10 use el previo 10.**
+  Con un enrutamiento distinto del de fábrica miraba el medidor de otro canal y
+  podía dar por buena una escritura mirando una señal ajena. Ahora saca el canal
+  del enrutamiento real, y si no lo sabe no escribe.
+
+- **Los graves sí llegaban: lo que faltaba era apagar el supresor.** Con él
+  encendido, un tono de 63 Hz no aparecía en absoluto; con él apagado aparece
+  claramente. La caída que queda por debajo de 250 Hz es real pero mucho más
+  suave, y puede ser del monitor, del micrófono o de la sala.
+
+- **Queda anotado en qué estado quedó la consola de pruebas**: qué se dejó tocado
+  a propósito, qué no se pudo restaurar y por qué. Una nota que dice que se cruzó
+  una regla y no dice cómo quedó el aparato no sirve de nada.
+
+- **El espectro quedó comprobado con un micrófono de verdad**, y no solo con
+  tonos: 75 de las 122 bandas con energía y la forma que corresponde. En la misma
+  prueba, el aviso de realimentación **no saltó ni una vez** con ruido de banda
+  ancha, que es exactamente lo que tiene que hacer.
+
 - **Las mediciones se archivan solas, y una cifra sin respaldo ya no pasa.** Se
   corría la medición dos veces —una para mirarla y otra para guardarla— y la
   documentación terminaba citando números de la corrida que no quedó. Pasó tres

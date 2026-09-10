@@ -42,6 +42,7 @@ export function comoConfirmarPorMedidor(
   parametro: string,
   valor: number,
   anterior: number,
+  canalDelPrevio: (fuente: string) => number | null = () => null,
 ): ComoConfirmarPorMedidor | null {
   const fader = /^i\.(\d+)\.mix$/.exec(parametro);
   if (fader !== null) {
@@ -54,13 +55,25 @@ export function comoConfirmarPorMedidor(
 
   const ganancia = /^hw\.(\d+)\.gain$/.exec(parametro);
   if (ganancia !== null) {
-    // El previo `hw.M` alimenta al canal que lo tenga como fuente, que **no
-    // siempre es el M+1**: `i.N.src` puede apuntar a cualquiera. Acá se
-    // devuelve el canal por enrutamiento identidad y quien llama lo corrige si
-    // sabe otra cosa; se deja dicho porque suponerlo en silencio fue
-    // exactamente el defecto que arregló la tarea 25.
+    // **El previo `hw.M` alimenta al canal que lo tenga como fuente, y no
+    // siempre es el M+1.** `i.N.src` puede apuntar a cualquiera.
+    //
+    // Antes acá se devolvía `M + 1` con un comentario diciendo «quien llama lo
+    // corrige si sabe otra cosa». **Nadie lo corregía**: el adaptador usaba el
+    // canal tal cual, así que con un enrutamiento distinto del de fábrica el
+    // respaldo miraba el medidor de otro canal y confirmaba —o rechazaba—
+    // mirando una señal ajena. Es el mismo defecto que ya se había arreglado
+    // para la lectura de ganancia, reaparecido en un camino nuevo, y lo
+    // encontró una auditoría. Un comentario que reparte la responsabilidad no
+    // es una salvaguarda: es una nota que nadie lee.
+    //
+    // Ahora hay que decirle quién es el canal, y **si no se sabe, no se
+    // confirma**: devolver `null` deja la escritura sin enviar, que es la misma
+    // decisión que toma `rutaDeGanancia` cuando le falta el `src`.
+    const canal = canalDelPrevio(`hw.${ganancia[1]}`);
+    if (canal === null) return null;
     return {
-      canal: Number(ganancia[1]) + 1,
+      canal,
       punto: 'ENTRADA',
       esperadoDb: gananciaADb(valor) - gananciaADb(anterior),
     };

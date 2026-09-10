@@ -1,0 +1,25 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T17:08:18.625Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/tono-por-el-aire.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:80296) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/tono-por-el-aire.ts is not specified and it doesn't parse as CommonJS.
+punto de retorno: VSE_AUTO_1789060104865
+canal 9 en silencio: no hay lazo posible
+ganancia del canal 10: 0.2508 -> 0.7 (para que el monitor suene)
+
+  Hz  | banda | entra al canal 10 | lo ve el microfono | pico del espectro
+------+-------+-------------------+--------------------+------------------
+ 1000 |    67 |          -21.7 dB |   28.9 dB ##########| banda 67 (1000 Hz) a 28.9 dB
+  500 |    55 |          -21.7 dB |   30.7 dB ##########| banda 55 (500 Hz) a 30.7 dB
+  250 |    43 |          -21.7 dB |   28.4 dB ######### | banda 43 (250 Hz) a 28.4 dB
+  125 |    31 |          -21.7 dB |    5.8 dB ##        | banda 79 (2000 Hz) a 22.7 dB
+   63 |    19 |          -21.7 dB |    0.1 dB           | banda 78 (1888 Hz) a 23.1 dB
+   40 |    11 |          -21.7 dB |    0.0 dB           | banda 76 (1682 Hz) a 21.5 dB
+
+ganancia del canal 10 devuelta a 0.2508
+analizador devuelto a: 
+
+
+# salida del proceso: 0

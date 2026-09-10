@@ -1,0 +1,24 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T18:25:54.448Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/borrar-filtros-fijos.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:7336) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/borrar-filtros-fijos.ts is not specified and it doesn't parse as CommonJS.
+punto de retorno: VSE_AUTO_1789064760700
+
+al empezar: 200.0Hz(-6dB) 1000.0Hz(-18dB)
+
+m.afs.clearfixed = 1  con supresor encendido  ->  2 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB)
+m.afs.clearall = 1  con supresor encendido  ->  2 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB)
+m.afs.clearfixed = 1  con supresor apagado  ->  2 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB)
+m.afs.clearall = 1  con supresor apagado  ->  2 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB)
+
+al terminar: 200.0Hz(-6dB) 1000.0Hz(-18dB)
+  m.afs.enabled = 1  (leido por HTTP)
+  m.afs.clearfixed = 0  (leido por HTTP)
+  m.afs.clearlive = 0  (leido por HTTP)
+  m.afs.clearall = 0  (leido por HTTP)
+
+
+# salida del proceso: 0

@@ -1,0 +1,35 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T16:50:07.290Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/espectro-microfono.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:74865) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/espectro-microfono.ts is not specified and it doesn't parse as CommonJS.
+fuente del analizador al llegar: (ninguna)
+se apunta a i.8 y se devuelve al terminar (ADR-025)
+
+escuchando 25 s...
+
+tramas de analizador: 746, con contenido: 746
+bandas: 122 · con energia por encima de 1 dB: 75
+
+espectro medio, una linea por octava:
+      31 Hz    0.0 dB  
+      63 Hz    0.0 dB  
+     125 Hz    0.0 dB  
+     250 Hz    9.4 dB  ######
+     500 Hz   15.8 dB  ###########
+    1.0 kHz   19.8 dB  #############
+    2.0 kHz   21.0 dB  ##############
+    4.0 kHz   12.9 dB  #########
+    8.0 kHz    8.2 dB  #####
+   16.0 kHz    0.3 dB  
+
+banda mas fuerte: 79 (2000 Hz) a 21.0 dB
+
+avisos de realimentacion durante el ruido: 0
+CORRECTO: el ruido de banda ancha sube todas las bandas a la vez, y eso no es una realimentacion.
+fuente del analizador devuelta a: 
+
+
+# salida del proceso: 0

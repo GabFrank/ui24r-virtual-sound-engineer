@@ -1,0 +1,20 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T17:43:23.205Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/limpiar-afs-automaticos.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:90101) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/limpiar-afs-automaticos.ts is not specified and it doesn't parse as CommonJS.
+punto de retorno: VSE_AUTO_1789062209432
+
+ANTES:
+  pila 1: 1000Hz(-18dB) 500Hz(-18dB) 250Hz(-18dB) 125Hz(-18dB) 63Hz(-18dB) 40Hz(-18dB)
+  pila 5: 200Hz(-6dB) 1000Hz(-18dB)
+
+DESPUES:
+  pila 5: 200Hz(-6dB) 1000Hz(-18dB)
+
+Los fijos --199 Hz y 999 Hz-- tienen que seguir estando: se colocaron a proposito.
+
+
+# salida del proceso: 0

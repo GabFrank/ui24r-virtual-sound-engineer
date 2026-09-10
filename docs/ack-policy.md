@@ -57,7 +57,7 @@ retorno guardado antes de escribir nada, como manda INV-001.
 
 | Familia | Rutas | Método | Respaldo | Estado |
 |---|---|---|---|---|
-| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido |
+| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido **con señal**; la mitad «sin señal» se midió sobre la ganancia |
 | Fader general | `m.mix` | **TESTIGO** | — (el general no está cableado al respaldo) | Inferido |
 | Silencio de canal | `i.N.mute` | **TESTIGO** | — (ver abajo: el silencio no tiene «cuánto» esperado) | Medido |
 | Panorama | `i.N.pan` | **TESTIGO** | — | Medido |
@@ -163,6 +163,16 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    esperado no alcanza, porque con 1 dB pedido y 1,5 de tolerancia, quedarse
    quieto entraría.
 
+   **Y el canal se saca del enrutamiento real, no del número del previo.**
+   `i.N.src` puede apuntar a cualquier `hw.M`, así que el previo 10 no siempre
+   alimenta al canal 10. **Si no se sabe qué canal alimenta, no se escribe**: es
+   la misma decisión que toma la lectura de ganancia cuando le falta el `src`, y
+   suponer el de fábrica sería mirar el medidor de otro. Comprobado contra la
+   consola que el camino de fábrica sigue funcionando —`APPLIED`/`VU` con el
+   `src` presente—: `spikes/SPK-ACK-POLICY/evidence/respaldo-enrutamiento-2026-09-10.txt`.
+   El enrutamiento cruzado no se pudo probar en el aparato porque **`i.N.src` no
+   es escribible por protocolo**; lo cubren los tests.
+
    **Cada parámetro se juzga en su propio medidor y no son intercambiables**: la
    ganancia en el de **entrada** y el fader en el de **salida**. El medidor de
    entrada está después del previo y antes del fader —medido el 2026-09-08—, así
@@ -179,11 +189,29 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    ciegas y marcarlo «no verificable» dejaría al operador sin forma de
    distinguir eso de un cambio que sí funcionó.
 
-   **Las dos mitades están medidas contra la consola el 2026-09-10.** Con el
-   testigo caído y el canal en silencio: `REJECTED` y la ganancia quedó
-   idéntica. Con el testigo caído y señal —canal 10 a −48,7 dB—: la ganancia
-   subió 2,00 dB según la curva medida y salió **`APPLIED` / `VU`**.
-   `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt`.
+   **Todo medido contra la consola el 2026-09-10.** Con el testigo caído y el
+   canal en silencio: `REJECTED` y la ganancia quedó idéntica. Con señal, las
+   dos vías: la **ganancia** subió 3,00 dB sobre el medidor de entrada y el
+   **fader** otros 3,00 dB sobre el de salida, y las dos salieron **`APPLIED` /
+   `VU`**.
+
+   **El paso de 3 dB es el doble de la tolerancia, y eso importa.** La primera
+   medición del fader usó 1,50 dB, que es **exactamente** la tolerancia: con ese
+   paso, un fader que no se hubiera movido queda a 1,5 dB de lo esperado y
+   **pasa** la primera condición —`|cambio − esperado| ≤ tolerancia`—, así que lo
+   único que se ejercitaba era la segunda guarda. Con 3 dB, un fader quieto queda
+   a 3 dB y la primera lo rechaza sola. La afirmación anterior era cierta y medía
+   menos de lo que parecía; lo marcó una auditoría.
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
+
+   **Un límite que se deduce de la regla, y que NO está medido.** Si bajar un
+   fader deja el nivel por debajo de −50 dB, el medidor no puede confirmar y la
+   escritura tiene que salir sin verificar aunque se haya aplicado. Se observó
+   una vez en una corrida **que no se archivó**, así que acá se anota como lo que
+   es: una consecuencia de la regla, no una medición. **Ningún archivo de
+   evidencia contiene un `UNVERIFIED`.** Cerrarlo cuesta una corrida: poner el
+   canal justo encima del piso y bajarle el fader, con `medir.mjs`.
 3. **`TIMEOUT`** — se venció el plazo. En modo asistido la escritura queda con
    aviso «no verificable» y el operador decide. **En modo automático controlado,
    un parámetro que no se pueda confirmar por testigo ni por VU es inelegible**:
@@ -212,11 +240,9 @@ otras tres opciones de confirmación no tenían, y es el precio del mecanismo.
 ## Lo que sigue sin estar medido
 
 - Las filas marcadas **Inferido**: el general, las salidas y la matriz.
-- **Cuánto tarda `SNAPSHOTLIST` en contestar**, con el defecto latente que eso
-  destapa.
-- **El respaldo por VU para el fader.** La ganancia está medida contra la
-  consola; el fader comparte todo el camino pero se juzga en el otro medidor, y
-  eso no se probó con señal. Los tests lo cubren, la física no.
+- *(Nada de `SNAPSHOTLIST`: se midió el 2026-09-10 y está más arriba. Este ítem
+  quedó de una versión anterior de la lista.)*
+- Nada del respaldo por VU: las dos mitades quedaron medidas el 2026-09-10.
 **Ya no está acá lo de «dos escrituras muy seguidas»: se midió el 2026-09-10 y
 tiene su propia sección arriba.**
 

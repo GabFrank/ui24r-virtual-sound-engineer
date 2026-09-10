@@ -53,6 +53,9 @@ function posicionDe(db: number): number {
 
 test('sin testigo y con senal, la ganancia se confirma por el medidor', async () => {
   await sinTestigo(async (t, a) => {
+    // El adaptador tiene que SABER que canal alimenta este previo: sin el `src`
+    // no confirma nada, y eso es deliberado.
+    t.entra('SETS^i.9.src^hw.9');
     t.entra(codificarSetd('hw.9.gain', 0.25));
     nivel(t, posicionDe(-20));
     await volcadoListo();
@@ -71,6 +74,9 @@ test('sin testigo y con senal, la ganancia se confirma por el medidor', async ()
 
 test('sin testigo y en silencio NO SE ESCRIBE NADA', async () => {
   await sinTestigo(async (t, a) => {
+    // El adaptador tiene que SABER que canal alimenta este previo: sin el `src`
+    // no confirma nada, y eso es deliberado.
+    t.entra('SETS^i.9.src^hw.9');
     t.entra(codificarSetd('hw.9.gain', 0.25));
     nivel(t, posicionDe(-70));   // por debajo de los -50 dB utiles
     await volcadoListo();
@@ -101,6 +107,9 @@ test('sin testigo, un parametro sin efecto conocido sobre el nivel no se escribe
 
 test('si el nivel no se movio, la escritura sale SIN VERIFICAR y se dice cuanto falto', async () => {
   await sinTestigo(async (t, a) => {
+    // El adaptador tiene que SABER que canal alimenta este previo: sin el `src`
+    // no confirma nada, y eso es deliberado.
+    t.entra('SETS^i.9.src^hw.9');
     t.entra(codificarSetd('hw.9.gain', 0.25));
     nivel(t, posicionDe(-20));
     await volcadoListo();
@@ -141,6 +150,7 @@ test('el fader se juzga por el medidor de SALIDA, no por el de entrada', async (
 
 test('un conflicto se detecta ANTES de mirar ningun medidor', async () => {
   await sinTestigo(async (t, a) => {
+    t.entra('SETS^i.9.src^hw.9');
     t.entra(codificarSetd('hw.9.gain', 0.40));
     nivel(t, posicionDe(-20));
     await volcadoListo();
@@ -149,5 +159,21 @@ test('un conflicto se detecta ANTES de mirar ningun medidor', async () => {
     const r = await a.escribir('hw.9.gain', 0.35, 0.25);
     assert.equal(r.status, 'CONFLICT');
     assert.deepEqual(t.enviadas, [], 'INV-011 manda: sin coincidencia no se escribe');
+  });
+});
+
+test('sin el enrutamiento del previo, la ganancia NO se escribe', async () => {
+  // No llega ningun `i.N.src`, asi que no se sabe que canal alimenta hw.9 y no
+  // hay medidor que mirar. Suponer el de fabrica seria mirar el de otro.
+  await sinTestigo(async (t, a) => {
+    t.entra(codificarSetd('hw.9.gain', 0.25));
+    nivel(t, posicionDe(-20));
+    await volcadoListo();
+
+    t.enviadas.length = 0;
+    const r = await a.escribir('hw.9.gain', 0.35, 0.25);
+    assert.equal(r.status, 'REJECTED');
+    assert.deepEqual(t.enviadas, []);
+    assert.match(r.motivo ?? '', /no se puede confirmar por medidor/);
   });
 });

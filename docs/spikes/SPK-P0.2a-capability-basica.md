@@ -27,7 +27,7 @@ Ninguna función de producto se implementa sobre un parámetro que no esté prob
 | 3 | Grabación multipista: grabar, reproducir, detener, modo soundcheck, estado de grabación | bloqueante | 100 % | | ⬜ |
 | 4 | Efecto de la configuración global de punto de derivación sobre el significado de antes y después del fader | bloqueante | documentado | | ⬜ |
 | 5 | Enlace estéreo: si mover un canal arrastra al vecino en sus envíos | bloqueante | documentado con captura | **MEDIDO el 2026-09-09.** `i.N.stereoIndex`: 0 = izquierdo del par —el compañero es N+1—, 1 = derecho, −1 sin enlazar. **El enlace se lee de la consola, no se declara.** Enlazar es destructivo: el cliente hace `copySettings`/`pasteSettings` del izquierdo sobre el derecho. `evidence/enlace-estereo-2026-09-09.txt` | ✅ |
-| 6 | `docs/capability-matrix.md` versión 1 y `docs/protocol-spec.md` versión 1 generados | bloqueante | ambos | **Los dos existen y dicen «Versión 1».** La matriz tiene **76 filas con estado, 28 verificadas** contra el aparato; la especificación tiene 554 líneas y encabeza con la consola de referencia y su firmware | ✅ |
+| 6 | `docs/capability-matrix.md` versión 1 y `docs/protocol-spec.md` versión 1 generados | bloqueante | ambos | **Los dos existen y dicen «Versión 1».** La matriz tiene **77 filas con estado, 29 verificadas** contra el aparato; la especificación encabeza con la consola de referencia y su firmware | ✅ |
 
 ## Evidencia a entregar
 

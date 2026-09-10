@@ -178,6 +178,24 @@ dice comprobar no comprueba.
 La presencia en todas las pantallas todavía no se verifica automáticamente: el
 recorrido solo pasa por las que están en su camino.
 
+## El estado en que quedó la consola de pruebas — 2026-09-10
+
+**Esto no es una invariante, es el registro de lo que se dejó tocado en el
+aparato del usuario.** Existe porque una nota que dice «se cruzó una invariante»
+y no dice cómo quedó la consola no cumple su función.
+
+| Qué | Cómo quedó | Por qué |
+|---|---|---|
+| `hw.8.phantom` (canal 9) | **encendido** | El Behringer B2 sin fantasma no entrega nada. Se cruzó INV-007 a mano, desde un spike y **no desde la aplicación**, con el usuario fuera de la sala y autorizándolo. Era seguro: es un condensador que lo necesita, no hay ningún micrófono de cinta, y se bajó el general antes de conmutar |
+| `i.8.mute` (canal 9) | **en silencio** | **A propósito y es lo que protege el equipo**: hay un condensador enfrentado a un monitor a 1,7 m, o sea un lazo montado. Ese silencio es lo único que hoy impide el acople |
+| Filtros automáticos del supresor | **borrados** | Los cinco que plantaron los tonos de prueba, más los que hubiera. Se limpiaron con `m.afs.clearlive` |
+| Filtros fijos del supresor | **199,98 Hz a −6 dB y 1000 Hz a −18 dB** | El usuario autorizó borrarlos y **no se pudo por protocolo** —cuatro intentos archivados—. El de 1000 Hz probablemente sea nuestro, de la sesión del 2026-09-08 |
+| Todo lo demás | restaurado | Ganancia y fader del canal 10, general, fuente del analizador, `m.afs.enabled` y los tres disparadores de borrado. **Comprobado releyendo por HTTP**, que es un camino distinto del que escribió |
+
+Evidencia: `spikes/SPK-P0.5/evidence/fantasma-canal9-2026-09-10.txt`,
+`.../limpiar-afs-2026-09-10.txt` y `.../borrar-fijos-2026-09-10.txt`.
+
+
 | ID | Invariante | Test | Desde |
 |---|---|---|---|
 | INV-001 | Ninguna transacción pasa a APPLYING sin `snapshotRef` verificado en la lista de snapshots re-leída. Nombre `VSE_AUTO_<ms desde epoch>` en show `VSE` — la marca va en milisegundos y no en formato legible porque la retención de INV-003 lee la fecha de ahí para decidir qué borrar, y un nombre que no se puede fechar es uno que no se borra nunca. `nombreSnapshotAutomatica` y `fechaDeSnapshotAutomatica` son inversas, con test. | Unit + HIL: aplicar sin snapshot → rechazado; borrar snapshot entre save y apply → abortada. | MVP4a |

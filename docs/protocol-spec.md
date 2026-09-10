@@ -9,6 +9,35 @@ Este documento describe **lo que la consola hace**. Lo que la aplicación tiene 
 
 ---
 
+## `var.afsdata`: el supresor publica sus filtros
+
+**Descubierto el 2026-09-10.** La clave `var.afsdata` trae la pila de filtros del
+supresor de realimentación del general, como texto: `fstack;;` seguido de
+registros `v1,<hz>,<dB>,<Q?>,...` separados por `:`, y **varias pilas** separadas
+por `fstack/fstack`. Las que importan son dos: la de filtros **automáticos** —los
+que la consola coloca sola— y la de **fijos**.
+
+De cada registro se leyeron con confianza los dos primeros campos: **frecuencia
+en Hz** y **profundidad en dB**. El resto no se decodificó.
+
+**Por qué importa más de lo que parece.** Un tono sostenido es, para un supresor,
+indistinguible de una realimentación: reproducir tonos de prueba por el general
+hace que la consola les ponga un notch de −18 dB a cada uno, y las mediciones
+siguientes salen por esos notches. Cualquier medición acústica por este general
+necesita `m.afs.enabled = 0` mientras dura.
+
+**`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
+por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y
+apagado, poniéndolos en 1 y volviéndolos a 0: **la cuenta de filtros no se movió
+nunca**. `clearlive` en cambio funcionó a la primera y de forma comprobable.
+
+Que un «borrar todo» no borre todo es de las cosas que hay que medir en vez de
+creer. Lo más plausible es que los fijos se borren desde la pantalla de la
+consola, probablemente con una confirmación de por medio —que es razonable: un
+fijo lo colocó alguien afinando la sala—. Los tres disparadores quedan en 1
+después de usarse y hay que devolverlos a 0 a mano.
+Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt`.
+
 ## La consola difunde en un tic de ~34 ms
 
 **Medido el 2026-09-10** sobre `i.16.mix`, escribiendo desde un cliente y
@@ -412,6 +441,11 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 | Ley de bandas | `banda = 67 + 12·log2(f/1000)` |
 | Alcance | ~20,9 Hz a ~22,6 kHz |
 | Escala | **0,375 dB por byte** — no es la del medidor |
+
+**Y la ley es la misma en las 122 bandas**, comprobado el 2026-09-10 con tonos
+de 63 a 8000 Hz entrando al mismo nivel eléctrico y el analizador apuntado al
+canal —o sea sin acústica en el medio—: el desvío contra 1 kHz no pasa de 0,3 dB
+salvo a 63 Hz, donde son unos 2. `spikes/SPK-P0.5/evidence/ley-rta-por-frecuencia-2026-09-10.txt`.
 | Cadencia | ~30 tramas por segundo |
 | Balística | sube dentro de una trama —≤ 33 ms, no se resuelve más fino— y **cae con su propia rampa lineal**, ~5,2 bytes por trama, unos 59 dB/s. De 90 % a 10 % tarda ~536 ms |
 

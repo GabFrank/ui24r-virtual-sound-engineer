@@ -25,6 +25,7 @@
  */
 import {
   Ui24rTransport, Ui24rMixerAdapter, decodificar, gananciaADb,
+  faderADb, dbAFader, TOLERANCIA_CONFIRMACION_DB,
 } from '@vse/mixer-adapter';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
@@ -34,6 +35,43 @@ const canalConSenal = process.argv[3] !== undefined ? Number(process.argv[3]) : 
 const principal = new Ui24rTransport();
 const crudo = new Map<string, number>();
 principal.alRecibir((l) => { const m = decodificar(l); if (m.tipo === 'SETD') crudo.set(m.path, m.valor); });
+
+/**
+ * Lee un valor **desde fuera**, por HTTP, y no por la conexion que escribio.
+ *
+ * **Porque `crudo` no sirve para comprobar una restauracion.** La conexion
+ * principal NO VE SUS PROPIAS ESCRITURAS --esta medido-- asi que su copia se
+ * queda en el ultimo valor que llego de otro lado. Este arnes imprimia
+ * «restaurado: si» leyendo de ahi, y en una corrida DEJO EL FADER DEL CANAL 10
+ * DOS DECIBELES ABAJO mientras afirmaba lo contrario.
+ *
+ * Es el tercer sitio donde el mismo malentendido produce un numero convincente
+ * y falso. Una comprobacion de restauracion tiene que leer por un camino
+ * distinto del que escribio, o no comprueba nada.
+ */
+async function leerDesdeFuera(ruta: string): Promise<number | null> {
+  const res = await fetch(`http://${maquina}/raw`).catch(() => null);
+  if (res === null || res.body === null) return null;
+  // `/raw` es un flujo que no termina: se lee un trozo y se corta.
+  const lector = res.body.getReader();
+  let texto = '';
+  // **El tope de trozos era 40 y no alcanzaba.** `/raw` manda del orden de seis
+  // mil claves y `i.9.mix` cae mas alla de ese corte: la lectura devolvia null
+  // e imprimia «¡NO! quedo en null» sobre un fader QUE SI ESTABA RESTAURADO.
+  // Otra comprobacion que contesta algo sin significado --la tercera de esta
+  // sesion-- y esta vez el error era del lado prudente: alarma falsa en vez de
+  // silencio falso. Se lee hasta encontrar la clave o hasta que el flujo se
+  // agote, con un tope alto que solo existe para no colgarse.
+  for (let i = 0; i < 2000; i++) {
+    const { value, done } = await lector.read();
+    if (done) break;
+    texto += new TextDecoder().decode(value);
+    if (texto.includes(`SETD^${ruta}^`)) break;
+  }
+  await lector.cancel().catch(() => {});
+  const m = new RegExp(`SETD\\^${ruta.replace(/\./g, '\\.')}\\^([-0-9.]+)`).exec(texto);
+  return m === null ? null : Number(m[1]);
+}
 
 const app = new Ui24rMixerAdapter(principal, {
   // Un testigo que nunca conecta: la wifi saturada del show.
@@ -89,8 +127,53 @@ if (canalConSenal === null) {
   // Restaurar SIEMPRE.
   await app.escribir(ruta, antes, nuevo).catch(() => {});
   await new Promise((r) => setTimeout(r, 800));
-  const fin = crudo.get(ruta);
-  console.log(`  restaurada: ${fin !== undefined && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
+  const fin = await leerDesdeFuera(ruta);
+  console.log(`  restaurada (leido por HTTP, no por la conexion que escribio): `
+    + `${fin !== null && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
+}
+
+// --- El fader, que se juzga en el OTRO medidor -------------------------------
+//
+// Es la mitad que faltaba. El fader se confirma mirando la SALIDA del canal, no
+// la entrada: el medidor de entrada esta antes del fader --medido el
+// 2026-09-08-- asi que ahi un fader no mueve nada y una escritura buena saldria
+// rechazada. Los tests con transporte falso lo cubren; la fisica no.
+if (canalConSenal !== null) {
+  const n2 = canalConSenal - 1;
+  const ruta = `i.${n2}.mix`;
+  const antes = crudo.get(ruta) ?? 0;
+  console.log('');
+  console.log(`CON SENAL, EL FADER — canal ${canalConSenal}`);
+  const est2 = deCanal(canalConSenal);
+  console.log(`  salida del canal: ${est2?.nivelSalidaDb?.toFixed(1)} dB`);
+  // **El paso se calcula en decibeles, no en unidades crudas, y con margen
+  // sobre la tolerancia.** Antes era `antes + 0.04`, que da 1,50 dB esperados
+  // contra una TOLERANCIA_CONFIRMACION_DB de 1,5: la primera condicion de
+  // confirmarPorMedidor --|cambio - esperado| <= tolerancia-- la habria pasado
+  // HASTA UN FADER QUE NO SE MOVIO, porque un cambio de 0 dB dista 1,5 de lo
+  // esperado y eso entra justo. Lo unico que se ejercitaba de verdad era la
+  // segunda guarda. Lo marco una auditoria.
+  //
+  // Con el doble de la tolerancia, un fader quieto queda a 3 dB de lo esperado
+  // y la primera condicion lo rechaza sola: las dos guardas quedan ejercitadas.
+  const PASO_DB = TOLERANCIA_CONFIRMACION_DB * 2;
+  const nuevo = Math.min(1, dbAFader(faderADb(antes) + PASO_DB));
+
+  // **Se sube y no se baja**, porque bajar cerca del piso empuja el nivel de
+  // despues por debajo de los -50 dB utiles y ahi el medidor no puede confirmar
+  // nada. Es un limite real del respaldo, no del arnes.
+  const r3 = await app.escribir(ruta, nuevo, antes);
+  const esperadoDb = faderADb(nuevo) - faderADb(antes);
+  console.log(`  ${ruta}: ${antes.toFixed(4)} -> ${nuevo.toFixed(4)}, o sea ${esperadoDb.toFixed(2)} dB`);
+  console.log(`  tolerancia: ${TOLERANCIA_CONFIRMACION_DB} dB · un fader quieto quedaria a `
+    + `${Math.abs(esperadoDb).toFixed(2)} dB de lo esperado, o sea RECHAZADO por la primera guarda`);
+  console.log(`  ${r3.status} / ${r3.confirmedBy}`);
+  if (r3.motivo !== null) console.log(`  ${r3.motivo}`);
+  await app.escribir(ruta, antes, nuevo).catch(() => {});
+  await new Promise((r) => setTimeout(r, 800));
+  const fin = await leerDesdeFuera(ruta);
+  console.log(`  restaurado (leido por HTTP, no por la conexion que escribio): `
+    + `${fin !== null && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
 }
 
 await app.desconectar();

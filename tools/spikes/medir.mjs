@@ -79,7 +79,11 @@ const hijo = spawn('node', ['--experimental-strip-types', guion, ...args], {
 
 // Los avisos de Node sobre reparsear TypeScript no son parte de la medición y
 // ensucian el archivo, así que se filtran de los dos lados por igual.
-const RUIDO = /Reparsing as ES module|To eliminate this warning|trace-warnings|ExperimentalWarning/;
+// `MODULE_TYPELESS_PACKAGE_JSON` faltaba, y es JUSTO el que aparece: los siete
+// archivos de evidencia de la primera tanda lo tienen adentro. El filtro no
+// filtraba el aviso que llega, que es la forma más tonta de que un filtro no
+// sirva. Lo encontró una auditoría.
+const RUIDO = /Reparsing as ES module|To eliminate this warning|trace-warnings|ExperimentalWarning|MODULE_TYPELESS_PACKAGE_JSON|it doesn't parse as CommonJS/;
 const escribir = (trozo) => {
   const util = String(trozo).split('\n').filter((l) => !RUIDO.test(l)).join('\n');
   if (util.trim() === '' && String(trozo).trim() !== '') return;
@@ -93,7 +97,13 @@ hijo.on('exit', (codigo) => {
   const pie = `\n\n# salida del proceso: ${codigo}\n`;
   salida.write(pie);
   process.stdout.write(pie);
-  salida.end();
-  console.log(`\nArchivada en ${destino}`);
-  process.exit(codigo ?? 0);
+  // **Se espera a que el archivo se cierre de verdad antes de salir.** Antes
+  // era `salida.end()` seguido de `process.exit()` en la misma vuelta, y eso
+  // puede truncar lo que quedaba en el buffer: se perdería la última parte de
+  // una medición larga sin que nadie lo note, que es exactamente el modo de
+  // fallo que esta herramienta existe para impedir.
+  salida.end(() => {
+    console.log(`\nArchivada en ${destino}`);
+    process.exit(codigo ?? 0);
+  });
 });
