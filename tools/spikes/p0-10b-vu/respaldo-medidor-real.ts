@@ -25,6 +25,7 @@
  */
 import {
   Ui24rTransport, Ui24rMixerAdapter, decodificar, gananciaADb,
+  faderADb, dbAFader, TOLERANCIA_CONFIRMACION_DB,
 } from '@vse/mixer-adapter';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
@@ -145,15 +146,27 @@ if (canalConSenal !== null) {
   console.log(`CON SENAL, EL FADER — canal ${canalConSenal}`);
   const est2 = deCanal(canalConSenal);
   console.log(`  salida del canal: ${est2?.nivelSalidaDb?.toFixed(1)} dB`);
-  // **Se sube, no se baja, y el motivo es una medicion.** Con el fader bajando
-  // 2 dB desde -48,7 el nivel de despues cae POR DEBAJO DEL PISO de -50 dB y el
-  // medidor deja de poder confirmar: la escritura sale UNVERIFIED aunque se haya
-  // aplicado. Es correcto --no se puede confirmar lo que no se oye-- y es un
-  // limite real del respaldo cerca del silencio, no un defecto del arnes. Se
-  // anota en la evidencia.
-  const nuevo = Math.min(1, antes + 0.04);
+  // **El paso se calcula en decibeles, no en unidades crudas, y con margen
+  // sobre la tolerancia.** Antes era `antes + 0.04`, que da 1,50 dB esperados
+  // contra una TOLERANCIA_CONFIRMACION_DB de 1,5: la primera condicion de
+  // confirmarPorMedidor --|cambio - esperado| <= tolerancia-- la habria pasado
+  // HASTA UN FADER QUE NO SE MOVIO, porque un cambio de 0 dB dista 1,5 de lo
+  // esperado y eso entra justo. Lo unico que se ejercitaba de verdad era la
+  // segunda guarda. Lo marco una auditoria.
+  //
+  // Con el doble de la tolerancia, un fader quieto queda a 3 dB de lo esperado
+  // y la primera condicion lo rechaza sola: las dos guardas quedan ejercitadas.
+  const PASO_DB = TOLERANCIA_CONFIRMACION_DB * 2;
+  const nuevo = Math.min(1, dbAFader(faderADb(antes) + PASO_DB));
+
+  // **Se sube y no se baja**, porque bajar cerca del piso empuja el nivel de
+  // despues por debajo de los -50 dB utiles y ahi el medidor no puede confirmar
+  // nada. Es un limite real del respaldo, no del arnes.
   const r3 = await app.escribir(ruta, nuevo, antes);
-  console.log(`  ${ruta}: ${antes.toFixed(4)} -> ${nuevo.toFixed(4)}`);
+  const esperadoDb = faderADb(nuevo) - faderADb(antes);
+  console.log(`  ${ruta}: ${antes.toFixed(4)} -> ${nuevo.toFixed(4)}, o sea ${esperadoDb.toFixed(2)} dB`);
+  console.log(`  tolerancia: ${TOLERANCIA_CONFIRMACION_DB} dB · un fader quieto quedaria a `
+    + `${Math.abs(esperadoDb).toFixed(2)} dB de lo esperado, o sea RECHAZADO por la primera guarda`);
   console.log(`  ${r3.status} / ${r3.confirmedBy}`);
   if (r3.motivo !== null) console.log(`  ${r3.motivo}`);
   await app.escribir(ruta, antes, nuevo).catch(() => {});

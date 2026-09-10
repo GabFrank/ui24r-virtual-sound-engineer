@@ -192,8 +192,17 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    **Todo medido contra la consola el 2026-09-10.** Con el testigo caído y el
    canal en silencio: `REJECTED` y la ganancia quedó idéntica. Con señal, las
    dos vías: la **ganancia** subió 3,00 dB sobre el medidor de entrada y el
-   **fader** se movió sobre el de salida, y las dos salieron **`APPLIED` /
-   `VU`**. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
+   **fader** otros 3,00 dB sobre el de salida, y las dos salieron **`APPLIED` /
+   `VU`**.
+
+   **El paso de 3 dB es el doble de la tolerancia, y eso importa.** La primera
+   medición del fader usó 1,50 dB, que es **exactamente** la tolerancia: con ese
+   paso, un fader que no se hubiera movido queda a 1,5 dB de lo esperado y
+   **pasa** la primera condición —`|cambio − esperado| ≤ tolerancia`—, así que lo
+   único que se ejercitaba era la segunda guarda. Con 3 dB, un fader quieto queda
+   a 3 dB y la primera lo rechaza sola. La afirmación anterior era cierta y medía
+   menos de lo que parecía; lo marcó una auditoría.
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
    `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
 
    **Un límite que se deduce de la regla, y que NO está medido.** Si bajar un
