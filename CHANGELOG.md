@@ -43,6 +43,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
   que predice la ley medida, y es el pico del espectro.
 
+- **Ya hay una curva de respuesta de la cadena completa**, medida con ruido rosa
+  en las dos puntas: cómo entra y cómo llega después del aire. Es lo que haría
+  falta guardar para corregir un micrófono que no es plano — con la salvedad de
+  que mide el conjunto, no el micrófono solo.
+
 - **El aviso de realimentación mide lo mismo en graves que en agudos**, y ahora
   está comprobado: la escala del analizador se había establecido solo a 1 kHz.
   Entre 125 Hz y 8 kHz no se desvía más de 0,3 dB.

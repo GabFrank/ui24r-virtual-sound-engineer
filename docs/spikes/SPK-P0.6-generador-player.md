@@ -37,3 +37,27 @@ Esta es la verificación central de ADR-002. Si falla, hay que reabrir la decisi
 ## Acción ante fallo
 
 Si la detención tarda más de medio segundo, hay que evaluar si el silencio del canal del reproductor es más rápido que la orden de detención y usar ese camino primero. Si el tiempo sigue siendo alto, entra como riesgo en el registro y el nivel del generador se reduce.
+
+## Qué hace falta para poder empezar — 2026-09-10
+
+Se venía diciendo que este spike «necesita que el usuario esté físicamente ahí»,
+y **eso se afirmó sin comprobarlo**. Se comprobó: `evidence/hay-pendrive-2026-09-10.txt`.
+
+El reproductor está vacío —`var.currentTrack` y `var.currentPlaylist` en blanco,
+`var.currentLength = -1`, `var.playBusy = 0`— y al mandarle `UPDATE_PLAYLIST` no
+contesta nada en seis segundos.
+
+**Dos explicaciones que no se pueden separar hoy**: o no hay pendrive conectado,
+o `UPDATE_PLAYLIST` no es la forma de preguntar. Aparece en el volcado como una
+línea suelta, sin argumentos, así que lo más probable es que sea un **aviso que
+la consola manda** cuando la lista cambia, y no un comando que acepta.
+
+**Qué desbloquea el spike**: que haya un archivo en un pendrive. Con eso se puede
+contestar la mitad de protocolo —si la lista se puede pedir, cargar y disparar
+por red— sin tocar nada más. **Sin contenido no hay nada que medir**, ni siquiera
+la gramática.
+
+**Y qué no hace falta**: no hace falta que nadie esté delante de la consola para
+la parte de red. La corrección importa porque «necesita presencia física» y
+«necesita que haya un archivo» son bloqueos distintos, y el segundo se puede
+resolver una vez y para siempre.

@@ -87,6 +87,76 @@ entre 250 Hz y 8 kHz.
 falsos positivos que nunca se había hecho con una fuente real: el ruido sube
 todas las bandas a la vez, y una realimentación es una sola que no baja.
 
+### ¿El analizador se puede apuntar a un auxiliar? — NO CONCLUYE, 2026-09-10
+
+**Por qué importa, y no es curiosidad.** El analizador se sabe apuntar a un canal
+—`i.N`— y al general —`m`—. Pero la consola tiene 10 auxiliares, 6 subgrupos y 4
+efectos, y **un auxiliar es un envío de monitor**: es donde más acopla en vivo,
+porque el parlante apunta al cantante y el micrófono del cantante apunta al
+parlante. Un detector que solo mira el general está mirando donde el acople **se
+escucha**, no donde nace.
+
+**Dos intentos, ninguna conclusión, y cada uno falló por algo distinto.** Se
+anotan los dos porque el modo de fallo es lo único que este spike produjo, y
+sirve para que el tercero no lo repita.
+
+**Primer intento** —`evidence/rta-sobre-buses-2026-09-10.txt`—: se bajó el
+general a cero para no sacar nada por el monitor, y con eso **el control conocido
+también quedó sin señal**. Un experimento cuyo control falla no distingue «este
+bus no sirve de fuente» de «a este bus no le llegó nada». No concluye.
+
+**Segundo intento** —`evidence/rta-sobre-buses-b-2026-09-10.txt`—: se dejó el
+general arriba y se agregó el control que faltaba, el **medidor del bus** leído
+de la cola de `VU2`, que dice si al bus le llegó señal con independencia del
+analizador. Eso sirvió y mostró dos cosas:
+
+- **Al auxiliar no le llegó el tono**: −67 dB en su medidor, con el envío del
+  canal puesto en 0,8. El ruteo de un envío auxiliar necesita más de lo que se
+  hizo, y hasta saber qué, la pregunta sobre el auxiliar no se puede ni plantear.
+- **El general sí llevaba el tono —−21,7 dB en su medidor— y el analizador leyó
+  0,4.** Eso parecía contradecir lo ya medido el 2026-09-09, que el general sirve
+  de fuente. No lo contradice: **el guion cambiaba `var.rta` cinco veces seguidas
+  con 2,5 s entre medio**, y la medición del 09 apuntó a una sola fuente y
+  esperó. No es que el general no sirva; es que no se le dio tiempo.
+
+**Lo que hay que hacer distinto la próxima vez**: una fuente por corrida con su
+espera, comprobar el ruteo con el medidor del bus **antes** de preguntarle al
+analizador, y no bajar el control para proteger el monitor —para eso está bajar
+el auxiliar, no el general—.
+
+### La respuesta de la cadena entera, con ruido rosa — 2026-09-10
+
+**La primera curva completa**, y la materia prima de cualquier calibración. Se
+generó ruido rosa por Voss-McCartney, se reprodujo por el monitor y se midió el
+espectro en **las dos puntas**: el canal donde entra —sin acústica en el medio— y
+el micrófono después del aire. `evidence/ruido-rosa-por-el-aire-2026-09-10.txt`.
+
+| | Resultado |
+|---|---|
+| El ruido **tal como entra** | plano dentro de 6 dB: de 25 a 31 dB en todo el recorrido. El generador sirve |
+| Por el aire, **hasta 125 Hz** | **cero absoluto** |
+| De 177 a 354 Hz | sube de golpe: 2,6 → 9,3 → 15,2 |
+| De 354 Hz a 5,7 kHz | parejo entre 13 y 21 dB |
+| Pico en 8 kHz | 22,7 dB |
+| Arriba de 11 kHz | cae: 17,7 → 8,7 → 2,6 |
+
+**Un Rokit 8 llega a unos 35 Hz**, así que ese corte alrededor de 150 Hz **no es
+el límite del monitor**: es un pasa-altos, y el candidato sigue siendo el
+conmutador de corte de graves del propio B2.
+
+**Por qué esto no contradice la medición con tonos**, donde 63 Hz sí aparecía a
+13,6 dB: un tono concentra toda su energía en **una banda**, y el ruido rosa la
+reparte entre las 122. En los graves, donde además la cadena atenúa, la energía
+por banda del ruido cae por debajo del piso del analizador. Las dos mediciones
+dicen lo mismo con distinta sensibilidad, y la del tono es la que llega más abajo.
+
+**Y qué es esta curva, exactamente.** Es la respuesta de **toda la cadena**
+—Scarlett, canal, general, Rockit, sala, B2, previo— y **no la del micrófono**.
+Sin una referencia plana en algún punto no se pueden separar. Sirve para
+repetibilidad y para comparar micrófonos entre sí; no para verdad absoluta. Esa
+distinción tiene que sobrevivir a cualquier función de calibración que se
+construya encima.
+
 ### La ley del analizador es la misma en todas las bandas — 2026-09-10
 
 **El agujero que cierra.** `RTA_DB_POR_BYTE = 0,375` se estableció con tonos a

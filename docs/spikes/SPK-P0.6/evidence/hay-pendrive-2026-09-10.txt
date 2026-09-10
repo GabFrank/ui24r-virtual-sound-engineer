@@ -1,0 +1,22 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T19:38:47.248Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/hay-pendrive.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+lineas del reproductor en el volcado: 8
+  UPDATE_PLAYLIST
+  SETS^var.currentTrack^
+  SETS^var.currentPlaylist^
+  SETD^var.currentTrackPos^0
+  SETD^var.playBusy^0
+  SETD^var.currentLength^-1
+  SETD^var.mtk.currentLength^0
+  SETD^var.mtk.currentTrackPos^0
+
+se pide la lista con UPDATE_PLAYLIST y se escucha 6 s...
+respuestas: 0
+  (ninguna: o no hay pendrive, o UPDATE_PLAYLIST no es la forma de preguntar)
+
+
+# salida del proceso: 0
