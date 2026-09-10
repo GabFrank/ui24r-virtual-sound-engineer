@@ -8,6 +8,8 @@ import {
   codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
 } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
+import { confirmarPorMedidor, NIVEL_MINIMO_PARA_CONFIRMAR_DB } from './confirmacion-por-medidor.ts';
+import { comoConfirmarPorMedidor, type PuntoDeMedida } from './que-medidor-mira.ts';
 import { leerDinamica } from './dinamica.ts';
 import { rutaDeGanancia, tomaPistaGrabada } from './fuente-de-canal.ts';
 import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
@@ -57,6 +59,16 @@ export interface OpcionesAdapter {
   readonly quietudVolcadoMs?: number;
   /** Cuánto esperar a que la consola escriba una instantánea antes de verificarla. */
   readonly esperaGuardadoMs?: number;
+  /**
+   * Cuánto se espera al medidor antes de leer el nivel de después.
+   *
+   * Sale de tres cosas medidas y ninguna es un número redondo por gusto: la
+   * consola difunde en un tic de **~34 ms**, la subida del medidor no se
+   * resuelve por debajo de la cadencia de tramas —44 ms con señal— y la caída
+   * de 20 dB tarda 37 ms de mediana. Trescientos milisegundos son varias veces
+   * todo eso, y siguen siendo cortos frente a los 500 ms del testigo.
+   */
+  readonly esperaMedidorMs?: number;
   readonly ahora?: () => number;
   /**
    * Cómo se abre la **segunda conexión testigo**, la que confirma las
@@ -263,6 +275,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private temporizadorVolcado: ReturnType<typeof setTimeout> | null = null;
   private readonly quietudVolcadoMs: number;
   private readonly esperaGuardadoMs: number;
+  private readonly esperaMedidorMs: number;
   /** La última dirección conectada, para poder releer el estado. */
   private url: string | null = null;
 
@@ -306,6 +319,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // Cuánto se le da a la consola para escribir la instantánea en su disco
     // antes de preguntarle si quedó. No está medido: es una espera prudente.
     this.esperaGuardadoMs = opciones.esperaGuardadoMs ?? 800;
+    this.esperaMedidorMs = opciones.esperaMedidorMs ?? 300;
     this.store = new ConfirmedStateStore({ ahora: this.ahora });
   }
 
@@ -548,14 +562,17 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     const testigo = await this.asegurarTestigo();
     if (testigo === null) {
-      return {
-        status: 'REJECTED',
-        confirmedBy: 'NONE',
-        actual: previa.actual,
-        motivo:
-          'no hay conexión testigo y es lo único que confirma una escritura contra esta ' +
-          'consola, que no devuelve eco. No se envió nada',
-      };
+      // **Acá entra el respaldo por medidor, que hasta el 2026-09-10 estaba
+      // escrito y desconectado.** `confirmarPorMedidor` existía, tenía tests y
+      // la política le asignaba fila, pero ningún camino de escritura lo
+      // llamaba: sin testigo se devolvía `REJECTED` y no se enviaba nada. Una
+      // auditoría lo encontró porque el documento afirmaba lo contrario.
+      //
+      // INV-011 lo contempla desde siempre y esta es la situación que tenía en
+      // mente: la wifi saturada en pleno show, que es justo cuando más falta
+      // hace escribir. El testigo es una conexión más, así que es lo primero
+      // que no se puede abrir.
+      return await this.escribirConfirmandoPorMedidor(parametro, valor, esperado, previa.actual);
     }
 
     // La comparación se repite porque abrir el testigo tarda —conexión más su
@@ -588,6 +605,89 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         `el testigo no vio ${parametro} = ${valor} en ${this.timeoutMs} ms. El cambio pudo ` +
         'aplicarse o no: la transacción queda detenida hasta que alguien decida',
     };
+  }
+
+  /**
+   * Escribe y confirma mirando el medidor, cuando no hay testigo.
+   *
+   * **Es la segunda línea y se nota en el resultado**: `confirmedBy` queda en
+   * `VU`, nunca en `WITNESS`. El medidor confirma **el efecto** —el nivel se
+   * movió lo que tenía que moverse— y no el valor: no dice que el crudo escrito
+   * sea el que quedó en la consola. Un diario viejo tiene que seguir diciendo
+   * la verdad sobre con qué se comprobó cada cosa.
+   *
+   * **Sin señal no se escribe.** Un canal en silencio no mueve su medidor por
+   * más que la ganancia cambie, así que ahí no hay confirmación posible.
+   * Escribir igual y marcarlo «no verificado» dejaría al operador sin forma de
+   * distinguir eso de un cambio que sí funcionó, que es la decisión de ADR-026.
+   */
+  private async escribirConfirmandoPorMedidor(
+    parametro: string,
+    valor: number,
+    esperado: number,
+    actualPrevio: number | null,
+  ): Promise<WriteResult> {
+    const sinTestigo =
+      'no hay conexión testigo y es lo único que confirma el valor literal contra esta ' +
+      'consola, que no devuelve eco';
+
+    const como = comoConfirmarPorMedidor(parametro, valor, esperado);
+    if (como === null) {
+      return {
+        status: 'REJECTED',
+        confirmedBy: 'NONE',
+        actual: actualPrevio,
+        motivo: `${sinTestigo}. Y ${parametro} no se puede confirmar por medidor: `
+          + 'no tiene un efecto conocido sobre el nivel. No se envió nada',
+      };
+    }
+
+    const antesDb = this.nivelDelPunto(como.canal, como.punto);
+    if (antesDb < NIVEL_MINIMO_PARA_CONFIRMAR_DB) {
+      return {
+        status: 'REJECTED',
+        confirmedBy: 'NONE',
+        actual: actualPrevio,
+        motivo: `${sinTestigo}. El canal ${como.canal} está en `
+          + `${Number.isFinite(antesDb) ? `${antesDb.toFixed(1)} dB` : 'silencio'}, `
+          + 'así que su medidor tampoco puede confirmar nada. No se envió nada',
+      };
+    }
+
+    this.store.registrarEscrituraPropia(parametro, valor);
+    this.transporte.enviar(codificarSetd(parametro, valor));
+    await new Promise((r) => setTimeout(r, this.esperaMedidorMs));
+    const despuesDb = this.nivelDelPunto(como.canal, como.punto);
+
+    const veredicto = confirmarPorMedidor({
+      antesDb, despuesDb, esperadoDb: como.esperadoDb,
+    });
+
+    if (veredicto.estado === 'CONFIRMADO') {
+      // Entra al estado confirmado igual que por testigo: la conexión principal
+      // nunca ve su propia escritura, así que sin esto el segundo cambio sobre
+      // la misma ruta chocaría contra el valor viejo.
+      this.store.confirmarPorTestigo(parametro, valor);
+      return { status: 'APPLIED', confirmedBy: 'VU', actual: valor, motivo: null };
+    }
+
+    return {
+      status: 'UNVERIFIED',
+      confirmedBy: 'TIMEOUT',
+      actual: null,
+      motivo: veredicto.estado === 'SIN_SENAL'
+        ? `${sinTestigo}. El canal ${como.canal} se quedó sin señal mientras se escribía, `
+          + 'así que el medidor no pudo confirmar. El cambio pudo aplicarse o no'
+        : `${sinTestigo}. Se esperaba que el nivel del canal ${como.canal} se moviera `
+          + `${como.esperadoDb.toFixed(1)} dB y se movió ${veredicto.cambioDb.toFixed(1)}. `
+          + 'El cambio pudo aplicarse o no',
+    };
+  }
+
+  /** El nivel de un canal en el punto que corresponda, o `-Infinity`. */
+  private nivelDelPunto(canal: number, punto: PuntoDeMedida): number {
+    const mapa = punto === 'ENTRADA' ? this.nivelesVu : this.nivelesSalida;
+    return mapa.get(canal) ?? -Infinity;
   }
 
   /** Si la segunda conexión está abierta. Para diagnóstico y para los tests. */

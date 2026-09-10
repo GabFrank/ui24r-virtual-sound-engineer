@@ -55,14 +55,14 @@ retorno guardado antes de escribir nada, como manda INV-001.
 
 | Familia | Rutas | Método | Respaldo | Estado |
 |---|---|---|---|---|
-| Fader de canal | `i.N.mix` | **TESTIGO** | VU — *decidido, sin conectar* | Medido |
-| Fader general | `m.mix` | **TESTIGO** | VU — *decidido, sin conectar* | Inferido |
-| Silencio de canal | `i.N.mute` | **TESTIGO** | VU — *decidido, sin conectar* | Medido |
+| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido |
+| Fader general | `m.mix` | **TESTIGO** | — (el general no está cableado al respaldo) | Inferido |
+| Silencio de canal | `i.N.mute` | **TESTIGO** | — (ver abajo: el silencio no tiene «cuánto» esperado) | Medido |
 | Panorama | `i.N.pan` | **TESTIGO** | — | Medido |
 | Nombre | `i.N.name` | **Ninguno hoy**: es `SETS` y el testigo solo correlaciona `SETD` | — | — |
 | Inversión de fase | `i.N.invert` | **TESTIGO** | — | Medido |
 | Retardo de canal | `i.N.delay` | **TESTIGO** | — | Medido |
-| Ganancia del previo | `hw.N.gain` | **TESTIGO** | VU — *decidido, sin conectar* | Medido |
+| Ganancia del previo | `hw.N.gain` | **TESTIGO** | **VU** sobre el medidor de **entrada**, con señal ≥ −50 dB | Medido |
 | Alta impedancia | `hw.N.hiz` | **TESTIGO** | — | Medido |
 | Envío auxiliar: nivel | `i.N.aux.B.value` | **TESTIGO** | — | Medido |
 | Envío auxiliar: silencio | `i.N.aux.B.mute` | **TESTIGO** | — | Medido |
@@ -134,15 +134,35 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    el testigo correlaciona `SETD` y **descarta los `SETS`** —`if (m.tipo !==
    'SETD') return;`—, que solo le sirven para detectar el fin del volcado. Un
    nombre de canal o la fuente del analizador **no se pueden confirmar así hoy**.
-2. **`VU`** — **decidido y NO conectado.** `confirmarPorMedidor` existe, está
-   probado como función pura y exige que el nivel se mueva en la dirección
-   correcta y al menos la mitad de lo pedido, con señal presente
-   (`VU2` ≥ **−50 dB**, que es `NIVEL_MINIMO_PARA_CONFIRMAR_DB`; acá decía −60,
-   que es el piso de ruido de los asistentes y otra cosa). Pero **ningún camino
-   de escritura lo llama**: `escribir()` tiene tres salidas —sin testigo
-   `REJECTED` y no se envía nada, con testigo `WITNESS`, y si no lo ve
-   `TIMEOUT`—. El mensaje del propio código lo dice: el testigo «es lo único que
-   confirma una escritura contra esta consola». Falta cablearlo.
+2. **`VU`** — **entra cuando el testigo no pudo abrir**, que es la wifi saturada
+   en pleno show: el testigo es una conexión más y es lo primero que falla. Vale
+   solo para **fader y ganancia**, y **solo con señal ≥ −50 dB**
+   (`NIVEL_MINIMO_PARA_CONFIRMAR_DB`). Exige que el nivel se mueva en la
+   dirección correcta y al menos la mitad de lo pedido: parecerse al cambio
+   esperado no alcanza, porque con 1 dB pedido y 1,5 de tolerancia, quedarse
+   quieto entraría.
+
+   **Cada parámetro se juzga en su propio medidor y no son intercambiables**: la
+   ganancia en el de **entrada** y el fader en el de **salida**. El medidor de
+   entrada está después del previo y antes del fader —medido el 2026-09-08—, así
+   que juzgar un fader ahí daría «no se movió» siempre y una escritura buena
+   saldría rechazada.
+
+   **El silencio queda afuera a propósito.** No tiene un «cuánto tenía que
+   moverse»: va al piso. Confirmar «llegó al piso» necesita otra regla —cuánto
+   es el piso, cuánto tarda, qué pasa si ya estaba en silencio— y meterlo con un
+   valor esperado inventado sería peor que no tenerlo, porque parecería
+   cubierto.
+
+   **Sin señal no se escribe nada.** Es la decisión de ADR-026: escribir a
+   ciegas y marcarlo «no verificable» dejaría al operador sin forma de
+   distinguir eso de un cambio que sí funcionó.
+
+   **Las dos mitades están medidas contra la consola el 2026-09-10.** Con el
+   testigo caído y el canal en silencio: `REJECTED` y la ganancia quedó
+   idéntica. Con el testigo caído y señal —canal 10 a −48,7 dB—: la ganancia
+   subió 2,00 dB según la curva medida y salió **`APPLIED` / `VU`**.
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt`.
 3. **`TIMEOUT`** — se venció el plazo. En modo asistido la escritura queda con
    aviso «no verificable» y el operador decide. **En modo automático controlado,
    un parámetro que no se pueda confirmar por testigo ni por VU es inelegible**:
@@ -173,7 +193,9 @@ otras tres opciones de confirmación no tenían, y es el precio del mecanismo.
 - Las filas marcadas **Inferido**: el general, las salidas y la matriz.
 - **Cuánto tarda `SNAPSHOTLIST` en contestar**, con el defecto latente que eso
   destapa.
-- **El respaldo por VU**, que está decidido y sin conectar.
+- **El respaldo por VU para el fader.** La ganancia está medida contra la
+  consola; el fader comparte todo el camino pero se juzga en el otro medidor, y
+  eso no se probó con señal. Los tests lo cubren, la física no.
 **Ya no está acá lo de «dos escrituras muy seguidas»: se midió el 2026-09-10 y
 tiene su propia sección arriba.**
 

@@ -33,6 +33,13 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **La aplicación ya puede confirmar un cambio mirando el medidor**, para cuando
+  la wifi no da para abrir la segunda conexión que normalmente lo verifica —o
+  sea, en pleno show—. Estaba escrito y sin conectar: sin esa conexión, antes no
+  se escribía nada. Y si el canal está en silencio sigue sin escribirse, porque
+  ahí el medidor tampoco puede confirmar y un cambio a ciegas no se distingue de
+  uno que funcionó.
+
 - **Se descubrió que la consola difunde en un tic de ~34 ms**, y no una línea por
   escritura. Dos cambios a la misma ruta dentro de ese tic producen uno solo, con
   el segundo valor: el primero se aplica y su confirmación no llega nunca. Las
