@@ -515,7 +515,7 @@ test('sin senal NINGUNA razon trae Infinity', () => {
 test('una fuente audible pero baja NO se informa como silencio', () => {
   // 300 muestras a -54 dB: por debajo del umbral de -50, muy por encima del
   // piso de ruido. La fuente suena; solo hace falta subir la ganancia.
-  const bajas = Array.from({ length: 300 }, (_, i) => ({ db: -54, enMs: i * 50 }));
+  const bajas = Array.from({ length: 300 }, (_, i) => ({ db: -54, tMs: i * 50, reduccionDb: 0 }));
   const a = analizarVentana(bajas);
 
   assert.equal(a.suficiente, false, 'sigue sin alcanzar para medir');
@@ -526,7 +526,7 @@ test('una fuente audible pero baja NO se informa como silencio', () => {
 
 test('un canal mudo de verdad sigue diciendo que no hubo senal', () => {
   // Piso de ruido: nada conectado. Aca el consejo es otro.
-  const mudas = Array.from({ length: 300 }, (_, i) => ({ db: -67, enMs: i * 50 }));
+  const mudas = Array.from({ length: 300 }, (_, i) => ({ db: -67, tMs: i * 50, reduccionDb: 0 }));
   const a = analizarVentana(mudas);
 
   assert.equal(a.suficiente, false);
