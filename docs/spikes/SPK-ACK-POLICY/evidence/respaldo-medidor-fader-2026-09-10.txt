@@ -1,0 +1,29 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T16:41:21.730Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/respaldo-medidor-real.ts 192.168.0.78 10
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:70194) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/respaldo-medidor-real.ts is not specified and it doesn't parse as CommonJS.
+punto de retorno: VSE_AUTO_1789058487964
+testigo abierto: false (tiene que ser false)
+canal 17: nivel -Infinity dB, ganancia 0.00 dB
+
+SIN SENAL — se intenta hw.16.gain: 0.0952 -> 0.1452
+  REJECTED / NONE
+  no hay conexión testigo y es lo único que confirma el valor literal contra esta consola, que no devuelve eco. El canal 17 está en silencio, así que su medidor tampoco puede confirmar nada. No se envió nada
+  la ganancia quedo en 0.0952 — INTACTA, no se escribio
+
+CON SENAL — canal 10 a -21.7 dB
+  hw.9.gain: 0.7000 -> 0.7400, o sea 3.00 dB
+  APPLIED / VU
+  restaurada (leido por HTTP, no por la conexion que escribio): si
+
+CON SENAL, EL FADER — canal 10
+  salida del canal: -21.7 dB
+  i.9.mix: 0.7647 -> 0.8047
+  APPLIED / VU
+  restaurado (leido por HTTP, no por la conexion que escribio): si
+
+
+# salida del proceso: 0

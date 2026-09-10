@@ -57,7 +57,7 @@ retorno guardado antes de escribir nada, como manda INV-001.
 
 | Familia | Rutas | Método | Respaldo | Estado |
 |---|---|---|---|---|
-| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido |
+| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido, las dos mitades |
 | Fader general | `m.mix` | **TESTIGO** | — (el general no está cableado al respaldo) | Inferido |
 | Silencio de canal | `i.N.mute` | **TESTIGO** | — (ver abajo: el silencio no tiene «cuánto» esperado) | Medido |
 | Panorama | `i.N.pan` | **TESTIGO** | — | Medido |
@@ -179,11 +179,20 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    ciegas y marcarlo «no verificable» dejaría al operador sin forma de
    distinguir eso de un cambio que sí funcionó.
 
-   **Las dos mitades están medidas contra la consola el 2026-09-10.** Con el
-   testigo caído y el canal en silencio: `REJECTED` y la ganancia quedó
-   idéntica. Con el testigo caído y señal —canal 10 a −48,7 dB—: la ganancia
-   subió 2,00 dB según la curva medida y salió **`APPLIED` / `VU`**.
-   `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt`.
+   **Todo medido contra la consola el 2026-09-10.** Con el testigo caído y el
+   canal en silencio: `REJECTED` y la ganancia quedó idéntica. Con señal, las
+   dos vías: la **ganancia** subió 3,00 dB sobre el medidor de entrada y el
+   **fader** se movió sobre el de salida, y las dos salieron **`APPLIED` /
+   `VU`**. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
+
+   **Un límite que apareció midiendo, y que no es un defecto.** Bajar un fader
+   cuando el canal está apenas por encima del piso empuja el nivel de después
+   **por debajo de −50 dB**, y ahí el medidor ya no puede confirmar: la
+   escritura sale `UNVERIFIED` aunque se haya aplicado. Pasó con el canal a
+   −48,7 dB y una bajada de 2 dB. Es lo correcto —no se puede confirmar lo que
+   no se oye— pero conviene saber que **el respaldo se vuelve inútil justo
+   cuando el canal está callado**, que es también cuando menos importa.
 3. **`TIMEOUT`** — se venció el plazo. En modo asistido la escritura queda con
    aviso «no verificable» y el operador decide. **En modo automático controlado,
    un parámetro que no se pueda confirmar por testigo ni por VU es inelegible**:
@@ -214,9 +223,7 @@ otras tres opciones de confirmación no tenían, y es el precio del mecanismo.
 - Las filas marcadas **Inferido**: el general, las salidas y la matriz.
 - **Cuánto tarda `SNAPSHOTLIST` en contestar**, con el defecto latente que eso
   destapa.
-- **El respaldo por VU para el fader.** La ganancia está medida contra la
-  consola; el fader comparte todo el camino pero se juzga en el otro medidor, y
-  eso no se probó con señal. Los tests lo cubren, la física no.
+- Nada del respaldo por VU: las dos mitades quedaron medidas el 2026-09-10.
 **Ya no está acá lo de «dos escrituras muy seguidas»: se midió el 2026-09-10 y
 tiene su propia sección arriba.**
 

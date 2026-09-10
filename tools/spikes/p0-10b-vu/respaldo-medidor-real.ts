@@ -35,6 +35,36 @@ const principal = new Ui24rTransport();
 const crudo = new Map<string, number>();
 principal.alRecibir((l) => { const m = decodificar(l); if (m.tipo === 'SETD') crudo.set(m.path, m.valor); });
 
+/**
+ * Lee un valor **desde fuera**, por HTTP, y no por la conexion que escribio.
+ *
+ * **Porque `crudo` no sirve para comprobar una restauracion.** La conexion
+ * principal NO VE SUS PROPIAS ESCRITURAS --esta medido-- asi que su copia se
+ * queda en el ultimo valor que llego de otro lado. Este arnes imprimia
+ * «restaurado: si» leyendo de ahi, y en una corrida DEJO EL FADER DEL CANAL 10
+ * DOS DECIBELES ABAJO mientras afirmaba lo contrario.
+ *
+ * Es el tercer sitio donde el mismo malentendido produce un numero convincente
+ * y falso. Una comprobacion de restauracion tiene que leer por un camino
+ * distinto del que escribio, o no comprueba nada.
+ */
+async function leerDesdeFuera(ruta: string): Promise<number | null> {
+  const res = await fetch(`http://${maquina}/raw`).catch(() => null);
+  if (res === null || res.body === null) return null;
+  // `/raw` es un flujo que no termina: se lee un trozo y se corta.
+  const lector = res.body.getReader();
+  let texto = '';
+  for (let i = 0; i < 40; i++) {
+    const { value, done } = await lector.read();
+    if (done) break;
+    texto += new TextDecoder().decode(value);
+    if (texto.includes(`SETD^${ruta}^`)) break;
+  }
+  await lector.cancel().catch(() => {});
+  const m = new RegExp(`SETD\\^${ruta.replace(/\./g, '\\.')}\\^([-0-9.]+)`).exec(texto);
+  return m === null ? null : Number(m[1]);
+}
+
 const app = new Ui24rMixerAdapter(principal, {
   // Un testigo que nunca conecta: la wifi saturada del show.
   crearTestigo: () => {
@@ -89,8 +119,41 @@ if (canalConSenal === null) {
   // Restaurar SIEMPRE.
   await app.escribir(ruta, antes, nuevo).catch(() => {});
   await new Promise((r) => setTimeout(r, 800));
-  const fin = crudo.get(ruta);
-  console.log(`  restaurada: ${fin !== undefined && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
+  const fin = await leerDesdeFuera(ruta);
+  console.log(`  restaurada (leido por HTTP, no por la conexion que escribio): `
+    + `${fin !== null && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
+}
+
+// --- El fader, que se juzga en el OTRO medidor -------------------------------
+//
+// Es la mitad que faltaba. El fader se confirma mirando la SALIDA del canal, no
+// la entrada: el medidor de entrada esta antes del fader --medido el
+// 2026-09-08-- asi que ahi un fader no mueve nada y una escritura buena saldria
+// rechazada. Los tests con transporte falso lo cubren; la fisica no.
+if (canalConSenal !== null) {
+  const n2 = canalConSenal - 1;
+  const ruta = `i.${n2}.mix`;
+  const antes = crudo.get(ruta) ?? 0;
+  console.log('');
+  console.log(`CON SENAL, EL FADER — canal ${canalConSenal}`);
+  const est2 = deCanal(canalConSenal);
+  console.log(`  salida del canal: ${est2?.nivelSalidaDb?.toFixed(1)} dB`);
+  // **Se sube, no se baja, y el motivo es una medicion.** Con el fader bajando
+  // 2 dB desde -48,7 el nivel de despues cae POR DEBAJO DEL PISO de -50 dB y el
+  // medidor deja de poder confirmar: la escritura sale UNVERIFIED aunque se haya
+  // aplicado. Es correcto --no se puede confirmar lo que no se oye-- y es un
+  // limite real del respaldo cerca del silencio, no un defecto del arnes. Se
+  // anota en la evidencia.
+  const nuevo = Math.min(1, antes + 0.04);
+  const r3 = await app.escribir(ruta, nuevo, antes);
+  console.log(`  ${ruta}: ${antes.toFixed(4)} -> ${nuevo.toFixed(4)}`);
+  console.log(`  ${r3.status} / ${r3.confirmedBy}`);
+  if (r3.motivo !== null) console.log(`  ${r3.motivo}`);
+  await app.escribir(ruta, antes, nuevo).catch(() => {});
+  await new Promise((r) => setTimeout(r, 800));
+  const fin = await leerDesdeFuera(ruta);
+  console.log(`  restaurado (leido por HTTP, no por la conexion que escribio): `
+    + `${fin !== null && Math.abs(fin - antes) < 1e-6 ? 'si' : `¡NO! quedo en ${fin}`}`);
 }
 
 await app.desconectar();
