@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Ui24rMixerAdapter } from '../src/ui24r-adapter.ts';
+import { SHOW_DE_LA_APLICACION } from '../src/instantaneas.ts';
 import { TransporteFalso } from './transporte-falso.ts';
 
 /**
@@ -133,4 +134,84 @@ test('al guardar se borran las mas viejas, y solo las propias', async () => {
   } finally {
     await a.desconectar();
   }
+});
+
+// --- La retencion comprueba lo que borro -----------------------------------
+//
+// Antes iba a ciegas: se mandaban los DELETESNAPSHOT y la funcion retornaba sin
+// volver a leer. Que el comando funcione estaba medido, pero con un arnes de
+// spike, y EL ARNES NO ES EL ADAPTADOR: bastaba un cambio en el nombre del
+// show o en la gramatica para que la retencion dejara de retener sin que nada
+// avisara.
+
+/** Contesta SNAPSHOTLIST con lo que se le diga, cada vez que se lo pidan. */
+function listaQueContesta(t: TransporteFalso, respuestas: string[][]): void {
+  let i = 0;
+  const original = t.enviar.bind(t);
+  t.enviar = (linea: string) => {
+    original(linea);
+    if (linea.startsWith('SNAPSHOTLIST^')) {
+      const cual = respuestas[Math.min(i, respuestas.length - 1)]!;
+      i++;
+      setTimeout(() => t.entra(`SNAPSHOTLIST^${SHOW_DE_LA_APLICACION}^${cual.join('^')}`), 1);
+    }
+  };
+}
+
+test('si una automatica sobrevive al borrado, se avisa', async () => {
+  const t = new TransporteFalso();
+  const sobraron: string[][] = [];
+  const a = new Ui24rMixerAdapter(t, {
+    esperaGuardadoMs: 5, esperaBorradoMs: 5,
+    alNoPoderBorrar: (n) => sobraron.push([...n]),
+  });
+  await a.conectar('ws://prueba');
+
+  const viejas = Array.from({ length: 22 }, (_, k) => `VSE_AUTO_${1000 + k}`);
+  // La primera lista trae 22 --sobran 2--; la segunda las trae TODAS otra vez,
+  // o sea que la consola no borro nada.
+  listaQueContesta(t, [viejas, viejas]);
+
+  await a.guardarInstantanea();
+  assert.equal(sobraron.length, 1, 'tiene que avisar una vez');
+  assert.deepEqual(sobraron[0], ['VSE_AUTO_1000', 'VSE_AUTO_1001'],
+    'las dos mas viejas, que son las que se pidieron borrar');
+  await a.desconectar();
+});
+
+test('si el borrado funciona, no se avisa nada', async () => {
+  const t = new TransporteFalso();
+  const sobraron: string[][] = [];
+  const a = new Ui24rMixerAdapter(t, {
+    esperaGuardadoMs: 5, esperaBorradoMs: 5,
+    alNoPoderBorrar: (n) => sobraron.push([...n]),
+  });
+  await a.conectar('ws://prueba');
+
+  const viejas = Array.from({ length: 22 }, (_, k) => `VSE_AUTO_${1000 + k}`);
+  listaQueContesta(t, [viejas, viejas.slice(2)]);
+
+  await a.guardarInstantanea();
+  assert.deepEqual(sobraron, [], 'sin sobrevivientes no hay nada que avisar');
+  await a.desconectar();
+});
+
+test('un vencimiento de la lista NO se confunde con «no hay ninguna»', async () => {
+  // Este es el defecto que se arreglo: pedirLista() devolvia [] al vencer, o
+  // sea lo mismo que un show vacio. Con esa confusion, guardarInstantanea()
+  // devolvia null y INV-001 abortaba la transaccion con un motivo que no
+  // mencionaba el vencimiento por ningun lado.
+  const t = new TransporteFalso();
+  const a = new Ui24rMixerAdapter(t, {
+    esperaGuardadoMs: 5, timeoutListaMs: 20,
+  });
+  await a.conectar('ws://prueba');
+
+  // Nadie contesta SNAPSHOTLIST.
+  const nombre = await a.guardarInstantanea();
+  assert.equal(nombre, null, 'sin poder verificar, no hay punto de retorno');
+  // Y no se mando ningun borrado: sin lista no se sabe que sobra.
+  assert.equal(t.enviadas.filter((l) => l.startsWith('DELETESNAPSHOT')).length, 0,
+    'borrar sobre una lista que no llego seria borrar a ciegas');
+  await a.desconectar();
 });

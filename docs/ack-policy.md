@@ -72,7 +72,7 @@ retorno guardado antes de escribir nada, como manda INV-001.
 | Protegido y grabación | `i.N.safe`, `i.N.mtkrec` | **TESTIGO** | — | Medido |
 | Salidas y matriz | `a.B.*`, `m.mtx.B.*`, `m.delayL/R`, `m.eq.*` | **TESTIGO** | — | Inferido |
 | Guardar instantánea | `CREATESHOW`, `SAVESNAPSHOT` | **Relectura de `SNAPSHOTLIST`** | — | Medido |
-| Borrar instantánea | `DELETESNAPSHOT` | **Ninguno hoy**: el adaptador lo manda y no relee | — | Medido con un arnés, no en el adaptador |
+| Borrar instantánea | `DELETESNAPSHOT` | **Relectura de `SNAPSHOTLIST`**, y avisa lo que sobrevivió | — | Medido en el adaptador |
 | Alimentación fantasma | `hw.N.phantom` | **No aplica**: INV-007 la deja en solo lectura | — | — |
 | Solo | `i.N.solo` | — (sin medir) | — | No se midió a propósito: suena en los auriculares de alguien |
 | Fuente del analizador | `var.rta` | **Ninguno hoy**: es `SETS` | — | — |
@@ -94,19 +94,32 @@ rutas representativas y no las decenas que tiene la familia entera.
 testigo no tiene qué correlacionar. La confirmación es **releer la lista**:
 `SNAPSHOTLIST` y comparar.
 
-**Guardar sí relee; borrar no.** `guardarInstantanea()` comprueba que el nombre
-esté en la lista releída, y si no está devuelve `null` y INV-001 aborta. Los
-`DELETESNAPSHOT` de la retención se mandan al final de esa misma función y
-**retorna sin volver a leer**: en producción el borrado va a ciegas. Que funciona
-está medido —2026-09-10— pero con un arnés de spike, y **el arnés no es el
-adaptador**.
+**Las dos releen, y las dos se comprueban.** `guardarInstantanea()` verifica que
+el nombre esté en la lista releída, y si no está devuelve `null` y INV-001
+aborta. La retención hace lo mismo con lo que borró: si alguna automática
+sobrevive, avisa por `alNoPoderBorrar`. No aborta la transacción —el punto de
+retorno ya se guardó, y la retención es orden y no seguridad— pero **no puede
+ser silenciosa**, porque el modo de fallo es que el show crezca sin límite sin
+que nadie se entere.
 
-**Cuánto tarda la relectura no está medido.** Acá decía «del orden de un
-segundo», que era una cifra inventada: los 800 ms de `esperaGuardadoMs` y los
-2 500 del arnés son esperas *antes* de preguntar, no tiempos de respuesta. Y si
-de verdad fuera un segundo habría un defecto latente, porque `pedirLista()` le da
-a la respuesta el mismo `timeoutMs` de 500 ms de la confirmación de escritura, y
-al vencer resuelve lista vacía **en silencio**.
+**El borrado iba a ciegas hasta el 2026-09-10**, y encima **nunca había borrado
+nada desde el adaptador**: todas las corridas tenían menos de veinte
+automáticas, o sea por debajo del máximo. Se llenó el show a propósito para
+comprobarlo.
+
+**Cuánto tarda la relectura: 6 ms de mediana**, medido sobre doce pedidos, con
+un caso de 277 ms. Acá decía «del orden de un segundo», que era una cifra
+inventada — la realidad es que `SNAPSHOTLIST` contesta **más rápido que el
+testigo**. Pero ese 277 se comía más de la mitad de los 500 ms que `pedirLista()`
+tomaba prestados del plazo de confirmación de escritura, así que ahora tiene
+plazo propio de 1 500 ms.
+
+**Y al vencer ya no miente.** Devolvía `[]`, o sea lo mismo que un show sin
+instantáneas: quien llamaba no podía distinguir «no hay ninguna» de «no sé». Con
+esa confusión, un vencimiento hacía que `guardarInstantanea()` devolviera `null`
+y que INV-001 abortara con un motivo que no mencionaba el vencimiento por ningún
+lado. Ahora devuelve `null` cuando no hubo respuesta, y **sin lista no se manda
+ningún borrado**.
 
 ## INV-011, texto normativo
 

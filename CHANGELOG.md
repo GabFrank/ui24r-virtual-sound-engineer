@@ -33,6 +33,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **La limpieza de instantáneas viejas ahora se comprueba.** Se mandaba el
+  borrado y nadie miraba si había ocurrido; si algo fallaba, el show crecía igual
+  y nada avisaba. Además, la aplicación ya no confunde «la consola no contestó»
+  con «no hay ninguna instantánea», que hacía abortar una transacción con un
+  motivo que no decía la verdad.
+
 - **La aplicación ya puede confirmar un cambio mirando el medidor**, para cuando
   la wifi no da para abrir la segunda conexión que normalmente lo verifica —o
   sea, en pleno show—. Estaba escrito y sin conectar: sin esa conexión, antes no

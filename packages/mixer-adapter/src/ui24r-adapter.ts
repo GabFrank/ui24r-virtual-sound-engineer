@@ -69,6 +69,32 @@ export interface OpcionesAdapter {
    * todo eso, y siguen siendo cortos frente a los 500 ms del testigo.
    */
   readonly esperaMedidorMs?: number;
+  /**
+   * Cuánto se espera la respuesta a `SNAPSHOTLIST`.
+   *
+   * Medido: mediana 6 ms, máximo 277 en doce pedidos. Mil quinientos son más de
+   * cinco veces el peor caso, y no cuestan nada porque esto pasa una vez por
+   * transacción y no una vez por escritura.
+   */
+  readonly timeoutListaMs?: number;
+  /**
+   * Cuánto se espera antes de comprobar que un borrado ocurrió.
+   *
+   * La consola no acusa recibo de `DELETESNAPSHOT`, así que hay que darle
+   * tiempo a escribir en su disco antes de preguntar. Es el mismo criterio del
+   * guardado, con menos espera porque borrar mueve menos datos.
+   */
+  readonly esperaBorradoMs?: number;
+  /**
+   * Aviso de que la retención no pudo borrar algo.
+   *
+   * No es un error de la transacción: el punto de retorno se guardó igual y eso
+   * es lo que INV-001 pide. Pero **tampoco puede ser silencioso**, porque el
+   * modo de fallo es que el show crezca sin límite sin que nadie se entere.
+   * Existe como callback y no como excepción por eso: quien llama decide si lo
+   * anota en el diario o lo muestra, y la transacción sigue.
+   */
+  readonly alNoPoderBorrar?: (nombres: readonly string[]) => void;
   readonly ahora?: () => number;
   /**
    * Cómo se abre la **segunda conexión testigo**, la que confirma las
@@ -276,6 +302,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly quietudVolcadoMs: number;
   private readonly esperaGuardadoMs: number;
   private readonly esperaMedidorMs: number;
+  private readonly timeoutListaMs: number;
+  private readonly esperaBorradoMs: number;
+  private readonly alNoPoderBorrar: ((nombres: readonly string[]) => void) | null;
   /** La última dirección conectada, para poder releer el estado. */
   private url: string | null = null;
 
@@ -320,6 +349,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // antes de preguntarle si quedó. No está medido: es una espera prudente.
     this.esperaGuardadoMs = opciones.esperaGuardadoMs ?? 800;
     this.esperaMedidorMs = opciones.esperaMedidorMs ?? 300;
+    this.timeoutListaMs = opciones.timeoutListaMs ?? 1500;
+    this.esperaBorradoMs = opciones.esperaBorradoMs ?? 400;
+    this.alNoPoderBorrar = opciones.alNoPoderBorrar ?? null;
     this.store = new ConfirmedStateStore({ ahora: this.ahora });
   }
 
@@ -440,7 +472,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    */
   async listarSnapshots(): Promise<readonly string[]> {
     if (this._estadoConexion !== 'CONNECTED') return [];
-    return this.pedirLista();
+    // Acá el `null` de «no contestó» se aplana a lista vacía **a propósito**:
+    // esto alimenta una pantalla de consulta, donde no poder distinguir los dos
+    // casos no lleva a nadie a escribir nada. Donde sí importa —verificar el
+    // punto de retorno— se mira el `null` sin aplanar.
+    return await this.pedirLista() ?? [];
   }
 
   /**
@@ -471,7 +507,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     await new Promise((r) => setTimeout(r, this.esperaGuardadoMs));
 
     const lista = await this.pedirLista();
-    const quedo = lista.includes(nombre);
+    // `null` es «la consola no contestó», que no es lo mismo que «no hay
+    // ninguna». Sin punto de retorno verificado no hay transacción, así que se
+    // devuelve `null` igual que si no hubiera quedado —pero la etiqueta se
+    // devuelve de todos modos, porque guardar sí pudo haber ocurrido.
+    const quedo = lista !== null && lista.includes(nombre);
 
     // **Devolver la etiqueta de «instantánea actual», que guardar cambió.**
     // Se descubrió midiendo: `var.currentSnapshot` pasa a apuntar a la que
@@ -492,18 +532,68 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // ninguno. Qué borrar lo decide el dominio (INV-003, máximo 20): acá solo
     // se manda, y `comandoBorrar` se niega a construir nada que no sea una
     // automática nuestra.
-    for (const vieja of snapshotsABorrar(lista)) {
-      const orden = comandoBorrar(vieja);
-      if (orden !== null) this.transporte.enviar(orden);
-    }
+    if (lista !== null) await this.aplicarRetencion(lista);
 
     return quedo ? nombre : null;
   }
 
-  /** Pide `SNAPSHOTLIST` y espera la respuesta, con un tope de paciencia. */
-  private pedirLista(): Promise<readonly string[]> {
+  /**
+   * Borra las automáticas que sobran, y **comprueba que se hayan borrado**.
+   *
+   * **Antes esto iba a ciegas.** Se mandaban los `DELETESNAPSHOT` y la función
+   * retornaba sin volver a leer. Que el comando funcione está medido contra la
+   * consola —2026-09-10— pero con un arnés de spike, y **el arnés no es el
+   * adaptador**: bastaba un cambio en el nombre del show, en la gramática o en
+   * el orden para que la retención dejara de retener sin que nada avisara. El
+   * modo de fallo es silencioso hacia el lado malo: el show crece igual.
+   *
+   * **Un borrado que no ocurre no aborta nada.** El punto de retorno ya se
+   * guardó y eso es lo que INV-001 pide; la retención es orden, no seguridad.
+   * Pero se avisa por `alNoPoderBorrar`, porque el problema de esta clase de
+   * fallo no es su gravedad sino que nadie lo note nunca.
+   */
+  private async aplicarRetencion(lista: readonly string[]): Promise<void> {
+    // Qué borrar lo decide el dominio (INV-003, máximo 20): acá solo se manda,
+    // y `comandoBorrar` se niega a construir nada que no sea una automática
+    // nuestra, aunque quien llame se distraiga.
+    const pedidas: string[] = [];
+    for (const vieja of snapshotsABorrar(lista)) {
+      const orden = comandoBorrar(vieja);
+      if (orden !== null) { this.transporte.enviar(orden); pedidas.push(vieja); }
+    }
+    if (pedidas.length === 0) return;
+
+    await new Promise((r) => setTimeout(r, this.esperaBorradoMs));
+    const despues = await this.pedirLista();
+    // Sin respuesta no se puede afirmar que fallaron: se avisa igual, porque
+    // «no sé si se borraron» y «no se borraron» piden lo mismo de quien mira.
+    const sobrevivientes = despues === null
+      ? pedidas
+      : pedidas.filter((n) => despues.includes(n));
+    if (sobrevivientes.length > 0) this.alNoPoderBorrar?.(sobrevivientes);
+  }
+
+  /**
+   * Pide `SNAPSHOTLIST` y espera la respuesta.
+   *
+   * **Devuelve `null` cuando la consola no contestó, y eso importa.** Antes
+   * devolvía `[]` al vencer, o sea lo mismo que un show sin instantáneas: quien
+   * llamaba no podía distinguir «no hay ninguna» de «no sé». Con esa confusión,
+   * un vencimiento hacía que `guardarInstantanea()` devolviera `null` y que
+   * INV-001 abortara la transacción con un motivo que no mencionaba el
+   * vencimiento por ningún lado.
+   *
+   * **El plazo es propio y no el de la confirmación de escritura.** Compartían
+   * `timeoutMs`, que son 500 ms elegidos para el testigo. Medido el 2026-09-10
+   * sobre doce pedidos: `SNAPSHOTLIST` contesta en **6 ms de mediana** —o sea
+   * más rápido que el testigo, no «del orden de un segundo» como decía la
+   * política— pero con un caso de **277 ms** que se come más de la mitad de
+   * aquel presupuesto. Un plazo propio y holgado cuesta nada acá: esto pasa una
+   * vez por transacción, no una vez por escritura.
+   */
+  private pedirLista(): Promise<readonly string[] | null> {
     return new Promise((resolver) => {
-      const vencimiento = setTimeout(() => { quitar(); resolver([]); }, this.timeoutMs);
+      const vencimiento = setTimeout(() => { quitar(); resolver(null); }, this.timeoutListaMs);
       const quitar = this.transporte.alRecibir((linea) => {
         if (!linea.startsWith('SNAPSHOTLIST^')) return;
         clearTimeout(vencimiento);
