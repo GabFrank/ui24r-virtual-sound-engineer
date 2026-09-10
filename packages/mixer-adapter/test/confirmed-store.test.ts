@@ -98,7 +98,7 @@ test('lo nuestro entra por el testigo, y ese si es propio', () => {
   store.alCambioExterno((path) => vistos.push(path));
 
   store.registrarEscrituraPropia('i.3.mix', 0.7);
-  store.confirmarPorTestigo('i.3.mix', 0.7);
+  store.confirmarPropia('i.3.mix', 0.7);
 
   assert.equal(store.leer('i.3.mix')?.origen, 'SELF');
   assert.deepEqual(vistos, [], 'nuestro propio cambio no es un aviso de cambio ajeno');

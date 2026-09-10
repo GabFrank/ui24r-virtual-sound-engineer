@@ -158,7 +158,7 @@ export class ConfirmedStateStore {
    * Anota una escritura en vuelo, para que el testigo pueda descontarla.
    *
    * Ya **no** sirve para reconocer un eco: no hay eco. Queda porque
-   * `confirmarPorTestigo` descuenta de acá lo que confirma, y porque tener la
+   * `confirmarPropia` descuenta de acá lo que confirma, y porque tener la
    * lista de lo que está en vuelo es útil para depurar una escritura que venció.
    */
   registrarEscrituraPropia(path: string, valor: number): void {
@@ -168,7 +168,18 @@ export class ConfirmedStateStore {
   }
 
   /**
-   * Da por confirmado un valor que **la conexión testigo** vio difundir.
+   * Da por confirmada, y como **nuestra**, una escritura que se verificó.
+   *
+   * **Se llamaba `confirmarPorTestigo` y el nombre dejó de ser cierto** el día
+   * que se cableó el respaldo por medidor: desde entonces también lo llama el
+   * camino que confirma mirando el `VU2`, que no es el testigo. Un método que
+   * nombra un mecanismo y lo usan dos es una trampa esperando: el que lea
+   * «PorTestigo» va a suponer que sin testigo esto no ocurre.
+   *
+   * Qué mecanismo confirmó **sí** se distingue, pero donde corresponde: en el
+   * `confirmedBy` del resultado de la escritura, que es lo que queda en el
+   * diario. Acá lo único que se decide es el **origen**, y para eso los dos
+   * caminos dicen lo mismo: fue nuestro.
    *
    * No rompe la regla 1 de este almacén —«se alimenta solo de mensajes
    * entrantes»— sino que la extiende: la línea que provoca esta llamada es un
@@ -186,7 +197,7 @@ export class ConfirmedStateStore {
    * y ventana, y con un testigo lento —más de 300 ms— la deducción marcaría
    * `EXTERNAL` y abriría un aviso de cambio ajeno por nuestro propio cambio.
    */
-  confirmarPorTestigo(path: string, valor: number): void {
+  confirmarPropia(path: string, valor: number): void {
     const t = this.ahora();
     this.limpiarPendientes(t);
     const i = this.pendientes.findIndex(
@@ -293,7 +304,7 @@ export class ConfirmedStateStore {
    *
    * Lo que llega por acá es de otro cliente, o de una recuperación de
    * instantánea. Las dos cosas son ajenas. Lo nuestro entra por
-   * `confirmarPorTestigo`, que no deduce nada porque no hace falta.
+   * `confirmarPropia`, que no deduce nada porque no hace falta.
    */
   private deducirOrigen(): ChangeSource {
     return 'EXTERNAL';

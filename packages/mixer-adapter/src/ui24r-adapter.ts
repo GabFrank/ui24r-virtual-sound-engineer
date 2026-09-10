@@ -684,7 +684,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       // El valor entra al estado confirmado por acá y no por otro lado: la
       // conexión principal nunca va a ver su propia escritura, así que sin esto
       // el segundo cambio sobre la misma ruta chocaría contra el valor viejo.
-      this.store.confirmarPorTestigo(parametro, valor);
+      this.store.confirmarPropia(parametro, valor);
       return { status: 'APPLIED', confirmedBy: 'WITNESS', actual: valor, motivo: null };
     }
     return {
@@ -757,7 +757,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       // Entra al estado confirmado igual que por testigo: la conexión principal
       // nunca ve su propia escritura, así que sin esto el segundo cambio sobre
       // la misma ruta chocaría contra el valor viejo.
-      this.store.confirmarPorTestigo(parametro, valor);
+      this.store.confirmarPropia(parametro, valor);
       return { status: 'APPLIED', confirmedBy: 'VU', actual: valor, motivo: null };
     }
 

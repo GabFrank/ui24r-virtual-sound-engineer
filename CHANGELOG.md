@@ -33,6 +33,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **La aplicación distingue sin fallar lo que cambió ella de lo que cambió otro.**
+  Cien de cien, medido contra la consola. No lo consigue adivinando por tiempo
+  —eso era imposible, porque la consola no le devuelve nada a quien escribe— sino
+  porque no hace falta: lo que llega por la conexión de trabajo es siempre de
+  otro, y lo propio se marca al verificarse.
+
 - **Un fader movido desde otro dispositivo ya no borra el historial reciente.**
   Un arrastre llegaba como veinte cambios separados y llenaba solo él la lista de
   los últimos veinte, que es justo lo que se mira para entender qué pasó. Ahora
