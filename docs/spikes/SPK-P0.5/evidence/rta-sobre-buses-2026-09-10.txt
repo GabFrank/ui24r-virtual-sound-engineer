@@ -1,0 +1,30 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T19:19:59.242Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/rta-sobre-buses.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789068005467
+supresor apagado, general en cero, ganancia del canal 10 a 0,70
+tono de 1000 Hz, que cae en la banda 67
+
+fuente               | var.rta | el analizador ve la banda | veredicto
+---------------------+---------+---------------------------+----------
+canal 10 (conocido)  | i.9     |   60.4 dB ############              | SIRVE
+general (conocido)   | m       |    1.5 dB                           | hay algo, pero no el tono
+auxiliar 1           | a.0     |    0.0 dB                           | hay algo, pero no el tono
+subgrupo 1           | s.0     |    0.0 dB                           | hay algo, pero no el tono
+efecto 1             | f.0     |    0.0 dB                           | nada
+
+restaurado:
+  i.9.aux.0.value = 0
+  i.9.aux.0.mute = 0
+  a.0.mix = 0.9042157911
+  s.0.mix = 0.7647058824
+  f.0.mix = 0.7647058824
+  m.afs.enabled = 1
+  m.mix = 0.7643020595
+  hw.9.gain = 0.2508445026
+
+
+# salida del proceso: 0

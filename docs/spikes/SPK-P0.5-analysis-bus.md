@@ -87,6 +87,43 @@ entre 250 Hz y 8 kHz.
 falsos positivos que nunca se había hecho con una fuente real: el ruido sube
 todas las bandas a la vez, y una realimentación es una sola que no baja.
 
+### ¿El analizador se puede apuntar a un auxiliar? — NO CONCLUYE, 2026-09-10
+
+**Por qué importa, y no es curiosidad.** El analizador se sabe apuntar a un canal
+—`i.N`— y al general —`m`—. Pero la consola tiene 10 auxiliares, 6 subgrupos y 4
+efectos, y **un auxiliar es un envío de monitor**: es donde más acopla en vivo,
+porque el parlante apunta al cantante y el micrófono del cantante apunta al
+parlante. Un detector que solo mira el general está mirando donde el acople **se
+escucha**, no donde nace.
+
+**Dos intentos, ninguna conclusión, y cada uno falló por algo distinto.** Se
+anotan los dos porque el modo de fallo es lo único que este spike produjo, y
+sirve para que el tercero no lo repita.
+
+**Primer intento** —`evidence/rta-sobre-buses-2026-09-10.txt`—: se bajó el
+general a cero para no sacar nada por el monitor, y con eso **el control conocido
+también quedó sin señal**. Un experimento cuyo control falla no distingue «este
+bus no sirve de fuente» de «a este bus no le llegó nada». No concluye.
+
+**Segundo intento** —`evidence/rta-sobre-buses-b-2026-09-10.txt`—: se dejó el
+general arriba y se agregó el control que faltaba, el **medidor del bus** leído
+de la cola de `VU2`, que dice si al bus le llegó señal con independencia del
+analizador. Eso sirvió y mostró dos cosas:
+
+- **Al auxiliar no le llegó el tono**: −67 dB en su medidor, con el envío del
+  canal puesto en 0,8. El ruteo de un envío auxiliar necesita más de lo que se
+  hizo, y hasta saber qué, la pregunta sobre el auxiliar no se puede ni plantear.
+- **El general sí llevaba el tono —−21,7 dB en su medidor— y el analizador leyó
+  0,4.** Eso parecía contradecir lo ya medido el 2026-09-09, que el general sirve
+  de fuente. No lo contradice: **el guion cambiaba `var.rta` cinco veces seguidas
+  con 2,5 s entre medio**, y la medición del 09 apuntó a una sola fuente y
+  esperó. No es que el general no sirva; es que no se le dio tiempo.
+
+**Lo que hay que hacer distinto la próxima vez**: una fuente por corrida con su
+espera, comprobar el ruteo con el medidor del bus **antes** de preguntarle al
+analizador, y no bajar el control para proteger el monitor —para eso está bajar
+el auxiliar, no el general—.
+
 ### La ley del analizador es la misma en todas las bandas — 2026-09-10
 
 **El agujero que cierra.** `RTA_DB_POR_BYTE = 0,375` se estableció con tonos a
