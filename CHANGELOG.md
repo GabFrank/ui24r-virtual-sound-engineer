@@ -33,6 +33,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Las capturas de la documentación ya no pueden quedar viejas en silencio.**
+  Dos mostraban un paso del recorrido que se había corrido de número, y se
+  veían como documentación buena. La verificación falla ahora si lo guardado no
+  es lo que los guiones producen.
+
 - **El aviso de realimentación ya señala qué banda es.** La barra tenía que
   salir en color de aviso y salía blanca como todas: la pantalla usaba cuatro
   fichas de diseño que no existen, y `var()` con valor de reserva no falla. El

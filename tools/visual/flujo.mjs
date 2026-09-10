@@ -58,6 +58,19 @@ async function recorrer(contexto, tamanio) {
   const p = await contexto.newPage();
   await p.setViewportSize({ width: tamanio.width, height: tamanio.height });
 
+  // **Sin autoconexión.** Este recorrido es de perfiles y sesión: no toca la
+  // consola en ningún paso. Con la autoconexión encendida, la aplicación
+  // intenta el host de fábrica --`10.10.1.1`, que solo existe cuando uno se
+  // cuelga del punto de acceso de la propia consola-- y falla cada cuatro
+  // segundos. Eso llenaba la lista de fallos con siete «conexion_fallida» por
+  // corrida, todos esperables, y el recorrido salía en rojo siempre.
+  //
+  // El problema de un guion que siempre falla no es que moleste: es que deja
+  // de leerse, y el día que aparezca un error de verdad va a estar en medio
+  // del ruido. Apagarla acá hace que **cualquier error de consola que quede
+  // sea uno que hay que mirar**.
+  await p.addInitScript(() => localStorage.setItem('vse.pref.autoconectar', 'no'));
+
   const fallos = [];
   p.on('pageerror', (e) => fallos.push(`excepción: ${e.message}`));
   p.on('console', (m) => { if (m.type() === 'error') fallos.push(`consola: ${m.text()}`); });

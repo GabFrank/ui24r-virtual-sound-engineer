@@ -120,6 +120,11 @@ Y el recorrido del camino de usuario, apenas se escribió, encontró tres más:
     Un nombre a medias es peor que una sigla entera; en pantallas angostas dice
     «VSE».
 
+El recorrido de `flujo.mjs` no se lista archivo por archivo: son 25 pasos por
+cada uno de los dos anchos, con el número y el nombre del paso en el propio
+archivo. `validate-capturas.mjs` comprueba que lo guardado acá sea exactamente
+lo que los guiones producen, y que el índice de arriba nombre todo lo que hay.
+
 ## Lo que se descubrió sacándolas de nuevo, el 2026-09-10
 
 Las tres cosas salieron de mirar las imágenes, no de correr los tests.
