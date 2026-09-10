@@ -119,9 +119,16 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 `npm run verificar:commits` revisaba la convención de los mensajes, pero corre
 **después**: el commit ya existe, muchas veces ya se empujó, y arreglarlo cuesta
 una enmienda y un `--force-with-lease`. Pasó dos veces en la misma sesión, las
-dos por uno o dos caracteres de más en el asunto. Y la segunda vez, al poner la
-guarda, apareció un error que ninguna de las dos revisiones había mostrado: el
-ámbito era `gates` y el válido es `gate`, en singular.
+dos por uno o dos caracteres de más en el asunto. Al poner la guarda apareció
+además un ámbito inválido —`gates` cuando el válido es `gate`, en singular—.
+
+**Y acá hay que corregir lo que se escribió el mismo día.** El commit dijo que
+la comprobación tardía «se estaba leyendo por encima», y no es cierto:
+`verificar:commits` corre commitlint entero, `scope-enum` incluido, y habría
+cantado ese ámbito sin problema. La razón por la que nunca lo mostró es más
+simple y mejor para el argumento: **el commit con ese ámbito nunca llegó a
+existir**, porque el gancho lo frenó antes. Culpar a la herramienta vieja de
+algo que no hizo debilita el motivo verdadero para tener la nueva.
 
 Hay un gancho `commit-msg` en `.githooks/` y `npm install` lo engancha con
 `core.hooksPath`. Si el mensaje no cumple, **el commit no llega a existir**.

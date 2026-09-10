@@ -33,6 +33,17 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Se descubrió que la consola difunde en un tic de ~34 ms**, y no una línea por
+  escritura. Dos cambios a la misma ruta dentro de ese tic producen uno solo, con
+  el segundo valor: el primero se aplica y su confirmación no llega nunca. Las
+  escrituras normales quedan fuera del problema porque van espaciadas 100 ms, casi
+  tres tics, pero ahora está medido en vez de ser suerte.
+
+- **La aplicación no pisa un cambio hecho desde otro dispositivo**, y ya no es
+  algo probado solo contra el simulador: medido contra la consola, con un segundo
+  cliente haciendo de otro operador. 100 de 100 cambios ajenos etiquetados, cero
+  sobrescrituras.
+
 - **La política de confirmación de escrituras quedó cerrada, y medida.** La tabla
   de qué confirma cada escritura iba a escribirse a mano diciendo «se supone que
   sí» en casi todas las filas; se midió en cambio, ruta por ruta contra la
@@ -44,17 +55,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   prueba corrió por debajo del máximo y no borró nada. Medido, funciona y deja
   los shows del usuario intactos.
 
-- **Las capturas de la documentación ya no pueden quedar viejas en silencio.**
-  Dos mostraban un paso del recorrido que se había corrido de número, y se
-  veían como documentación buena. La verificación falla ahora si lo guardado no
-  es lo que los guiones producen.
+- **Las capturas viejas dejan de pasar por documentación buena.** Dos mostraban
+  un paso del recorrido que se había corrido de número. La verificación falla
+  ahora si el índice no nombra todo lo guardado, y —cuando se corre junto a los
+  guiones— si lo guardado no coincide con lo recién producido. En integración
+  continua solo se revisa el índice, porque ahí nadie sacó capturas.
 
 - **El aviso de realimentación ya señala qué banda es.** La barra tenía que
-  salir en color de aviso y salía blanca como todas: la pantalla usaba cuatro
+  salir en color de aviso y salía blanca como todas: la pantalla usaba cinco
   fichas de diseño que no existen, y `var()` con valor de reserva no falla. El
-  aviso decía «1 banda sostenida» y no marcaba cuál. Había otras doce fichas
-  inventadas en cuatro pantallas más, y ahora la verificación falla si alguna
-  ficha usada no está declarada.
+  aviso contaba la banda sostenida y no marcaba cuál. Había otras nueve, con
+  dieciséis usos, en cinco pantallas más, y ahora la verificación falla si
+  alguna ficha usada no está declarada.
 
 - **Las instantáneas automáticas dejan de acumularse.** Se conservan las 20 más
   recientes, que es lo que INV-003 ya tenía decidido. **Solo se borran las

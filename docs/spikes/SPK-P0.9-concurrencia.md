@@ -1,6 +1,6 @@
 # SPK-P0.9 — Concurrencia y presencia
 
-**Estado:** Pendiente — sin criterios contestados, pero **el criterio 3 quedó falsado tal como está escrito** y el 6 tiene un requisito nuevo · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial — **criterios 1 y 2 cerrados contra la consola el 2026-09-10**; el 5 quedó falsado y el 3 también, cada uno por su motivo; el 6 tiene un requisito nuevo · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.5b
 **Montaje:** Ui24R, router, laptop con Node, navegador oficial abierto en otro equipo, teléfono con la aplicación oficial.
 
@@ -20,11 +20,11 @@
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | | ⬜ |
-| 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | | ⬜ |
+| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10.** Un segundo cliente hizo de otro operador y escribió 100 veces espaciado 120 ms; la aplicación etiquetó las 100 como ajenas, el último valor coincide, y no disparó ninguna avalancha por error. `evidence/concurrencia-2026-09-10.txt` | ✅ |
+| 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **Imposible por correlación de mensajes entrantes, y está medido.** La consola no le devuelve la escritura a quien la hizo, así que no hay nada que correlacionar: el 2026-09-09, con tres clientes conectados, **el que escribe ve 0 líneas de su propia escritura mientras los otros dos ven 1 cada uno**. El criterio se cumple por otra vía o no se cumple | ⬜ |
 | 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | | ⬜ |
-| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | | ⬜ |
+| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **No, y es imposible por construcción.** `causaProbable()` clasifica `FADER_DRAG` con `sufijos.size === 1 && rutas.size > 1`: pide **varias rutas distintas**. Un arrastre de un fader es **una sola ruta** escrita muchas veces, así que nunca entra por ahí. La aplicación recibe 19 o 20 avisos separados. Lo que ese código sí detecta —varios canales moviéndose juntos— está bien detectado y no es lo que dice la etiqueta | ⬜ |
 | 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | Sin elegir, y ahora con un requisito más: tiene que distinguir **nuestra propia conexión testigo** de un segundo operador. Ver R-27 | ⬜ |
 
 ## Lo que ya se midió, y a qué obliga — 2026-09-09

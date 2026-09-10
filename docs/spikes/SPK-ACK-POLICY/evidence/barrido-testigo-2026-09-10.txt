@@ -59,3 +59,24 @@ dos lineas en el arnes.
 Lo que salvo la corrida fue tener el numero de antes: 11,5 ms de mediana ya
 medidos. Un cero contra un numero conocido se mira dos veces; un cero contra
 nada se anota.
+
+--- La corrida anterior, anotada el 2026-09-10 ------------------------------
+
+El barrido se corrio DOS VECES y este archivo guardaba solo la segunda. La
+politica citaba «mediana de 17 ms en la primera corrida y 18 en la segunda,
+extremos de 12 a 26» y esos numeros no estaban en ningun archivo: vivian en la
+consola de quien lo corrio. Una auditoria los marco como inventados, con razon
+—no en que fueran falsos, sino en que NADIE PODIA COMPROBARLOS—.
+
+Primera corrida, mismas 18 rutas, mismo canal:
+  difundidas y vistas por el testigo: 18 de 18
+  latencia del testigo: mediana 17 ms, minimo 12, maximo 19
+
+Segunda corrida, la tabulada arriba:
+  difundidas y vistas por el testigo: 18 de 18
+  latencia del testigo: mediana 18 ms, minimo 14, maximo 26
+
+Se anota tarde y de memoria del registro de la sesion, no de un archivo, y por
+eso vale menos que la tabla de arriba. La leccion es mas simple que el numero:
+UNA MEDICION QUE NO SE ARCHIVA NO SE MIDIO, se conto. Si se corre dos veces, las
+dos corridas van al archivo o se cita una sola.

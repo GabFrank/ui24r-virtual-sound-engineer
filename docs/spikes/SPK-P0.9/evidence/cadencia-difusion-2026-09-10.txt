@@ -1,0 +1,24 @@
+Cadencia de difusion de la consola — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, canal 17 (i.16), ruta i.16.mix
+
+DE DONDE SALE LA PREGUNTA. Midiendo el criterio 5 de SPK-P0.9 se escribieron 40
+valores seguidos cada 15 ms y al otro cliente le llegaron SOLO 20, repartidos en
+641 ms: unos 32 ms entre linea y linea. Ese numero se parece demasiado a los
+33 ms del RTA como para ser casualidad.
+
+punto de retorno: VSE_AUTO_1789047225519 · i.16.mix vale 0
+
+escrito cada | escritas | llegadas | % | intervalo entre llegadas (ms)
+-------------+----------+----------+-----+------------------------------
+        5 ms |       40 |        5 |  13 | mediana 34, media 33.8, min 33, max 34
+       10 ms |       40 |       14 |  35 | mediana 34, media 34.2, min 33, max 35
+       15 ms |       40 |       20 |  50 | mediana 34, media 33.6, min 32, max 35
+       25 ms |       40 |       31 |  78 | mediana 34, media 33.6, min 31, max 36
+       40 ms |       40 |       40 | 100 | mediana 34, media 40.5, min 32, max 69
+       60 ms |       40 |       40 | 100 | mediana 67, media 60.6, min 17, max 102
+      100 ms |       40 |       40 | 100 | mediana 101, media 100.9, min 92, max 111
+
+restaurada: si
+medianas del intervalo entre llegadas, por ritmo: 34, 34, 34, 34, 34, 67, 101 ms
+
+HAY TIC de ~34 ms. Escribiendo mas rapido que el se pierden lineas y el intervalo se clava ahi; escribiendo mas lento no se pierde ninguna y las llegadas quedan cuantizadas en multiplos del tic (67 = dos, 100 = tres).

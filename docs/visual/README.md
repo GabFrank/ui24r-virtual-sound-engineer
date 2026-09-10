@@ -30,7 +30,7 @@ describiendo pasos que ya no existen.
 | `20-actualizacion-disponible.png` | Versión disponible, con sus novedades |
 | `21-prelanzamiento-descartado.png` | Una etiqueta `rc` no se ofrece como actualización |
 | `22-analizador-permiso.png` | Pidiendo prestado el analizador: qué se va a ver y qué se restaura al salir |
-| `23-espectro.png` | El espectro del general, con la banda que se queda colgada en naranja |
+| `23-espectro.png` | El espectro del general con datos, sin nada colgado |
 | `24-realimentacion.png` | Aviso de realimentación: qué frecuencia, cuánto lleva y qué canales están abiertos |
 | `tel-01-consola.png` | Telemetría en teléfono: tarjetas en vez de tabla |
 | `tel-02-canales.png` | Asignación de canales en teléfono |
@@ -122,19 +122,30 @@ Y el recorrido del camino de usuario, apenas se escribió, encontró tres más:
 
 El recorrido de `flujo.mjs` no se lista archivo por archivo: son 25 pasos por
 cada uno de los dos anchos, con el número y el nombre del paso en el propio
-archivo. `validate-capturas.mjs` comprueba que lo guardado acá sea exactamente
-lo que los guiones producen, y que el índice de arriba nombre todo lo que hay.
+archivo. `validate-capturas.mjs` comprueba que el índice de arriba nombre todo lo que hay
+guardado, y —**solo si `tools/visual/out/` existe**, o sea si acabás de correr
+los guiones— que lo guardado coincida con lo recién producido. En integración
+continua ese directorio no existe, así que ahí solo se revisa el índice.
+
+Y no comprueba las leyendas. La de `23-espectro.png` decía «con la banda que se
+queda colgada en naranja» y describía la captura siguiente: la 23 no tiene
+ninguna banda marcada, su propio pie dice «nada colgado».
 
 ## Lo que se descubrió sacándolas de nuevo, el 2026-09-10
 
 Las tres cosas salieron de mirar las imágenes, no de correr los tests.
 
 **La barra de la banda colgada salía blanca.** La pantalla del espectro usaba
-`--c-aviso`, `--c-senal`, `--c-superficie-2` y `--r-2`: cuatro fichas de diseño
-que **no existen** —se llaman `--warn`, `--signal`, `--surface-2` y
-`--radio-md`—. `var()` con valor de reserva no falla, así que todo compilaba y
-la pantalla se dibujaba, pero el aviso decía «1 banda sostenida» y **no
-señalaba cuál**. Había otras doce fichas inventadas en cuatro archivos más.
+**cinco** fichas de diseño que **no existen**: `--c-aviso`, `--c-senal`,
+`--c-superficie-2`, `--r-2` y `--c-aviso-suave` —se llaman `--warn`, `--signal`,
+`--surface-2`, `--radio-md` y `--warn-tenue`—. `var()` con valor de reserva no
+falla, así que todo compilaba y la pantalla se dibujaba, pero el aviso contaba
+la banda sostenida y **no señalaba cuál**. Fuera del espectro había **otras
+nueve, con dieciséis usos, en cinco archivos**.
+
+La quinta se contó tarde, y no por casualidad: `--c-aviso-suave` estaba escrita
+con **doble** valor de reserva —`var(--c-aviso-suave, var(--c-superficie-2))`—,
+o sea escondida detrás de la misma costumbre que el texto usa como moraleja.
 Ahora `npm run verificar` corre `tools/docs/validate-fichas.mjs`, que falla si
 alguna ficha usada no está declarada.
 

@@ -9,6 +9,36 @@ Este documento describe **lo que la consola hace**. Lo que la aplicación tiene 
 
 ---
 
+## La consola difunde en un tic de ~34 ms
+
+**Medido el 2026-09-10** sobre `i.16.mix`, escribiendo desde un cliente y
+mirando desde otro. La consola **no difunde cada escritura**: junta los cambios
+de una ventana y manda **el último valor** de cada ruta.
+
+| Se escribe cada | De 40, llegan | Intervalo entre llegadas |
+|---|---|---|
+| 5 ms | 5 (13 %) | mediana 34 ms |
+| 10 ms | 13–14 (33 %) | mediana 34 ms |
+| 15 ms | 20 (50 %) | mediana 34 ms |
+| 25 ms | 31 (78 %) | mediana 34 ms |
+| 40 ms | 40 (100 %) | mediana 34 ms |
+| 60 ms | 40 (100 %) | mediana 67 ms = dos tics |
+| 100 ms | 40 (100 %) | mediana 100 ms = tres tics |
+
+Las dos últimas filas son la prueba más fuerte de que el tic existe: **las
+llegadas quedan cuantizadas en múltiplos de él** aunque se escriba a otro ritmo.
+
+Es el mismo ~33 ms de la cadencia de `RTA`, así que lo más económico es suponer
+**un solo reloj de difusión** para todo lo que la consola emite.
+
+**Qué se rompe si no se sabe.** Dos escrituras a la misma ruta dentro de un tic
+producen una sola línea con el segundo valor: la primera se aplica y **nadie la
+ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
+consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
+confirmada aunque haya funcionado. Evidencia:
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` y
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+
 ## 1. Transporte
 
 ### 1.1 No es un WebSocket pelado

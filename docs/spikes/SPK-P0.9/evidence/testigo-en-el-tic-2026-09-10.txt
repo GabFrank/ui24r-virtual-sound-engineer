@@ -1,0 +1,54 @@
+El testigo cuando dos escrituras caen en el mismo tic — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, canal 17 (i.16), ruta i.16.mix
+
+LA PREGUNTA. La consola difunde en un tic de ~34 ms y manda el ULTIMO valor de
+la ventana --medido en cadencia-difusion-2026-09-10.txt--. Si escribimos A y
+despues B sobre la misma ruta dentro de ese tic, sale una sola linea con B, y el
+testigo que espera A no la ve nunca. Eso convierte una escritura aplicada en un
+TIMEOUT, y en modo automatico controlado un parametro sin confirmar es
+inelegible: la aplicacion se auto-bloquearia por un exito.
+
+Se midio en vez de deducirlo porque la deduccion tiene un supuesto escondido:
+que la consola aplica A antes de sobrescribirlo con B.
+
+punto de retorno: VSE_AUTO_1789047451437 · i.16.mix vale 0
+
+5 repeticiones por separacion; A=0,20 y B=0,40 sobre la misma ruta
+
+separacion | A confirmada | B confirmada | lineas difundidas | que difundio
+-----------+--------------+--------------+-------------------+-------------
+      0 ms | 0 de 5       | 5 de 5       |               1.0 | 0.40  0.40  0.40  0.40  0.40
+      5 ms | 0 de 5       | 5 de 5       |               1.0 | 0.40  0.40  0.40  0.40  0.40
+     15 ms | 2 de 5       | 5 de 5       |               1.4 | 0.40  0.40  0.40  0.20>0.40  0.20>0.40
+     25 ms | 2 de 5       | 5 de 5       |               1.4 | 0.40  0.20>0.40  0.40  0.20>0.40  0.40
+     34 ms | 5 de 5       | 5 de 5       |               2.0 | 0.20>0.40  0.20>0.40  0.20>0.40  0.20>0.40  0.20>0.40
+     60 ms | 5 de 5       | 5 de 5       |               2.0 | 0.20>0.40  0.20>0.40  0.20>0.40  0.20>0.40  0.20>0.40
+
+
+restaurada: si
+
+LO QUE DICEN LOS DATOS. Con las dos escrituras pegadas --0 ms-- la consola
+difunde UNA SOLA LINEA con 0.40 en las cinco repeticiones: A desaparece y su
+confirmacion no llega nunca. Entre 5 y 25 ms el resultado depende de donde caiga
+el borde del tic y sale a suertes: 2, 1 y 3 de 5. A PARTIR DE UN TIC COMPLETO
+--34 ms-- las dos pasan siempre, 5 de 5 y dos lineas difundidas.
+
+QUE PROTEGE HOY A LA APLICACION. INV-005 pauta las escrituras secuenciales cada
+100 ms COMO MINIMO, que son casi tres tics: las escrituras normales quedan
+fuera del agujero con margen, y esto no es suerte del todo --el numero salio de
+otra consideracion-- pero ahora esta medido.
+
+DONDE SI QUEDA EXPUESTO. La misma INV-005 exime a las transacciones de sistema
+del limite de cuatro parametros y les pone un pacing de >= 20 MS, que esta POR
+DEBAJO DEL TIC. Ahi la confirmacion por testigo no es fiable. No es un defecto
+abierto porque esas transacciones se verifican por LECTURA DEL CONJUNTO COMPLETO
+dentro de un segundo del ultimo write, que es un mecanismo distinto y no depende
+del testigo. Queda dicho para que nadie las "mejore" pasandolas a confirmacion
+por testigo creyendo que sube el rigor.
+
+UN ERROR DEL INSTRUMENTO, DE PASO. La primera version leia el valor final de la
+conexion PRINCIPAL y daba 0 en todas las filas. La principal no ve sus propias
+escrituras --esta medido--, asi que su copia se quedaba en el ultimo valor
+ajeno: el instrumento miraba el unico sitio donde el dato no podia estar. Mismo
+error de forma que un testigo mal arrancado: no fallo, contesto con seguridad un
+numero que no significaba nada.

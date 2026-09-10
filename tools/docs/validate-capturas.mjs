@@ -8,8 +8,11 @@
  * lugar del recorrido**. Una captura obsoleta no se ve obsoleta: se ve como
  * documentación.
  *
- * Lo mismo pasa al revés cuando se agrega un escenario y nadie copia el
- * resultado: el índice del README habla de una imagen que no está.
+ * **Lo que NO hace, y conviene saberlo.** Recorre los archivos que hay en disco
+ * y comprueba que estén en el índice. **No recorre el índice**, así que una
+ * entrada del README que apunte a una imagen inexistente pasa limpia. El
+ * comentario decía antes que sí lo hacía; una guarda que se describe de más es
+ * peor que una que falta, porque nadie va a revisar lo que cree cubierto.
  *
  * No compara el contenido de las imágenes --eso cambiaría con cualquier
  * navegador distinto--, solo qué archivos hay. Corre únicamente si
