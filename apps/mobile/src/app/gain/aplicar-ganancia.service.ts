@@ -73,10 +73,17 @@ export class AplicarGananciaService {
    * Las reglas viven en `@vse/assistants`, donde se prueban; acá se junta el
    * estado disperso —sesión, seguridad, conexión— y se pregunta.
    */
-  puedeAplicar(p: PropuestaAplicable): { readonly puede: boolean; readonly motivo: string | null } {
+  /**
+   * Si el botón tiene que estar habilitado, y si no, por qué.
+   *
+   * Toma solo la confianza porque el resto —estado de sesión, paro, conexión—
+   * lo sabe este servicio. La pantalla no tiene por qué juntar ese estado para
+   * preguntar si se puede.
+   */
+  puedeAplicar(confianza: Confidence): { readonly puede: boolean; readonly motivo: string | null } {
     const permiso = this.seguridad.permiteEscritura('PREAMP_GAIN');
     const v = puedeAplicarGanancia({
-      confianza: p.confianza,
+      confianza,
       sessionState: this.sesion.estado(),
       // Todavía no hay tomas de soundcheck en la aplicación. Va en `false` y no
       // en un valor inventado; cuando existan, entran acá.
@@ -125,7 +132,7 @@ export class AplicarGananciaService {
    * que mostrar lo que hay, no lo que se intentó.
    */
   async aplicar(p: PropuestaAplicable, sessionId: string): Promise<ResultadoAplicacion> {
-    const control = this.puedeAplicar(p);
+    const control = this.puedeAplicar(p.confianza);
     if (!control.puede) return { estado: 'NO_SE_PUEDE', motivo: control.motivo ?? 'no se puede aplicar' };
 
     const api = this.mixer.api();

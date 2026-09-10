@@ -58,6 +58,24 @@ export class MixerService {
    * Devuelve `null` cuando no hay conexión, que es lo que obliga al llamador a
    * decidir qué hacer en vez de recibir un objeto que va a fallar después.
    */
+  /**
+   * La ruta de la ganancia del previo que alimenta a un canal, o `null`.
+   *
+   * Sale de `i.N.src`, no del número del canal: con el enrutamiento de fábrica
+   * coinciden, y por eso suponerlo pasa desapercibido hasta que alguien
+   * repatchea. Ver `fuente-de-canal.ts`.
+   */
+  rutaDeGananciaDe(canal: number): string | null {
+    const c = this.canales().find((x) => x.indice === canal);
+    return c?.rutaGanancia ?? null;
+  }
+
+  /** El valor crudo confirmado de una ruta, para la comprobación previa a escribir. */
+  crudoDe(ruta: string | null): number | null {
+    if (ruta === null || this.adapter === null) return null;
+    return this.adapter.leer(ruta)?.value ?? null;
+  }
+
   api(): MixerDomainAPI | null {
     return this.conexion.estado() === 'CONNECTED' ? this.adapter : null;
   }

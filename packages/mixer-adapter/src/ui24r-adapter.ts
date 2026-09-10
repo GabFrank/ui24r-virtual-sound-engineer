@@ -158,6 +158,15 @@ export interface EstadoCanal {
    * tocando el previo.
    */
   readonly saturacionesSalida: number;
+  /**
+   * La ruta del previo que alimenta a este canal, o `null` si no se sabe.
+   *
+   * Sale de `i.N.src` y no del número del canal. Se expone porque quien vaya a
+   * **escribir** la ganancia necesita saber dónde, y derivarlo dos veces —una
+   * acá y otra en el llamador— es la forma de que las dos derivaciones se
+   * separen con el tiempo.
+   */
+  readonly rutaGanancia: string | null;
 }
 
 /**
@@ -546,6 +555,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         picoDb: this.picosVu.get(canal)?.db ?? -Infinity,
         nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
         picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
+        rutaGanancia: rutaGain,
         saturacionesPrevio: this.saturacionesPrevio.get(canal) ?? 0,
         saturacionesSalida: this.saturacionesSalida.get(canal) ?? 0,
         // Cero y no `null` cuando todavía no llegó una trama: la reducción es

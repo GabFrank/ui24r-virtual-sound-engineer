@@ -30,7 +30,7 @@ export interface EstadoParaAplicar {
   readonly conexionPermiteEscribir: boolean;
 }
 
-export type Veredicto =
+export type VeredictoDeAplicacion =
   | { readonly puede: true }
   | { readonly puede: false; readonly motivo: string };
 
@@ -42,7 +42,7 @@ export type Veredicto =
  * configuración de canales— así que decirlo convierte una traba en el siguiente
  * paso.
  */
-export function puedeAplicarGanancia(e: EstadoParaAplicar): Veredicto {
+export function puedeAplicarGanancia(e: EstadoParaAplicar): VeredictoDeAplicacion {
   if (e.paroDeEmergencia) {
     return { puede: false, motivo: 'el paro de emergencia está activo' };
   }
