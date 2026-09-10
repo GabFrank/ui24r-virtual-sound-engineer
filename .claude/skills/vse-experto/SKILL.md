@@ -5,6 +5,8 @@ description: Conocimiento experto del Ui24R Virtual Sound Engineer — cómo est
 
 # Experto en el Ui24R Virtual Sound Engineer
 
+> **Cómo se trabaja acá está aparte.** Esta skill dice qué es el proyecto y para quién. Las reglas de commit, de documentación, de medición y de trato con la consola del usuario están en la skill **`vse-disciplina`**, y se aplican siempre, no solo cuando se pregunte por el proceso.
+
 ## Qué es esto
 
 Un ingeniero de sonido virtual asistido por medición para consolas **Soundcraft Ui24R**.

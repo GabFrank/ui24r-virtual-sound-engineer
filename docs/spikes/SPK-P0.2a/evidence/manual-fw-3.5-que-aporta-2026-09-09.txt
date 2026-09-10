@@ -1,0 +1,85 @@
+QUE APORTA EL MANUAL TECNICO DEL FIRMWARE 3.5.8328 — 2026-09-09
+
+QUE ES
+Analisis estatico del paquete de actualizacion 3.5.8328, hecho para desarrollar
+una aplicacion de control. Nuestra consola declara 3.4.8318. El propio manual
+avisa: "documenta la segunda version; no certifica compatibilidad".
+
+El texto completo esta en manual-tecnico-fw-3.5.8328.txt, en esta carpeta.
+
+=== LO QUE CONFIRMA (y es mucho) ===
+Cabecera de VU2, secciones y pasos: 6 entradas, 6 media, 7 subgrupos, 7 FX,
+5 auxiliares, 5 master, 6 line in, en ese orden. IDENTICO a lo que medimos.
+
+Formato de cada bloque, idéntico también:
+  entrada y line in (6)   previo; nivel y pico de tira; entrada y salida de
+                          dinamica; byte combinado
+  subgrupo y FX (7)       nivel L, nivel R, pico L, pico R, dinamica entrada,
+                          dinamica salida, combinado
+  auxiliar (5)            nivel, pico, dinamica entrada, dinamica salida, comb.
+  master                  dos bloques de 5, uno por lado
+
+deconvertVU multiplica por 0.004167508166392142 -> igual que nuestro VU_ESCALA.
+El bit alto del byte combinado es el indicador booleano y los siete bajos van a
+deconvertVU_comp -> igual que lo nuestro.
+
+Conversiones que ya teniamos y quedan confirmadas: umbral de dinamica
+-90+96v, ratio 1/v, umbral de gate 96v-90, profundidad 60v-60, Q .05*300^v,
+frecuencia de EQ 20*1102.5^v.
+
+LA LEY DEL FADER, EXACTA, incluido el termino seno por debajo de 0,055. Trae
+ademas una tabla de referencia (v=0,25 -> -32,137666182 dB; v=0,5 ->
+-11,616258497; v=0,7647058823529421 -> 0; v=1 -> 10). NUESTRA IMPLEMENTACION
+COINCIDE HASTA EL SEXTO DECIMAL en los cuatro puntos. Es la comprobacion mas
+fuerte que tuvo esa funcion.
+
+La tabla ui24pgains completa, y VtoGAIN24 con clamp((64*v)|0,0,63), o sea
+TRUNCAMIENTO. Nuestra gananciaADb usa trunc: coincide con el cliente. El borde
+que una auditoria midio distinto en los multiplos exactos de 1/64 sigue siendo
+una diferencia entre el CLIENTE y el APARATO, no un error nuestro.
+
+=== LO QUE APORTA DE NUEVO ===
+  Ganancia de salida del dinamico   72v - 24     -24 a +48 dB
+  Ganancia del dinamico             (96v-72)|0   -72 a +24
+  Frecuencia del deesser            2000*7.5^v   2000 a 15000 Hz
+  Ataque/release de comp y gate     con desqr(v) = 1-(1-v)^2
+  Hold del gate                     400^desqr(v) y 2000^desqr(v)
+  Automix, reverb, room, LPF y HPF de efectos, detune, predelay
+  DBtoVf hace hasta 128 iteraciones de busqueda binaria
+
+Sobre el deesser: da su FRECUENCIA, no si toca el punto de medicion. El deesser
+sigue siendo el unico bloque del canal sin medir para lo que nos importa.
+
+=== LO QUE NO APORTA, Y SIGUE SIENDO NUESTRO ===
+No dice el recorrido en dB del medidor. Textualmente: "Es un valor de
+representacion de nivel; no basta multiplicarlo por 100 para llamarlo
+porcentaje de potencia". O sea que los 80 dB y los 0,333 dB por byte siguen
+saliendo solo de nuestra medicion.
+
+Tampoco: el techo real del medidor (255), el deficit del previo (-1,15 dB), el
+RTA como espectro con su ley de bandas y su escala de 0,375 dB por byte, la
+confirmacion por conexion testigo con latencia medida, ni donde esta tomado el
+medidor previo.
+
+=== EL BYTE 5 DE LA CABECERA: LA CONTRADICCION QUEDA MEJOR PLANTEADA ===
+El manual dice del byte 5 "No utilizado por este parser" y del 6 "Cantidad
+utilizada al avanzar despues del master". O sea que el cliente del 3.5 hace lo
+mismo que el del 3.4.
+
+Contra eso, dos implementaciones de terceros ponen los generales en el 5. Se
+sigue el 5 porque el autor de DigiMixer declara tener la documentacion oficial
+de Soundcraft, asi que su nombrado probablemente venga de ahi; y porque ese es
+el orden de las secciones. En una Ui24R los dos valen 2 y NO SE PUEDE RESOLVER
+MIDIENDO.
+
+=== LO QUE EL MANUAL DECLARA COMO PENDIENTE, Y NOSOTROS YA MEDIMOS ===
+Su seccion 27 lista pruebas pendientes. Varias ya estan hechas acá:
+  "Cambio de parametro con dos clientes: orden, eco, latencia"  -> medido
+  "Conversion de ganancia analogica: tabla real de pasos"       -> medido
+  "Capturas VU2: contadores, longitud, indicador combinado"     -> medido
+  "RTA con tonos conocidos: frecuencias de bins y escalas"      -> medido
+Vale anotarlo: el manual y este proyecto se complementan en direcciones
+opuestas. El manual sabe leer el firmware; nosotros sabemos medir el aparato.
+
+=== SOBRE ACTUALIZAR LA CONSOLA ===
+Ver la nota en docs/spikes/README.md. Resumen: no ahora.

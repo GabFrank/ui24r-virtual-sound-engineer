@@ -73,6 +73,15 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
                      [ngModel]="host()" (ngModelChange)="prefs.fijarHost($event)" />
             </ui-field>
 
+            <label class="conmutador">
+              <input type="checkbox" [checked]="autoconectar()"
+                     (change)="cambiarAutoconectar($event)" />
+              <span>
+                Conectar sola al abrir la aplicación
+                <small>Contra esta misma dirección. Apagala si trabajás sin la consola a mano.</small>
+              </span>
+            </label>
+
             <div class="racimo">
               @if (conectado()) {
                 <ui-button variante="secundario" icono="cerrar" (pulsado)="desconectar()">
@@ -85,13 +94,25 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
               }
             </div>
 
-            @if (error(); as e) {
-              <p class="error">{{ e }}</p>
+            @if (reconectando()) {
               <p class="nota">
-                Comprobá que la consola esté encendida y que la tablet esté en
-                su red. Si la Ui24R levanta su propia red, hay que conectarse a
-                ella desde los ajustes de wifi del sistema.
+                Se cortó la conexión y la aplicación está reintentando sola,
+                una vez por segundo. Vuelve apenas la consola conteste; no hace
+                falta tocar nada.
               </p>
+            } @else {
+              <!-- El «as» solo se admite en el «@if» primario, nunca en un
+                   «@else if»: ahí el compilador de plantillas falla con
+                   NG5002 y la compilación entera se cae. Por eso el error va
+                   en un «@if» anidado y no en la rama del «@else if». -->
+              @if (error(); as e) {
+                <p class="error">{{ e }}</p>
+                <p class="nota">
+                  Comprobá que la consola esté encendida y que la tablet esté en
+                  su red. Si la Ui24R levanta su propia red, hay que conectarse a
+                  ella desde los ajustes de wifi del sistema.
+                </p>
+              }
             }
           </div>
         </ui-card>
@@ -203,6 +224,16 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
     </div>
   `,
   styles: [`
+    /* El area tocable llega a los 44 px de la guia aunque la casilla del
+     * sistema sea mas chica: quien lo va a tocar esta de pie y con poca luz. */
+    .conmutador {
+      display: flex; align-items: flex-start; gap: var(--sp-3);
+      min-height: 44px; padding: var(--sp-2) 0; cursor: pointer;
+    }
+    .conmutador input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+    .conmutador span { color: var(--ink); line-height: var(--alto-linea); }
+    .conmutador small { display: block; color: var(--muted); font-size: var(--txt-sm); }
+
     .nota { color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea); }
     .error { color: var(--danger); font-size: var(--txt-sm); }
 
@@ -217,7 +248,7 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
     .eventos {
       list-style: none; margin: var(--sp-3) 0 0; padding: 0;
       max-height: 40vh; overflow-y: auto;
-      border: 1px solid var(--line); border-radius: var(--radio-2);
+      border: 1px solid var(--line); border-radius: var(--radio-md);
     }
     .eventos li {
       display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3);
@@ -247,6 +278,16 @@ export class AjustesComponent {
   readonly host = this.prefs.host;
   readonly conectando = this.mixer.conectando;
   readonly error = this.mixer.ultimoError;
+  /**
+   * Mientras reintenta, el error de cada intento no se muestra.
+   *
+   * Cada intento fallido deja un mensaje técnico —«TimeoutError» y parecidos—
+   * y verlos aparecer y desaparecer en bucle durante un corte de red asusta sin
+   * informar: quien lo mira no tiene nada que hacer al respecto, la aplicación
+   * ya se está ocupando. El error vuelve a mostrarse cuando no hay reintento en
+   * curso, que es cuando sí dice algo.
+   */
+  readonly reconectando = this.mixer.reconectando;
   readonly exportando = signal(false);
 
   readonly conteos = signal({ bandas: 0, locales: 0, pas: 0, sesiones: 0 });
@@ -271,7 +312,18 @@ export class AjustesComponent {
     return n === 0 ? 'Sin eventos' : `${n} evento${n === 1 ? '' : 's'}`;
   });
 
-  readonly conectado = computed(() => this.conexion.estado() !== 'DISCONNECTED');
+  /**
+   * Conectada de verdad, no «en camino».
+   *
+   * Decia `!== 'DISCONNECTED'`, y con eso RECONNECTING contaba como conectada.
+   * Mientras eso solo pasaba durante un intento manual --un instante-- no se
+   * notaba. Desde que la aplicacion reintenta sola cada segundo, el estado es
+   * RECONNECTING casi siempre que no hay consola: la tarjeta ofrecia
+   * «Desconectar» de forma permanente y **no habia manera de conectar a otra
+   * direccion**. Lo encontro el guion de capturas, que es exactamente para lo
+   * que sirve.
+   */
+  readonly conectado = computed(() => this.conexion.estado() === 'CONNECTED');
 
   readonly errorHost = computed(() => validarDireccionDeConsola(this.host()));
 
@@ -299,6 +351,12 @@ export class AjustesComponent {
   }
 
   irAActualizacion(): void { void this.router.navigate(['/ajustes/actualizacion']); }
+  readonly autoconectar = this.prefs.autoconectar;
+
+  cambiarAutoconectar(ev: Event): void {
+    this.prefs.fijarAutoconectar((ev.target as HTMLInputElement).checked);
+  }
+
   irADiagnostico(): void { void this.router.navigate(['/ajustes/diagnostico']); }
 
   alternarGraves(): void {

@@ -13,6 +13,7 @@
 import { spawn } from 'node:child_process';
 import { connect } from 'node:net';
 import { mkdirSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -56,6 +57,19 @@ function puertoOcupado(puerto) {
 async function recorrer(contexto, tamanio) {
   const p = await contexto.newPage();
   await p.setViewportSize({ width: tamanio.width, height: tamanio.height });
+
+  // **Sin autoconexión.** Este recorrido es de perfiles y sesión: no toca la
+  // consola en ningún paso. Con la autoconexión encendida, la aplicación
+  // intenta el host de fábrica --`10.10.1.1`, que solo existe cuando uno se
+  // cuelga del punto de acceso de la propia consola-- y falla cada cuatro
+  // segundos. Eso llenaba la lista de fallos con siete «conexion_fallida» por
+  // corrida, todos esperables, y el recorrido salía en rojo siempre.
+  //
+  // El problema de un guion que siempre falla no es que moleste: es que deja
+  // de leerse, y el día que aparezca un error de verdad va a estar en medio
+  // del ruido. Apagarla acá hace que **cualquier error de consola que quede
+  // sea uno que hay que mirar**.
+  await p.addInitScript(() => localStorage.setItem('vse.pref.autoconectar', 'no'));
 
   const fallos = [];
   p.on('pageerror', (e) => fallos.push(`excepción: ${e.message}`));
@@ -139,8 +153,13 @@ async function recorrer(contexto, tamanio) {
   await p.click('ui-card[titulo="Integrantes"] ui-button button');
   await p.waitForSelector('#int-nombre');
   await p.fill('#int-nombre', 'Ana');
-  await p.fill('#int-instr', 'voz, guitarra acústica');
-  await paso(4, 'integrante', 'alta de integrante en diálogo');
+  // Los instrumentos se eligen del catálogo, no se escriben. Un toque en la
+  // grilla deja la fuente elegida; la variante y el rol aparecen recién
+  // después, y solo los que esa fuente declara.
+  await p.click('app-elegir-instrumentos [data-fuente="VOZ"]');
+  await p.click('app-elegir-instrumentos [data-fuente="GUITARRA"]');
+  await p.click('app-elegir-instrumentos li:last-child .ficha:has-text("de nylon")');
+  await paso(4, 'integrante', 'alta de integrante: instrumentos elegidos del catálogo');
   await p.click('ui-dialog ui-button.primario button, ui-dialog [pie] ui-button:last-child button');
   await esperar(300);
   await paso(5, 'banda-con-integrante', 'la banda ya tiene integrantes');
@@ -331,6 +350,42 @@ async function recorrer(contexto, tamanio) {
   return fallos;
 }
 
+/**
+ * Con qué navegador se captura.
+ *
+ * Estaba fijo en `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, que es
+ * la ruta del contenedor donde se escribió esto. En una máquina que no sea ese
+ * contenedor el script falla al arrancar, así que **las capturas se dejaban de
+ * actualizar en vez de salir distintas**: el modo de fallo es que nadie las
+ * corre, no que se vean mal.
+ *
+ * El orden es: lo que diga `CHROMIUM_PATH`, después el Chromium que instala
+ * Playwright, después el Chrome del sistema, y si no hay ninguno se devuelve
+ * `undefined` para que Playwright resuelva lo suyo y falle él, con su propio
+ * mensaje, que explica cómo instalarlo mejor que cualquier cosa que pongamos
+ * acá.
+ *
+ * **Un Chrome del sistema no es idéntico al Chromium de Playwright**: si algún
+ * día una captura cambia sin que haya cambiado el código, esta es la primera
+ * sospecha, y por eso se registra cuál se usó.
+ */
+function navegadorDisponible() {
+  const candidatos = [
+    process.env.CHROMIUM_PATH,
+    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    join(homedir(), 'Library/Caches/ms-playwright/chromium-1194/chrome-mac/Chromium.app/Contents/MacOS/Chromium'),
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ].filter(Boolean);
+  for (const c of candidatos) {
+    if (existsSync(c)) {
+      console.log(`  \u00b7 navegador: ${c}`);
+      return c;
+    }
+  }
+  console.log('  \u00b7 navegador: el que resuelva Playwright');
+  return undefined;
+}
+
 async function main() {
   if (!existsSync(DIST)) {
     console.error(`No existe ${DIST}. Ejecutar primero: npm run build:dev -w mobile`);
@@ -346,7 +401,7 @@ async function main() {
   }
 
   const navegador = await chromium.launch({
-    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    executablePath: navegadorDisponible(),
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   const contexto = await navegador.newContext({
@@ -368,6 +423,14 @@ async function main() {
     process.exit(1);
   }
   console.log(`\nCapturas en ${OUT}\n`);
+
+  // Salir a mano: el simulador y el servidor web quedan vivos con sus tuberías
+  // abiertas y mantienen el bucle de eventos girando, así que `process.exit`
+  // nunca llega solo. El mismo agujero estaba en `capture.mjs`, y ahí está
+  // explicado por qué costó tanto verlo: el único final que se colgaba era el
+  // de que todo saliera bien.
+  limpiar();
+  process.exit(0);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

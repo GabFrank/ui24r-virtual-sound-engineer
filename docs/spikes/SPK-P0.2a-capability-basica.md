@@ -1,6 +1,6 @@
 # SPK-P0.2a — Matriz de capacidades, lectura y escritura básica
 
-**Estado:** Parcial, medido el 2026-09-08 · **Timebox:** 8 días · **Control:** G-A
+**Estado:** Parcial · **Criterios 5 y 6 cerrados**; el 1 pasó de 7 a 9 de su lista · Repasado contra la realidad el **2026-09-10** · **Timebox:** 8 días · **Control:** G-A
 **Depende de:** S-00.4, SPK-P0.1 · **Bloquea a:** SPK-P0.8, SPK-P0.7a, SPK-P0.5, SPK-P0.6', SPK-PA-BUS, SPK-P0.2b, SPK-P0.2c, S-02.5c
 **Montaje:** Ui24R, router, laptop con Node, navegador con la interfaz web oficial de la consola.
 
@@ -22,12 +22,12 @@ Ninguna función de producto se implementa sobre un parámetro que no esté prob
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Confirmadas en hardware: fader de canal y general, silencio, panorama, nombre, ganancia de entrada, alimentación fantasma en lectura, envíos auxiliares con nivel, silencio y ambos puntos de derivación, matriz con el general como fuente, retardos de salida, instantáneas, shows, información del dispositivo | bloqueante | 100 % de esa lista | **7 de la lista**: `i.0.mix`, `m.mix`, `i.0.mute`, `i.0.pan`, `i.0.name`, `hw.0.gain`, `i.0.aux.0.value`. Faltan fantasma, silencio de auxiliar, puntos de derivación, matriz, retardos, instantáneas, shows | ⬜ |
+| 1 | Confirmadas en hardware: fader de canal y general, silencio, panorama, nombre, ganancia de entrada, alimentación fantasma en lectura, envíos auxiliares con nivel, silencio y ambos puntos de derivación, matriz con el general como fuente, retardos de salida, instantáneas, shows, información del dispositivo | bloqueante | 100 % de esa lista | **10 de los 16 de la lista, al 2026-09-10.** Los 7 de la primera sesión —`i.0.mix`, `m.mix`, `i.0.mute`, `i.0.pan`, `i.0.name`, `hw.0.gain`, `i.0.aux.0.value`— más **instantáneas y shows**, medidos entre el 09 y el 10: `CREATESHOW`, `SAVESNAPSHOT`, `SNAPSHOTLIST` y `DELETESNAPSHOT`, los cuatro ejecutados contra la consola. Y la **información del dispositivo** quedó leída. Faltan: fantasma en lectura, silencio de auxiliar, los dos puntos de derivación, matriz y retardos | ⬜ |
 | 2 | Reproductor: silencio, fader, panorama, envíos a todos los buses, estado de reproducción, listas, carga, reproducción y detención | bloqueante | 100 % | | ⬜ |
 | 3 | Grabación multipista: grabar, reproducir, detener, modo soundcheck, estado de grabación | bloqueante | 100 % | | ⬜ |
 | 4 | Efecto de la configuración global de punto de derivación sobre el significado de antes y después del fader | bloqueante | documentado | | ⬜ |
-| 5 | Enlace estéreo: si mover un canal arrastra al vecino en sus envíos | bloqueante | documentado con captura | | ⬜ |
-| 6 | `docs/capability-matrix.md` versión 1 y `docs/protocol-spec.md` versión 1 generados | bloqueante | ambos | | ⬜ |
+| 5 | Enlace estéreo: si mover un canal arrastra al vecino en sus envíos | bloqueante | documentado con captura | **MEDIDO el 2026-09-09.** `i.N.stereoIndex`: 0 = izquierdo del par —el compañero es N+1—, 1 = derecho, −1 sin enlazar. **El enlace se lee de la consola, no se declara.** Enlazar es destructivo: el cliente hace `copySettings`/`pasteSettings` del izquierdo sobre el derecho. `evidence/enlace-estereo-2026-09-09.txt` | ✅ |
+| 6 | `docs/capability-matrix.md` versión 1 y `docs/protocol-spec.md` versión 1 generados | bloqueante | ambos | **Los dos existen y dicen «Versión 1».** La matriz tiene **76 filas con estado, 28 verificadas** contra el aparato; la especificación tiene 554 líneas y encabeza con la consola de referencia y su firmware | ✅ |
 
 ## Evidencia a entregar
 
@@ -97,3 +97,19 @@ digital real. Eso lo mide SPK-P0.10b.
 - **Paso 2 del charter, la escritura y su verificación por lectura**: exige escribir, y el nivel
   es OBSERVE.
 - **`evidence/roundtrip.jsonl`** no existe por lo mismo.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/curva-ganancia-completa-2026-09-09.txt` — captura archivada
+- `evidence/enlace-estereo-2026-09-09.txt` — captura archivada
+- `evidence/fuentes-de-canal-2026-09-09.txt` — qué fuente toma cada canal (`i.N.src`)
+- `evidence/http-servido-2026-09-09.txt` — qué sirve la consola por HTTP, incluido `/raw`
+- `evidence/ley-ganancia-2026-09-09.txt` — captura archivada
+- `evidence/manual-fw-3.5-que-aporta-2026-09-09.txt` — qué confirma y qué agrega el manual del firmware 3.5
+- `evidence/manual-tecnico-fw-3.5.8328.txt` — captura archivada
+- `evidence/prueba-A-pasivo-claves.tsv` — el volcado en tabla, clave por clave
+- `evidence/trabajo-previo-2026-09-09.txt` — qué hay publicado sobre este protocolo y qué no
+- `evidence/trabajo3-cambios.txt` — cambios observados durante una sesión de trabajo

@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Logger } from './logger';
-import { MIGRACIONES, VERSION_ESQUEMA } from '@vse/store';
+import { VERSION_ESQUEMA } from '@vse/store';
+import { aplicarMigraciones } from './migracion';
 
 const NOMBRE_BASE = 'vse';
 
@@ -45,30 +46,24 @@ export class DatabaseService {
 
   /**
    * Aplica las migraciones pendientes en orden. Cada una corre en su propia
-   * transacción: si una falla, la base queda en la última versión completa y
-   * no a medio camino.
+   * transacción —la que abre el complemento— así que si una falla la base
+   * queda en la última versión completa y no a medio camino.
+   *
+   * El porqué de que la transacción no se escriba acá está en `migracion.ts`.
    */
   private async migrar(desde: number): Promise<void> {
-    for (const m of MIGRACIONES) {
-      if (m.version <= desde) continue;
-      const db = this.conexion();
-      try {
-        await db.execute('BEGIN;');
-        for (const s of m.sentencias) await db.execute(s);
-        await db.execute(`PRAGMA user_version = ${m.version};`);
-        await db.execute('COMMIT;');
+    const db = this.conexion();
+    try {
+      const aplicadas = await aplicarMigraciones((sql) => db.execute(sql), desde);
+      for (const m of aplicadas) {
         this.log.info('system', 'migracion_aplicada', {
           version: m.version,
           descripcion: m.descripcion,
         });
-      } catch (e) {
-        await db.execute('ROLLBACK;');
-        this.log.error('system', 'migracion_fallida', {
-          version: m.version,
-          error: String(e),
-        });
-        throw e;
       }
+    } catch (e) {
+      this.log.error('system', 'migracion_fallida', { desde, error: String(e) });
+      throw e;
     }
   }
 

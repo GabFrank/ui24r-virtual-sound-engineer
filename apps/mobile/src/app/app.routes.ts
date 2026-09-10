@@ -38,6 +38,11 @@ export const RUTAS: Routes = [
     title: 'Consola',
     loadComponent: () => import('./telemetry/telemetry.component').then((m) => m.TelemetryComponent),
   },
+  {
+    path: 'espectro',
+    title: 'Espectro',
+    loadComponent: () => import('./espectro/espectro.component').then((m) => m.EspectroComponent),
+  },
 
   {
     path: 'perfiles',

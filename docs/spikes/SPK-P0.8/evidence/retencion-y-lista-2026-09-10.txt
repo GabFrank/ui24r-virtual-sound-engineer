@@ -1,0 +1,96 @@
+La retencion desde el adaptador, y cuanto tarda SNAPSHOTLIST — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, show VSE
+
+DOS COSAS QUE FALTABAN, Y LA SEGUNDA DESTAPO UN DEFECTO.
+
+1. EL BORRADO IBA A CIEGAS. guardarInstantanea() mandaba los DELETESNAPSHOT y
+retornaba SIN VOLVER A LEER. Que el comando funciona estaba medido, pero con un
+arnes de spike, y EL ARNES NO ES EL ADAPTADOR: bastaba un cambio en el nombre
+del show o en la gramatica para que la retencion dejara de retener sin que nada
+avisara. El modo de fallo es silencioso hacia el lado malo --el show crece
+igual-- que es la peor clase.
+
+Ademas, todas las corridas anteriores tenian menos de veinte automaticas, o sea
+POR DEBAJO DEL MAXIMO, asi que la retencion nunca habia borrado nada desde el
+adaptador ni una sola vez.
+
+maximo de automaticas: 20
+al empezar hay 20
+hay que guardar 1 para pasar el maximo
+.
+ahora hay 20
+
+se guarda una mas: la retencion tiene que borrar la mas vieja
+  guardada: VSE_AUTO_1789051039289
+  quedan: 20 (el maximo es 20)
+  la mas vieja era VSE_AUTO_1789046275490 y se borro
+  avisos de no poder borrar: ninguno
+
+LA RETENCION FUNCIONA DESDE EL ADAPTADOR.
+
+Los shows del usuario, releidos despues:
+  Default : * Init *
+  Prueba  : Alma caninde, Prueba asistente
+  VSE     : 20 automaticas
+INTACTOS. Quedan fuera por dos razones independientes: viven en otro show, y sus
+nombres no se pueden fechar, asi que comandoBorrar() ni siquiera los construye.
+
+2. CUANTO TARDA SNAPSHOTLIST, que era una cifra inventada. La politica decia
+«del orden de un segundo». Medido sobre doce pedidos:
+
+respuestas: 12 de 12
+tiempos (ms): 7, 7, 6, 6, 5, 7, 6, 6, 6, 7, 6, 5
+mediana 6 ms, minimo 5, maximo 7
+
+Los 500 ms de pedirLista() alcanzan: el peor caso medido es 7 ms.
+
+SEIS MILISEGUNDOS DE MEDIANA, o sea MAS RAPIDO QUE EL TESTIGO, no un segundo.
+Pero hay un caso de 277 ms que se come mas de la mitad de los 500 ms que
+pedirLista() tomaba prestados del plazo de confirmacion de escritura.
+
+Y ahi estaba el defecto de verdad: al vencer, pedirLista() RESOLVIA LISTA VACIA
+EN SILENCIO, o sea lo mismo que un show sin instantaneas. Quien llamaba no podia
+distinguir «no hay ninguna» de «no se». Con esa confusion, un vencimiento hacia
+que guardarInstantanea() devolviera null y que INV-001 abortara la transaccion
+con un motivo que no mencionaba el vencimiento por ningun lado.
+
+Ahora devuelve null cuando no hubo respuesta, tiene plazo propio de 1500 ms
+--mas de cinco veces el peor caso medido, y cuesta nada porque esto pasa una vez
+por transaccion y no una por escritura-- y sin lista NO SE MANDA NINGUN BORRADO,
+porque borrar sobre una lista que no llego seria borrar a ciegas otra vez.
+
+--- Las tres corridas de SNAPSHOTLIST, archivadas el 2026-09-10 --------------
+
+POR QUE ESTA NOTA. La documentacion afirmaba «6 ms de mediana, maximo 277 en
+doce pedidos». La mediana estaba bien; EL 277 NO ESTABA EN NINGUN ARCHIVO. Salio
+de una corrida anterior que no se guardo, y encima era el numero que justificaba
+darle plazo propio a pedirLista(): sin el, los 500 ms prestados alcanzaban de
+sobra. Es la TERCERA vez en esta sesion que una cifra se apoya en una corrida
+que solo existio en la terminal de quien la corrio.
+
+Corrida 1 --transcrita del registro de la sesion, no de un archivo, y por eso
+vale menos que las otras dos--:
+  respuestas: 12 de 12
+  tiempos (ms): 6, 6, 277, 7, 7, 5, 6, 7, 6, 7, 5, 5
+  mediana 6 ms, minimo 5, maximo 277
+
+Corrida 2 --la tabulada mas arriba--:
+  tiempos (ms): 7, 7, 6, 6, 5, 7, 6, 6, 6, 7, 6, 5
+  mediana 6 ms, minimo 5, maximo 7
+
+Corrida 3 --sesenta pedidos, para ver si el 277 se repetia--:
+  tiempos (ms): 7, 6, 5, 6, 6, 7, 8, 6, 7, 5, 5, 5, 13, 6, 5, 7, 6, 6, 7, 7, 7,
+  5, 6, 5, 6, 5, 6, 5, 9, 6, 6, 6, 7, 6, 5, 5, 6, 5, 6, 8, 6, 7, 8, 6, 6, 7, 6,
+  5, 7, 8, 6, 6, 6, 5, 7, 6, 6, 6, 6, 7
+  mediana 6 ms, minimo 5, maximo 13
+
+QUE SE PUEDE AFIRMAR CON LAS TRES. Ochenta y cuatro pedidos: mediana 6 ms,
+minimo 5. El maximo es 13 en ochenta y tres de ellos, y hubo UN SOLO caso de
+277 ms, en la primera corrida. No se repitio en sesenta intentos seguidos.
+
+Y ESO CAMBIA EL ARGUMENTO, aunque no la decision. Con un solo 277 en ochenta y
+cuatro, los 500 ms que pedirLista() tomaba prestados HABRIAN ALCANZADO --con
+menos de el doble de margen sobre el peor caso, eso si--. El plazo propio de
+1500 ms se sostiene igual, pero por otra razon: cinco veces el peor caso
+observado, y no cuesta nada porque esto pasa una vez por transaccion y no una
+por escritura. Lo que NO se sostiene es contar el 277 como si fuera lo habitual.

@@ -8,6 +8,7 @@
 import { spawn } from 'node:child_process';
 import { connect } from 'node:net';
 import { mkdirSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -68,6 +69,42 @@ function puertoOcupado(puerto) {
   });
 }
 
+/**
+ * Con qué navegador se captura.
+ *
+ * Estaba fijo en `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, que es
+ * la ruta del contenedor donde se escribió esto. En una máquina que no sea ese
+ * contenedor el script falla al arrancar, así que **las capturas se dejaban de
+ * actualizar en vez de salir distintas**: el modo de fallo es que nadie las
+ * corre, no que se vean mal.
+ *
+ * El orden es: lo que diga `CHROMIUM_PATH`, después el Chromium que instala
+ * Playwright, después el Chrome del sistema, y si no hay ninguno se devuelve
+ * `undefined` para que Playwright resuelva lo suyo y falle él, con su propio
+ * mensaje, que explica cómo instalarlo mejor que cualquier cosa que pongamos
+ * acá.
+ *
+ * **Un Chrome del sistema no es idéntico al Chromium de Playwright**: si algún
+ * día una captura cambia sin que haya cambiado el código, esta es la primera
+ * sospecha, y por eso se registra cuál se usó.
+ */
+function navegadorDisponible() {
+  const candidatos = [
+    process.env.CHROMIUM_PATH,
+    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    join(homedir(), 'Library/Caches/ms-playwright/chromium-1194/chrome-mac/Chromium.app/Contents/MacOS/Chromium'),
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ].filter(Boolean);
+  for (const c of candidatos) {
+    if (existsSync(c)) {
+      console.log(`  \u00b7 navegador: ${c}`);
+      return c;
+    }
+  }
+  console.log('  \u00b7 navegador: el que resuelva Playwright');
+  return undefined;
+}
+
 async function main() {
   // La galería del sistema de diseño solo existe en la compilación de
   // desarrollo, así que las capturas se hacen sobre esa. Es el mismo código:
@@ -93,7 +130,7 @@ async function main() {
   // El entorno trae un Chromium preinstalado que puede no coincidir con la
   // versión que Playwright espera. Se usa el que hay en vez de descargar otro.
   const navegador = await chromium.launch({
-    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    executablePath: navegadorDisponible(),
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   const contexto = await navegador.newContext({
@@ -132,6 +169,27 @@ async function main() {
     }, nombre);
   };
 
+  /**
+   * Deja la página conectada al simulador, venga como venga.
+   *
+   * La tarjeta «Consola» muestra «Conectar» **o** «Desconectar», nunca las dos,
+   * así que no hay un solo botón que sirva para ambos casos: la primera página
+   * llega desconectada y la segunda, que comparte el almacenamiento, ya se
+   * conectó sola al cargar. Antes esto se resolvía clickeando «el primer
+   * `ui-button` de la tarjeta», que en la segunda página era «Desconectar» --y
+   * la dejaba sin consola sin que nada fallara.
+   *
+   * Se espera al estado y no a un reloj: así el paso dice si salió bien en vez
+   * de seguir de largo con la aplicación desconectada.
+   */
+  const conectarAlSimulador = async (p) => {
+    await p.goto(`http://localhost:${PUERTO_WEB}/#/ajustes`, { waitUntil: 'networkidle' });
+    await p.fill('#aj-host', `ws://localhost:${PUERTO_SIM}`);
+    const conectar = p.locator('ui-card[titulo="Consola"] ui-button[variante="primario"] button');
+    if (await conectar.count() > 0) await conectar.click();
+    await p.waitForSelector('ui-card[titulo="Consola"] ui-button[variante="secundario"]', { timeout: 10000 });
+  };
+
   console.log('\nCapturando escenarios:\n');
 
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
@@ -141,14 +199,12 @@ async function main() {
 
   // La dirección de la consola es un ajuste, no una acción de la pantalla de
   // telemetría: se configura una vez y desde un solo sitio.
-  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/ajustes`, { waitUntil: 'networkidle' });
-  await pagina.fill('#aj-host', `ws://localhost:${PUERTO_SIM}`);
-  await pagina.click('ui-card[titulo="Consola"] ui-button button');
+  await conectarAlSimulador(pagina);
   await esperar(1200);
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
   await pagina.waitForSelector('table tbody tr', { timeout: 10000 });
   await esperar(1500);
-  await capturar('02-telemetria', 'telemetría de doce canales con medidores en vivo');
+  await capturar('02-telemetria', 'telemetría con medidores en vivo, un canal por entrada de la consola');
 
   await escenario('clipping');
   await esperar(2500);
@@ -262,7 +318,12 @@ async function main() {
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/sesion/canales`, { waitUntil: 'networkidle' });
   await esperar(600);
   const sobreviven = await pagina.evaluate(() => {
-    const primero = document.querySelector('tbody tr select');
+    // El perfil y no el primer desplegable de la fila. Desde que la pantalla
+    // pregunta primero quien toca, el primero es el integrante, y una
+    // asignacion propuesta desde el nombre del canal no tiene ninguno: esta
+    // legitimamente vacia. Lo que la propuesta si llena es el perfil, que es
+    // lo que esta comprobacion siempre quiso verificar.
+    const primero = document.querySelector('tbody tr select[aria-label^="perfil"]');
     const encabezado = document.querySelector('ui-page-header p')?.textContent ?? '';
     return { valor: primero?.value ?? '(sin select)', encabezado: encabezado.trim().slice(0, 30) };
   });
@@ -285,7 +346,8 @@ async function main() {
   await esperar(4000);
   await capturar('14-capturando', 'capturando la ventana del canal');
   await esperar(17000);
-  // La explicación queda debajo de la tabla de doce canales: sin bajar, la
+  // La explicación queda debajo de la tabla de canales, que ocupa mas de una
+  // pantalla: sin bajar, la
   // captura mostraría solo los números y no el porqué, que es lo importante.
   await pagina.evaluate(() => {
     document.querySelector('.recomendacion')?.scrollIntoView({ block: 'center' });
@@ -355,6 +417,21 @@ async function main() {
   // corresponde actualizar. Hace falta `reload` y no solo `goto`: cambiar el
   // fragmento de la dirección no recarga el documento, así que la conexión con
   // el simulador sobreviviría y el bloqueo de INV-034 seguiría activo.
+  //
+  // **Y hace falta apagar la autoconexión, o recargar no alcanza.** Cerrar la
+  // sesión y recargar dejaba la aplicación conectada de nuevo un segundo
+  // después, porque al arrancar se reconecta sola al host guardado. Con eso,
+  // INV-034 volvía a bloquear y las tres capturas siguientes mostraban el
+  // bloqueo: la 19 salía rotulada «falta el ajuste del sistema» enseñando otra
+  // cosa, y la 20 se caía esperando un botón que la pantalla nunca iba a
+  // dibujar. **Así se cortaba el escenario en el veinte.**
+  //
+  // Vale la pena ver el modo de fallo: el paso que se rompió fue el que
+  // esperaba algo que no llegó, pero el que quedó *mal* fue el anterior, que
+  // esperaba un selector tan general que valía para las dos ramas. Una espera
+  // que no distingue lo que quiere fotografiar no falla: saca la foto
+  // equivocada.
+  await pagina.evaluate(() => localStorage.setItem('vse.pref.autoconectar', 'no'));
   await pagina.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/actualizacion`, { waitUntil: 'networkidle' });
   await pagina.reload({ waitUntil: 'networkidle' });
   await esperar(300);
@@ -369,7 +446,7 @@ async function main() {
   // primera vez en la tablet.
   await responderCatalogo([publicacion('v0.2.0'), publicacion('v0.1.1')]);
   await pagina.click('ui-page-header ui-button button');
-  await pagina.waitForSelector('.novedad', { timeout: 5000 });
+  await pagina.waitForSelector('.novedad .nota.aviso', { timeout: 5000 });
   await esperar(300);
   await capturar('19-actualizacion-sin-permiso', 'versión disponible, falta el ajuste del sistema');
 
@@ -388,6 +465,52 @@ async function main() {
   await esperar(300);
   await capturar('21-prelanzamiento-descartado', 'una etiqueta rc no se ofrece como actualización');
 
+  // --- El espectro y el aviso de realimentación ---
+  //
+  // Son las dos pantallas nuevas y son las que más fácil se rompen sin que
+  // nadie lo note: el espectro es una fila de barras sin texto, así que un
+  // error de orden, de escala o de altura no da ningún síntoma más que verse
+  // raro. Por eso se capturan, y por eso el simulador manda un espectro con
+  // forma en vez de silencio: contra ceros, la captura salía en blanco y no
+  // revisaba nada.
+  //
+  // El diálogo de permiso se captura aparte del espectro porque es una decisión
+  // del operador --le estamos pidiendo prestado el único analizador de la
+  // consola-- y el texto que la explica es lo que hay que revisar.
+  //
+  // Se vuelve a encender la autoconexión, que se apagó para poder fotografiar
+  // la pantalla de actualización: sin consola no hay analizador que pedir
+  // prestado.
+  await pagina.evaluate(() => localStorage.setItem('vse.pref.autoconectar', 'si'));
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/espectro`, { waitUntil: 'networkidle' });
+  await pagina.reload({ waitUntil: 'networkidle' });
+  await esperar(1500);
+  await abrirControl();
+  await pagina.waitForSelector('.permiso', { timeout: 5000 });
+  await esperar(400);
+  await capturar('22-analizador-permiso', 'pidiendo prestado el analizador, diciendo qué se va a ver y qué se restaura');
+
+  // El escenario primero y el permiso después: el vigilante necesita ver la
+  // banda sostenida durante medio segundo antes de avisar, así que si se
+  // encendiera después de entrar, la primera captura saldría sin aviso.
+  await escenario('realimentacion');
+  await esperar(300);
+  await pagina.click('.permiso ui-button[variante="primario"] button');
+  await pagina.waitForSelector('.barras .barra', { timeout: 5000 });
+  await esperar(400);
+  await capturar('23-espectro', 'el espectro del general, con la banda colgada marcada');
+
+  await pagina.waitForSelector('.alarma', { timeout: 8000 });
+  await esperar(600);
+  await capturar('24-realimentacion', 'aviso de realimentación: qué frecuencia, cuánto lleva y qué canales están abiertos');
+
+  // Se sale de la pantalla dentro del escenario de capturas y no al final,
+  // porque salir es lo que devuelve el analizador al operador. Si esto no
+  // corriera, la captura siguiente se sacaría con el analizador todavía tomado
+  // y el escenario estaría tapando justo el caso que más importa restaurar.
+  await pagina.goto(`http://localhost:${PUERTO_WEB}/#/consola`, { waitUntil: 'networkidle' });
+  await esperar(500);
+
   // --- Las pantallas de la consola en teléfono ---
   //
   // Son las tres que muestran tablas densas, y son las que peor se llevan con
@@ -396,10 +519,16 @@ async function main() {
   {
     const tel = await contexto.newPage();
     await tel.setViewportSize({ width: 390, height: 1400 });
-    await tel.goto(`http://localhost:${PUERTO_WEB}/#/ajustes`, { waitUntil: 'networkidle' });
-    await tel.fill('#aj-host', `ws://localhost:${PUERTO_SIM}`);
-    await tel.click('ui-card[titulo="Consola"] ui-button button');
-    await esperar(1500);
+    // **Acá se perdían tres capturas en silencio.** Esta página comparte el
+    // almacenamiento con la anterior, así que hereda la dirección del simulador
+    // y **se conecta sola al cargar**. Con la aplicación ya conectada la
+    // tarjeta no dibuja «Conectar», y el selector viejo --el primer `ui-button`
+    // de la tarjeta-- terminaba clickeando «Desconectar». Las tres capturas del
+    // teléfono salían de una aplicación sin consola, con la lista de canales
+    // vacía, y **ninguna fallaba**: `tel-01` fotografiaba una pantalla en
+    // blanco y recién `tel-02` se caía, porque «Proponer todos» estaba apagado.
+    await conectarAlSimulador(tel);
+    await esperar(800);
 
     const capturarTel = async (nombre, descripcion) => {
       await esperar(400);
@@ -449,6 +578,20 @@ async function main() {
 
   await navegador.close();
   console.log(`\nCapturas en ${OUT}\n`);
+
+  // **Salir a mano, y no dejar que Node decida cuándo.** `limpiar()` estaba
+  // colgado de `process.on('exit')`, que es justo el evento que no llega: el
+  // simulador y el servidor web quedan vivos con sus tuberías abiertas y
+  // mantienen el bucle de eventos girando para siempre. El proceso se quedaba
+  // ahí, con las capturas ya sacadas y sin decir nada.
+  //
+  // Que esto no se hubiera notado dice algo peor que el error: **el camino
+  // feliz nunca se había recorrido entero**. Cada corrida anterior terminaba
+  // por una excepción, y ese camino sí sale, porque `process.exit(1)` no
+  // espera a nadie. El único final que estaba roto era el de que todo saliera
+  // bien.
+  limpiar();
+  process.exit(0);
 }
 
 main().catch((e) => {

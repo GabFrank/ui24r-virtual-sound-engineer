@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { normalizarBanda } from '@vse/domain';
 import type {
   BandProfile, BandProfileId, PAProfile, PAProfileId, SoundSession, SessionId,
   VenueProfile, VenueProfileId,
@@ -51,13 +52,30 @@ export class Repositorios {
     this.tocar();
   }
 
-  bandas(): Promise<readonly BandProfile[]> {
-    return this.leerTodo<BandProfile>('band_profile', 'nombre');
+  /**
+   * Las bandas se clasifican **al leer**, no solo al guardar.
+   *
+   * La migración 4 le da forma al documento pero no clasifica —SQL no sabe qué
+   * es un djembe— y hasta ahora la clasificación solo ocurría cuando alguien
+   * abría el perfil y lo guardaba. Mientras tanto, los instrumentos de una banda
+   * migrada quedaban sin fuente: al asignar un canal no habrían traído ningún
+   * perfil, y el catálogo no habría servido justo en los perfiles que ya
+   * existían. Encima, el almacén del navegador no ejecuta las migraciones, así
+   * que ahí ni siquiera había una primera mitad.
+   *
+   * No se guarda lo clasificado: leer no escribe. Lo que se lee ya viene bien y
+   * el disco se pone al día la próxima vez que se guarde ese perfil.
+   * `normalizarBanda()` conserva el texto original y devuelve el mismo objeto
+   * cuando no había nada que hacer.
+   */
+  async bandas(): Promise<readonly BandProfile[]> {
+    const docs = await this.almacen.listar('band_profile', { ordenarPor: 'nombre' });
+    return docs.map((d) => normalizarBanda(d.datos as BandProfile));
   }
 
   async banda(id: BandProfileId): Promise<BandProfile | null> {
     const d = await this.almacen.obtener('band_profile', id);
-    return d === null ? null : (d.datos as BandProfile);
+    return d === null ? null : normalizarBanda(d.datos as BandProfile);
   }
 
   async borrarBanda(id: BandProfileId): Promise<void> {

@@ -1,6 +1,8 @@
 import { makeId, type BandMemberId, type BandProfileId, type PAProfileId,
   type SessionId, type VenueProfileId } from '../ids.ts';
 import type { BandMember, BandProfile } from './musical.ts';
+import { normalizarInstrumentos } from './integrantes.ts';
+import type { Instrumento } from '../data/instrumentos.ts';
 import type { PAProfile, VenueProfile, VenueType } from './venue.ts';
 import type { SoundSession } from './session.ts';
 
@@ -14,11 +16,16 @@ import type { SoundSession } from './session.ts';
  * debería poder contradecirlas por descuido.
  */
 
-export function crearIntegrante(nombre: string, instrumentos: readonly string[] = []): BandMember {
+export function crearIntegrante(
+  nombre: string,
+  instrumentos: readonly (string | Instrumento)[] = [],
+): BandMember {
   return {
     id: makeId<'BandMemberId'>('mbr') as BandMemberId,
     nombre: nombre.trim(),
-    instrumentos: instrumentos.map((i) => i.trim()).filter((i) => i.length > 0),
+    // La misma normalización que usa la edición: corregir un integrante tiene
+    // que dejar exactamente lo mismo que haberlo cargado bien la primera vez.
+    instrumentos: normalizarInstrumentos(instrumentos),
   };
 }
 

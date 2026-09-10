@@ -1,0 +1,14 @@
+import { Cliente, dormir } from './cliente.ts';
+const a = new Cliente();
+await a.conectar();
+await dormir(3000);
+a.enviar('SETD^var.rta^');
+await dormir(600);
+a.enviar('SETS^var.rta^');
+await dormir(600);
+a.enviar('SETD^m.afs.clearlive^1');
+await dormir(1500);
+a.enviar('SETD^m.afs.clearlive^0');
+await dormir(800);
+a.cerrar();
+process.exit(0);

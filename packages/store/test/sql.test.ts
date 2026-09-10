@@ -238,3 +238,102 @@ test('cada índice declarado existe como columna en su tabla', async () => {
     }
   }
 });
+
+/**
+ * Migración 4: los instrumentos de cada integrante dejan de ser cadenas.
+ *
+ * Se prueba contra SQLite de verdad y no contra el almacén en memoria porque
+ * lo que hay que comprobar es el SQL: es la única versión de la conversión que
+ * va a correr en la tablet, sobre perfiles que el usuario ya cargó.
+ */
+
+function baseConBanda(datos: string): DatabaseSync {
+  const db = new DatabaseSync(':memory:');
+  // Solo hasta la 3: la 4 se aplica después, con la fila vieja ya dentro, que
+  // es el orden real en una tablet que se actualiza.
+  for (const m of MIGRACIONES.filter((x) => x.version < 4)) for (const s of m.sentencias) db.exec(s);
+  db.prepare('INSERT INTO band_profile VALUES (?, ?, ?, ?);')
+    .run('band_1', 'Los del Fondo', datos, '2026-01-01T00:00:00.000Z');
+  return db;
+}
+
+function migrar4(db: DatabaseSync): void {
+  const m = MIGRACIONES.find((x) => x.version === 4);
+  assert.ok(m, 'falta la migración 4');
+  for (const s of m.sentencias) db.exec(s);
+}
+
+function bandaGuardada(db: DatabaseSync): {
+  integrantes: { nombre: string; instrumentos: unknown[] }[];
+  asignaciones: { instrumento: string }[];
+} {
+  const fila = db.prepare('SELECT datos FROM band_profile WHERE id = ?;').get('band_1') as
+    { datos: string };
+  return JSON.parse(fila.datos);
+}
+
+test('la migración 4 convierte el texto de los instrumentos sin perder ninguno', () => {
+  const db = baseConBanda(JSON.stringify({
+    id: 'band_1',
+    nombre: 'Los del Fondo',
+    integrantes: [
+      { id: 'mbr_1', nombre: 'Ana', instrumentos: ['voz', 'GUITARRA CRIOLLA'] },
+      { id: 'mbr_2', nombre: 'Beto', instrumentos: [] },
+      { id: 'mbr_3', nombre: 'Cami', instrumentos: ['bandoneón'] },
+    ],
+    asignaciones: [{ id: 'ch_1', instrumento: 'FLAUTA' }],
+    mixSignature: null,
+  }));
+  migrar4(db);
+
+  const banda = bandaGuardada(db);
+  assert.deepEqual(
+    banda.integrantes.map((m) => m.instrumentos),
+    [
+      [
+        { fuente: null, variante: null, rol: null, textoOriginal: 'voz' },
+        { fuente: null, variante: null, rol: null, textoOriginal: 'GUITARRA CRIOLLA' },
+      ],
+      [],
+      // El que el catálogo no reconocería tampoco se pierde: acá todavía no se
+      // clasifica nada, la migración solo cambia la forma.
+      [{ fuente: null, variante: null, rol: null, textoOriginal: 'bandoneón' }],
+    ],
+  );
+  // La asignación de canal no se toca: su instrumento sigue siendo la etiqueta.
+  assert.deepEqual(banda.asignaciones, [{ id: 'ch_1', instrumento: 'FLAUTA' }]);
+});
+
+test('la migración 4 se puede aplicar dos veces y deja lo mismo', () => {
+  // Una base a medio migrar --por un perfil importado o por una instalación
+  // anterior-- tiene que terminar bien igual. Por eso convierte elemento por
+  // elemento y deja quieto lo que ya es objeto.
+  const db = baseConBanda(JSON.stringify({
+    integrantes: [{
+      id: 'mbr_1',
+      nombre: 'Ana',
+      instrumentos: [
+        'bombo',
+        { fuente: 'CONGA', variante: 'TAMANO_GRANDE', rol: 'BASE', textoOriginal: null },
+      ],
+    }],
+    asignaciones: [],
+  }));
+  migrar4(db);
+  const unaVez = bandaGuardada(db);
+  migrar4(db);
+  assert.deepEqual(bandaGuardada(db), unaVez);
+  assert.deepEqual(unaVez.integrantes[0]?.instrumentos, [
+    { fuente: null, variante: null, rol: null, textoOriginal: 'bombo' },
+    { fuente: 'CONGA', variante: 'TAMANO_GRANDE', rol: 'BASE', textoOriginal: null },
+  ]);
+});
+
+test('la migración 4 no rompe la base por una fila ilegible', () => {
+  // Una base que no abre cancela un show. Una fila rota se ve y se corrige.
+  const db = baseConBanda('esto no es JSON');
+  migrar4(db);
+  const fila = db.prepare('SELECT datos FROM band_profile WHERE id = ?;').get('band_1') as
+    { datos: string };
+  assert.equal(fila.datos, 'esto no es JSON');
+});

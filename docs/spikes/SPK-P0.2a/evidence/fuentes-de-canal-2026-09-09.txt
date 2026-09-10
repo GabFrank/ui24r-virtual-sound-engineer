@@ -1,0 +1,34 @@
+QUE FUENTE TOMA CADA CANAL — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24, leido del volcado.
+
+Los valores NO son enumerados opacos: son rutas, y se leen solas.
+
+  i.N.src    ->  hw.0 ... hw.19  para los canales 1 a 20
+                 none            para los canales 21 a 24
+  i.N.scsrc  ->  ua.N o ub.N     la pista grabada de ese canal en soundcheck
+  var.mtk.soundcheck = 0         el modo soundcheck esta apagado
+
+LECTURA
+1. `src = hw.M` dice DE QUE PREVIO viene el canal. Por eso `hw.M.gain` lo
+   afecta, y por eso ajustar la ganancia tiene sentido.
+2. `src = none` es un canal sin previo. Los 21 a 24 son las entradas de linea
+   y de medios: no hay ganancia que ajustar, y la aplicacion ya lo mostraba
+   como "Ganancia —" sin saber por que. Ahora se sabe.
+3. `scsrc` mas `var.mtk.soundcheck` dicen si el canal esta tomando una pista
+   grabada en vez de su entrada. Con soundcheck encendido, la ganancia del
+   previo NO afecta lo que suena: un consejo de ganancia ahi no es impreciso,
+   es inaplicable.
+
+DEFECTO LATENTE QUE ESTO DESTAPA
+El adaptador arma `hw.${canal-1}.gain`, o sea da por hecho que el canal N usa
+el previo N. Hoy el enrutamiento es identidad y coincide. Es la misma trampa
+que el error de base cero: coincidia consigo mismo hasta que dejo de hacerlo.
+Si alguien repatchea, la aplicacion lee --y en nivel ASISTIDO escribiria-- la
+ganancia del previo equivocado.
+protocol-spec ya lo anticipaba: "con el enrutamiento por defecto i.N y hw.N
+coinciden y por eso es facil no notar la diferencia".
+
+LO QUE NO SE MIDIO
+Que valores toma `src` con otro enrutamiento, porque cambiarlo exige tocar la
+consola de otro. Lo que se sabe es la FORMA --una ruta de previo, o `none`--
+que alcanza para leerla bien sin adivinar.

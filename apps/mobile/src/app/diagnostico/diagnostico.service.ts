@@ -23,7 +23,16 @@ export class DiagnosticoService {
   private readonly mixer = inject(MixerService);
   private readonly log = inject(Logger);
 
-  private tramos: number[][] = [[]];
+  /**
+   * Marcas de tiempo por tramo, separadas por flujo.
+   *
+   * Son dos porque miden cosas distintas: `RTA` no se apaga nunca y por eso
+   * juzga la conexión; `VU2` se apaga en silencio y por eso juzga cuánto audio
+   * hubo. Mezclarlas daba un solo número que no contestaba ninguna de las dos
+   * preguntas, y que en una sala callada parecía una conexión rota.
+   */
+  private tramosRta: number[][] = [[]];
+  private tramosVu: number[][] = [[]];
   private desuscribir: (() => void)[] = [];
   private comenzoEnMs = 0;
   private caidaEnMs: number | null = null;
@@ -31,17 +40,25 @@ export class DiagnosticoService {
   private redVolvioEnMs: number | null = null;
   private redVolvioEnIso: string | null = null;
   private quitarOnline: (() => void) | null = null;
-  private reintento: ReturnType<typeof setInterval> | null = null;
 
   readonly midiendo = signal(false);
+  /** Tramas del analizador: la señal de vida. */
+  readonly latidos = signal(0);
+  /** Tramas de medidores: hay audio o no lo hay. */
   readonly tramas = signal(0);
   readonly ciclos = signal<readonly CicloDeReconexion[]>([]);
   readonly esperandoReconexion = signal(false);
   readonly modo = signal<ModoDeCorte>('router-apagado');
 
+  /** La que contesta el criterio 4. */
+  readonly cadenciaDelAnalizador = computed(() => {
+    this.latidos();
+    return estadisticaDeSegmentos(this.tramosRta);
+  });
+
   readonly cadencia = computed(() => {
     this.tramas();
-    return estadisticaDeSegmentos(this.tramos);
+    return estadisticaDeSegmentos(this.tramosVu);
   });
 
   /**
@@ -54,13 +71,20 @@ export class DiagnosticoService {
    */
   iniciar(): void {
     if (this.midiendo()) return;
-    this.tramos = [[]];
+    this.tramosRta = [[]];
+    this.tramosVu = [[]];
+    this.latidos.set(0);
     this.tramas.set(0);
     this.comenzoEnMs = Date.now();
     this.midiendo.set(true);
 
+    this.desuscribir.push(this.mixer.observarLatido(() => {
+      this.tramosRta[this.tramosRta.length - 1]!.push(Date.now());
+      this.latidos.update((n) => n + 1);
+    }));
+
     this.desuscribir.push(this.mixer.observarTelemetria(() => {
-      this.tramos[this.tramos.length - 1]!.push(Date.now());
+      this.tramosVu[this.tramosVu.length - 1]!.push(Date.now());
       this.tramas.update((n) => n + 1);
     }));
 
@@ -75,9 +99,9 @@ export class DiagnosticoService {
         this.esperandoReconexion.set(true);
         // Tramo nuevo: el hueco entre la última trama de antes de la caída y la
         // primera de después es el corte, no la cadencia de la consola.
-        this.tramos.push([]);
+        this.tramosRta.push([]);
+        this.tramosVu.push([]);
         this.escucharVuelta();
-        this.reintentarHastaVolver();
       }
     }));
 
@@ -98,7 +122,6 @@ export class DiagnosticoService {
       this.caidaEnIso = null;
       this.esperandoReconexion.set(false);
       this.dejarDeEscucharLaVuelta();
-      this.dejarDeReintentar();
     }));
 
     this.log.info('mixer', 'medicion_iniciada', {});
@@ -108,10 +131,12 @@ export class DiagnosticoService {
     for (const f of this.desuscribir) f();
     this.desuscribir = [];
     this.dejarDeEscucharLaVuelta();
-    this.dejarDeReintentar();
     this.midiendo.set(false);
     this.esperandoReconexion.set(false);
-    this.log.info('mixer', 'medicion_detenida', { tramas: this.tramas() });
+    this.log.info('mixer', 'medicion_detenida', {
+      latidos: this.latidos(),
+      tramas: this.tramas(),
+    });
   }
 
   /**
@@ -138,7 +163,7 @@ export class DiagnosticoService {
     for (const [clave, entrada] of volcado) valores.set(clave, entrada.valor);
 
     return {
-      version: 1,
+      version: 2,
       generadoEn: new Date().toISOString(),
       dispositivo: {
         modelo: info?.modelo ?? null,
@@ -146,6 +171,7 @@ export class DiagnosticoService {
         direccion: this.mixer.direccion() ?? 'sin conectar',
         agente: navigator.userAgent,
       },
+      cadenciaDelAnalizador: this.cadenciaDelAnalizador(),
       cadenciaDeMedidores: this.cadencia(),
       duracionDeLaMedicionMs: this.comenzoEnMs === 0 ? 0 : Date.now() - this.comenzoEnMs,
       ciclos: this.ciclos(),
@@ -161,33 +187,6 @@ export class DiagnosticoService {
       markdown: informeEnMarkdown(informe),
       json: JSON.stringify(informe, null, 2),
     };
-  }
-
-  /**
-   * Reintenta conectar mientras dure la caída.
-   *
-   * El adaptador **no reconecta solo**: al cerrarse el socket queda en
-   * DISCONNECTED y ahí se queda. Cómo debe reconectar la aplicación es una
-   * decisión que depende justamente de lo que mida este spike, así que no se
-   * mete acá una máquina de reconexión que después haya que rehacer: el
-   * reintento vive dentro de la prueba y desaparece con ella.
-   *
-   * El precio es que el tiempo medido incluye hasta un intervalo de espera de
-   * más. El informe lo dice, porque un número que se presenta sin su margen se
-   * lee como si no lo tuviera.
-   */
-  private reintentarHastaVolver(): void {
-    if (this.reintento !== null) return;
-    const url = this.mixer.direccion();
-    if (url === null) return;
-    this.reintento = setInterval(() => {
-      void this.mixer.conectar(url).catch(() => { /* sigue sin haber red */ });
-    }, INTERVALO_DE_REINTENTO_MS);
-  }
-
-  private dejarDeReintentar(): void {
-    if (this.reintento !== null) clearInterval(this.reintento);
-    this.reintento = null;
   }
 
   private escucharVuelta(): void {
@@ -210,11 +209,13 @@ export class DiagnosticoService {
  * estuviera comprobado.
  */
 /**
- * Cada cuánto se reintenta conectar mientras la red está caída.
+ * Cada cuánto reintenta conectar la aplicación, para poder decirlo en el
+ * informe. El número vive en `MixerService`, que es quien reconecta.
  *
- * Un segundo: lo bastante seguido para no inflar la medición --el umbral del
- * criterio 1 son diez segundos-- y lo bastante espaciado para no castigar la
- * batería con intentos que van a fallar igual.
+ * **Esta prueba ya no reintenta por su cuenta.** Lo hacía cuando la aplicación
+ * no reconectaba sola, y medía entonces una reconexión que solo existía
+ * mientras la pantalla de diagnóstico estuviera abierta. Ahora cronometra la
+ * de verdad, que es la que el criterio 1 de SPK-P0.1 quiere medir.
  */
 const INTERVALO_DE_REINTENTO_MS = 1000;
 
@@ -222,5 +223,5 @@ const SIN_MEDIR: readonly string[] = [
   'El eco de las escrituras propias (criterio 3 de SPK-P0.1): exige escribir, y en esta fase la aplicación no escribe nada.',
   'La comparación entre tres clientes a la vez (criterio 5): esta corrida da la huella de uno. Hay que generar la de los otros y compararlas.',
   'El alcance de la recuperación de instantáneas (SPK-P0.8) y la matriz de escritura (SPK-P0.2a): las dos exigen escribir.',
-  `El tiempo de reconexión incluye hasta ${INTERVALO_DE_REINTENTO_MS} ms de espera: el adaptador no reconecta solo, y la prueba reintenta a ese ritmo.`,
+  `El tiempo de reconexión incluye hasta ${INTERVALO_DE_REINTENTO_MS} ms de espera: la aplicación reintenta a ese ritmo, y un corte puede empezar justo después de un intento.`,
 ];

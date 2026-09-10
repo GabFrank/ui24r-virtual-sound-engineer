@@ -1,0 +1,54 @@
+Respaldo por medidor, cableado y probado — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24
+fuente: tono de 1 kHz a -12 dBFS por la Scarlett 2i2 a la entrada 10
+
+QUE SE ARREGLO. confirmarPorMedidor existia desde el 2026-09-09 con sus tests, y
+NINGUN CAMINO DE ESCRITURA LO LLAMABA: sin testigo, escribir() devolvia REJECTED
+y no enviaba nada. La politica de confirmacion afirmaba lo contrario --«respaldo
+de VU con senal presente»-- y el commit que cerro SPK-ACK-POLICY remato que lo
+implementado «cumple la politica». Lo encontro una auditoria LEYENDO, no
+ejecutando. INV-011 preveia este respaldo desde siempre para la situacion que
+importa: la wifi saturada en pleno show, que es cuando el testigo --una conexion
+mas-- es lo primero que no se puede abrir.
+
+COMO SE FUERZA EL CAMINO. Se le da al adaptador un crearTestigo que devuelve un
+transporte que no conecta.
+
+punto de retorno: VSE_AUTO_1789050094220
+testigo abierto: false (tiene que ser false)
+canal 17: nivel -Infinity dB, ganancia 0.00 dB
+
+SIN SENAL — se intenta hw.16.gain: 0.0952 -> 0.1452
+  REJECTED / NONE
+  no hay conexión testigo y es lo único que confirma el valor literal contra esta consola, que no devuelve eco. El canal 17 está en silencio, así que su medidor tampoco puede confirmar nada. No se envió nada
+  la ganancia quedo en 0.0952 — INTACTA, no se escribio
+
+CON SENAL — canal 10 a -48.7 dB
+  hw.9.gain: 0.2508 -> 0.2908, o sea 2.00 dB
+  APPLIED / VU
+  restaurada: si
+
+LAS DOS MITADES CONTESTADAS.
+
+SIN SENAL: el testigo no abre, el canal 17 esta en silencio, y la aplicacion
+RECHAZA Y NO ENVIA NADA --la ganancia quedo en 0.0952, identica--. Es la
+decision de ADR-026: escribir a ciegas y marcarlo «no verificado» dejaria al
+operador sin poder distinguir eso de un cambio que si funciono.
+
+CON SENAL: canal 10 a -48,7 dB, ganancia de 0.2508 a 0.2908 --2,00 dB segun la
+curva medida--. APPLIED / VU. El medidor de ENTRADA se movio lo que la curva
+dice, dentro de la tolerancia de 1,5 dB y en los 300 ms de espera. Restaurada.
+
+Que salga VU y nunca WITNESS no es cosmetico: el medidor confirma EL EFECTO
+--el nivel se movio lo que tenia que moverse-- y no el valor. No dice que el
+crudo escrito sea el que quedo en la consola. Un diario viejo tiene que seguir
+diciendo la verdad sobre con que se comprobo cada cosa.
+
+UN TROPIEZO DEL ARNES QUE VALE ANOTAR. La primera corrida dijo «ningun canal por
+encima de -50 dB» y se estuvo a punto de escribir que faltaba el cable. Estaba
+todo enchufado: lo que fallaba era que `afplay` no sobrevivia entre llamadas de
+la herramienta. Es la SEGUNDA vez que pasa lo mismo en este proyecto, y la
+primera ya tenia su leccion escrita. Lo que la corrigio fue comprobar con pgrep
+que el reproductor siguiera vivo ANTES de creerle al silencio, no razonar sobre
+la cadena de audio. Un silencio tiene dos explicaciones --no hay senal, o no hay
+quien la genere-- y solo una se puede comprobar sin levantarse de la silla.

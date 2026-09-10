@@ -1,0 +1,57 @@
+EL TECHO DEL MEDIDOR NO ES 239 — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24.
+Sonda: tools/spikes/p0-10b-vu/techo-medidor.ts
+
+LO QUE ESTABA DOCUMENTADO
+"Con la ganancia del canal al maximo --57 dB-- y la fuente subiendo, el byte se
+clava en 239 y la lectura deja de subir en -0,7 dB. El medidor no informa nada
+por encima de esa posicion: no hay margen escondido arriba."
+
+POR QUE ESTABA MAL
+Ese numero se midio con fuente externa y ganancia al maximo, o sea midiendo la
+cadena entera --iMac, Scarlett, previo-- y no el medidor. Es EXACTAMENTE el
+error del episodio de los 84,5 dB, aplicado al techo en vez de a la escala. La
+leccion estaba escrita en el mismo documento y se aplico solo a la mitad.
+
+EL METODO BUENO
+Dejar el nivel PRE-fader alto pero sin saturar, y subir el FADER, que es
+ganancia digital interna y no tiene nada analogico en el medio.
+
+  hw.9.gain=0.85 -> pre=204     hw.9.gain=0.95 -> pre=223
+  hw.9.gain=0.90 -> pre=214     hw.9.gain=1.00 -> pre=232   <- se usa esta
+
+  fader     pre   entrada   salida
+  0.7647   232     232      232
+  0.8500   232     232      242     <- ya paso el "techo" de 239
+  0.9000   232     232      248
+  0.9500   232     232      255
+  1.0000   232     232      255     <- se planta
+
+LA LINEALIDAD LO CONFIRMA
+Con la ley del fader: 0,85 son +3,33 dB = 10 bytes -> 242 (medido 242).
+0,90 son +5,33 = 16 -> 248 (medido 248). 0,95 son +7,67 = 23 -> 255 (medido
+255, justo el borde). 1,00 pediria 262 y se planta en 255. O sea que la senal
+NO estaba recortando: el numero crecio exactamente lo que tenia que crecer
+hasta chocar contra el tope del byte.
+
+CONCLUSION
+El tope del numero que manda la consola es 255. El 239 es donde satura la
+interfaz de audio.
+
+CONSECUENCIAS
+- Los bytes 240 a 255 son posiciones MAYORES QUE 1: de +0,02 a +5,0 dB con
+  MEDIDOR_RANGO_DB = 80.
+- MEDIDOR_SATURACION = 1 es el byte 240 y SI es alcanzable. Una auditoria
+  planteo que con el techo en 239 los contadores de saturacion no podrian
+  incrementarse nunca; el razonamiento era correcto y la premisa no.
+- Cualquier normalizacion que trate 240 como tope entrega posiciones fuera de
+  rango con senal caliente.
+
+MEDIDO DOS VECES, POR SEPARADO
+Un auditor con instrumentacion propia llego a lo mismo (231 -> 241 -> 247 ->
+254 -> 255) antes de que yo lo repitiera. Dos caminos, el mismo resultado.
+
+QUE SE TOCO Y COMO QUEDO
+m.afs.enabled se apago durante la medicion --los tonos sostenidos le ensenan
+filtros al supresor-- y se devolvio a 1. hw.9.gain a 0.2508445026, i.9.mix a
+0.7647058824, i.9.mute a 0.

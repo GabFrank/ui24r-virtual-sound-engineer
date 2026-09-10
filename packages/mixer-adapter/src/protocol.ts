@@ -166,7 +166,12 @@ export function base64ABytes(texto: string): number[] {
  * Medido el 2026-09-08 contra la consola: la cabecera vale 8 bytes y el primero
  * es la cantidad de canales de entrada. Los siguientes repiten la topología que
  * la consola publica en `curSetup` — para la Ui24R salieron
- * `[24, 2, 6, 4, 10, 2, 2, 0]` contra `input:24, linein:2, sub:6, fx:4, aux:10`.
+ * `[24, 2, 6, 4, 10, 2, 2, 0]`.
+   *
+   * **Ojo con el byte 1: es el reproductor de medios, no `linein`.** Coincide
+   * en el número —hay 2 de cada uno— y por eso se lee mal sin darse cuenta.
+   * Las entradas de línea son el **byte 6** y su sección va al **final** de la
+   * trama, después del general. Ver `vu-buses.ts`, que sí lo tiene bien.
  */
 export const VU_CABECERA_BYTES = 8;
 
@@ -177,24 +182,248 @@ export const VU_BYTES_POR_CANAL = 6;
  * Escala de los medidores, de `deconvertVU` en `mixer.html`.
  *
  * Un byte de 0 a ~240 se convierte en una posición de 0 a 1. **No son
- * decibeles**: es la misma posición normalizada con la que se dibuja un fader.
+ * decibeles**, pero tampoco es la posición de un fader: la consola dibuja la
+ * barra con `c = h * value` y coloca las marcas de su escala con
+ * `vuPosMark(dB, h) = -dB * h / VU_RANGE`, con `VU_RANGE = 80`. Las dos cosas
+ * juntas dicen que **el medidor es lineal en decibeles**: ver `MEDIDOR_RANGO_DB`.
  */
 export const VU_ESCALA = 0.004167508166392142;
 
+/**
+ * Recorrido del medidor, en decibeles. `VU_RANGE` en `mixer.html`.
+ *
+ * La escala va de 0 en la punta a −80 en el fondo, y la barra se dibuja
+ * proporcional a la posición, así que un escalón del byte son
+ * `80 * VU_ESCALA` = 0,333 dB.
+ *
+ * **Este número estuvo en 84,5 durante unas horas y se volvió atrás.** Vale
+ * dejar escrito el episodio completo, porque la trampa es sutil y se puede
+ * repetir.
+ *
+ * Se midió con tonos de nivel conocido generados en la máquina de desarrollo,
+ * entrando por una entrada de la consola. Tres barridos dieron pendientes de
+ * 0,94 contra el recorrido de 80, con desvíos de 0,21 a 0,79 dB: rectas
+ * impecables, y todas apuntando a un recorrido de ~85 dB. Con eso se cambió la
+ * constante.
+ *
+ * Lo que faltaba mirar: **esos barridos no coincidían entre sí.** En dB por
+ * escalón del byte daban 0,3516, 0,3582 y 0,3644 según el nivel al que se
+ * midiera. Una escala tiene un solo factor; tres factores distintos según el
+ * nivel no son una escala, son una cadena analógica metiendo la cola —el
+ * conversor, el cable, el previo, o el ruido sumándose en los niveles bajos—.
+ *
+ * Lo que lo resolvió fue una medición **sin cadena analógica**: mover el fader
+ * del canal, que es una ganancia digital dentro de la consola, con la fuente
+ * fija y el medidor de entrada de testigo. De 0 a −38,19 dB de atenuación
+ * —según la propia ley de fader de la consola— el medidor recorrió 114,7
+ * escalones. Con este recorrido de 80 eso da 38,24 dB: **coincide en 0,05 dB
+ * sobre 38**. Dos hechos independientes tomados del código de la consola, su
+ * `VU_RANGE` y su `VtoLIN`, concuerdan entre sí y con la medición limpia.
+ *
+ * La moraleja para el próximo que mida: una fuente externa mide la cadena
+ * entera, no el medidor. Para medir el medidor hay que mover algo que ya esté
+ * adentro. Y la correspondencia con dBFS reales sigue sin medirse: eso es lo
+ * que pide SPK-P0.10b con un bucle calibrado.
+ */
+export const MEDIDOR_RANGO_DB = 80;
+
+/**
+ * Posición desde la que la consola enciende su indicador de saturación.
+ *
+ * `setVU` hace `1 <= b ? this.clip.clip() : ...` sobre el valor del medidor, y
+ * `setVUPre` lo mismo con el nivel del previo. O sea: satura cuando la barra
+ * llega a la punta de la escala, que son 0 dB. No es un umbral elegido por
+ * nosotros.
+ */
+export const MEDIDOR_SATURACION = 1;
+
+/**
+ * Ampliación del medidor de reducción de ganancia. `COMP_ZOOM` en `mixer.html`.
+ *
+ * El medidor de reducción usa la misma escala de bytes que el de nivel, pero
+ * dibujada al doble: por eso su recorrido es la mitad, 40 dB y no 80.
+ */
+export const COMP_ZOOM = 2;
+
+/** Recorrido del medidor de reducción de ganancia, en decibeles. */
+export const REDUCCION_RANGO_DB = MEDIDOR_RANGO_DB / COMP_ZOOM;
+
+/**
+ * Fracción por debajo de la cual la consola da la reducción por nula.
+ *
+ * Es su propia zona muerta, no una elección nuestra: con el compresor sin
+ * actuar el byte vale 247 en todos los canales, que despejado da 0,0079 —justo
+ * por debajo de este umbral—. Sin la zona muerta, un canal quieto informaría
+ * 0,32 dB de reducción permanente.
+ */
+const REDUCCION_ZONA_MUERTA = 0.008;
+
+/**
+ * Fracción de reducción de ganancia a partir del sexto byte del canal.
+ *
+ * La cuenta es la de `mixer.html`, y **el orden de los operadores importa**:
+ * `a` se arma con los siete bits bajos desplazados a la izquierda, y el bit que
+ * se cae por arriba se recupera con `a | ((a >> 7) & 1)`. Leerlo como
+ * `(a | (a >> 7)) & 1` da otra cosa.
+ *
+ * **Medido contra la consola el 2026-09-09**, tono fijo y umbral del compresor
+ * bajando: 10,8 % de reducción dio 4,66 dB medidos contra 4,32 calculados;
+ * 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00. Los tres puntos
+ * caen dentro de 0,35 dB.
+ */
+export function fraccionDeReduccion(byte: number): number {
+  const a = (byte & 127) << 1;
+  const fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM;
+  if (fraccion < REDUCCION_ZONA_MUERTA) return 0;
+  return fraccion > 1 ? 1 : fraccion;
+}
+
+/**
+ * Cuántos decibeles le está sacando el procesador dinámico al canal.
+ *
+ * **Este número es la diferencia entre avisar y aconsejar.** El medidor de
+ * entrada de cada canal —el byte `+1` de la trama— está **después** del
+ * procesamiento dinámico: medido el 2026-09-09 con un tono fijo, bajar el
+ * umbral del compresor movió la lectura de −29,66 a −40,46 dB. O sea que el
+ * nivel con el que se calcula un consejo de ganancia puede venir ya comprimido,
+ * y hasta hoy nada lo decía. Con esto se puede decir cuánto, y distinguir un
+ * compresor puesto que no está actuando —reducción cero, que no condiciona
+ * nada— de uno que está sacando nueve decibeles.
+ */
+export function dbDeReduccion(byte: number): number {
+  return fraccionDeReduccion(byte) * REDUCCION_RANGO_DB;
+}
+
+/**
+ * El byte que produciría esta reducción. Lo usan el simulador y los tests.
+ *
+ * Es una búsqueda sobre `dbDeReduccion`, no una fórmula despejada a mano: así
+ * no puede desviarse de la función directa, que es la que describe el aparato.
+ * El bit 7 va puesto porque es lo que hace la consola —es el indicador de
+ * puerta, no el de saturación— y no interviene en la cuenta.
+ */
+export function byteDeReduccion(db: number): number {
+  let mejor = 247;
+  let menorError = Infinity;
+  for (let b = 128; b <= 255; b++) {
+    const error = Math.abs(dbDeReduccion(b) - db);
+    if (error < menorError) {
+      menorError = error;
+      mejor = b;
+    }
+  }
+  return mejor;
+}
+
 /** Lectura de un canal dentro de una trama `VU2`, en posición normalizada. */
 export interface MedidorCanal {
-  /** Nivel previo a la ganancia del previo. */
+  /**
+   * Nivel **después del previo y antes del procesamiento dinámico**.
+   *
+   * El nombre venía de suponer que era anterior a la ganancia del previo, y es
+   * al revés. Las dos mitades están medidas contra la consola el 2026-09-09:
+   *
+   * - **Después del previo**: subiendo `hw.N.gain` de 10 a 22 dB, esta lectura
+   *   subió 6,00 y 6,01 dB, lo mismo que `entrada`.
+   * - **Antes del compresor**: con el compresor apretando 5 dB, `entrada` cayó
+   *   a −53,33 y esta se quedó en −48,66. El dinámico no la toca.
+   *
+   * **Es el punto de la cadena en el que hay que aconsejar ganancia**, y por eso
+   * es el que muestrea el asistente. `entrada` es lo que la consola dibuja en su
+   * tira y sirve para hablar el mismo idioma que el operador, pero llega con el
+   * proceso encima.
+   *
+   * **Lo que está medido y lo que no.** Que el compresor, el **ecualizador** y
+   * la **puerta** no la tocan está medido contra el aparato el 2026-09-09: con
+   * el umbral de la puerta por encima de la señal, `entrada` se fue a −∞ y esto
+   * quedó clavado en −48,66 dB.
+   *
+   * Sin medir queda el **de-esser**, que es un cuarto bloque y no un detalle del
+   * dinámico: no reporta cuánto atenúa y no se probó con sibilancia. Mientras
+   * siga inferido, el asistente no le da a un canal con de-esser activo la
+   * confianza más alta.
+   */
   readonly pre: number;
-  /** Nivel de entrada al canal. */
+  /**
+   * Nivel de entrada al canal, **después del procesamiento dinámico**.
+   *
+   * El nombre engaña y conviene no arreglarlo cambiándolo: es «entrada» porque
+   * es lo que la consola muestra en la tira de entrada, antes del fader. Pero
+   * el compresor y la puerta ya pasaron. Medido el 2026-09-09.
+   */
   readonly entrada: number;
   /** Nivel de salida, después del fader. */
   readonly salida: number;
-  /** Entrada del procesador dinámico. Solo lo llena el canal seleccionado. */
+  /**
+   * Los dos bytes del bloque dinámico, `+3` y `+4`.
+   *
+   * **No los llena «solo el canal seleccionado», y eso era imposible.**
+   * `selectedStrip` es estado del **cliente**: la consola no sabe qué tira está
+   * mirando cada tableta, así que no puede llenar bytes selectivamente. Lo que
+   * hace el cliente es *dibujarlos* solo para la tira seleccionada. Llegan
+   * siempre, en todos los canales y en todos los buses. Comprobado en una trama
+   * archivada con música: los canales 21 y 22, que no eran la tira
+   * seleccionada, traen los dos bytes llenos.
+   *
+   * O sea que la aplicación viene tirando, en cada trama y en cada canal, el
+   * dato que dice cuánto está trabajando el procesamiento — que es justo lo que
+   * se fue a buscar por el byte de reducción.
+   *
+   * **Qué son exactamente queda con una tensión sin resolver.** El cliente los
+   * lee como entrada y salida del bloque dinámico, y muestra el mismo par en la
+   * página del compresor y en la de la puerta (`d.vuIN`/`d.vuOUT` y
+   * `f.vuIN`/`f.vuOUT`). Pero una auditoría midió que **`+3` se anula con
+   * `gate.enabled = 0` y `+4` con `dyn.bypass = 1`**, cada uno por su sección,
+   * que no es lo que uno espera de la entrada y la salida de un mismo bloque.
+   *
+   * Las dos observaciones pueden convivir —el motor podría calcular cada byte
+   * solo cuando su sección está activa, y el cliente rotularlos in/out igual—
+   * pero no está resuelto. Por eso los nombres se dejan como están: cambiarlos
+   * a «medidor de la puerta» y «medidor del compresor» afirmaría la lectura de
+   * la medición sobre la del cliente, y todavía no hay con qué elegir.
+   */
   readonly dinamicoEntrada: number;
-  /** Salida del procesador dinámico. Solo lo llena el canal seleccionado. */
   readonly dinamicoSalida: number;
   /** Byte crudo de reducción de ganancia y bandera, sin interpretar. */
   readonly byteReduccion: number;
+  /**
+   * Reducción de ganancia que el procesador dinámico está aplicando, en dB.
+   *
+   * Estuvo llegando en cada trama desde siempre y no lo leía nadie. Ver
+   * `dbDeReduccion`.
+   */
+  readonly reduccionDb: number;
+  /**
+   * El indicador de puerta, crudo y sin interpretar.
+   *
+   * Es el bit 7 del último byte del canal. `parseVUdata` lo saca con
+   * `p = 0 != (byte & 128)` y termina en `this.gi.setValue(...)`, que es un
+   * `GATEind`: el indicador de puerta, **no** el de saturación. Vale anotarlo
+   * porque invita al error: el byte vale 247 en todos los canales quietos, con
+   * el bit 7 puesto, y leerlo como saturación da todos los canales saturando
+   * todo el tiempo.
+   *
+   * **La polaridad quedó resuelta el 2026-09-09: `1` es puerta ABIERTA.**
+   *
+   * Estuvo escrito acá que «la evidencia apunta más bien al revés, porque el
+   * bit está puesto en todos los canales quietos y un canal quieto tiene la
+   * puerta cerrada». La premisa era falsa, y la respuesta ya estaba pagada en
+   * el repositorio: en `SPK-P0.1/evidence/prueba-A-pasivo.txt`, de los 24
+   * canales **el 15 es el único con el bit en 0**, y es también el único con
+   * `gate.thresh` distinto de cero —0,4109, que con `VtoTHRESH = 96a − 90` son
+   * −50,55 dB—. Los otros 23 tenían el umbral en −90 dB, o sea la puerta
+   * abierta permanentemente aunque no hubiera señal.
+   *
+   * Lo que faltó fue mirar el estado de alrededor —los umbrales—, que es el
+   * mismo patrón del subgrupo silenciado y de la música apagada.
+   *
+   * Lo confirma el trabajo previo: dos implementaciones independientes llaman
+   * a este byte `CompMeterAndGated`, con el bit como bandera de la puerta.
+   *
+   * El campo sigue llamándose sin interpretar porque nadie lo consume todavía
+   * y el nombre crudo no se equivoca.
+   */
+  readonly indicadorDePuerta: boolean;
 }
 
 /**
@@ -225,56 +454,82 @@ export function decodificarVuCanales(base64: string): MedidorCanal[] {
       dinamicoEntrada: (bytes[o + 3] ?? 0) * VU_ESCALA,
       dinamicoSalida: (bytes[o + 4] ?? 0) * VU_ESCALA,
       byteReduccion: bytes[o + 5] ?? 0,
+      reduccionDb: dbDeReduccion(bytes[o + 5] ?? 0),
+      indicadorDePuerta: ((bytes[o + 5] ?? 0) & 128) !== 0,
     });
   }
   return canales;
 }
 
 /**
- * Nivel de entrada de cada canal, en dB.
+ * Nivel de entrada de cada canal, en dB de la escala de la consola.
  *
- * Se mantiene la forma que ya consumía el adaptador —un dB por canal— pero el
- * número sale ahora del formato real y de la ley de fader de la consola.
+ * Un dB por canal, que es la forma que el adaptador ya consumía, sacado del
+ * formato real de la trama y de la recta del medidor —ver `dbDeMedidor`—.
  *
- * **Lo que este dB no es.** La consola dibuja sus medidores sobre la misma
- * regla que sus faders, así que convertir la posición con la ley del fader da
- * el número que muestra la consola. Que ese número corresponda a un nivel
- * digital real no está medido: es exactamente lo que pide SPK-P0.10b, con tonos
- * de −20, −6 y −1 dBFS por un bucle físico. Hasta que ese spike cierre, esto
- * sirve para coincidir con lo que ve el operador, no para afirmar dBFS.
+ * **Lo que este dB no es.** No es dBFS. Es el número que la consola dibuja en
+ * su propia escala, de 0 en la punta a −80 en el fondo, y sirve para hablarle
+ * al operador en los términos que él está viendo. Qué nivel digital real le
+ * corresponde a cada punto de esa escala **no está medido**: lo mide
+ * SPK-P0.10b, con tonos de −20, −6 y −1 dBFS por un bucle físico.
  */
 export function decodificarVu(base64: string): number[] {
-  return decodificarVuCanales(base64).map((c) => posicionADb(c.entrada));
+  return decodificarVuCanales(base64).map((c) => dbDeMedidor(c.entrada));
 }
 
 /**
- * Posición normalizada de medidor a dB, con la ley de fader de la consola.
+ * Posición normalizada de medidor a decibeles.
  *
- * Duplica la fórmula de `conversiones.ts` a propósito: este módulo decodifica
- * el protocolo y no debería depender del que interpreta unidades físicas. Si
- * alguna vez divergen, el test de `protocol.test.ts` que las compara falla.
+ * **Medido en el código de la consola el 2026-09-08, no supuesto.** Antes esto
+ * convertía con la ley del fader, sobre la hipótesis de que la consola dibuja
+ * sus medidores con la misma regla que sus faders. Es falsa, y el error no era
+ * chico: con la guitarra en el canal 1 de una Ui24R real, el byte 225 daba
+ * +4,6 dB —recortado a +10 en pantalla, con mil saturaciones inventadas—
+ * cuando la consola mostraba −12.
+ *
+ * Lo que hace `mixer.html`: dibuja la barra con `c = h * value`, proporcional a
+ * la posición, y coloca las marcas de la escala con `-dB * h / VU_RANGE`. De
+ * ahí sale una recta, y solo una:
+ *
+ *     dB = VU_RANGE * posicion - VU_RANGE
+ *
+ * Comprobada contra el aparato en dos puntos independientes: byte 225 en la
+ * guitarra da −5,0 dB de entrada, que con el fader del canal en −6,9 dB deja
+ * −11,9 a la salida —los «−12» que mostraba la consola—; y la música por las
+ * RCA, con salida en el byte 102, da −46 dB, que es la barra de la captura.
+ *
+ * **Esto sigue sin ser dBFS verificado.** Es lo que ve el operador en su
+ * pantalla, que es lo que hace falta para hablar el mismo idioma que él. La
+ * correspondencia con un nivel digital real la mide SPK-P0.10b, con tonos por
+ * un bucle físico.
  */
-function posicionADb(posicion: number): number {
+export function dbDeMedidor(posicion: number): number {
   if (posicion <= 0) return -Infinity;
-  const v = Math.min(1, posicion);
-  const exponente = v * (23.90844819639692
-    + v * (-26.23877598214595 + (12.195249692570245 - 0.4878099877028098 * v) * v));
-  const base = 2.676529517952372e-4 * Math.exp(exponente);
-  const lineal = v < 0.055 ? base * Math.sin(28.559933214452666 * v) : base;
-  if (lineal <= 0) return -Infinity;
-  return Math.max(-90, Math.min(10, 20 * Math.log10(lineal)));
+  return MEDIDOR_RANGO_DB * posicion - MEDIDOR_RANGO_DB;
 }
 
 /**
  * Arma una trama `VU2` con el formato real. La usa el simulador.
  *
  * Recibe posiciones normalizadas, no decibeles: es lo que viaja por el cable.
+ * `reduccionesDb` es opcional y por canal; sin ella todos los canales van sin
+ * reducción, que es el byte 247. `posicionesPreProceso` también es opcional y
+ * por defecto iguala a `posiciones`: sirve para armar una trama donde el nivel
+ * anterior al dinámico y el posterior **no** coincidan, que es lo que pasa en
+ * cuanto el compresor aprieta.
  */
-export function codificarVu(posiciones: readonly number[]): string {
+export function codificarVu(
+  posiciones: readonly number[],
+  reduccionesDb: readonly number[] = [],
+  posicionesPreProceso: readonly number[] = [],
+): string {
   const bytes: number[] = [posiciones.length, 0, 0, 0, 0, 0, 0, 0];
-  for (const p of posiciones) {
+  for (let i = 0; i < posiciones.length; i++) {
+    const p = posiciones[i]!;
     const byte = Math.max(0, Math.min(255, Math.round(Math.max(0, p) / VU_ESCALA)));
-    bytes.push(byte, byte, byte, 0, 0, 247);
+    const pPre = posicionesPreProceso[i] ?? p;
+    const bytePre = Math.max(0, Math.min(255, Math.round(Math.max(0, pPre) / VU_ESCALA)));
+    bytes.push(bytePre, byte, byte, 0, 0, byteDeReduccion(reduccionesDb[i] ?? 0));
   }
   return bytesABase64(bytes);
 }

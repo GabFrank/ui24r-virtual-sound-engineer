@@ -1,0 +1,63 @@
+SPK-P0.10b — mediciones con fuente conocida, 2026-09-08
+Consola Ui24R 192.168.0.78 fw 3.4.8318-ui24 · canal 10 (rutas i.9) · fantasma apagada
+Fuente: iMac -> Focusrite Scarlett (salida por defecto) -> entrada del canal 10
+Compresor puenteado (i.9.dyn.bypass=1) y puerta apagada (i.9.gate.enabled=0)
+
+=== POR QUE LOS BARRIDOS DE TONO NO FIJAN LA ESCALA ===
+Miden la cadena entera --conversor, cable, previo y medidor-- y no el medidor.
+Se archivan igual porque el dato es real y porque el episodio vale como
+advertencia: las cuatro rectas son impecables por separado y NO COINCIDEN
+ENTRE SI.
+
+ganancia +10 dB, lecturas bajas en el medidor (-75 a -40 dB)
+  1 kHz  -40 a -3 dBFS       pendiente 0,9438  desvio 0,79 dB   0,3582 dB/byte
+  1 kHz  -32 a -14, paso 2   pendiente 0,9379  desvio 0,21 dB   0,3516 dB/byte
+  400 Hz -30 a -15, paso 3   pendiente 0,9507  desvio 0,39 dB
+
+ganancia +40 dB, lecturas altas en el medidor (-43 a -17 dB)
+  1 kHz  -33 a -6, paso 3    pendiente 0,9622  desvio 0,26 dB   0,3644 dB/byte
+
+Tres factores distintos segun el nivel. Una escala tiene uno solo.
+
+=== LA MEDICION QUE SI FIJA LA ESCALA ===
+El fader es una ganancia DIGITAL dentro de la consola: no hay cadena analogica
+en el medio. Fuente fija y medidor de entrada como testigo, que se mantuvo en
+-20,76 dB en las quince posiciones: la fuente no se movio.
+
+  crudo 0,7647 -> byte de salida 181,0
+  crudo 0,2000 -> byte de salida  66,3
+  recorrido del medidor: 114,7 escalones
+  atenuacion segun la ley de fader de la consola: 38,19 dB
+  con VU_RANGE = 80: 114,7 * 80/239,95 = 38,25 dB
+  coincidencia: 0,06 dB sobre 38
+
+Dos hechos independientes del codigo de la consola --VU_RANGE y VtoLIN--
+concuerdan entre si y con esta medicion.
+
+=== BALISTICA (5 rafagas de 1200 ms a -15 dBFS) ===
+  subida: 0 ms -- no se resuelve: llega a la meseta dentro de una sola trama
+  caida de 20 dB: mediana 37 ms, minimo 33, maximo 66
+  La cadencia con senal es de ~44 ms; nada por debajo de eso se puede afirmar.
+  Conclusion: la consola manda nivel instantaneo. La balistica la dibuja su
+  cliente: GLOBAL_VU_FALL_SPEED = 0.01 y PEAK_HOLD_TIME = 3 en mixer.html.
+
+=== LO QUE SIGUE SIN MEDIRSE ===
+La correspondencia con dBFS reales. Exige un bucle fisico calibrado: hay que
+conocer la ganancia analogica del camino, que aca es desconocida y solo se
+mantuvo fija durante la sesion.
+
+=== DONDE ESTA TOMADO CADA MEDIDOR (2026-09-09) ===
+Ganancia del previo de 10 a 22 dB:  pre sube 6,00 y 6,01 -- entrada igual.
+Compresor 4:1 apretando 5 dB:       pre NO se mueve (-48,66) -- entrada baja a -53,33.
+  => el byte +0 esta DESPUES del previo y ANTES del dinamico.
+  => el byte +1 viene procesado: no sirve para aconsejar ganancia.
+La puerta se infiere en el mismo bloque; NO se comprobo con la puerta cerrandose.
+
+Reduccion de ganancia en vivo (byte +5), factor VU_RANGE/COMP_ZOOM = 40:
+  10,8 % -> 4,66 dB medidos contra 4,32 calculados
+  22,5 % -> 9,00 contra 9,00
+  27,5 % -> 10,80 contra 11,00
+
+Conversiones del dinamico, del mixer.html:
+  VtoRATIO(a) = 1/a      <- el crudo 1 es 1:1, SIN compresion. Costo una corrida.
+  VtoTHRESH(a) = -90 + 96a

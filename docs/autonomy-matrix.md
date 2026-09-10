@@ -15,7 +15,7 @@ Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ow
 
 | Parámetro | Dueño | Nivel máximo por versión |
 |---|---|---|
-| Ganancia de entrada | Asistente de canal | SUGGEST hasta MVP4a, ASSISTED desde MVP4a, solo en configuración de canal |
+| Ganancia de entrada | Asistente de canal | **ASSISTED desde el 2026-09-09** (ADR-026), solo en configuración de canal y sin toma de soundcheck activa. Aplica con confianza ALTA o MEDIA; BAJA y SIN DATOS no habilitan |
 | Filtro pasa altos, ecualizador de canal, compresor, puerta, deesser | Asistente de canal | SUGGEST |
 | Fader de canal | Asistente de mezcla | SUGGEST hasta MVP4a, ASSISTED desde MVP4a |
 | Panorama de canal | Asistente de mezcla | SUGGEST |

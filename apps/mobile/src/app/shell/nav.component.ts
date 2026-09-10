@@ -135,6 +135,7 @@ export class NavComponent {
   private readonly todos: readonly Destino[] = [
     { ruta: 'sesion', etiqueta: 'Sesión', icono: 'sesion' },
     { ruta: 'consola', etiqueta: 'Consola', icono: 'medidor' },
+    { ruta: 'espectro', etiqueta: 'Espectro', icono: 'medidor' },
     { ruta: 'perfiles', etiqueta: 'Perfiles', icono: 'banda' },
     { ruta: 'historial', etiqueta: 'Historial', icono: 'historial' },
     { ruta: 'ajustes', etiqueta: 'Ajustes', icono: 'ajustes' },

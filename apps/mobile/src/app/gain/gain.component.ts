@@ -1,12 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { REDUCCION_RELEVANTE_DB } from '@vse/assistants';
 import type { ChannelAssignment } from '@vse/domain';
 import { BandService } from '../core/band.service';
+import { MixerService } from '../core/mixer.service';
 import { SesionService } from '../core/sesion.service';
 import {
   BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
   PageHeaderComponent, StatComponent, type TonoDeInsignia,
 } from '../ui';
-import { DURACION_CAPTURA_S, GainAssistantService } from './gain-assistant.service';
+import { DURACION_CAPTURA_S, GainAssistantService, type ResultadoCaptura } from './gain-assistant.service';
+import { AplicarGananciaService } from './aplicar-ganancia.service';
+import { verificarAjuste } from '@vse/assistants';
 import { VERIFICADO_CONTRA_CONSOLA } from '@vse/mixer-adapter';
 
 /** Una fila ya resuelta: la plantilla no calcula ni formatea nada. */
@@ -25,6 +29,20 @@ interface FilaDeGanancia {
   readonly confianza: string;
   readonly tonoConfianza: TonoDeInsignia;
   readonly accion: string;
+  /** Si el botón de aplicar va habilitado. Ver `puedeAplicarGanancia`. */
+  readonly puedeAplicar: boolean;
+  /**
+   * Por qué no se puede, cuando no se puede.
+   *
+   * Va como `title` del botón: una pantalla que apaga un botón sin decir por
+   * qué obliga a adivinar, y acá el motivo casi siempre es el siguiente paso.
+   */
+  readonly motivoNoAplica: string | null;
+  readonly textoAplicar: string;
+  /** Si el nivel de este canal viene condicionado por proceso dinámico. */
+  readonly condicionada: boolean;
+  /** Qué lo condiciona, en corto, para la insignia que va junto al nivel. */
+  readonly procesos: string;
 }
 
 const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }>> = {
@@ -32,6 +50,50 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
   MEDIUM: { texto: 'Media', tono: 'aviso' },
   LOW: { texto: 'Baja', tono: 'peligro' },
 };
+
+/** Lo que la pantalla necesita saber del proceso de un canal. */
+interface ProcesoDeCanal {
+  /** Reducción de pico redondeada a decibeles enteros. Cero si no comprime. */
+  readonly comprimeDb: number;
+  readonly puerta: boolean;
+  readonly deesser: boolean;
+}
+
+const SIN_PROCESO: ProcesoDeCanal = { comprimeDb: 0, puerta: false, deesser: false };
+
+/**
+ * Igualdad de la tabla de procesos, para que los medidores no rehagan las filas.
+ *
+ * Las tramas de medidores llegan varias veces por segundo y traen la reducción
+ * adentro. Sin esta comparación, la señal de procesos cambiaría de identidad en
+ * cada trama y arrastraría el recálculo de `filas` —doce a veinticuatro filas
+ * con seis formateos cada una— en la pantalla que ya tiene una cuenta regresiva
+ * corriendo. Con ella, `filas` se rehace solo cuando de verdad cambia algo:
+ * alguien puenteó un compresor, o la reducción cruzó un decibel entero.
+ */
+function mismosProcesos(
+  a: ReadonlyMap<number, ProcesoDeCanal>,
+  b: ReadonlyMap<number, ProcesoDeCanal>,
+): boolean {
+  if (a.size !== b.size) return false;
+  for (const [indice, x] of a) {
+    const y = b.get(indice);
+    if (y === undefined) return false;
+    if (x.comprimeDb !== y.comprimeDb || x.puerta !== y.puerta || x.deesser !== y.deesser) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** La insignia que va junto al nivel. Cadena vacía si nada lo condiciona. */
+function etiquetaDeProceso(p: ProcesoDeCanal): string {
+  const partes: string[] = [];
+  if (p.comprimeDb > 0) partes.push(`Comp −${p.comprimeDb} dB`);
+  if (p.puerta) partes.push('Puerta');
+  if (p.deesser) partes.push('De-esser');
+  return partes.join(' · ');
+}
 
 /**
  * Asistente de ganancia.
@@ -41,6 +103,18 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
  * la pantalla lo dice en cada recomendación en vez de dejarlo en la
  * documentación.
  */
+/**
+ * Decibeles para leer en una tabla, sin `Infinity` ni `-Infinity`.
+ *
+ * Con el canal en silencio el pico es −∞ y el margen infinito. `toFixed` los
+ * imprime tal cual, y eso llegó hasta la pantalla de la tablet.
+ */
+function dbLegible(db: number): string {
+  if (db === Number.POSITIVE_INFINITY) return '—';
+  if (!Number.isFinite(db)) return '−∞';
+  return db.toFixed(1);
+}
+
 @Component({
   selector: 'app-gain',
   standalone: true,
@@ -52,7 +126,11 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
   template: `
     <div class="pagina">
       <ui-page-header titulo="Ganancia"
-        descripcion="Cuánto margen tiene cada canal antes de saturar. La aplicación propone; el cambio se aplica a mano en la consola." />
+        descripcion="Cuánto margen tiene cada canal antes de saturar. La aplicación mide, propone y —con confianza suficiente— aplica y vuelve a medir para comprobar que sirvió." />
+
+      @if (aviso(); as texto) {
+        <p class="aviso-aplicar">{{ texto }}</p>
+      }
 
       @if (!permiteAjustar()) {
         <p class="aviso">
@@ -95,7 +173,16 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                 <tr>
                   <td class="izq"><span class="idx num">{{ f.indice }}</span> {{ f.nombre }}</td>
                   @if (f.medido) {
-                    <td class="num">{{ f.pico }}</td>
+                    <!-- La insignia va pegada al nivel y no en una nota al pie:
+                         quien lee este pico tiene que ver en el mismo golpe de
+                         vista que entre ese número y lo que va a escuchar hay
+                         un compresor sacando decibeles. -->
+                    <td class="num">
+                      {{ f.pico }}
+                      @if (f.condicionada) {
+                        <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                      }
+                    </td>
                     <td class="num">{{ f.margen }}</td>
                     <td class="num">{{ f.objetivo }}</td>
                     <td class="num">{{ f.ganancia }}</td>
@@ -104,11 +191,27 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
                     </td>
                     <td><ui-badge [tono]="f.tonoConfianza">{{ f.confianza }}</ui-badge></td>
                   } @else {
-                    <td class="num sin" colspan="6">sin medir</td>
+                    <td class="num sin" colspan="6">
+                      sin medir
+                      @if (f.condicionada) {
+                        <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                      }
+                    </td>
                   }
                   <td>
                     <ui-button variante="secundario" [deshabilitado]="capturando()"
                                (pulsado)="medir(f.asignacion)">{{ f.accion }}</ui-button>
+                    @if (f.medido) {
+                      <ui-button variante="primario"
+                                 [deshabilitado]="!f.puedeAplicar || aplicando() !== null"
+                                 (pulsado)="aplicar(f)">{{ f.textoAplicar }}</ui-button>
+                      @if (!f.puedeAplicar && f.motivoNoAplica) {
+                        <!-- El motivo va VISIBLE y no en un «title»: en una
+                             tablet no hay puntero que lo revele, así que un
+                             botón apagado sin texto obliga a adivinar. -->
+                        <p class="motivo">{{ f.motivoNoAplica }}</p>
+                      }
+                    }
                   </td>
                 </tr>
               }
@@ -122,19 +225,47 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
               <ui-button acciones variante="secundario" [deshabilitado]="capturando()"
                          (pulsado)="medir(f.asignacion)">{{ f.accion }}</ui-button>
               @if (f.medido) {
+                <ui-button acciones variante="primario"
+                           [deshabilitado]="!f.puedeAplicar || aplicando() !== null"
+                           (pulsado)="aplicar(f)">{{ f.textoAplicar }}</ui-button>
+                @if (!f.puedeAplicar && f.motivoNoAplica) {
+                  <p class="motivo">{{ f.motivoNoAplica }}</p>
+                }
+              }
+              @if (f.medido) {
                 <div class="numeros">
-                  <ui-stat rotulo="Pico" [valor]="f.pico" unidad=" dBFS" />
+                  <ui-stat rotulo="Pico" [valor]="f.pico" unidad=" dB" />
                   <ui-stat rotulo="Margen" [valor]="f.margen" unidad=" dB" />
                   <ui-stat rotulo="Propuesta" [valor]="f.delta" unidad=" dB"
                            [tono]="f.baja ? 'aviso' : 'senal'" />
                 </div>
-                <ui-badge [tono]="f.tonoConfianza">Confianza {{ f.confianza }}</ui-badge>
+                <div class="racimo-insignias">
+                  @if (f.condicionada) {
+                    <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                  }
+                  <ui-badge [tono]="f.tonoConfianza">Confianza {{ f.confianza }}</ui-badge>
+                </div>
               } @else {
                 <p class="sin">Sin medir.</p>
+                @if (f.condicionada) {
+                  <ui-badge tono="aviso">{{ f.procesos }}</ui-badge>
+                }
               }
             </ui-card>
           }
         </div>
+
+        @if (hayCondicionados()) {
+          <p class="nota-estimado">
+            Los canales marcados tienen proceso dinámico entre el previo y lo que
+            se escucha. <strong>El pico y la propuesta son correctos igual</strong>:
+            se miden antes del compresor, no en la columna que muestra la consola.
+            Lo que cambia es el efecto: «Comp −9 dB» quiere decir que al subir la
+            ganancia vas a escuchar bastante menos de lo que subiste, porque el
+            compresor se come parte. Si querés el cambio entero, puenteá el
+            compresor mientras ajustás.
+          </p>
+        }
 
         @if (gananciaEsEstimada) {
           <p class="nota-estimado">
@@ -166,6 +297,11 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
   `,
   styles: [`
     @use 'tokens' as *;
+
+    /* El motivo por el que un botón está apagado, visible y sin gritar. */
+    .motivo { margin: .25rem 0 0; font-size: .8rem; line-height: 1.3; opacity: .75; max-width: 28ch; }
+    .aviso-aplicar { margin: .5rem 0 0; font-size: .9rem; line-height: 1.4; }
+
 
     .aviso {
       margin-bottom: var(--sp-4); padding: var(--sp-3);
@@ -200,6 +336,8 @@ const CONFIANZA: Readonly<Record<string, { texto: string; tono: TonoDeInsignia }
 
     .recomendacion { margin-top: var(--sp-4); }
     .razon { line-height: var(--alto-linea); }
+    .racimo-insignias { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    td ui-badge { margin-left: var(--sp-2); }
     .avisos { margin: var(--sp-3) 0 0; padding-left: var(--sp-4); color: var(--warn); }
     .avisos li { font-size: var(--txt-sm); line-height: var(--alto-linea); }
     .evidencia { margin-top: var(--sp-3); color: var(--muted); font-size: var(--txt-sm); }
@@ -217,6 +355,34 @@ export class GainComponent {
   private readonly banda = inject(BandService);
   private readonly asistente = inject(GainAssistantService);
   private readonly sesion = inject(SesionService);
+  private readonly mixer = inject(MixerService);
+  private readonly aplicador = inject(AplicarGananciaService);
+
+  /**
+   * Qué proceso tiene puesto cada canal, **en vivo**.
+   *
+   * Se muestra antes de medir a propósito. Ver que un canal está comprimiendo
+   * antes de gastar dieciocho segundos midiéndolo es la diferencia entre
+   * puentear el compresor y medir una vez, o medir, leer que no hay propuesta,
+   * puentear y medir de nuevo. Para alguien a tres minutos del show son
+   * dieciocho segundos que valen.
+   *
+   * La reducción se redondea a decibeles enteros para que la comparación de
+   * `mismosProcesos` sirva de algo: sin redondear, cambiaría en cada trama.
+   */
+  private readonly procesos = computed<ReadonlyMap<number, ProcesoDeCanal>>(
+    () => new Map(this.mixer.canales().map((c) => [c.indice, {
+      // El pico de reducción y no el instantáneo: la insignia tiene que seguir
+      // ahí cuando el compresor suelta entre frase y frase. Se reinicia con los
+      // demás picos.
+      comprimeDb: c.reduccionPicoDb >= REDUCCION_RELEVANTE_DB
+        ? Math.round(c.reduccionPicoDb)
+        : 0,
+      puerta: c.dinamica.puerta === 'ACTIVO',
+      deesser: c.dinamica.deesser === 'ACTIVO',
+    }])),
+    { equal: mismosProcesos },
+  );
 
   readonly resultados = this.asistente.resultados;
 
@@ -257,10 +423,13 @@ export class GainComponent {
     // termina una captura: `resultadoDe` consulta el mismo estado pero no lo
     // declara como dependencia.
     this.asistente.resultados();
+    const procesos = this.procesos();
     return this.banda.asignaciones().map((a) => {
       const indice = a.ui24rInputIndex as number;
       const perfil = this.banda.perfilDe(a);
       const r = this.asistente.resultadoDe(indice);
+      const proceso = procesos.get(indice) ?? SIN_PROCESO;
+      const etiqueta = etiquetaDeProceso(proceso);
       if (r === undefined) {
         return {
           asignacion: a, indice, nombre: a.nombreEnConsola, medido: false,
@@ -268,31 +437,56 @@ export class GainComponent {
           ganancia: '—', delta: '—', sube: false, baja: false,
           confianza: 'Sin datos', tonoConfianza: 'neutro' as TonoDeInsignia,
           accion: 'Medir',
+          puedeAplicar: false,
+          motivoNoAplica: 'todavía no se midió este canal',
+          textoAplicar: 'Aplicar',
+          condicionada: etiqueta !== '', procesos: etiqueta,
         };
       }
       const db = r.propuesta.deltaDb;
       const conf = CONFIANZA[r.propuesta.confianza] ?? { texto: 'Sin datos', tono: 'neutro' as TonoDeInsignia };
+      const sinDatos = !Number.isFinite(r.analisis.picoDb);
       return {
         asignacion: a,
         indice,
         nombre: a.nombreEnConsola,
         medido: true,
-        pico: r.analisis.picoDb.toFixed(1),
-        margen: r.analisis.margenDb.toFixed(1),
+        // **`—` y no `-Infinity`.** Sin señal el pico es −∞ y el margen es
+        // infinito, y `toFixed` los imprime literales. Apareció recorriendo la
+        // aplicación en la tablet con el canal en silencio.
+        pico: dbLegible(r.analisis.picoDb),
+        margen: dbLegible(r.analisis.margenDb),
         objetivo: `${perfil.margenObjetivoDb}`,
         // «—» y no un número: si la consola no dijo la ganancia, no hay
         // ganancia que mostrar. El delta sigue valiendo, porque sale del pico
         // medido y no de la ganancia.
         ganancia: r.propuesta.gainActualDb === null ? '—' : r.propuesta.gainActualDb.toFixed(0),
-        delta: Math.abs(db) < 0.05 ? '—' : `${db > 0 ? '+' : ''}${db.toFixed(1)}`,
-        sube: db > 0.05,
-        baja: db < -0.05,
+        // **Sin muestras no se propone nada.** Con el canal en silencio esto
+        // mostraba «+3.0» junto a una confianza que decía SIN DATOS: un número
+        // que invita a mover una perilla, sacado de una medición que no existió.
+        // La propuesta se calcula igual —el motor la acota y explica por qué—
+        // pero acá no se muestra, que es donde el usuario decide.
+        delta: sinDatos || Math.abs(db) < 0.05
+          ? '—'
+          : `${db > 0 ? '+' : ''}${db.toFixed(1)}`,
+        sube: !sinDatos && db > 0.05,
+        baja: !sinDatos && db < -0.05,
         confianza: conf.texto,
         tonoConfianza: conf.tono,
         accion: 'Repetir',
+        ...this.estadoDeAplicar(r, sinDatos, db),
+        // La insignia sale del estado **de ahora**, no del de la captura: si el
+        // usuario puenteó el compresor después de medir, la insignia se apaga y
+        // lo que queda es la recomendación vieja diciendo que hay que repetir.
+        // Es lo correcto: el canal ya no está condicionado, la medición sí.
+        condicionada: etiqueta !== '',
+        procesos: etiqueta,
       };
     });
   });
+
+  /** Si algún canal de la lista tiene proceso entre el previo y el parlante. */
+  readonly hayCondicionados = computed(() => this.filas().some((f) => f.condicionada));
 
   readonly tituloCaptura = computed(() => {
     const i = this.asistente.canalEnCurso();
@@ -305,6 +499,120 @@ export class GainComponent {
       ? 'Preparate'
       : `Tocá o cantá la parte más fuerte que vayas a hacer en el show, durante ${DURACION_CAPTURA_S} segundos`,
   );
+
+  /** El canal que se está aplicando ahora mismo, o `null`. */
+  readonly aplicando = signal<number | null>(null);
+  /** Lo último que pasó al aplicar, para contárselo al usuario. */
+  readonly aviso = signal<string | null>(null);
+
+  /**
+   * Si la fila puede aplicarse, y con qué texto.
+   *
+   * **El texto cambia cuando la confianza es MEDIA.** ADR-026 decidió que MEDIA
+   * aplica —exigir ALTA dejaría el botón apagado casi siempre y el operador
+   * aplicaría a mano igual— pero con el aviso a la vista. «Aplicar igual» dice
+   * en dos palabras que hay algo para mirar antes.
+   */
+  private estadoDeAplicar(
+    r: ResultadoCaptura,
+    sinDatos: boolean,
+    deltaDb: number,
+  ): { puedeAplicar: boolean; motivoNoAplica: string | null; textoAplicar: string } {
+    if (sinDatos || Math.abs(deltaDb) < 0.05) {
+      return {
+        puedeAplicar: false,
+        motivoNoAplica: sinDatos
+          ? 'no hubo señal para medir: volvé a medir con el canal sonando'
+          : 'la ganancia ya está donde corresponde',
+        textoAplicar: 'Aplicar',
+      };
+    }
+    const v = this.aplicador.puedeAplicar(r.propuesta.confianza, r.indice);
+    return {
+      puedeAplicar: v.puede,
+      motivoNoAplica: v.motivo,
+      textoAplicar: r.propuesta.confianza === 'MEDIUM' ? 'Aplicar igual' : 'Aplicar',
+    };
+  }
+
+  /**
+   * Aplica la propuesta y **vuelve a medir para verificar**.
+   *
+   * La segunda medición es lo que convierte esto en un lazo. Que el testigo vea
+   * el valor nuevo prueba que la perilla se movió, no que haya servido: el caso
+   * que interesa es el otro, cuando la propuesta era razonable, el valor entró
+   * y el efecto no llegó (ADR-026).
+   */
+  async aplicar(fila: FilaDeGanancia): Promise<void> {
+    const r = this.resultados().find((x) => x.indice === fila.indice);
+    const asignacion = this.banda.asignacionDe(fila.indice);
+    if (r === undefined || asignacion === undefined) return;
+
+    const ruta = this.mixer.rutaDeGananciaDe(fila.indice);
+    const crudoActual = this.mixer.crudoDe(ruta);
+    if (ruta === null || crudoActual === null) {
+      this.aviso.set('no se sabe de qué previo viene este canal, así que no se toca nada');
+      return;
+    }
+
+    this.aplicando.set(fila.indice);
+    this.aviso.set(null);
+    try {
+      const res = await this.aplicador.aplicar({
+        canal: fila.indice,
+        rutaGanancia: ruta,
+        crudoActual,
+        gainPropuestoDb: r.propuesta.gainPropuestoDb ?? 0,
+        confianza: r.propuesta.confianza,
+      }, this.sesion.actual()?.sesion.id ?? '');
+
+      if (res.estado !== 'APLICADA') { this.aviso.set(res.motivo); return; }
+
+      this.aviso.set(
+        `Listo: la ganancia quedó en ${res.quedoEnDb.toFixed(0)} dB. ` +
+        'Seguí tocando unos segundos para comprobar que sirvió.',
+      );
+
+      // La verificación es otra ventana de medición sobre el mismo canal. Se
+      // reutiliza la captura del asistente en vez de inventar un camino
+      // paralelo: así el análisis de las dos ventanas es el mismo.
+      await this.asistente.capturar(asignacion);
+      const despues = this.resultados().find((x) => x.indice === fila.indice);
+      if (despues === undefined) return;
+
+      const v = verificarAjuste({
+        margenAntesDb: r.analisis.margenDb,
+        margenDespuesDb: despues.analisis.margenDb,
+        objetivoDb: this.banda.perfilDe(asignacion)?.margenObjetivoDb ?? 0,
+        ventanaPosteriorSuficiente: despues.analisis.suficiente,
+      });
+      this.aviso.set(this.contarVerificacion(v));
+    } finally {
+      this.aplicando.set(null);
+    }
+  }
+
+  /**
+   * El veredicto de la verificación, en castellano.
+   *
+   * **`SIN_MEDICION` no dice que el cambio haya fallado**, y el texto lo
+   * refleja: que el músico haya dejado de tocar no es información sobre el
+   * ajuste. Confundir las dos cosas llevaría a revertir cambios buenos.
+   */
+  private contarVerificacion(v: ReturnType<typeof verificarAjuste>): string {
+    switch (v.estado) {
+      case 'EN_EL_OBJETIVO':
+        return `Verificado: el canal quedó con ${v.margenDb.toFixed(1)} dB de margen, que es lo que su perfil busca.`;
+      case 'MEJORO':
+        return `Mejoró: quedó en ${v.margenDb.toFixed(1)} dB de margen y todavía faltan ${v.faltaDb.toFixed(1)}. Podés volver a medir y aplicar otro paso.`;
+      case 'NO_MEJORO':
+        return `El cambio entró pero el margen no se movió (${v.margenDb.toFixed(1)} dB). Puede que el previo esté en su tope o que haya un límite antes. Revisá antes de insistir.`;
+      case 'EMPEORO':
+        return `Quedó peor que antes: ${v.margenDb.toFixed(1)} dB de margen. Conviene volver atrás.`;
+      case 'SIN_MEDICION':
+        return 'El cambio se aplicó, pero no hubo señal para comprobar si sirvió. Volvé a medir con el canal sonando.';
+    }
+  }
 
   medir(a: ChannelAssignment): void { void this.asistente.capturar(a); }
 

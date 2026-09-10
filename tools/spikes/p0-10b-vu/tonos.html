@@ -1,0 +1,162 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de tonos — SPK-P0.10b</title>
+<!--
+  Fuente de señal controlada, para medir el medidor de la consola.
+
+  Se abre en el navegador de la tablet y su salida entra a la consola por el
+  dispositivo Bluetooth enchufado a los canales 21 y 22. Con eso se puede
+  decidir exactamente qué señal entra y cuándo, que es lo que hoy falta para
+  medir linealidad y balística sin depender de que alguien toque un
+  instrumento en el momento justo.
+
+  **Por qué vive acá y no en la aplicación.** El producto no reproduce audio
+  por diseño, y el motor de audio está detrás del control de paso G-B. Meter un
+  generador en la aplicación para una medición sería saltearse esa decisión.
+  Esto es código de spike: no entra en el producto y no necesita tests.
+
+  **Lo que esta fuente NO puede afirmar.** El camino lleva un códec Bluetooth
+  con pérdida y un control de volumen del sistema que Android puede mover solo.
+  Los niveles de acá son exactos **en el origen**, no en la entrada de la
+  consola: sirven para medir DIFERENCIAS —bajar 6 dB tiene que leerse 6 dB más
+  abajo— y no para afirmar que un tono de −20 dBFS llega como −20 dBFS. Eso
+  exige el bucle físico con interfaz de audio que pide SPK-P0.10b.
+
+  Se maneja por el protocolo de depuración desde la máquina de desarrollo:
+  todas las funciones cuelgan de `window.vse`.
+-->
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; padding: 1rem; background: #111; color: #eee; }
+  h1 { font-size: 1.1rem; margin: 0 0 .25rem; }
+  p.aviso { color: #f4b; font-size: .8rem; margin: 0 0 1rem; }
+  button { font-size: 1rem; padding: .9rem 1rem; margin: .2rem; border-radius: .4rem;
+           border: 1px solid #555; background: #222; color: #eee; min-height: 44px; }
+  button.activo { background: #2a5; color: #041; border-color: #2a5; }
+  #estado { margin-top: 1rem; font-variant-numeric: tabular-nums; color: #9cf; }
+</style>
+
+<h1>Generador de tonos — SPK-P0.10b</h1>
+<p class="aviso">
+  Niveles exactos en el origen. Por Bluetooth no son dBFS en la consola: sirven
+  para medir diferencias, no valores absolutos.
+</p>
+
+<div id="botones"></div>
+<div id="estado">detenido</div>
+
+<script>
+  const NIVELES_DB = [-40, -30, -20, -12, -6, -3, -1, 0];
+  const FRECUENCIA_HZ = 1000;
+
+  let ctx = null;
+  let osc = null;
+  let gan = null;
+
+  function contexto() {
+    if (ctx === null) ctx = new AudioContext();
+    return ctx;
+  }
+
+  /** De decibeles bajo fondo de escala a amplitud lineal. */
+  function amplitud(db) {
+    return db <= -120 ? 0 : Math.pow(10, db / 20);
+  }
+
+  function estado(texto) {
+    document.getElementById('estado').textContent = texto;
+  }
+
+  const vse = {
+    /** Tono continuo. `db` es sobre fondo de escala del origen. */
+    async tono(db = -20, hz = FRECUENCIA_HZ) {
+      const c = contexto();
+      await c.resume();
+      if (osc === null) {
+        osc = c.createOscillator();
+        gan = c.createGain();
+        osc.connect(gan).connect(c.destination);
+        osc.start();
+      }
+      osc.frequency.value = hz;
+      gan.gain.value = amplitud(db);
+      estado(`tono ${hz} Hz a ${db} dB (origen)`);
+      return { db, hz };
+    },
+
+    /** Corta la señal sin destruir el grafo: el silencio también se mide. */
+    silencio() {
+      if (gan !== null) gan.gain.value = 0;
+      estado('silencio');
+      return { db: null };
+    },
+
+    /**
+     * Escalera de niveles, para medir linealidad.
+     *
+     * Cada paso dura `segundos`. Devuelve cuándo empezó cada uno, para poder
+     * cruzarlo contra lo que se leyó de la consola en ese instante.
+     */
+    async escalera(pasos = NIVELES_DB, segundos = 6, hz = FRECUENCIA_HZ) {
+      const marcas = [];
+      for (const db of pasos) {
+        await this.tono(db, hz);
+        marcas.push({ db, desdeMs: Date.now() });
+        await new Promise((r) => setTimeout(r, segundos * 1000));
+      }
+      this.silencio();
+      return marcas;
+    },
+
+    /**
+     * Ráfaga: silencio, golpe de nivel, silencio. Es lo que mide la balística.
+     *
+     * El tiempo de subida se mide sobre el flanco de entrada y el de caída
+     * sobre el de salida; por eso los dos silencios tienen que ser largos
+     * comparados con la caída que se espera.
+     */
+    async rafaga(db = -6, msTono = 500, msSilencio = 3000, veces = 5, hz = FRECUENCIA_HZ) {
+      const marcas = [];
+      for (let i = 0; i < veces; i++) {
+        this.silencio();
+        await new Promise((r) => setTimeout(r, msSilencio));
+        const enMs = Date.now();
+        await this.tono(db, hz);
+        marcas.push({ enMs, db });
+        await new Promise((r) => setTimeout(r, msTono));
+        this.silencio();
+      }
+      return marcas;
+    },
+
+    /** Apaga todo y suelta el aparato de audio. */
+    async detener() {
+      if (osc !== null) { osc.stop(); osc.disconnect(); osc = null; gan = null; }
+      if (ctx !== null) { await ctx.close(); ctx = null; }
+      estado('detenido');
+    },
+  };
+
+  window.vse = vse;
+
+  // Botones para poder usarlo a mano en la tablet, sin depuración de por medio.
+  const contenedor = document.getElementById('botones');
+  for (const db of NIVELES_DB) {
+    const b = document.createElement('button');
+    b.textContent = `${db} dB`;
+    b.onclick = () => vse.tono(db);
+    contenedor.append(b);
+  }
+  for (const [texto, accion] of [
+    ['Silencio', () => vse.silencio()],
+    ['Escalera', () => vse.escalera()],
+    ['Ráfagas', () => vse.rafaga()],
+    ['Detener', () => vse.detener()],
+  ]) {
+    const b = document.createElement('button');
+    b.textContent = texto;
+    b.onclick = accion;
+    contenedor.append(b);
+  }
+</script>

@@ -1,0 +1,32 @@
+Que trae el flujo RTA — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24, fuente conocida por el canal 10.
+
+HIPOTESIS QUE SE PROBO: que `RTA^` trajera el espectro de la consola, lo que
+abriria el dominio de la frecuencia sin motor de audio ni microfono de
+medicion, y sin esperar al control de paso G-B.
+
+RESULTADO: NO. No es espectro.
+
+1. Tonos de 100 Hz, 1 kHz y 10 kHz a -12 dBFS: NINGUN byte de la trama se
+   movio respecto del silencio. La senal si llegaba: VU2 marcaba -48,7 dB en
+   el canal 10 al mismo tiempo que el RTA no acusaba nada.
+2. La trama mide 122 bytes y su cabecera vale [0,0,0,0]. El primer byte es la
+   cantidad de canales, y viene en CERO: la consola manda la trama vacia.
+3. En el mixer.html la procesa `parseVUAdata`, que lee un byte por entrada
+   desde el desplazamiento 4 y los manda a los medidores de la pagina de
+   Automix. Y solo la procesa si esa pagina esta abierta.
+
+O sea: RTA es un segundo flujo de NIVELES por entrada, para Automix, vacio
+mientras nadie use esa pagina. Sirve como senal de vida --que es para lo que
+la aplicacion ya lo usa, y para eso es perfecto: llega con senal y sin ella--
+pero no da informacion de frecuencia.
+
+LO QUE QUEDA POR PROBAR, y es concreto:
+La consola SI tiene funcion RTA: hay cadenas de interfaz para ella, incluida
+"HOLD RTA". Es probable que el espectro se transmita solo cuando un cliente lo
+enciende. Se comprueba abriendo el mixer.html de la consola en un navegador,
+activando el RTA en un canal, y capturando el trafico del socket al mismo
+tiempo para ver si aparece un tipo de mensaje nuevo.
+Si aparece, cambia lo que este proyecto puede medir sin hardware adicional.
+Si no aparece, el dominio de la frecuencia queda donde el plan lo puso: detras
+del motor de audio y del microfono de medicion.

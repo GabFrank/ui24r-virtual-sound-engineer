@@ -55,6 +55,34 @@ export class MezcladoraFalsa implements MixerDomainAPI {
     return this.snapshots;
   }
 
+  /**
+   * La mezcladora falsa guarda igual que la de verdad: agrega a la lista.
+   *
+   * Se le pone un nombre fijo para que los tests puedan predecirlo. Devolver
+   * `null` se consigue vaciando `puedeGuardarInstantanea`, que es como se
+   * prueba el camino en el que no hay punto de retorno.
+   */
+  puedeGuardarInstantanea = true;
+
+  /**
+   * El analizador, en la mezcladora falsa.
+   *
+   * No hace nada porque ninguna prueba del ejecutor lo usa: el analizador es de
+   * lectura y las transacciones son de escritura. Están para que el tipo cierre
+   * y para que, el día que algo del ejecutor los necesite, se vea que faltan.
+   */
+  alEspectro(): () => void { return () => {}; }
+  tomarAnalizador(): boolean { return false; }
+  devolverAnalizador(): void {}
+  fuenteOriginalDelAnalizador(): string | null { return null; }
+
+  async guardarInstantanea(): Promise<string | null> {
+    if (!this.puedeGuardarInstantanea) return null;
+    const nombre = 'VSE_AUTO_1';
+    if (!this.snapshots.includes(nombre)) this.snapshots = [...this.snapshots, nombre];
+    return nombre;
+  }
+
   leer(parametro: string): ReadResult {
     const tiene = this.confirmados.has(parametro);
     return {
@@ -94,7 +122,10 @@ export class MezcladoraFalsa implements MixerDomainAPI {
 
     this.valores.set(parametro, valor);
     this.confirmados.add(parametro);
-    return { status: 'APPLIED', confirmedBy: 'ECHO', actual: valor, motivo: null };
+    // `WITNESS` y no `ECHO`: contra esta consola el eco no existe, así que un
+    // doble que lo devolviera estaría fingiendo algo que el adaptador real no
+    // puede producir (ADR-024).
+    return { status: 'APPLIED', confirmedBy: 'WITNESS', actual: valor, motivo: null };
   }
 
   /** Simula que otro cliente cambió un valor. */

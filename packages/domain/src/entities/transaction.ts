@@ -3,11 +3,14 @@ import type { MeasurementId, RecommendationId, SnapshotId, TransactionId } from 
 /**
  * Cómo se confirmó que una escritura llegó.
  *
- * El protocolo no tiene confirmación explícita. Si la consola no devuelve eco,
- * solo el fader, el silencio y la ganancia se pueden verificar indirectamente
- * por los medidores (ADR-005, INV-011).
+ * El protocolo no tiene confirmación explícita, y **está medido que la consola
+ * no le devuelve el eco a quien escribe**: `ECHO` sobrevive solo para poder
+ * leer diarios viejos, nunca se produce. Lo que sí funciona es abrir una
+ * segunda conexión testigo, que ve el cambio a los 27 ms (ADR-024). El fader,
+ * el silencio y la ganancia además se pueden verificar por los medidores
+ * cuando hay señal (INV-011).
  */
-export type ConfirmedBy = 'ECHO' | 'VU' | 'TIMEOUT' | 'NONE';
+export type ConfirmedBy = 'WITNESS' | 'ECHO' | 'VU' | 'TIMEOUT' | 'NONE';
 
 export type TransactionState =
   | 'DRAFT'

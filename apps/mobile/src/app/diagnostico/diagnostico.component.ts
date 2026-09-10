@@ -24,7 +24,7 @@ import { DiagnosticoService } from './diagnostico.service';
   template: `
     <div class="pagina pagina-angosta">
       <ui-page-header titulo="Prueba de conexión"
-        descripcion="Mide la cadencia de los medidores y el tiempo de reconexión desde esta tablet. No escribe nada en la consola: sólo escucha y cronometra.">
+        descripcion="Mide la cadencia de los dos flujos que manda la consola y el tiempo de reconexión desde esta tablet. No escribe nada: sólo escucha y cronometra.">
       </ui-page-header>
 
       @if (!conectado()) {
@@ -36,9 +36,16 @@ import { DiagnosticoService } from './diagnostico.service';
 
       <ui-card>
         <div class="fila">
-          <ui-stat rotulo="Tramas recibidas" [valor]="tramas().toString()" />
-          <ui-stat rotulo="Cadencia" [valor]="cadencia()" />
+          <ui-stat rotulo="Analizador (RTA)" [valor]="latidos().toString()" />
+          <ui-stat rotulo="Cadencia del analizador" [valor]="cadenciaDelAnalizador()" />
+          <ui-stat rotulo="Medidores (VU2)" [valor]="tramas().toString()" />
+          <ui-stat rotulo="Cadencia de medidores" [valor]="cadencia()" />
         </div>
+        <p class="nota">
+          La conexión se juzga por el analizador, que llega igual en silencio.
+          Los medidores se apagan cuando no hay señal: su cadencia dice cuánto
+          audio hubo, no cómo está la conexión.
+        </p>
         <div class="acciones">
           @if (midiendo()) {
             <ui-button variante="secundario" (pulsado)="detener()">Detener</ui-button>
@@ -121,10 +128,10 @@ import { DiagnosticoService } from './diagnostico.service';
     .fila {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-      gap: var(--espacio-3);
+      gap: var(--sp-3);
     }
 
-    .acciones { display: flex; flex-wrap: wrap; gap: var(--espacio-2); margin-top: var(--espacio-3); }
+    .acciones { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
     .acciones ui-button { flex: 1 1 auto; }
 
     /* El paro flota fijo en la esquina inferior derecha y se pinta por encima
@@ -134,14 +141,14 @@ import { DiagnosticoService } from './diagnostico.service';
     @media (max-width: 599px) {
       .acciones {
         flex-direction: column;
-        padding-inline-end: calc(var(--alto-paro-telefono) + var(--espacio-3));
+        padding-inline-end: calc(var(--alto-paro-telefono) + var(--sp-3));
       }
     }
-    h2 { font-size: var(--texto-3); margin: 0 0 var(--espacio-2); }
-    .nota { color: var(--texto-suave); font-size: var(--texto-1); margin: var(--espacio-2) 0 0; }
-    .nota.aviso { color: var(--aviso); }
+    h2 { font-size: var(--txt-lg); margin: 0 0 var(--sp-2); }
+    .nota { color: var(--muted); font-size: var(--txt-sm); margin: var(--sp-2) 0 0; }
+    .nota.aviso { color: var(--warn); }
     table { width: 100%; border-collapse: collapse; text-align: center; }
-    th, td { padding: var(--espacio-2); border-bottom: 1px solid var(--borde); }
+    th, td { padding: var(--sp-2); border-bottom: 1px solid var(--line); }
     .desplaza-x { overflow-x: auto; }
   `],
 })
@@ -152,10 +159,14 @@ export class DiagnosticoComponent {
 
   readonly midiendo = this.diag.midiendo;
   readonly tramas = this.diag.tramas;
+  readonly latidos = this.diag.latidos;
   readonly ciclos = this.diag.ciclos;
   readonly esperando = this.diag.esperandoReconexion;
   readonly conectado = computed(() => this.conexion.estado() === 'CONNECTED');
   readonly cadencia = computed(() => resumenDeCadencia(this.diag.cadencia()));
+  readonly cadenciaDelAnalizador = computed(
+    () => resumenDeCadencia(this.diag.cadenciaDelAnalizador()),
+  );
 
   iniciar(): void { this.diag.iniciar(); }
   detener(): void { this.diag.detener(); }

@@ -1,0 +1,2756 @@
+Manual técnico del firmware Soundcraft Ui24R
+Firmware 3.5.8328 • Análisis estático para desarrollar una aplicación de control • Edición 1 • 9 de septiembre de 2026
+Este manual explica la arquitectura del paquete de actualización, la aplicación web recuperada, el protocolo de control y las reglas de interfaz que afectan a un cliente alternativo. Está dirigido al equipo que desarrolla la app de control de Gabriel Franco. Incluye fórmulas, estructuras de mensajes, parámetros, procedimientos y referencias que permiten volver al código de origen.
+El paquete permite reconstruir una parte extensa del control remoto. También muestra que algunas operaciones visibles son secuencias de cambios ejecutadas por el navegador. Una app propia debe reproducir esas reglas cuando corresponda, además de enviar mensajes compatibles.
+La consola del usuario declara 3.4.8318-ui24. El archivo analizado declara 3.5.8328. Este manual documenta la segunda versión; no certifica compatibilidad de cada función con la primera. El procesamiento DSP, las condiciones eléctricas y las respuestas de una consola real necesitan evidencia adicional a los archivos.
+Contenido
+1 Alcance y lectura de la evidencia
+2 Identidad y estructura del paquete
+3 Arranque y almacenamiento por capas
+4 Actualización y recuperación
+5 Servicios y componentes del sistema
+6 Recursos web recuperados
+7 Transporte de control
+8 Estado inicial y actualizaciones
+9 Claves y tipos de canales
+10 Reglas de escritura y estéreo
+11 Nivel ganancia phantom y retardo
+12 Ecualización y supresión de realimentación
+13 Compresor gate y ducker
+14 Efectos y tempo
+15 Envíos auxiliares matrices y grupos
+16 Ruteo y soundcheck
+17 Automix
+18 Shows snapshots cues y presets
+19 Reproducción y grabación
+20 Formato de las mediciones
+21 Cascada reloj y sincronización de clientes
+22 Footswitch acciones externas y UDP
+23 Red y administración HTTP
+24 Persistencia local y variantes de interfaz
+25 Secuencias de referencia para la app propia
+26 Arquitectura de implementación propuesta
+27 Validación y límites del conocimiento
+Anexo A Fuentes e inventario verificable
+Anexo B Catálogo de comandos
+Anexo C Conversiones y comprobaciones numéricas
+Anexo D Índice de claves y fragmentos de parámetros
+Anexo E Presets de fábrica
+Anexo F Parámetros presentes en los presets
+Anexo G Identificadores Digitech
+Anexo H Localizadores de funciones
+Anexo I Reproducción del análisis
+1 Alcance y lectura de la evidencia
+Se verificó la integridad CRC de todos los miembros del ZIP, se calcularon huellas SHA256, se extrajeron las cuatro imágenes de disco y el ramdisk del kernel, y se recuperaron recursos comprimidos incrustados en el ejecutable del mezclador. Se analizaron sintácticamente los dos programas web principales sin iniciar los servicios de la consola ni ejecutar sus scripts de actualización.
+Las referencias W1 y W2 indican el JavaScript original extraído de los recursos grandes. Sus números de línea corresponden al texto del primer script con contenido de cada HTML, conservando los saltos de línea originales. La referencia a una función permite localizarla incluso si se vuelve a formatear el archivo. Los offsets de recursos son bytes desde el inicio de umixsrv; las líneas JavaScript no son offsets binarios.
+Nivel
+Significado
+Uso en implementación
+Confirmado en archivo
+Texto, estructura o lógica observada directamente
+Base documental para implementar y probar
+Derivado del código
+Consecuencia calculada de una fórmula o flujo explícito
+Conservar fórmula y condiciones de origen
+Indicio binario
+Cadena o dependencia presente en un ejecutable
+No tratarla por sí sola como API operativa
+Pendiente en consola
+Semántica o comportamiento que exige observación dinámica
+No prometer compatibilidad ni efecto sobre audio
+Recomendación
+Decisión propuesta para la app propia
+No atribuirla al fabricante
+Los valores de un preset son ejemplos existentes, no límites admitidos ni valores de fábrica universales. Las funciones reset describen la acción de la interfaz, no necesariamente el arranque del DSP. Un nombre de comando en una enumeración puede no tener un emisor activo. La existencia de un servicio en una imagen no demuestra que esté habilitado en la configuración de usuario.
+2 Identidad y estructura del paquete
+El nombre recibido es uiupdate-k-3.5.8328-ui24v3.zip. El archivo target.id contiene soundcraft-ui24. Tanto etc/mixer.version como etc/system.version contienen 3.5.8328. El sufijo ui24v3 del ZIP no sustituye esos identificadores internos.
+El ZIP contiene kernel.img, cuatro imágenes numeradas, preupdate.sh, update.sh, target.id y firmas .sig asociadas. Las imágenes 100-system.img y 200-mixer.img tienen estructuras ext reconocibles y se pudieron extraer con debugfs; las otras dos también fueron extraídas. kernel.img usa una cabecera Android boot image. Ese formato de empaquetado no significa que el equipo ejecute Android como sistema de usuario.
+El inventario extraído contiene 918 archivos regulares: 168 en la imagen de mezclador, 195 en sistema, 11 en Xorg, 519 en Chrome y 25 en el ramdisk. No cuenta directorios ni enlaces simbólicos como archivos independientes. El ramdisk contiene 346 entradas al contar sus distintos tipos. El inventario de Chrome incluye bibliotecas, recursos, localizaciones y un perfil distribuido; no todo archivo corresponde a una función de mezcla.
+Las firmas tienen 192 bytes cada una. Se constató su presencia; no se realizó una validación criptográfica con una clave pública de confianza. CRC y SHA256 permiten detectar cambios de contenido, pero no acreditan por sí solos el origen oficial.
+Evidencia: ZIP y target.id; etc/mixer.version; etc/system.version; cabecera de kernel.img; inventarios de extracción.
+3 Arranque y almacenamiento por capas
+El script init del ramdisk monta devtmpfs, proc y sysfs. Define ROOT_DEVICE como /dev/mmcblk0p7 y USER_DEVICE como /dev/mmcblk0p1. Comprueba los sistemas de archivos con e2fsck y monta primero la base de sistema en solo lectura. Esas rutas pertenecen al esquema observado en el paquete; no deben reutilizarse como destinos de escritura desde la app de control.
+Después monta la partición de usuario, recorre sus archivos /fs/*.img en orden de versión y monta cada imagen en solo lectura. Construye un sistema de archivos unionfs con la capa de usuario escribible por encima de las imágenes y de la base. Al final mueve los montajes de dispositivos y transfiere el arranque a systemd mediante switch_root.
+Esto explica por qué una configuración que vemos dentro del firmware puede diferir de la consola instalada: la capa de usuario puede sustituir archivos de las imágenes. También explica por qué el paquete de actualización no equivale a una copia íntegra de la memoria interna. La base almacenada en p7, la configuración del usuario y sus shows no están incluidos íntegramente en este ZIP.
+Si una imagen se monta correctamente, init elimina su copia .old. Si el montaje falla y existe una copia .old, elimina la imagen fallida y restaura el nombre anterior. El script no vuelve a montar explícitamente esa imagen restaurada dentro de la misma iteración. Por ello no debe describirse como una recuperación transaccional completa e inmediata.
+El arranque limita scaling_max_freq a 1008000 y reconfigura un controlador USB para mantener un hub en modo high speed. Son ajustes de este script, no mediciones de temperatura, frecuencia efectiva o capacidad de alimentación USB. No hay base aquí para deducir que se pueda alimentar un ventilador determinado.
+Evidencia: B1, init del ramdisk, variables ROOT_DEVICE, USER_DEVICE y DIRS; montaje unionfs y bloque de imágenes .old.
+4 Actualización y recuperación
+preupdate.sh crea /var/update, descomprime las imágenes y el kernel, comunica el progreso mediante /tmp/umixpipe0, verifica kernel.img con verifyfile y, si la verificación permite la operación, lo copia a /dev/mmcblk0p6. Después conserva las imágenes anteriores con extensión .old y mueve las nuevas a /fs. Finalmente solicita reiniciar. update.sh, en este paquete concreto, termina con exit 0 sin realizar otras tareas activas.
+El script borra cachés de Chrome durante la actualización. No modifica la interfaz por un mecanismo separado: los recursos web principales están incrustados en el nuevo umixsrv que contiene 200-mixer.img.
+Hay un detalle que merece revisión: la condición previa al flasheo compara las salidas completas de md5sum para un dispositivo y un archivo. Normalmente esas salidas contienen también nombres de ruta diferentes. La comparación podría resultar desigual aunque coincidan los hashes. Es una observación estática sobre la condición, no una prueba de actualización fallida ni de daño.
+El script visible llama a verifyfile para el kernel, y el arranque verifica scripts de actualización antes de ejecutarlos. No se reconstruyó el flujo completo del verificador ni todas las verificaciones anteriores realizadas por umixsrv. No se debe concluir que las demás imágenes se aceptan sin verificación solo porque ese paso no aparezca en preupdate.sh.
+El arranque distingue restauración de red, contraseña de configuración, bloqueo de la mezcla y restauración completa. Examina marcadores USB como netreset.txt, configpass.txt, masterpass.txt y fullreset.txt cuando se cumple la condición de recuperación. La restauración completa incluye formatear la partición de usuario y restaurar archivos de fábrica; no es un método de extracción. Las ramas destinadas a otros modelos no son instrucciones para la Ui24R.
+Evidencia: U1 preupdate.sh; U2 update.sh; B1 init, bloques de verificación, reset y restauración de fábrica.
+5 Servicios y componentes del sistema
+umixsrv es un ejecutable ELF ARM de 32 bits, dinámicamente enlazado, de 19 559 892 bytes y sin símbolos de depuración. El servicio lo inicia en /mixer con el argumento -port=80. Tiene Restart=always, Nice=-10, prioridad de E/S best-effort 0 y afinidad CPU 0-3. El nombre del servicio es Ui Mixer Daemon.
+Xorg y Chrome se ejecutan como servicios separados con prioridad de CPU y E/S inferior a la configurada para umixsrv. x.service usa Nice=17 y CPUAffinity=3. chrome.service usa Nice=17 y CPUAffinity=2,3. Son políticas solicitadas al planificador, no evidencia de que todos los núcleos estén ocupados o de que exista aislamiento de tiempo real garantizado.
+startchrome.sh espera a que exista un servidor en 127.0.0.1:80 y abre http://127.0.0.1/mixer.html#local en modo kiosco. Configura DISPLAY=:0 y un perfil en /chrome/profile. La interfaz local usa por tanto el servidor HTTP del propio mezclador.
+La imagen incluye Qt 5.3.2 Core, bibliotecas FFmpeg, mpv, glibc y módulos en lib/modules/3.4.111. Estos nombres ayudan a identificar dependencias, pero no demuestran las opciones de compilación ni el uso de cada biblioteca en todas las operaciones. La versión exacta de Chrome y el kernel en ejecución no se certificaron mediante una sesión en el equipo.
+fw.jam, fw_scu.jam y ui24_Gowin.bin son artefactos binarios adicionales de hardware. Sus nombres y las cadenas SPI/UART del ejecutable justifican investigarlos por separado; no revelan por sí solos el diseño lógico de la placa ni los algoritmos DSP.
+Evidencia: S1 umixsrv.service; S2 x.service; S3 chrome.service y startchrome.sh; ELF de umixsrv; inventario de bibliotecas.
+6 Recursos web recuperados
+Se identificaron 22 bloques comprimidos zlib con longitud descomprimida coherente, compatibles con recursos Qt. Entre ellos hay HTML, JavaScript, CSS, fuentes, SVG, un mapa de imágenes y un PNG. Este número describe los bloques recuperados por ese método; existen además recursos sin comprimir y contenido generado dinámicamente.
+W1 procede del bloque en el offset 18429544 de umixsrv y contiene 1 292 140 bytes descomprimidos. W2 procede del offset 18752107 y contiene 862 652 bytes. W1 se identifica como aplicación tablet en sus constantes; W2 corresponde a la variante phone. W1 contiene 593 declaraciones de función y 2039 llamadas relevantes de acceso a estado, enlaces de controles o envío. W2 contiene 452 y 1446 respectivamente. Esas cifras incluyen funciones de bibliotecas; no equivalen a cantidades de funcionalidades.
+La aplicación combina un modelo de estado JavaScript con widgets y dibujo Canvas. Incluye bibliotecas como Socket.IO 0.9.17; otros recursos identifican jQuery 1.10.2, Bootstrap 3.3.7, Bootstrap-select 1.12.1, teclado virtual, FastClick y WebGL-2D. Identificar componentes no equivale a realizar una auditoría de vulnerabilidades.
+curSetup, netConfig y staticInitDataArray pueden proceder de contenido generado por el servidor. Los bloques standalone y emulación contienen configuraciones de ejemplo para otros modelos. No se deben usar sus cantidades de canales, claves ni direcciones como estado real de una Ui24R. configFunctions activa capacidades Ui24R cuando curSetup.input es al menos 20: ruteo, latencia, gate, matrices, cues, aislamiento y multipista.
+Evidencia: W1 isStandalone, createData, configFunctions; W1 y W2 scripts principales; recursos W3 y W4 de configuración.
+7 Transporte de control
+La aplicación incorpora Socket.IO 0.9.17 con número de protocolo 1. netStart llama a io.connect y recibe eventos message. No es suficiente conectar una versión moderna de Socket.IO suponiendo compatibilidad de formato. Tampoco basta con enviar directamente SETD a un WebSocket sin reconstruir el encuadre y el establecimiento de sesión adecuados.
+La biblioteca forma URLs con recurso socket.io, número de protocolo, transporte y sesión. El servidor contiene la ruta /socket.io/. El endpoint concreto y la respuesta de handshake de una unidad instalada deben registrarse durante la validación dinámica. No se ha demostrado que todos los transportes alternativos incluidos en la biblioteca cliente estén implementados por el servidor.
+Capa
+Representación observada
+Ejemplo o consecuencia
+Transporte
+Socket.IO antiguo sobre sus transportes
+Estado de sesión y heartbeat propios
+Paquete message
+tipo:id:endpoint:datos
+3:::SETD^i.0.mute^1 para id y endpoint vacíos
+Mensaje de aplicación
+Verbo y campos separados por ^
+SETS^i.0.name^Voz
+Agrupación de aplicación
+Varios mensajes separados por salto de línea
+receiveMessage los separa antes de interpretarlos
+Telemetría
+Prefijo y carga Base64
+VU2^, VUA^ y RTA^
+El ejemplo de paquete 3::: se deriva de encodePacket y de su tabla de tipos. No sustituye una captura de conexión. La biblioteca también define tipos connect, heartbeat, json, event, ack, error y noop. Que exista ack en la biblioteca no prueba que cada SETD del mezclador reciba confirmación identificada.
+En connect, la aplicación registra host y puerto, envía la hora del navegador cuando no es la interfaz local y solicita SERIAL. initGUI envía ALIVE cada 1000 ms. Este ALIVE es distinto del heartbeat del transporte. La reconexión configura un límite de demora de 3000 ms e intentos infinitos; los fallos y errores fuerzan nuevas reconexiones.
+Evidencia: W1 netInit, netStart, sendMessage, initGUI; biblioteca io.version, io.protocol y parser.encodePacket; cadenas de M1 umixsrv.
+8 Estado inicial y actualizaciones
+dataValue es un diccionario de claves a valores. getValue devuelve null si no encuentra una clave. setValueX escribe primero en ese diccionario y después intenta enviar el cambio. Esta actualización es optimista: el envío puede fallar por desconexión y el valor local ya haber cambiado. Una app propia debería separar valor confirmado, edición pendiente y estado de conexión.
+Mensaje
+Tratamiento en el cliente
+INIT^JSON
+Analiza JSON, extiende dataValue y solicita redibujar
+SETD^clave^valor
+Convierte el tercer campo con parseFloat y llama putValue
+SETS^clave^texto
+Conserva texto y llama putValue
+MSG^texto
+Muestra un mensaje; admite identificadores de traducción con $
+DLGSHOW^ y DLGHIDE^
+Abren o cierran diálogos por identificador
+SHOWLIST^ y otras listas
+Actualizan el consumidor que esperaba esa lista
+receiveMessage separa primero por saltos de línea. receiveMessage2 utiliza split con límite 3 para SETD y SETS. No puede suponerse que el resto de una cadena con caracteres ^ se conserve. En nombres de escenas, la propia interfaz sustituye ^ por _. Para una implementación nueva, conviene validar separadores y saltos de línea antes de construir mensajes, y preservar los formatos específicos de cada operación.
+INIT mezcla propiedades en el diccionario existente; esa función no limpia primero las claves anteriores. Al reconectar o cambiar de unidad, la app propia debe establecer cómo invalida el estado viejo y cuándo considera completo el nuevo. No se ha identificado un número de revisión transaccional universal para las escrituras.
+Una respuesta SETD observada confirma que el cliente recibió ese valor en el protocolo; no mide su efecto acústico. Una ventana de guardado puede mostrarse inmediatamente después de enviar un comando y pedir una lista nueva. No debe interpretarse automáticamente como confirmación durable del almacenamiento.
+Evidencia: W1 getValue, setValueX, putValue, receiveMessage, receiveMessage2, parseCommand y controles de guardado de snapshots.
+9 Claves y tipos de canales
+Las tiras construyen un prefijo con familia e índice. Los índices de protocolo comienzan en cero y pueden diferir del número visible. Master utiliza m. sin índice de tira; sus ramas estéreo emplean sufijos específicos. Las cantidades deben obtenerse de curSetup y de las claves realmente presentes.
+Prefijo
+Entidad observada
+Ejemplo
+i.n.
+Canal de entrada lógico
+i.0.mix
+hw.n.
+Control de entrada física
+hw.0.gain
+l.n.
+Entrada de línea lógica
+l.0.src
+p.n.
+Canal del reproductor
+p.0.pan
+f.n.
+Retorno y procesador FX
+f.1.par1
+s.n.
+Subgrupo
+s.1.ducker
+a.n.
+Bus auxiliar
+a.0.mix
+v.n.
+VCA
+v.0.mix
+m.
+Master
+m.mix
+settings.
+Ajustes del estado del mezclador
+settings.soloMode
+var.
+Variables y estado operativo
+var.currentShow
+automix.
+Ajustes de mezcla automática
+automix.time
+No todas las propiedades se admiten en todas las familias. El catálogo de fragmentos del anexo documenta los lugares donde el cliente las enlaza, pero no es una autorización para construir cualquier combinación de prefijo y sufijo.
+La distinción i.n frente a hw.n es esencial. El canal lógico puede recibir una fuente diferente del previo físico de igual número. Para cambiar ganancia analógica o phantom, hay que resolver primero su fuente y las reglas de bloqueo. La app no debe deducir que i.0 implica siempre el conector físico 1.
+Evidencia: W1 Strip, GainStrip, MasterStrip, resetChannel y blockGainBySrc.
+10 Reglas de escritura y estéreo
+setValue aplica bloqueos, envía el cambio y, para ciertas familias y propiedades, genera escrituras adicionales para el canal enlazado o el envío estéreo. Por tanto, la sincronización visible de dos canales puede depender parcialmente del código del navegador. Un cliente alternativo necesita probar qué hace el servidor por sí mismo y qué debe reproducir.
+stereoIndex usa 0 para una mitad y 1 para su pareja: el código busca el índice siguiente o anterior, respectivamente. No se debe confundir con un booleano de activación. El valor que representa ausencia de enlace debe leerse del estado y de las reglas de la tira; no se certifica aquí una enumeración universal por simple analogía.
+La propagación genérica excluye gain, phantom, stereo, invert, delay, src, scsrc, r, color, name, stereoIndex y mtkrec. Pan también tiene tratamiento específico. Los envíos aux y mtx examinan el stereoIndex del bus destino y pueden construir otra clave. Copiar una propiedad sin sus excepciones produce comportamientos diferentes de la web oficial.
+settings.block.pass y los ajustes settings.block.* participan en la validación de interfaz; settings.master_pass es una preferencia del cliente. isBlocked y setValue no usan una lógica trivial de verdadero igual a bloqueado en todos los casos. Se debe conservar la semántica de cada categoría y no deducirla solo del nombre.
+La app propia debería centralizar estas reglas en una capa de comandos, con acciones explícitas como cambiarNivelDeParEstéreo. El componente visual no debería decidir por su cuenta qué claves adicionales escribir. Los cambios recibidos de la consola deben actualizar la vista sin iniciar otro ciclo de escrituras.
+Evidencia: W1 setValue, setValueX, isBlocked; controles stereoIndex y enlaces aux y mtx.
+11 Nivel ganancia phantom y retardo
+mix y los valores de envío usan una posición normalizada cuya relación con amplitud y dB no es lineal. VtoLIN contiene una aproximación exponencial polinómica con corrección cerca de cero. VtoDBf calcula dB desde esa amplitud; DBtoVf resuelve la inversa por búsqueda binaria, con límites explícitos para -200 y +10 dB. El valor zeroDbPos es 0.7647058823529421.
+Las versiones VtoDB y VtoDB2 formatean texto y usan reglas de redondeo y representación de silencio. No deben usarse como funciones numéricas de una automatización. El anexo conserva la fórmula de VtoLIN y ejemplos calculados a partir de la función numérica.
+VtoGAIN24 cuantiza la posición en 64 índices, consulta ui24pgains y resta 1. La tabla tiene pasos repetidos en su parte baja y pasos distintos en la alta. Su salida va de -6 a 57 según esa tabla. GAIN24toV calcula otra normalización lineal; no es una inversa exacta para todos los escalones. Esto merece un test explícito de ida y vuelta antes de implementar escritura por dB.
+La interfaz define PHANTOM_ON_DELAY=4000 y PHANTOM_OFF_DELAY=17000 como temporizaciones de control visual. No prueban el tiempo eléctrico de carga o descarga. También distingue phantom, hiz e invert, y bloquea controles de ganancia según la fuente elegida. Escribir phantom requiere resolver el previo físico afectado y respetar el flujo de confirmación del producto.
+Los retardos se manejan en segundos. askForDelay convierte milisegundos, muestras, metros, pies y expresiones de tiempo antes de validar el máximo pasado por cada control. W1 define SAMPLE_RATE=44100 para esas conversiones y no se encontró otra asignación en ese script. Esto documenta la conversión de la interfaz, no certifica por sí solo la frecuencia efectiva del motor de audio.
+Evidencia: W1 VtoLIN, VtoDBf, DBtoVf, ui24pgains, VtoGAIN24, GAIN24toV, askForDelay, VtoLATENCY y blockGainBySrc.
+12 Ecualización y supresión de realimentación
+La EQ paramétrica de canal usa ramas eq.b1 a eq.b4 con freq, q y gain, además de HPF, LPF y sus pendientes. La interfaz también contiene referencias a b5 en contextos concretos; su presencia no convierte todas las EQ de canal en cinco bandas. Debe respetarse el widget y el tipo de tira que origina cada referencia.
+FREQtoV y VtoFREQ relacionan la posición con una escala logarítmica de 20 a 22050 Hz. VtoQ transforma a Q entre 0.05 y 15. VtoEQGAIN20 y VtoEQGAIN15 representan escalas distintas de ganancia. Hay que asociar cada una a su control, no elegir una escala global para cualquier EQ.
+HPF interpreta exactamente cero como apagado; LPF interpreta exactamente uno como apagado. Estos valores son estados especiales, además de extremos numéricos. Un serializador que sustituya 0 por un pequeño epsilon puede encender un filtro que debía quedar desactivado.
+resetGraphEQ recorre 31 bandas de EQ gráfica. En auxiliares utiliza eq.peak.n; en master utiliza eq.peak.l.n y eq.peak.r.n y el enlace eq.linked. Las ganancias neutras se restablecen a 0.5. Los HPF y LPF del master también tienen ramas izquierda y derecha.
+AFS expone claves como afs.enabled, afs.fmode, afs.logic y afs.sensitivity. La interfaz solicita AFSUPDATEVAR, recibe información en var.afsdata y usa AFSLOADCHAN en su diálogo. Estos puntos permiten controlar y representar la función, pero no reconstruyen la detección de realimentación ni el diseño exacto de sus filtros automáticos.
+Evidencia: W1 EQChannel, resetParEQ, resetGraphEQ, FREQtoV, VtoFREQ, VtoQ y controles AFS.
+12 1 Deesser
+El deesser utiliza deesser.enabled, deesser.freq, deesser.threshold y deesser.ratio. Su frecuencia visible se calcula con 2000*Math.pow(7.5,v), de 2000 a 15000 Hz. El umbral usa VtoTHRESH, de -90 a +6 dB; el ratio usa VtoDS_RATIO. Los extremos y el dibujo son parte del control recuperado y no revelan la selectividad espectral del DSP. resetParEQ incluye el restablecimiento de estas propiedades, por lo que la operación puede afectar más que las bandas de EQ.
+Evidencia: W1 EQChannel, DeesserVtoFREQ, VtoDS_RATIO y resetParEQ.
+13 Compresor gate y ducker
+La dinámica usa claves dyn.threshold, dyn.ratio, dyn.attack, dyn.release, dyn.outgain, dyn.softknee, dyn.bypass y metadatos de preset. Master puede tener ramas dyn.l y dyn.r con dyn.linked. Existen propiedades históricas como dyn.gain o dyn.gate en presets; su presencia no implica que la web Ui24R moderna las utilice igual que otros modelos.
+El ratio se representa mediante una función recíproca. En el extremo cero se obtiene infinito matemático, que algunos controles presentan como infinito. Ataque y release usan curvas basadas en desqr(v)=1-(1-v)*(1-v). El anexo muestra funciones y dominios numéricos separados del texto que presenta la interfaz.
+Gate tiene su propio bloque gate.enabled, gate.bypass, gate.thresh, gate.attack, gate.release, gate.hold y gate.depth. resetGate lo habilita, desactiva bypass y asigna valores particulares; esa acción restablece el control, pero no demuestra que la puerta atenúe cualquier señal en ese estado. Profundidad y umbral deben analizarse junto con la señal entrante.
+El selector ducker aparece en la interfaz de dinámica de subgrupos cuando el subgrupo tiene índice mayor que cero. Ofrece NONE y los subgrupos anteriores. Se enlaza con s.n.ducker. Esto confirma una restricción del selector y la existencia del parámetro; no confirma todos los detalles del detector ni del audio de control. Debe probarse con dos subgrupos y señal conocida.
+scsrc significa fuente de soundcheck en la pantalla de ruteo. No debe documentarse como entrada sidechain del compresor por semejanza de abreviatura. La evidencia que lo relaciona con soundcheck es directa: el control SOUNDCHECK construye esas claves.
+Evidencia: W1 DYNSubPage, controles de ducker, resetDyn, resetGate, VtoRATIO, VtoTHRESH y ruteo chansc.
+14 Efectos y tempo
+Los cuatro tipos enumerados son REVERB=0, DELAY=1, CHORUS=2 y ROOM=3. f.n identifica el slot; f.n.fxtype identifica su algoritmo. No debe confundirse el número de slot con el tipo. Cambiar de tipo mediante la interfaz llama a resetFX, escribe fxtype y quita bypass.
+Tipo
+par1
+par2
+par3
+par4
+par5
+Reverb
+Tiempo
+Amortiguación HF
+Ganancia de graves
+LPF
+HPF
+Room
+Tiempo
+Amortiguación HF
+Ganancia de graves
+LPF
+HPF
+Delay
+Longitud o modo división
+Subdivisión
+Feedback
+LPF
+No mostrado por este selector
+Chorus
+Detune
+Densidad
+LPF
+No mostrado por este selector
+No mostrado por este selector
+La interpretación anterior procede de FX_SETUP.viewParams. par6 aparece en presets y operaciones de copia, aunque no tiene un control equivalente visible en esa tabla. Su semántica no se declara conocida.
+Reverb utiliza aproximadamente 300 a 8000 ms en lenFormula; Room, 100 a 1000 ms en lenFormulaRoom. El predelay visible se calcula con v*v*50. PREDELAYtoV usa sqrt(a/0.05), por lo que el llamador y sus unidades importan: no es correcto pasar el número visible en ms a esa función sin revisar la conversión a segundos.
+En Delay, par1=0 activa la presentación por división. La interfaz permite divisiones como 2/1, 1/1, 3/4, 2/3, 1/2 y valores más pequeños; escribe la fracción dividida por dos en par2 y pone par1 a cero. Con par1 distinto de cero usa una curva de longitud de 100 a 1000 ms. El tempo está en f.n.bpm y la visualización base calcula 60000/bpm.
+Las opciones de tap global por slot se guardan en preferencias del navegador. Para sincronizar una lista de canciones desde la app propia hay que definir qué slots siguen el tempo y escribir los BPM correspondientes; no se ha encontrado en este paquete una integración con setlists externa.
+Evidencia: W1 E_FX, FX_SETUP.viewParams, resetFX, bpmTapHandler, lenFormula, lenFormulaRoom, VtoPREDELAY y strDelayRatio.
+14 1 Modelado Digitech
+Digitech usa digitech.enabled, amp, cab, gain, level, bass, mid, treble y metadatos de preset. Los selectores de amplificador y gabinete escriben identificadores numéricos de E_AMPS2 y E_CABS2; el anexo conserva esos mapas. No todos los identificadores de amplificador son consecutivos. La posición de un elemento en una lista ordenada no puede sustituir su identificador.
+hasDigi y hasHIZ limitan los controles a tipos e índices o fuentes concretos. El código compartido menciona 0, 1, 24 y 25, pero eso no significa que existan 26 previos físicos en la Ui24R. Se debe aplicar la condición completa, incluida la fuente y el modelo. Los presets Digitech pueden incluir EQ, gate y dinámica además del amplificador; aplicar un preset completo puede modificar esos bloques.
+Evidencia: W1 DIGI_AMP, DIGI_CAB, E_AMPS2, E_CABS2, hasDigi y hasHIZ; P1 categoría digi.
+15 Envíos auxiliares matrices y grupos
+Los envíos utilizan rutas como i.n.aux.k.value, .pan, .mute, .post y .postproc. value no está expresado directamente en dB. post y postproc son selectores distintos: el punto respecto al fader y el punto respecto al procesamiento no deben fusionarse en un solo booleano sin revisar el control correspondiente.
+Los envíos FX usan fx.k.value y fx.k.mute dentro del prefijo de la tira de origen. Las matrices usan mtx.k.value, .pan y .mute. Algunas familias y destinos tienen restricciones de visibilidad y enlace; la matriz no equivale a un auxiliar adicional independiente en todas las situaciones.
+subgroup y vca aparecen como asignaciones de canal; resetChannel los restablece a -1 en las familias pertinentes. Un VCA es un control de grupo y tiene su propio mix y mute. La aplicación contempla propagación de estados y presentación de miembros; no basta con sumar sus valores como si fuera otra etapa de audio idéntica a un subgrupo.
+mgmask existe como estado global y como pertenencia por tira. Los bits 0 a 5 corresponden a seis grupos de mute en el código. MUTEFX_BIT_IDX es 22 y MUTEALL_BIT_IDX es 23. La interfaz conserva bits al activar o desactivar uno; escribir la máscara completa a partir de un estado viejo puede anular cambios de otro cliente.
+forceunmute interviene en excepciones de mute. muteGroupON reúne miembros, incluye ciertas relaciones VCA y limpia forceunmute antes de activar el grupo. Por eso no debe mostrarse mute efectivo usando únicamente la propiedad mute de la tira. Solo, máscara de grupos, VCA y excepciones deben modelarse por separado.
+Los controles de escucha incluyen settings.soloMode, settings.solotype, settings.multiplesolo, settings.solovol, settings.hpvol.0, settings.hpvol.1 y settings.hpswap. Su alcance físico debe verificarse con la configuración de salidas.
+Evidencia: W1 setValue, resetChannel, muteGroupON, handle_mgmask, checkMutes, checkSolos, controles aux y mtx.
+16 Ruteo y soundcheck
+El ruteo conecta una clave de destino a una cadena de fuente mediante SETS. La interfaz genera las opciones de forma explícita y puede bloquear filas según el modo. Esta tabla distingue nombres de fuentes de nombres de destinos.
+Papel
+Patrón observado
+Extensión mostrada en la interfaz
+Fuente física
+hw.n
+0 a 19
+Fuente línea
+li.n
+0 y 1
+Fuente USB A
+ua.n
+0 a 21
+Fuente USB B
+ub.n
+0 a 31
+Fuente cascada
+cs.n
+0 a 31
+Fuente master
+m.0 y m.1
+Izquierda y derecha
+Fuente auxiliar
+a.n
+Según auxiliares disponibles
+Fuente auriculares
+hp.n
+0 a 3
+Destino canal
+i.n.src y l.n.src
+Según tiras disponibles
+Destino soundcheck
+i.n.scsrc y l.n.scsrc
+Tabla alternativa de fuentes
+Destino master físico
+hwoutm.n.src
+0 y 1
+Destino auxiliar físico
+hwoutaux.n.src
+0 a 7 en la tabla de ruteo
+Destino auriculares
+hwouthp.n.src
+0 a 3
+Destino cascada
+casc.n.src
+0 a 31
+La existencia de ocho destinos auxiliares físicos no significa que curSetup.aux deba ser siempre ocho: buses lógicos y conectores físicos son conceptos diferentes. Las opciones USB A de la tabla normal bloquean determinadas filas, mientras que el modo soundcheck cambia las restricciones.
+var.mtk.soundcheck participa en el cambio de modo. scsrc conserva la asignación alternativa y src la normal. Una app debe mostrar ambas sin sobrescribir una cuando el usuario solo quiere activar o desactivar soundcheck.
+isMTKbusy devuelve el estado de reproducción multipista o de grabación multipista. La interfaz evita reset, undo y otras modificaciones de patching cuando ese estado es verdadero. La función createRoutingArrays contiene además nombres usados como diagnóstico, como usba.n.src y hwouthpdsp.n.src; no se consideran destinos confirmados de la tabla operativa solo por aparecer en ese helper.
+Evidencia: W1 tabla de ruteo, controles hwin, mtkp, dawp, casp, hwout y chansc; isMTKbusy y createRoutingArrays.
+17 Automix
+La aplicación distingue grupos A y B. automix.a.on y automix.b.on activan sus controles; i.n.amixgroup asigna un canal. La interfaz usa -1 para no asignado, 0 para A y 1 para B. Al asignar un canal restablece amix a 0.5 y evita que permanezca en ambos grupos a la vez.
+El selector impide agregar más de ocho canales a cada grupo. Esto confirma una restricción de la interfaz examinada; no demuestra por sí solo qué haría el servidor ante una escritura externa que exceda ese límite. La app propia debe respetarla en su comportamiento normal.
+automix.time se convierte mediante VtoVMIX_TIME a 0.02 + 3.98*Math.pow(v,3.0517) segundos, con presentación en ms de aproximadamente 20 a 4000. amix usa VtoVMIX_WEIGHT, -12 + 24*v, para presentar un peso de -12 a +12. Esos pesos son controles del mezclador automático y no sustituyen directamente el fader de mezcla.
+VUA transporta mediciones asociadas al Automix. El cliente decodifica Base64, toma una cantidad del byte 0 y los datos de canal desde el byte 4. Para los canales presentes en la lista de la ventana muestra 1-deconvertVU(byte). No se ha reconstruido el algoritmo DSP que produce esos valores.
+Automix y ducker se documentan como funciones distintas. La presencia de Automix no demuestra que la consola haga una mezcla musical completa, ajuste EQ automáticamente o calcule ganancias óptimas para un show.
+Evidencia: W1 controles AUTOMIX, parseVUAdata, VtoVMIX_TIME, VtoVMIX_WEIGHT y updateByKey.
+18 Shows snapshots cues y presets
+Un show agrupa snapshots y cues. El protocolo transmite listas y operaciones específicas para cada entidad. Para cargar un snapshot de un show distinto, la interfaz puede enviar primero LOADSHOW y después LOADSNAPSHOT. Esa secuencia no debe convertirse en dos peticiones concurrentes sin evaluar el orden y las respuestas.
+Operación
+Gramática observada de aplicación
+Listar shows
+SHOWLIST
+Listar snapshots
+SNAPSHOTLIST^show
+Guardar snapshot
+SAVESNAPSHOT^show^snapshot
+Cargar snapshot
+LOADSNAPSHOT^show^snapshot
+Renombrar snapshot
+RENAMESNAPSHOT^showOrigen^nombreOrigen^showDestino^nombreDestino
+Borrar snapshot
+DELETESNAPSHOT^show^snapshot
+Listar cues
+CUELIST^show
+Guardar o cargar cue
+SAVECUE^show^cue o LOADCUE^show^cue
+Renombrar cue
+RENAMECUE^showOrigen^nombreOrigen^showDestino^nombreDestino
+Borrar cue
+DELETECUE^show^cue
+Las operaciones de presets usan categorías y nombres. READPRESET solicita un preset; WRITEPRESET transmite categoría, nombre de usuario con prefijo u: y contenido. applyPreset recorre sus propiedades, concatena el prefijo de tira y solo aplica claves que ya existen en dataValue; omite valores null. Ajusta también metadatos prname y prmod según sus condiciones.
+Los 161 archivos de fábrica están en mixer/factory y contienen JSON con claves relativas como .dyn.threshold o .par1. Los nombres de archivo usan codificación porcentual. El anexo lista las nueve categorías y todos sus nombres, además de los 52 parámetros distintos presentes en esos archivos.
+safe y las variables var.unsaved.chsafes y var.unsaved.mutegroups intervienen en aislamiento y cambios sin guardar. El alcance exacto de cada safe, las prioridades de recall y la persistencia durante un corte eléctrico necesitan ensayos sobre una copia de show. MIXER_RESET y un resetChannel del navegador tienen alcances distintos de una restauración completa durante el arranque.
+Evidencia: W1 E_COMMANDS, controles de shows y presets, applyPreset, resetChannel; P1 mixer/factory.
+19 Reproducción y grabación
+El firmware diferencia reproducción y grabación de dos pistas de las operaciones multipista. RECTOGGLE corresponde al control de grabación de dos pistas; MTK_REC_TOGGLE al multipista. No son sustitutos. La aplicación usa variables de busy y estado para evitar acciones incompatibles.
+Subsistema
+Comandos utilizados
+Variables relevantes
+Reproductor
+MEDIA_PLAY, MEDIA_PAUSE, MEDIA_STOP, MEDIA_NEXT, MEDIA_PREV
+var.currentState, var.currentTrack, var.currentLength
+Playlists
+MEDIA_GET_PLISTS, MEDIA_GET_PLIST_TRACKS, MEDIA_SWITCH_PLIST, MEDIA_SWITCH_TRACK
+var.currentPlaylist
+Posición de dos pistas
+MEDIA_JUMP_TO^valor
+var.currentTrackPos
+Grabación de dos pistas
+RECTOGGLE
+var.isRecording, var.recBusy
+Reproductor multipista
+MTK_PLAY, MTK_PAUSE, MTK_STOP, MTK_SELECT
+var.mtk.currentState, var.mtk.playsession
+Sesiones multipista
+MTK_GET_SESSIONS, MTK_GET_FILES, MTK_RENAME, MTK_DELETE
+Listas MTK y sesión elegida
+Grabación multipista
+MTK_REC_TOGGLE
+var.mtk.rec.currentState, var.mtk.rec.busy, var.mtk.rec.time
+Almacenamiento
+Estados recibidos
+var.mtk.freespace, var.mtk.bufferfill, var.usbfill
+Las constantes MTK_REC, MTK_REC_STOP, MTK_REC_PAUSE, MTK_REC_JUMP_TO y MTK_REC_SET_SESSION están declaradas en E_COMMANDS. No todas aparecen con una llamada de envío directa en W1. El anexo distingue esas declaraciones de las operaciones cuyo emisor se identificó.
+Los valores de posición deben interpretarse revisando el control de seek correspondiente; no se debe asumir que todos son segundos o todos normalizados. La pantalla enlaza settings.recordMode a 0=32 bits, 1=24 bits y 2=16 bits. settings.mtk.format usa 0=FLAC 24, 1=FLAC 16, 2=WAV 24 y 3=WAV 16. Son opciones confirmadas por el selector, no un análisis del encabezado de archivos grabados. mtkrec se enlaza por canal; la frecuencia efectiva y demás propiedades del archivo requieren una grabación de prueba.
+Cambios de dispositivo, listas vacías, sesiones borradas y nombres duplicados deben tratarse como estados operativos. La app debe confirmar el nuevo estado antes de indicar que grabación, reproducción o borrado terminaron.
+Evidencia: W1 toggleRec, toggleMTKRec, isMTKbusy, controles PLAYER y MTK; parseCommand; cadenas MTK en M1.
+20 Formato de las mediciones
+VU2, VUA y RTA son mensajes de aplicación con datos Base64. No contienen muestras PCM de audio: el cliente los convierte en niveles para dibujar medidores o espectro. Las mediciones pueden servir para monitorizar y automatizar controles, pero no permiten recuperar el audio multipista.
+VU2 decodifica una cabecera de ocho bytes y luego bloques de longitud variable según las cantidades de la cabecera. El parser de W1 usa los campos que se muestran a continuación. Los bytes no interpretados se conservan como desconocidos; no se les asigna una función por su posición.
+Byte de cabecera
+Uso observado
+0
+Cantidad de entradas para calcular bloques de 6 bytes
+1
+Cantidad de canales media para avanzar bloques de 6 bytes
+2
+Cantidad de subgrupos con bloques de 7 bytes
+3
+Cantidad de FX con bloques de 7 bytes
+4
+Cantidad de auxiliares con bloques de 5 bytes
+5
+No utilizado por este parser
+6
+Cantidad utilizada al avanzar después del master, con 5 bytes por canal
+7
+No utilizado por este parser
+El orden leído es entradas, media, subgrupos, FX, auxiliares, master y line in. El parser trata dos canales media, dos del master y dos line in con lecturas explícitas. Una implementación robusta debe validar longitud antes de leer, usar los contadores recibidos y registrar cualquier discrepancia con curSetup, sin imitar lecturas fuera de rango.
+Bloque
+Bytes
+Campos en orden observado
+Entrada y line in
+6
+Nivel de previo; nivel y pico de tira; entrada y salida de dinámica; byte combinado
+Media
+6
+Se leen nivel y pico desde +1 y +2; dinámica desde +3 y +4; combinado +5
+Subgrupo y FX
+7
+Nivel L, nivel R, pico L, pico R, dinámica entrada, dinámica salida, combinado
+Auxiliar
+5
+Nivel, pico, dinámica entrada, dinámica salida, combinado
+Master
+10 en las lecturas explícitas
+Dos bloques de 5 bytes, uno por lado
+deconvertVU(byte) multiplica por 0.004167508166392142. Es un valor de representación de nivel; no basta multiplicarlo por 100 para llamarlo porcentaje de potencia. La conversión a dB requiere el contexto del medidor y sus escalas.
+En el byte combinado se extrae el bit alto como indicador booleano y los siete bits bajos, desplazados a la izquierda, como entrada a deconvertVU_comp. Esta función usa COMP_ZOOM=2 y limita el resultado de presentación. El significado físico exacto del indicador necesita validación; no se le atribuye aquí universalmente la condición de clip de audio.
+RTA convierte cada byte decodificado con el mismo factor de escala. var.rta selecciona el objeto de análisis y la ventana puede ignorar datos que no correspondan a la tira elegida. Deben medirse la frecuencia de actualización, el número efectivo de bins y sus frecuencias antes de usarlo para una herramienta de calibración. Un selector compartido puede originar interferencias funcionales entre clientes que soliciten fuentes distintas.
+Evidencia: W1 parseVUdata, parseVUAdata, parseRTAdata, deconvertVU y deconvertVU_comp.
+21 Cascada reloj y sincronización de clientes
+La aplicación utiliza el prefijo @ para dirigirse a la unidad secundaria cuando SLAVE_MODE está activo. sendMessage puede añadirlo automáticamente, salvo que reciba una indicación para omitir esa transformación. receiveMessage2 filtra mensajes de la otra unidad y trata de forma especial determinados mensajes BMSG.
+switchUnit cambia SLAVE_MODE, solicita INIT y establece temporizadores de refresco y bloqueo temporal. isCascade consulta var.cascade.connected y otros estados de interfaz. Un único diccionario sin identidad de unidad puede mezclar datos si se cambia de consola antes de terminar de aplicar el nuevo estado.
+Las claves settings.cascade.enabled, master, remote, mgsync, snapsync, vcasync y ch24solo controlan aspectos que la interfaz expone por separado. settings.clock tiene opciones de reloj interno o cascada en un selector condicionado por SHOW_WIP. Su presencia en el código no garantiza que esté visible normalmente. La sincronización de transporte de audio, la negociación entre unidades y la estabilidad del reloj no se reconstruyeron desde el código de pantalla.
+BMSG^SYNC^id^selección sincroniza la selección de canal entre clientes que comparten sync_id y tienen habilitada la opción. BMSG^SYNC_VG hace algo equivalente con grupos de vista. Son mensajes de coordinación de interfaz, no mecanismos de sincronización de muestras de audio ni transacciones de configuración.
+La app propia debe mantener identificadores separados para consola física, sesión de transporte, unidad de cascada y perfil local de usuario. Esto también facilita impedir que una automatización destinada al escenario principal se aplique por error a la secundaria.
+Evidencia: W1 sendMessage, receiveMessage2, switchUnit, isCascade, parseBMessage y controles CASCADE.
+22 Footswitch acciones externas y UDP
+var.fswgpio y var.rswgpio se enlazan a indicadores de estado del footswitch y del pulsador de reset. Su presencia permite representar cambios recibidos por el protocolo; no garantiza una frecuencia de muestreo adecuada para cualquier uso musical. Se deben medir flancos, repetición y latencia antes de usar el footswitch como disparador crítico.
+settings.footswitchfunc y settings.fsmgidx configuran acciones de pedal y selección de grupo. El selector asigna 0 a Mute FX, 1 a Mute All, 2 a Play, 3 a Record, 4 a Tap Tempo, 5 a MTK Play, 6 a MTK Record y 7 a Mute Group. Las acciones de teclas F1/F2 pertenecen además al cliente y pasan por doFfunc. Una configuración local de tecla no debe confundirse con una función física persistente del pedal.
+La interfaz contiene un emisor UDP con forma UDP^host:puerto^contenido. Utiliza settings.udpcoms para almacenar configuraciones y settings.udpmsg para una respuesta o mensaje mostrado. Que exista este emisor no implica que todos los comandos del mezclador se acepten directamente en un puerto UDP público, ni que la Ui24R implemente una API OSC nativa.
+IOSYS^ envía un contenido construido por controles externos y existen iosyscmd e iosysname en algunas tiras. HIQNET_DISCOVER también aparece en el catálogo. La gramática completa de los contenidos y los sistemas externos compatibles no se verificó; deben documentarse como integración a investigar, no como comandos arbitrarios de shell.
+La app puede construir automatizaciones propias encima de funciones confirmadas: cargar una escena, escribir BPM, cambiar un envío o activar un grupo. Conviene que cada automatización declare destinos, precondiciones, estado esperado y cómo cancelar cambios pendientes al perder la conexión.
+Evidencia: W1 getUdpReply, getUdpParam, setUdpSlot, iosys, doFfunc y controles de GPIO y footswitch.
+23 Red y administración HTTP
+La configuración distribuida define eth0 con 10.10.2.1/24 y wlan0 con 10.10.1.1/24. wlan0 habilita servidor DHCP con PoolOffset=10, PoolSize=100 y DNS 10.10.1.1. El archivo wlan1.network usa Name=wlan1.disabled y DHCP=ipv4. Estos son valores de la imagen, sujetos a sustitución por la capa de usuario.
+dnsd.conf contiene una respuesta comodín a 10.10.1.1. Los servicios hostapd, wpasupplicant y dnsd corresponden al hotspot, cliente WiFi y resolución de nombres. No debe asumirse a partir de estas plantillas que ambas interfaces estén actualmente encendidas, que haya Internet o que Ethernet esté ofreciendo DHCP a un ordenador.
+La página de administración contiene formularios POST a /config.html con application/x-www-form-urlencoded. W4 refresca datos desde js/netconfig.js. El HTML incluye sustituciones del servidor como <?netConfig?>. Guardar esa plantilla en un navegador sin el servidor no reproduce su funcionamiento completo.
+La configuración diferencia ap_*, wlan_* y eth_*, e incluye datos configurados y obtenidos por DHCP. Hay campos de estado como enabled, up, ifid y mac. El frontend no sustituye las comprobaciones del servidor; setNetValue solo modifica el objeto local netConfig y redibuja, sin demostrar por sí mismo una escritura persistente.
+El ejecutable contiene una respuesta HTTP 401 con autenticación Basic para configuración. La imagen incluye también un archivo telnetd.service. No se verificó su habilitación en la consola del usuario ni se intentó usarlo. No se incluyen credenciales ni hashes de cuentas porque no son necesarios para implementar el control normal.
+Evidencia: N1 archivos systemd/network; N2 servicios de red y dnsd.conf; W3 HTML de configuración; W4 JavaScript de configuración; cadenas HTTP de M1.
+24 Persistencia local y variantes de interfaz
+settingsStorage y localStorage guardan preferencias del cliente: idioma, vista, opciones de dibujo, sincronización, permisos locales y opciones de tempo. dataValue contiene el estado que intercambia la aplicación con el mezclador. Aunque ambos usen nombres parecidos, no son el mismo almacén.
+La interfaz tablet incluye procedimientos de cascada, grupos de vista, UDP y Automix que no aparecen bajo los mismos nombres en el script phone. La ausencia de una función con el mismo nombre no demuestra ausencia absoluta de la capacidad en la variante móvil; puede tener otro diseño o una implementación diferente.
+initLocal detecta 127.0.0.1 o el fragmento #local. Se modifica el comportamiento visual y se utiliza el navegador en modo kiosco. El código también contiene rutas de demostración y emulación, importación y exportación JSON en el cliente y recursos multilenguaje. No deben confundirse con APIs del servidor.
+Las tasas fps=60 y fps=30 para interfaz local son objetivos de dibujo observados, no tasas de telemetría de la consola ni de muestreo de audio. Deshabilitar VU en pantalla puede evitar trabajo de dibujo sin demostrar que el servidor deje de producir los mensajes.
+Para Angular conviene mantener la recepción y el estado fuera del ciclo de renderizado de cada widget, agrupar actualizaciones de medidores y publicar cambios de parámetros por clave. Es una recomendación de arquitectura derivada del tráfico y del modelo, no una dependencia del firmware respecto a Angular.
+Evidencia: W1 settingsStorage, initLocal, updater y preferencias de dibujo; comparación sintáctica W1 y W2; S3 startchrome.sh.
+25 Secuencias de referencia para la app propia
+Los ejemplos siguientes muestran mensajes de aplicación, antes del encuadre Socket.IO. Los nombres e índices son ilustrativos; se deben confirmar en el estado de la unidad. Las acciones que producen audio o cambian ruteo se prueban fuera de un show y con salidas controladas.
+25 1 Identificar y sincronizar
+Establecer el transporte compatible, registrar sesión y consola, solicitar identificación y obtener el estado inicial. Capturar lo que el servidor envía espontáneamente y lo que responde a INIT. No habilitar controles basándose únicamente en que el WebSocket está abierto. Mantener por separado ALIVE y heartbeat de transporte.
+SERIAL
+INIT
+ALIVE
+25 2 Nombrar silenciar y ajustar nivel
+SETS^i.0.name^Voz principal
+SETD^i.0.mute^1
+SETD^i.0.mix^0.7647058823529421
+El tercer mensaje usa la posición que la interfaz denomina cero dB. No asegura silencio: el mute puede depender de otras acciones y el objetivo puede pertenecer a grupos. No enviar esta secuencia automáticamente al conectar.
+25 3 Elegir fuente y preparar soundcheck
+SETS^i.0.src^hw.0
+SETS^i.0.scsrc^ua.0
+La primera operación elige una fuente normal y la segunda una alternativa para soundcheck. Antes de escribir se verifica isMTKbusy y se conserva el patching anterior. La activación del modo se valida por separado sobre var.mtk.soundcheck.
+25 4 Cargar una escena de un show
+LOADSHOW^Mi show
+LOADSNAPSHOT^Mi show^Inicio
+La app debe respetar el orden, observar los mensajes recibidos, refrescar listas y aplicar su política de estado confirmado. Los caracteres separadores no se permiten sin la codificación exacta que espera cada comando.
+25 5 Ajustar Automix y tempo
+SETD^i.0.amixgroup^0
+SETD^i.0.amix^0.5
+SETD^automix.a.on^1
+SETD^f.1.bpm^90
+Estos mensajes muestran claves confirmadas por la interfaz. Debe verificarse el número de miembros del grupo, el tipo actual del slot FX, su modo de longitud y el estado de los otros clientes antes de ejecutar una automatización musical.
+26 Arquitectura de implementación propuesta
+Se recomienda separar transporte Socket.IO antiguo, codec de mensajes de aplicación, almacén de estado por unidad, diccionario de parámetros, operaciones compuestas y presentación. Los medidores tienen un flujo de alta frecuencia distinto de los comandos de usuario. La documentación del firmware no exige usar su biblioteca obsoleta directamente en el frontend; un adaptador compatible puede contener esa dependencia.
+Módulo propuesto
+Responsabilidad
+Criterio de aceptación
+Transporte
+Handshake, heartbeat, reconexión y sesión
+Reproduce una captura válida del equipo
+Codec
+SETD, SETS, listas y telemetría
+Rechaza mensajes incompletos sin romper la sesión
+Estado
+Valores confirmados y pendientes por unidad
+Una reconexión no mezcla consolas ni conserva supuestos viejos
+Parámetros
+Tipos, escalas y capacidades por firmware
+Convierte extremos y valores especiales correctamente
+Operaciones
+Estéreo, grupos, escenas y ruteo
+Produce la secuencia esperada y respeta precondiciones
+Automatización
+Reglas de tiempo y de actuación
+Puede detenerse y no reenvía acciones peligrosas al reconectar
+Interfaz
+Edición y representación de estado
+No genera eco al recibir cambios de otro cliente
+Cada ficha de parámetro debería registrar patrón de clave, familia, tipo de transporte, unidad visible, función de conversión, valores especiales, alcance de escritura, dependencias, evidencia y firmware probado. Los anexos proporcionan los puntos de partida, pero las combinaciones construidas dinámicamente se completan con un INIT real.
+Para faders, agrupar cambios pendientes por clave evita enviar todas las posiciones intermedias cuando el usuario arrastra rápido. No se inventa aquí una frecuencia máxima segura: se mide latencia, carga y pérdida de actualización en el banco de pruebas. Escenas, toggles y borrados no se agrupan como si fueran simples valores absolutos.
+27 Validación y límites del conocimiento
+Prueba pendiente
+Qué debe resolver
+Captura de inicio en 3.5.8328 y 3.4.8318
+Endpoint, handshake, INIT, identificación y diferencias de capacidades
+Cambio de parámetro con dos clientes
+Orden, eco, latencia y arbitraje
+Desconexión durante arrastre
+Comandos perdidos y política de recuperación
+Estéreo y envíos enlazados
+Qué replica el servidor y qué replica la interfaz
+Conversión de ganancia analógica
+Tabla real de pasos y relación entre escritura y lectura
+Gate y compresor con señal conocida
+Unidades, ratio extremo, bypass y efecto acústico
+Patching y soundcheck
+Fuentes admitidas y restricciones con MTK activo
+Capturas VU2 y VUA
+Contadores, longitud, indicador combinado y tasas
+RTA con tonos conocidos
+Frecuencias de bins y escalas de nivel
+Recall y reinicio controlado
+Persistencia, safes y estado de listas
+Cascada con dos unidades
+Direccionamiento @, reloj y sincronización
+Footswitch
+Flancos, repetición y demora observada
+El análisis no reconstruye el código fuente C++ de umixsrv, la implementación completa de DSP, los programas lógicos de los archivos de hardware, el protocolo interno entre chips ni el esquema electrónico. Tampoco demuestra calibración acústica automática ni una API de audio PCM por WebSocket. Esas cuestiones permanecen abiertas, aunque este manual permita implementar una parte sustancial del control.
+Se deben conservar como puntos de revisión la ganancia cuantizada, el SAMPLE_RATE usado para mostrar retardos, las unidades de predelay, la comparación md5sum del actualizador y el alcance de las verificaciones de firma. No se consideran fallos confirmados del equipo sin pruebas adicionales.
+La siguiente ampliación documental debe incorporar un registro INIT de la consola del usuario y capturas por operación. Cada nuevo resultado debe conservar versión, acción, mensajes emitidos, mensajes recibidos y efecto observado. Esto permite actualizar las fichas sin convertir inferencias anteriores en hechos por repetición.
+Anexo A Fuentes e inventario verificable
+Las referencias internas identifican la fuente primaria del hallazgo. El archivo de firmware recibido es la única fuente factual de esta edición; las propuestas para la app se indican como recomendaciones. Una ruta dentro de una imagen no equivale a la ruta efectiva de un equipo cuya capa de usuario la haya sustituido.
+ID
+Contenido
+Localización
+Z1
+ZIP recibido
+uiupdate-k-3.5.8328-ui24v3.zip
+U1
+Script de actualización
+preupdate.sh en Z1
+U2
+Script posterior
+update.sh en Z1
+B1
+Arranque
+kernel.img → ramdisk.cpio → /init
+M1
+Servidor y recursos
+200-mixer.img → /mixer/umixsrv
+S1
+Servicio del mezclador
+200-mixer.img → /etc/systemd/system/umixsrv.service
+S2
+Servicio y configuración Xorg
+300-xorg.img → /etc/systemd/system/x.service y /X11/etc/xorg.conf
+S3
+Navegador local
+400-chrome.img → /etc/systemd/system/chrome.service y /chrome/startchrome.sh
+N1
+Plantillas de red
+100-system.img → /etc/systemd/network/
+N2
+Servicios de red
+100-system.img → /etc/systemd/system/ y /etc/dnsd.conf
+W1
+Aplicación tablet
+M1 offset zlib 18429544; primer script no vacío del HTML
+W2
+Aplicación phone
+M1 offset zlib 18752107; primer script no vacío del HTML
+W3
+Administración HTML
+M1 offset zlib 1276129
+W4
+Administración JavaScript
+M1 offset zlib 16345008
+P1
+Presets del mezclador
+200-mixer.img → /mixer/factory/
+SHA256 del ZIP recibido
+16f3b23a42cdc1d882f8b8a60e146b4b58313564f7669a9f63de78f5e3626298
+Miembro ZIP
+Bytes extraídos
+Bytes comprimidos
+preupdate.sh
+1,066
+536
+preupdate.sh.sig
+192
+192
+target.id
+15
+15
+target.id.sig
+192
+192
+update.sh
+111
+95
+update.sh.sig
+192
+192
+kernel.img
+16,777,216
+7,291,960
+kernel.img.sig
+192
+192
+100-system.img
+143,224,832
+75,939,749
+200-mixer.img
+21,389,312
+18,532,892
+300-xorg.img
+512,000
+6,067
+400-chrome.img
+199,290,880
+79,840,384
+100-system.img.sig
+192
+192
+200-mixer.img.sig
+192
+192
+300-xorg.img.sig
+192
+192
+400-chrome.img.sig
+192
+192
+SHA256 de umixsrv
+06d2b63736fee0c0bac92385e7734f37064610f2deb20aafb758dade40a444cc
+SHA256 de resource-18429544.txt
+9279507d99832442b4c1544594348e7647887a52910267d87457171700304bf6
+SHA256 de resource-18752107.txt
+97b7f6738b353483e6d386ce09b9e77c19d4a872d06d0ae531f787113d5ee94b
+Recursos zlib recuperados
+Offset en M1
+Bytes descomprimidos
+Tipo identificado
+1276129
+37749
+HTML
+1554746
+1032
+CSS
+1562709
+121217
+CSS
+1590109
+7078
+CSS
+1591636
+11767
+CSS
+1594829
+6437
+CSS
+1759127
+118259
+SVG o XML
+1782592
+943335
+SVG o XML
+2464682
+101154
+SVG o XML
+2798620
+60640
+Fuente binaria
+4718658
+47133
+Mapa JSON de imágenes
+15663688
+6323
+HTML
+16188959
+95946
+JavaScript
+16217475
+37045
+JavaScript
+16227303
+273201
+JavaScript
+16313914
+33933
+JavaScript
+16324201
+27456
+JavaScript
+16332504
+55534
+JavaScript
+16345008
+23950
+JavaScript
+18330053
+2126
+PNG
+18429544
+1292140
+HTML
+18752107
+862652
+HTML
+Además de esos recursos, M1 contiene HTML y rutas sin comprimir y plantillas para contenido generado por el servidor. La recuperación de 22 bloques no es un censo completo de todos los recursos embebidos.
+Anexo B Catálogo de comandos
+Las 59 constantes de E_COMMANDS se conservan con su nombre exacto. “Sin llamada directa localizada” significa que el análisis de llamadas sendMessage en W1 no encontró un emisor literal para ese alias; puede haber uso indirecto, dinámico o en otra variante. No implica que el servidor lo rechace. Las líneas remiten al script original W1, no al texto reindentado.
+Constante de interfaz
+Comando de aplicación
+Uso localizado
+INIT
+INIT
+W1 L1134
+TOGGLE_REC
+RECTOGGLE
+W1 L1109
+HIQNET_DISCOVER
+HIQNET_DISCOVER
+W1 L2287
+TOGGLE_MTK_REC
+MTK_REC_TOGGLE
+W1 L1110
+MTK_PLAY
+MTK_PLAY
+W1 L2520
+MTK_STOP
+MTK_STOP
+W1 L2521
+MTK_PAUSE
+MTK_PAUSE
+W1 L2520
+MTK_JUMP_TO
+MTK_JUMP_TO
+W1 L2523
+MTK_SET_SESSION
+MTK_SELECT
+W1 L2525
+MTK_DEL_SESSION
+MTK_DELETE
+W1 L2527
+MTK_REN_SESSION
+MTK_RENAME
+W1 L2526
+MTK_GET_SESSIONS
+MTK_GET_SESSIONS
+W1 L957
+MTK_GET_FILES
+MTK_GET_FILES
+W1 L957
+MTK_REC_PLAY
+MTK_REC
+Sin llamada directa localizada
+MTK_REC_STOP
+MTK_REC_STOP
+Sin llamada directa localizada
+MTK_REC_PAUSE
+MTK_REC_PAUSE
+Sin llamada directa localizada
+MTK_REC_JUMP_TO
+MTK_REC_JUMP_TO
+Sin llamada directa localizada
+MTK_REC_SET_SESSION
+MTK_REC_SET_SESSION
+Sin llamada directa localizada
+MEDIA_PLAY
+MEDIA_PLAY
+W1 L2500
+MEDIA_JUMP_TO
+MEDIA_JUMP_TO
+W1 L2498
+MEDIA_PAUSE
+MEDIA_PAUSE
+W1 L2501
+MEDIA_STOP
+MEDIA_STOP
+W1 L2502
+MEDIA_PREV
+MEDIA_PREV
+W1 L2499
+MEDIA_NEXT
+MEDIA_NEXT
+W1 L2500
+MEDIA_SWITCH_PLIST
+MEDIA_SWITCH_PLIST
+W1 L2503
+MEDIA_SWITCH_TRACK
+MEDIA_SWITCH_TRACK
+W1 L2500
+MEDIA_GET_PLISTS
+MEDIA_GET_PLISTS
+W1 L2508
+MEDIA_GET_PLIST_TRACKS
+MEDIA_GET_PLIST_TRACKS
+W1 L2503
+SHOW_LIST
+SHOWLIST
+W1 L2092
+SHOW_DEL
+DELETESHOW
+W1 L2101
+SHOW_LOAD
+LOADSHOW
+W1 L2096
+SHOW_CREATE
+CREATESHOW
+W1 L2096
+SHOW_RENAME
+RENAMESHOW
+W1 L2098
+SNAP_LIST
+SNAPSHOTLIST
+W1 L1072
+SNAP_SAVE
+SAVESNAPSHOT
+W1 L1104
+SNAP_LOAD
+LOADSNAPSHOT
+W1 L1106
+SNAP_DEL
+DELETESNAPSHOT
+W1 L2107
+SNAP_RENAME
+RENAMESNAPSHOT
+W1 L2106
+CUE_LIST
+CUELIST
+W1 L1072
+CUE_SAVE
+SAVECUE
+W1 L1105
+CUE_LOAD
+LOADCUE
+W1 L1107
+CUE_DEL
+DELETECUE
+W1 L2113
+CUE_RENAME
+RENAMECUE
+W1 L2112
+PRESET_LIST
+PRESETLIST
+W1 L2370
+PRESET_DEL
+DELETEPRESET
+W1 L2372
+PRESET_READ
+READPRESET
+W1 L2371
+PRESET_WRITE
+WRITEPRESET
+W1 L2371
+PRESET_RENAME
+RENAMEPRESET
+W1 L2372
+SAVESHOW
+SAVESHOW
+W1 L1024
+MIXER_RESET
+MIXER_RESET
+W1 L2114
+UPDATE_SHOWS
+UPDATE_SHOWS
+Sin llamada directa localizada
+USB_LIST
+USBMOUNTS
+Sin llamada directa localizada
+EXPORT_SHOW
+EXPORTSHOW
+W1 L2100
+IMPORT_SHOW
+IMPORTSHOW
+W1 L2099
+IMPORT_LIST
+IMPORTSHOWLIST
+Sin llamada directa localizada
+IMPORT_PRESETS
+IMPORTPRESETS
+W1 L2179
+EXPORT_PRESETS
+EXPORTPRESETS
+W1 L2180
+IMPORT_CONFIG
+IMPORTCONFIG
+Sin llamada directa localizada
+EXPORT_CONFIG
+EXPORTCONFIG
+Sin llamada directa localizada
+Vocabulario adicional observado
+Mensaje o prefijo
+Papel
+Localizador W1
+SETD^clave^número
+Escritura y actualización numérica
+setValueX y receiveMessage2
+SETS^clave^texto
+Escritura y actualización textual
+setValueX y receiveMessage2
+INIT^JSON
+Estado recibido
+parseCommand
+ALIVE
+Pulso de aplicación cada segundo
+initGUI
+SERIAL
+Solicitud de identificación
+netStart
+USERTIME^timestamp^offset
+Hora del navegador y offset de zona
+sendTimeNetwork
+SETTIME^campos separados por comas
+Hora mediante selector de interfaz
+setSrvTime
+VU2^Base64
+Medidores generales
+parseVUdata
+VUA^Base64
+Medidores Automix
+parseVUAdata
+RTA^Base64
+Analizador de espectro
+parseRTAdata
+BMSG^SYNC^id^canal
+Coordinación de selección
+parseBMessage
+BMSG^SYNC_VG^id^grupo
+Coordinación de grupos de vista
+parseBMessage
+MSG^…
+Mensajes y traducciones
+parseCommand
+DLGSHOW^… / DLGHIDE^…
+Control de diálogos
+parseCommand
+DLGRESULT^id^resultado
+Resultado de un diálogo
+dlgResult
+AFSUPDATEVAR
+Solicitud de actualización AFS
+Control AFS
+AFSLOADCHAN^…
+Selección en diálogo AFS
+Control AFS
+UDP^host:puerto^contenido
+Envío desde herramienta UDP
+Control UDP
+IOSYS^contenido
+Acción de integración
+iosys
+SWAPUSB
+Emisor en acción de función
+doFfunc
+NETCONFIG
+Emisor para configuración
+Control de red
+DYN^…
+Emisor en código de dinámica
+Investigar alcance y condiciones
+RENAME^…
+Emisor en reproductor
+Investigar gramática completa
+Respuestas y comandos por contexto
+parseCommand también contempla listas de playlists y pistas, datos de presets, mensajes MTK y metadatos de identificación. Sus campos se interpretan según la rama concreta. No hay un único esquema JSON que abarque todos los mensajes. La lista siguiente conserva los prefijos y literales que aparecen en el parser, para ayudar a instrumentar un cliente sin descartar mensajes desconocidos.
+BMSG^ • CUELIST^ • DLGHIDE^ • DLGSHOW^ • IMPORTSHOWLIST • INIT^ • MSG^ • MTK_GET_FILES^ • MTK_GET_SESSIONS^ • NETCONFIG^ • PLISTS^ • PLIST_TRACKS^ • PRESETLIST^ • READPRESET^ • RTA^ • SERIAL • SHOWLIST^ • SNAPSHOTLIST^ • TIMEDIALOG^ • USBMOUNTS • VU2^ • VUA^
+Anexo C Conversiones y comprobaciones numéricas
+Las expresiones siguientes son código JavaScript recuperado de W1. v representa la posición de control salvo indicación contraria. El intervalo de entrada habitual de estas curvas es 0 a 1; que una función no limite explícitamente su argumento no implica que otros valores sean válidos para el servidor. Math.round y el operador |0 tienen semánticas diferentes.
+Control
+Expresión JavaScript
+Dominio o nota
+Pan
+(200*v - 100) | 0
+-100 a 100
+Frecuencia EQ
+Math.round(20*Math.pow(1102.5,v))
+20 a 22050 Hz
+Frecuencia variante
+Math.round(20*Math.pow(1000,v))
+20 a 20000 Hz
+Q
+.05*Math.pow(300,v)
+0.05 a 15
+Ganancia EQ de 20
+40*v - 20
+-20 a +20 dB
+Ganancia EQ de 15
+precision(30*v - 15,1)
+-15 a +15 dB
+Umbral dinámica
+precision(-90 + 96*v,1)
+-90 a +6 dB
+Ratio
+1/v
+1:1 a infinito al acercarse a cero
+Curva auxiliar
+1-(1-v)*(1-v)
+desqr
+Ataque compresor
+Math.pow(400,desqr(v)) | 0
+1 a 400 ms mostrados
+Release compresor
+10*Math.pow(200,desqr(v)) | 0
+10 a 2000 ms mostrados
+Ganancia dinámica
+(96*v - 72) | 0
+-72 a +24 según esta función
+Salida dinámica
+72*v - 24
+-24 a +48 dB
+Umbral gate
+96*v - 90
+-90 a +6 dB
+Ataque gate
+Math.pow(400,desqr(v))
+1 a 400 ms
+Release gate
+5*Math.pow(400,desqr(v))
+5 a 2000 ms
+Hold gate
+Math.pow(2000,desqr(v))
+1 a 2000 ms
+Profundidad gate
+60*v - 60
+-60 a 0 dB
+Frecuencia deesser
+2000*Math.pow(7.5,v)
+2000 a 15000 Hz
+Detune
+(-100 + 200*v) | 0
+-100 a 100 cents en el control
+Predelay visible
+v*v*50
+0 a 50 ms
+Automix tiempo
+.02+3.98*Math.pow(v,3.0517)
+0.02 a 4 s
+Automix peso
+-12+24*v
+-12 a +12
+Reverb tiempo
+300*Math.pow(8/.3,v) | 0
+300 a 8000 ms
+Room tiempo
+100*Math.pow(10,v) | 0
+100 a 1000 ms
+LPF de FX
+400*Math.pow(55.125,v)
+400 a 22050 Hz antes de formato
+HPF de FX
+20*Math.pow(250,v)
+20 a 5000 Hz antes de formato
+Fórmula exacta de amplitud del fader
+function VtoLIN(v) {
+return 2.676529517952372E-4 * Math.exp(
+v * (23.90844819639692 + v * (-26.23877598214595 +
+(12.195249692570245 - .4878099877028098*v) * v))
+) * (v < .055 ? Math.sin(28.559933214452666*v) : 1);
+}
+VtoDBf devuelve -200 cuando la amplitud es menor que 1e-10 y, en otro caso, 20*Math.log(amplitud)/Math.log(10). -200 es un valor centinela del código, no una medición de ruido de fondo de la consola.
+Posición v
+VtoDBf en dB
+0
+-200.000000000
+0.25
+-32.137666182
+0.5
+-11.616258497
+0.7647058823529421
+0.000000000
+1
+10.000000000
+Se ejecutaron únicamente funciones numéricas seleccionadas en un contexto aislado. Para los valores -100, -60, -40, -20, -10, 0, 5 y 9 dB, la composición VtoDBf(DBtoVf(dB)) produjo un error absoluto máximo de 0.000001796 dB. Esto valida la coherencia de esas fórmulas en el ensayo; no verifica la calibración física de los faders.
+Tabla de ganancia analógica
+VtoGAIN24 calcula index=clamp((64*v)|0,0,63) y devuelve ui24pgains[index]-1. Se conserva la tabla para reproducir la cuantización sin aproximarla con una recta.
+Índices
+Valores ui24pgains antes de restar 1
+0 a 7
+-5, -5, -3, -3, -1, -1, 1, 1
+8 a 15
+3, 3, 5, 5, 7, 7, 9, 9
+16 a 23
+11, 11, 13, 13, 15, 15, 17, 17
+24 a 31
+19, 19, 21, 21, 23, 23, 25, 25
+32 a 39
+27, 28, 29, 30, 31, 32, 33, 34
+40 a 47
+35, 36, 37, 38, 39, 40, 41, 42
+48 a 55
+43, 44, 45, 46, 47, 48, 49, 50
+56 a 63
+51, 52, 53, 54, 55, 56, 57, 58
+Inversas y valores especiales
+DBtoVf limita dB≤-200 a cero y dB≥10 a uno, y realiza hasta 128 iteraciones de búsqueda binaria. FREQtoV y QtoV usan logaritmos y bound. PREDELAYtoV toma una magnitud consistente con segundos al usar sqrt(a/0.05), mientras VtoPREDELAY presenta ms. GAIN24toV usa bound((a+6)/63,0,1) y no invierte exactamente la tabla cuantizada. VtoHPFfreq trata cero como OFF y VtoLPFfreq trata uno como OFF.
+Anexo D Índice de claves y fragmentos de parámetros
+Este índice recoge 324 registros deduplicados por contexto y texto, extraídos de llamadas reales del cliente W1. Incluye claves completas y fragmentos concatenados. El punto inicial o final se conserva deliberadamente. No es un esquema cerrado del servidor ni afirma que cada fragmento pueda escribirse solo. Los parámetros relativos de presets que se construyen mediante objetos figuran también en el anexo F.
+La marca L indica lectura mediante getValue o getNameValue. E indica un setter o enlace setKey observado; un enlace de indicador también puede usar setKey, por lo que E no garantiza permiso de escritura del servidor. Un fragmento como .aux. necesita índices y propiedad final. Las referencias son a líneas del JavaScript original W1.
+Clave global o ruta literal
+Clave o fragmento literal
+Acceso observado
+Referencia
+automix.a.on
+L E
+W1 L1189
+automix.b.on
+L E
+W1 L1189
+automix.time
+E
+W1 L2293
+hw.
+L
+W1 L1346
+m.afs.enabled
+E
+W1 L1803
+m.delayL
+L
+W1 L1594
+m.delayR
+L
+W1 L1594
+m.dim
+L E
+W1 L1109
+m.dyn.
+L E
+W1 L1962
+m.dyn.bypass
+L
+W1 L2000
+m.dyn.linked
+L E
+W1 L1910
+m.eq.bypass
+L
+W1 L1872
+m.eq.hpf.
+L E
+W1 L1797
+m.eq.linked
+L E
+W1 L1797
+m.eq.lpf.
+L E
+W1 L1797
+m.eq.peak
+L
+W1 L1872
+m.eq.peak.
+L E
+W1 L1797
+m.l.invert
+E
+W1 L1806
+m.mix
+L
+W1 L1598
+m.mtx.
+L E
+W1 L1181
+m.r.invert
+E
+W1 L1807
+settings.auxmutelink
+L E
+W1 L1269
+settings.auxsendpoint
+L E
+W1 L2133
+settings.block.auxlvl
+L
+W1 L2189
+settings.block.auxproc
+L
+W1 L2189
+settings.block.mode
+E
+W1 L2185
+settings.block.pass
+L E
+W1 L950
+settings.cascade.ch24solo
+E
+W1 L2196
+settings.cascade.enabled
+L E
+W1 L2192
+settings.cascade.master
+L E
+W1 L2192
+settings.cascade.mgsync
+E
+W1 L2195
+settings.cascade.remote
+L E
+W1 L2192
+settings.cascade.snapsync
+E
+W1 L2094
+settings.cascade.vcasync
+E
+W1 L2195
+settings.clock
+L E
+W1 L2135
+settings.cue
+L E
+W1 L2500
+settings.footswitchfunc
+L E
+W1 L2136
+settings.fsmgidx
+E
+W1 L2136
+settings.hpswap
+L E
+W1 L2127
+settings.hpvol.0
+E
+W1 L2137
+settings.hpvol.1
+E
+W1 L2138
+settings.mtk.format
+L E
+W1 L2130
+settings.mtxsendpoint
+L E
+W1 L1281
+settings.multiplesolo
+L E
+W1 L1162
+settings.nophantomonboot
+L E
+W1 L2133
+settings.playMode
+L E
+W1 L2497
+settings.recordMode
+L E
+W1 L2129
+settings.shuffle
+L E
+W1 L2508
+settings.soloMode
+L E
+W1 L2126
+settings.solotype
+L E
+W1 L2128
+settings.solovol
+E
+W1 L2137
+settings.udpcoms
+L E
+W1 L2473
+settings.udpmsg
+L
+W1 L2471
+settings.underscan
+L E
+W1 L2134
+var.afsdata
+L
+W1 L1882
+var.cascade.connected
+L
+W1 L1134
+var.currentCue
+L
+W1 L1104
+var.currentLength
+L
+W1 L2539
+var.currentPlaylist
+L
+W1 L2500
+var.currentShow
+L E
+W1 L986
+var.currentSnapshot
+L E
+W1 L1103
+var.currentState
+L
+W1 L1105
+var.currentTrack
+L
+W1 L2500
+var.currentTrackPos
+L
+W1 L2539
+var.fswgpio
+E
+W1 L2181
+var.hpaux
+L E
+W1 L1065
+var.isRecording
+L
+W1 L1109
+var.mtk.bufferfill
+L E
+W1 L1426
+var.mtk.currentLength
+L
+W1 L2533
+var.mtk.currentState
+L
+W1 L1106
+var.mtk.currentTrackPos
+L E
+W1 L2523
+var.mtk.freespace
+L
+W1 L2524
+var.mtk.playsession
+L
+W1 L2526
+var.mtk.present
+L
+W1 L1239
+var.mtk.rec.busy
+L
+W1 L1110
+var.mtk.rec.currentState
+L
+W1 L1110
+var.mtk.rec.time
+L
+W1 L2533
+var.mtk.session
+L
+W1 L2525
+var.mtk.soundcheck
+L E
+W1 L1432
+var.pongtime
+L E
+W1 L2446
+var.present
+L
+W1 L1238
+var.recBusy
+L
+W1 L1109
+var.rswgpio
+E
+W1 L2180
+var.rta
+L E
+W1 L1766
+var.unsaved.chsafes
+L E
+W1 L1024
+var.unsaved.mutegroups
+L E
+W1 L1581
+var.usbfill
+L
+W1 L1426
+Sufijo de tira
+Clave o fragmento literal
+Acceso observado
+Referencia
+.freq
+E
+W1 L1820
+.gain
+E
+W1 L1820
+.mute
+L
+W1 L1178
+.pan
+L E
+W1 L1356
+.post
+L
+W1 L1178
+.value
+L E
+W1 L1177
+afs.enabled
+L
+W1 L1859
+afs.fmode
+L E
+W1 L1882
+afs.logic
+L E
+W1 L1882
+afs.sensitivity
+L E
+W1 L1882
+amix
+E
+W1 L2297
+amixgroup
+L E
+W1 L955
+aux.
+L E
+W1 L1177
+bpm
+L E
+W1 L1098
+color
+L
+W1 L1467
+comp.prmod
+E
+W1 L1253
+comp.prname
+E
+W1 L1254
+deesser.enabled
+L
+W1 L1814
+deesser.freq
+L
+W1 L1814
+deesser.ratio
+L E
+W1 L1814
+deesser.threshold
+L
+W1 L1814
+delay
+L
+W1 L1159
+digitech.enabled
+L
+W1 L1627
+digitech.prname
+L
+W1 L1716
+dyn.autogain
+L
+W1 L1976
+dyn.bypass
+L
+W1 L1339
+dyn.prmod
+L E
+W1 L1970
+dyn.prname
+L E
+W1 L1987
+dyn.ratio
+L E
+W1 L1339
+dyn.threshold
+L E
+W1 L1339
+eq.b
+E
+W1 L1820
+eq.b1.freq
+L
+W1 L1188
+eq.b1.gain
+L
+W1 L1188
+eq.b1.q
+L
+W1 L1188
+eq.b2.freq
+L
+W1 L1188
+eq.b2.gain
+L
+W1 L1188
+eq.b2.q
+L
+W1 L1188
+eq.b3.freq
+L
+W1 L1188
+eq.b3.gain
+L
+W1 L1188
+eq.b3.q
+L
+W1 L1188
+eq.b4.freq
+L
+W1 L1189
+eq.b4.gain
+L
+W1 L1189
+eq.b4.q
+L
+W1 L1189
+eq.b5.freq
+L
+W1 L1189
+eq.b5.gain
+L
+W1 L1189
+eq.b5.q
+L
+W1 L1189
+eq.bypass
+L
+W1 L1188
+eq.hpf.freq
+L E
+W1 L1188
+eq.hpf.slope
+L
+W1 L1188
+eq.lpf.freq
+L E
+W1 L1188
+eq.lpf.slope
+L
+W1 L1188
+eq.peak.
+L
+W1 L1341
+eq.peak.l
+L
+W1 L1349
+eq.prmod
+L E
+W1 L1253
+eq.prname
+L E
+W1 L1253
+exclude
+L E
+W1 L1191
+forceunmute
+L E
+W1 L1018
+fx.0.mute
+L
+W1 L1688
+fx.0.value
+L
+W1 L1688
+fx.1.mute
+L
+W1 L1689
+fx.1.value
+L
+W1 L1689
+fx.2.mute
+L
+W1 L1690
+fx.2.value
+L
+W1 L1691
+fx.3.mute
+L
+W1 L1692
+fx.3.value
+L
+W1 L1692
+fxmode
+L
+W1 L2056
+fxtype
+L
+W1 L1098
+gain
+L
+W1 L1228
+gate.bypass
+L
+W1 L1339
+gate.depth
+L E
+W1 L1339
+gate.enabled
+L
+W1 L1679
+gate.prmod
+L E
+W1 L1499
+gate.prname
+L E
+W1 L1499
+gate.thresh
+L E
+W1 L1339
+hiz
+L
+W1 L1223
+invert
+L
+W1 L1215
+iosyscmd
+L E
+W1 L1468
+iosysname
+E
+W1 L1598
+link2master
+L E
+W1 L1158
+matrix
+L E
+W1 L1116
+mgmask
+L E
+W1 L1018
+mix
+L E
+W1 L1018
+mtkrec
+L
+W1 L2513
+mtx.
+L E
+W1 L1180
+mute
+L E
+W1 L1018
+name
+L
+W1 L1119
+pan
+L E
+W1 L1168
+phantom
+L E
+W1 L1224
+post
+E
+W1 L1272
+prmod
+L
+W1 L2056
+prname
+L E
+W1 L2044
+safe
+L E
+W1 L2079
+scsrc
+L E
+W1 L1643
+solo
+L E
+W1 L1154
+src
+L E
+W1 L982
+stereo
+L
+W1 L1631
+stereoIndex
+L
+W1 L1168
+subgroup
+L E
+W1 L1189
+vca
+L E
+W1 L1151
+Enlace de control con prefijo contextual
+Clave o fragmento literal
+Acceso observado
+Referencia
+afs.enabled
+E
+W1 L1784
+afs.sensitivity
+E
+W1 L1879
+amixgroup
+E
+W1 L2293
+delay
+E
+W1 L1159
+digitech.bass
+E
+W1 L1684
+digitech.enabled
+E
+W1 L1684
+digitech.gain
+E
+W1 L1684
+digitech.level
+E
+W1 L1684
+digitech.mid
+E
+W1 L1684
+digitech.treble
+E
+W1 L1684
+ducker
+E
+W1 L1734
+dyn.attack
+E
+W1 L1698
+dyn.autogain
+E
+W1 L1967
+dyn.outgain
+E
+W1 L1700
+dyn.ratio
+E
+W1 L1698
+dyn.release
+E
+W1 L1699
+dyn.threshold
+E
+W1 L1696
+eq.b4.freq
+E
+W1 L1695
+eq.hpf.freq
+E
+W1 L1693
+fx.
+E
+W1 L1331
+fx.0.value
+E
+W1 L1688
+fx.1.value
+E
+W1 L1690
+fx.2.value
+E
+W1 L1691
+fx.3.value
+E
+W1 L1692
+gain
+E
+W1 L1205
+gate.attack
+E
+W1 L1702
+gate.depth
+E
+W1 L1705
+gate.hold
+E
+W1 L1703
+gate.release
+E
+W1 L1704
+gate.thresh
+E
+W1 L1701
+hiz
+E
+W1 L1205
+invert
+E
+W1 L1204
+mix
+E
+W1 L1157
+mtkrec
+E
+W1 L2513
+mute
+E
+W1 L1259
+pan
+E
+W1 L1267
+phantom
+E
+W1 L1205
+post
+E
+W1 L1259
+postproc
+E
+W1 L1268
+value
+E
+W1 L1259
+Sufijo compuesto
+Clave o fragmento literal
+Acceso observado
+Referencia
+.amixgroup
+E
+W1 L977
+.aux.
+E
+W1 L980
+.bpm
+E
+W1 L2036
+.color
+E
+W1 L977
+.deesser.enabled
+E
+W1 L971
+.deesser.freq
+E
+W1 L971
+.deesser.ratio
+E
+W1 L971
+.deesser.threshold
+E
+W1 L971
+.delay
+E
+W1 L977
+.delayL
+E
+W1 L979
+.delayR
+E
+W1 L980
+.digitech.prname
+E
+W1 L1717
+.dyn.autogain
+E
+W1 L973
+.dyn.bypass
+E
+W1 L973
+.dyn.prmod
+E
+W1 L973
+.dyn.prname
+E
+W1 L973
+.eq.b1.freq
+E
+W1 L970
+.eq.b1.gain
+E
+W1 L970
+.eq.b1.q
+E
+W1 L970
+.eq.b2.freq
+E
+W1 L970
+.eq.b2.gain
+E
+W1 L970
+.eq.b2.q
+E
+W1 L970
+.eq.b3.freq
+E
+W1 L970
+.eq.b3.gain
+E
+W1 L971
+.eq.b3.q
+E
+W1 L971
+.eq.b4.freq
+E
+W1 L971
+.eq.b4.gain
+E
+W1 L971
+.eq.b4.q
+E
+W1 L971
+.eq.bypass
+E
+W1 L970
+.eq.easy
+E
+W1 L970
+.eq.hpf
+E
+W1 L972
+.eq.hpf.freq
+E
+W1 L970
+.eq.hpf.l
+E
+W1 L972
+.eq.hpf.r
+E
+W1 L972
+.eq.hpf.slope
+E
+W1 L970
+.eq.linked
+E
+W1 L972
+.eq.lpf
+E
+W1 L972
+.eq.lpf.freq
+E
+W1 L970
+.eq.lpf.l
+E
+W1 L972
+.eq.lpf.r
+E
+W1 L972
+.eq.lpf.slope
+E
+W1 L970
+.eq.peak.
+E
+W1 L972
+.eq.peak.l.
+E
+W1 L972
+.eq.peak.r.
+E
+W1 L972
+.eq.prmod
+E
+W1 L970
+.eq.prname
+E
+W1 L970
+.exclude
+E
+W1 L979
+.forceunmute
+L E
+W1 L2019
+.freq
+L
+W1 L1419
+.fx.
+E
+W1 L981
+.fxtype
+L
+W1 L981
+.gain
+L E
+W1 L977
+.gate.attack
+E
+W1 L975
+.gate.bypass
+E
+W1 L975
+.gate.depth
+E
+W1 L975
+.gate.enabled
+E
+W1 L975
+.gate.hold
+E
+W1 L975
+.gate.prmod
+E
+W1 L975
+.gate.prname
+E
+W1 L975
+.gate.release
+E
+W1 L975
+.gate.thresh
+E
+W1 L975
+.hiz
+L E
+W1 L977
+.instrument
+E
+W1 L980
+.invert
+E
+W1 L977
+.iosyscmd
+E
+W1 L980
+.iosysname
+E
+W1 L980
+.l.
+E
+W1 L1802
+.link2master
+E
+W1 L979
+.matrix
+E
+W1 L979
+.mgmask
+L
+W1 L1933
+.mix
+E
+W1 L977
+.mtx.
+E
+W1 L980
+.mute
+L E
+W1 L977
+.name
+L E
+W1 L977
+.pan
+E
+W1 L978
+.par1
+E
+W1 L981
+.par2
+E
+W1 L981
+.par3
+E
+W1 L981
+.par4
+E
+W1 L981
+.par5
+E
+W1 L981
+.par6
+E
+W1 L981
+.phantom
+L E
+W1 L977
+.post
+L E
+W1 L980
+.postproc
+E
+W1 L980
+.prmod
+E
+W1 L981
+.prname
+E
+W1 L981
+.r.
+E
+W1 L1802
+.r.mute
+L E
+W1 L1181
+.r.value
+L E
+W1 L1181
+.scsrc
+E
+W1 L977
+.smix
+E
+W1 L979
+.solo
+E
+W1 L978
+.span
+E
+W1 L979
+.src
+E
+W1 L977
+.stereoIndex
+L
+W1 L948
+.subgroup
+E
+W1 L978
+.value
+L E
+W1 L980
+.vca
+E
+W1 L978
+Anexo E Presets de fábrica
+Carpeta
+Uso por contexto
+Archivos
+ch
+Canal
+25
+digi
+Digitech
+48
+dynch
+Dinámica de canal
+22
+dynm
+Dinámica master
+1
+eqch
+EQ de canal
+28
+fxcho
+Chorus
+6
+fxdel
+Delay
+8
+fxrev
+Reverb
+14
+fxroom
+Room
+9
+Los nombres siguientes se muestran decodificados para lectura. Para localizar el archivo original se aplica la codificación porcentual y la extensión .uipreset. No se traducen ni corrigen los nombres que proceden del firmware. Los valores de cada archivo son relativos a su categoría y se aplican mediante las reglas de applyPreset.
+ch Canal
+Acoustic 1 • Acoustic 2 • BG Vocals • Bass Gtr • Brass 1 • Brass 2 • Drums OH • Electric Gtr • Female Vocal 1 • Female Vocal 2 • Hi Hat • Kick Drum • Male Vocal 1 • Male Vocal 2 • Piano • Snare Drum 1 • Snare Drum 2 • Synthesizer • Tom Tom • Vtg Acoustic Gtr • Vtg Bass Gtr • Vtg Female Vocal • Vtg Kick Drum • Vtg Male Vocal • Vtg Snare Drum
+digi Digitech
+70's Rock • 80's Lead • Acoustic 2 • Acoustic strummer • Almost Clean • Big Bass • Bohemian Lead • Break up Blues • Clean pick Bass • Creamy Lead • Crunchy Bass • Digitech Blues • Dimed • Early Eddie • Eddie Lead • Endless 80's Sustain • Fender BF Twin • Fender Bassman • Fully Crank'd Tweed • Fuzzy • Gilmour Direct • Grungy • Just Clean • Just Plain Clean • Just Rock • Marshall JCM800 • Master of Thrash • Mesa Boogie • Metal Cowboy • Nasty Metal • Nice and Crunchy • Paranoid • Peavey 5150 • Phat Grunge Rhythm • Plenty of mids • Punchy Bass • Roland JC • Scooped Clean • Spanked • Sweet Tweed Clean • Texas mids • Thick Clean • Thick mid Lead • Tube Destruction • Tweed crunch • Very Funky • Vox AC30 • Young Angus
+dynch Dinámica de canal
+Acoustic 1 • Acoustic 2 • Bass Gtr • Ceiling Comp • Classic Comp • Drums OH • EZ Comp • Electric Gtr • Female Vocal • Kick Drum • Male Vocal • No Clip Comp • Snare Drum 1 • Snare Drum 2 • Tom Tom • Vtg Acoustic Gtr • Vtg Bass EZ • Vtg Bass • Vtg Drum Slam • Vtg Drums Breathy • Vtg Snare Drum • Vtg Vocal
+dynm Dinámica master
+Vtg Main Limit
+eqch EQ de canal
+Acoustic 1 • Acoustic 2 • BG Vocals • Bass Gtr • Brass 1 • Brass 2 • Drums OH • Electric Gtr • Female Vocals 1 • Female Vocals 2 • Hi Hats • Kick Drum • Male Vocals 1 • Male Vocals 2 • Piano • Snare Drum 1 • Snare Drum 2 • Synthesizer • Tom Tom • Vtg Acoustic Gtr • Vtg Bass Gtr • Vtg Drum OH • Vtg Electric Gtr • Vtg Female Vocals • Vtg Kick Gtr • Vtg Male Vocal • Vtg Piano • Vtg Snare Drum
+fxcho Chorus
+Add Density • Alien Encounter • Ambience • Broken Piano • Default Chorus • Wide Stereo
+fxdel Delay
+Band Pass Delay • Basic Delay • Basic Slap • Lo Slap • PA Default • Pingy • Radio • Springy
+fxrev Reverb
+Cathedral • Close Up • Concrete Chamber • Default Reverb • Large Hall • Large Space • Medium Hall • Medium Studio • Small Room • Small Stage • Studio • Taj Mahal • Tight Ambience • Warehouse
+fxroom Room
+Acoustic Ambience • Bathroom • Default Room • Metal Plate • Office Room • Presence 1 • Presence 2 • Small Studio • Very Small Room
+Anexo F Parámetros presentes en los presets
+Se encontraron 52 claves distintas en los 161 JSON. Los mínimos y máximos de esta tabla son valores observados en esos archivos, no límites de validez de la API. La columna N indica cuántos presets incluyen la propiedad. Las ramas izquierda y derecha de master se conservan por separado.
+Clave relativa
+N
+Mínimo observado
+Máximo observado
+.digitech.amp
+48
+4
+53
+.digitech.bass
+48
+0.144323446
+0.670231308
+.digitech.cab
+48
+2
+21
+.digitech.gain
+48
+0
+1
+.digitech.level
+48
+0.569475077
+0.962264151
+.digitech.mid
+48
+0.346644704
+0.739895242
+.digitech.treble
+48
+0.503836032
+1
+.dyn.attack
+87
+0
+0.414634146
+.dyn.gain
+47
+0.75
+0.75
+.dyn.gate
+47
+0
+0
+.dyn.l.attack
+1
+0
+0
+.dyn.l.outgain
+1
+0.333333333
+0.333333333
+.dyn.l.ratio
+1
+0.0487804878
+0.0487804878
+.dyn.l.release
+1
+0.488482385
+0.488482385
+.dyn.l.softknee
+1
+0
+0
+.dyn.l.threshold
+1
+0.900671141
+0.900671141
+.dyn.linked
+1
+1
+1
+.dyn.outgain
+87
+0.3333
+0.512161789
+.dyn.r.attack
+1
+0
+0
+.dyn.r.outgain
+1
+0.333333333
+0.333333333
+.dyn.r.ratio
+1
+0.0487804878
+0.0487804878
+.dyn.r.release
+1
+0.488482385
+0.488482385
+.dyn.r.softknee
+1
+0
+0
+.dyn.r.threshold
+1
+0.900671141
+0.900671141
+.dyn.ratio
+87
+0
+1
+.dyn.release
+87
+0
+0.74031377
+.dyn.softknee
+87
+0
+1
+.dyn.threshold
+87
+0.296644295
+1
+.eq.b1.freq
+53
+0
+0.343262139
+.eq.b1.gain
+53
+0.323315118
+0.726278959
+.eq.b1.q
+53
+0.0619307832
+0.5
+.eq.b2.freq
+53
+0.240803797
+0.751513098
+.eq.b2.gain
+53
+0.24906751
+0.686663337
+.eq.b2.q
+53
+0.299635701
+0.753187614
+.eq.b3.freq
+53
+0.338887524
+0.871126401
+.eq.b3.gain
+53
+0.361566485
+0.684841843
+.eq.b3.q
+53
+0.235883424
+0.694899818
+.eq.b4.freq
+53
+0.712261576
+1
+.eq.b4.gain
+53
+0.421675774
+0.68579235
+.eq.b4.q
+53
+0.212204007
+0.640255009
+.eq.bass
+53
+0.5
+0.5
+.eq.easy
+53
+0
+0
+.eq.hpf.freq
+93
+0
+0.337230333
+.eq.mid
+53
+0.5
+0.5
+.eq.treble
+53
+0.5
+0.5
+.gate.thresh
+40
+0
+0.71641791
+.par1
+37
+0
+1
+.par2
+37
+0.015625
+1
+.par3
+37
+0
+1
+.par4
+37
+0
+1
+.par5
+37
+0
+0.527415144
+.par6
+37
+0
+0
+Ejemplo completo de preset de dinámica
+P1 /dynch/Male%20Vocal.uipreset. Se conserva el contenido numérico; el nombre describe un preset de fábrica y no una recomendación para una voz particular.
+{
+".dyn.gate": 0,
+".dyn.threshold": 0.7651006711409396,
+".dyn.gain": 0.75,
+".dyn.ratio": 0.24390243902439016,
+".dyn.softknee": 1,
+".dyn.attack": 0.1571815718157182,
+".dyn.outgain": 0.4579612466124661,
+".dyn.release": 0.3094194613821138
+}
+Anexo G Identificadores Digitech
+Los identificadores son las claves de E_AMPS2 y E_CABS2 que escribe el selector. No se renumeran. Los nombres son etiquetas del firmware y no acreditan equivalencia exacta con los equipos físicos que mencionan.
+Amplificadores
+ID
+Etiqueta original
+0
+Direct
+1
+Carvin Legacy
+2
+Matchless Cheiftain
+3
+Fender BlackFace Deluxe
+4
+Fender Blackface Twin
+5
+Fender Brownface Bassman
+6
+Fender Tweed Bassman
+7
+Fender Tweed Champ
+8
+Fender Tweed Deluxe
+9
+Gibson GA40
+10
+Hiwatt Custom 100
+11
+Laney Supergroup
+12
+Marshall JCM2000
+13
+Marshall JCM800
+14
+Marshall JCM900
+15
+Marshall JTM45
+16
+Marshall Master Volume
+17
+Marshall Plexi
+18
+Marshall Plexi Jumped
+19
+Matchless DC30
+20
+Mesa Dual Rectifier
+21
+Mesa Mark IIC
+22
+Mesa Mark IV
+23
+Mesa Triple Rectifier
+24
+Orange OR120
+25
+Peavey 5150 II
+26
+Randall RG100
+27
+Roland Jazz Chorus
+28
+Soldano SLO100
+29
+Sunn 100S
+30
+VOX AC15
+31
+VOX AC30
+32
+Digitech BlackBass
+33
+Digitech Blues
+34
+Digitech Brown Sound
+36
+Digitech CleanTube
+37
+Digitech Crunch
+41
+Digitech GSP2101 CleanTube
+42
+Digitech GSP2101 SaturatedTube
+43
+Digitech HiGain
+44
+Digitech Metal
+45
+Digitech Monster
+47
+Digitech Solo
+49
+Digitech Stoner Rock
+50
+Digitech Transistor
+51
+Digitech TweedFace
+52
+Acoustic Dreadnaught
+53
+Acoustic Jumbo
+Gabinetes
+ID
+Etiqueta original
+0
+Fender Tweed Champ 1x8 Edge
+1
+Fender Tweed Deluxe 1x12
+2
+Fender Tweed Bassman 4x10
+3
+Fender Blonde Bassman 2x12
+4
+Fender Blackface Deluxe 1x12
+5
+Fender Blackface Twin 2x12
+6
+Marshall 4x12
+7
+Marshall Greenback 4x12
+8
+Johnson V30 4x12
+9
+Hiwatt Fane 4x12
+10
+Vht V30 4x12
+11
+Vox Ac15 1x12 Center
+12
+Vox Ac30 2x12
+13
+Gsp2101 Speaker Compensation
+14
+Digitech Bright Cab
+15
+Digitech Solo Cab
+16
+Digitech Rock Cab
+17
+Digitech Altrock Cab
+18
+Digitech Metal Cab
+19
+Digitech Numetal Cab
+20
+Acoustic Dreadnaught Cab
+21
+Acoustic Jumbo Cab
+22
+Direct Cab
+Anexo H Localizadores de funciones
+Índice de funciones relacionadas con el control, las conversiones y la persistencia. Las funciones gráficas genéricas y los helpers internos de bibliotecas no se incluyen aquí para evitar confundirlos con operaciones de consola. El nombre corresponde al código original, incluso cuando contiene una errata como checkDataIngegrity.
+Función
+Línea original
+Offset de caracteres en script
+applyPreset
+W1 L976
+476380
+askBpm
+W1 L1101
+533315
+askForDelay
+W1 L1140
+550328
+blockGainBySrc
+W1 L1144
+552093
+bpmTapHandler
+W1 L1099
+532328
+checkDataIngegrity
+W1 L982
+479327
+checkMutes
+W1 L1359
+661019
+checkSolos
+W1 L1358
+660972
+configFunctions
+W1 L1038
+504993
+copyAuxSends
+W1 L1357
+660193
+copyChannel
+W1 L1027
+500291
+copyMixToAux
+W1 L1356
+659940
+copyMtxSends
+W1 L1358
+660569
+createData
+W1 L982
+479093
+createRoutingArrays
+W1 L2236
+1103460
+deconvertVU
+W1 L982
+479505
+deconvertVU_comp
+W1 L983
+479558
+doFfunc
+W1 L1103
+534062
+exportSnapshotToFile
+W1 L1026
+500083
+getUdpParam
+W1 L2477
+1224417
+getUdpReply
+W1 L2477
+1224355
+getValue
+W1 L944
+461496
+handle_mgmask
+W1 L952
+465113
+hasDigi
+W1 L1625
+792850
+hasHIZ
+W1 L1624
+792510
+importSnapshotFromFile
+W1 L1026
+499851
+initLocal
+W1 L1069
+519684
+iosys
+W1 L1130
+546771
+isBlocked
+W1 L950
+464643
+isCascade
+W1 L1134
+547992
+isMTKbusy
+W1 L2490
+1230848
+isSlave
+W1 L1134
+548166
+isSocketConnected
+W1 L1129
+546205
+jsonToMixer
+W1 L1027
+500588
+mixerToJson
+W1 L1027
+500431
+muteGroupOFF
+W1 L1585
+773203
+muteGroupON
+W1 L1583
+772618
+muteGroupToggle
+W1 L1586
+773650
+netDisconnect
+W1 L1129
+546046
+netInit
+W1 L1126
+544829
+netStart
+W1 L1127
+545013
+networkTick
+W1 L1125
+544436
+parseBMessage
+W1 L1014
+494660
+parseCommand
+W1 L984
+479704
+parseRTAdata
+W1 L1012
+493717
+parseVUAdata
+W1 L994
+484542
+parseVUdata
+W1 L995
+484994
+putValue
+W1 L951
+465023
+receiveMessage
+W1 L1133
+547479
+receiveMessage2
+W1 L1132
+547029
+resetChannel
+W1 L977
+476612
+resetDyn
+W1 L973
+475290
+resetFX
+W1 L981
+478741
+resetGate
+W1 L975
+476065
+resetGraphEQ
+W1 L972
+474835
+resetParEQ
+W1 L970
+474018
+saveToCurrentShow
+W1 L2238
+1104520
+sendMessage
+W1 L1129
+546277
+sendTimeNetwork
+W1 L1131
+546814
+setUdpSlot
+W1 L2477
+1224592
+setValue
+W1 L945
+461558
+setValueX
+W1 L951
+464889
+switchUnit
+W1 L1134
+547762
+toggleMTKRec
+W1 L1110
+537543
+toggleRec
+W1 L1109
+537327
+undoRouteChange
+W1 L2201
+1086341
+updateByKey
+W1 L955
+466245
+El offset de la última columna es un índice de caracteres del texto JavaScript procesado, no una dirección de memoria ni un offset de byte dentro de umixsrv. Para recursos binarios se utilizan los offsets del anexo A.
+Anexo I Reproducción del análisis
+La extracción se realiza sobre copias locales y no necesita modificar la consola. El siguiente procedimiento requiere un entorno Linux con Python y debugfs. No ejecuta preupdate.sh, update.sh, init ni umixsrv.
+python -m zipfile -e uiupdate-k-3.5.8328-ui24v3.zip firmware
+mkdir -p mixer-extracted system-extracted xorg-extracted chrome-extracted
+debugfs -R 'rdump / mixer-extracted' firmware/200-mixer.img
+debugfs -R 'rdump / system-extracted' firmware/100-system.img
+debugfs -R 'rdump / xorg-extracted' firmware/300-xorg.img
+debugfs -R 'rdump / chrome-extracted' firmware/400-chrome.img
+El lector de imágenes usado en el análisis no requiere montar las imágenes ni iniciar sus ejecutables. Se registra la versión de las herramientas y se conservan los hashes antes de generar representaciones reindentadas del código.
+Extracción de los dos recursos principales
+from pathlib import Path
+import zlib
+binary = Path("mixer-extracted/mixer/umixsrv").read_bytes()
+for offset in (18429544, 18752107):
+expected = int.from_bytes(binary[offset-4:offset], "big")
+decoder = zlib.decompressobj()
+payload = decoder.decompress(binary[offset:], expected + 1)
+if not decoder.eof or len(payload) != expected:
+raise ValueError("Recurso o versión incorrectos")
+Path(f"resource-{offset}.html").write_bytes(payload)
+Estos offsets son específicos del SHA256 documentado. No se aplican sin comprobarlos a una nueva versión. Para descubrir otros bloques se examinaron candidatos zlib precedidos por una longitud big-endian y se comprobó fin de flujo y tamaño. El script principal es el primer elemento script con contenido de cada HTML; el script externo vacío no cuenta.
+Extracción del ramdisk
+La cabecera Android informa kernel_size=9956176, ramdisk_size=2714272 y page_size=2048. El kernel empieza después de la página de cabecera. El ramdisk empieza en page_size + ceil(kernel_size/page_size)*page_size, que en este archivo da 9959424. Su carga gzip se descomprime a un archivo CPIO newc de 5607936 bytes. El inventario conserva modo, tamaño y destino de enlaces; para leer scripts basta extraer archivos regulares y evitar rutas que salgan del directorio elegido.
+Cómo extender este manual
+Para otra versión, repetir inventario y hashes, extraer recursos, comparar AST y claves, y conservar los cambios de fórmulas y emisores. Completar después con capturas de la unidad física. Una coincidencia de nombres entre versiones no prueba igualdad de semántica. Las fichas deben indicar la versión confirmada y la evidencia de cada excepción.

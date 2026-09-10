@@ -44,13 +44,29 @@ Un perfil **no es un preset**. Un preset diría «filtro pasa altos en 80 Hz»; 
 
 ## Protocolo de la Ui24R
 
-Texto sobre WebSocket. `SETD^ruta^valor`, `SETS^ruta^texto`, `VU2^base64`, `MTK_*`, `MEDIA_*`, `LOADSNAPSHOT`. Sin identidad de cliente en los mensajes y **sin confirmación de escritura**. `ALIVE` cada segundo.
+No es un WebSocket pelado: socket.io 0.9, con las líneas envueltas en `3:::` y varias por trama. `SETD^ruta^valor`, `SETS^ruta^texto`, `VU2^base64`, `RTA^base64`, `VUA^base64`, `MTK_*`, `MEDIA_*`, `LOADSNAPSHOT`. Sin identidad de cliente en los mensajes. `ALIVE` cada segundo, del cliente, y no se contesta.
+
+**Las rutas son de base cero**: `i.0` es el canal 1, `hw.0.gain` la ganancia del canal 1.
 
 Consecuencias que ya están resueltas en el código:
 
-- Como no hay identidad de cliente, el origen de un cambio se reduce a `SELF | EXTERNAL | UNKNOWN` por correlación temporal de 300 ms (ADR-005).
-- Como no hay confirmación, la política de verificación depende del spike SPK-ACK-POLICY y por ahora INV-011 está pendiente de hardware.
+- **La consola no le devuelve eco a quien escribe, pero sí difunde a los demás clientes** (medido el 2026-09-08). Dos conexiones del mismo proceso son dos clientes distintos, así que la confirmación se hace con una **segunda conexión testigo**, que ve la escritura a los **27 ms** (ADR-024). `confirmedBy` alcanzable es `WITNESS`; `ECHO` está prohibido por el tipo.
+- Por lo mismo, lo que llega por la conexión principal es **siempre ajeno**. La deducción de origen por correlación temporal se quitó: no acertaba nunca por el motivo que decía, y al acertar por coincidencia se tragaba el cambio de otro operador.
 - El estado confirmado se alimenta **solo** de los mensajes entrantes. La biblioteca `soundcraft-ui-connection` mezcla lo saliente con el estado, y por eso no se usa para esto.
+- El fin del volcado se detecta **por quietud**, nunca por número de claves: dos sesiones con el mismo firmware dieron 6 665 y 6 087.
+
+### Los números medidos que más se usan
+
+| Qué | Cuánto |
+|---|---|
+| Recorrido del medidor | **80 dB**, lineal en decibeles, 0,333 dB por byte |
+| Techo del medidor | posición 1, o sea 0 dB; el byte se clava en 239 |
+| Espectro `RTA` | 122 bandas de 1/12 de octava, **0,375 dB por byte** — escala distinta de la del medidor |
+| Ley de bandas | `banda = 67 + 12·log2(f/1000)` |
+| Ganancia del previo | la tabla es exacta de −6 a +24 dB; arriba de 26 el previo entrega **1,15 dB menos** |
+| Confirmación por testigo | 27 ms |
+| Umbral de inestabilidad | **99 ms sobre `RTA`**, que no se apaga; `VU2` sí se calla en silencio |
+| Trama `VU2` | 306 bytes: 8 de cabecera, 6 por canal, y una cola cuyas secciones **no comparten el paso** |
 
 ## DSP
 
@@ -87,6 +103,6 @@ La etiqueta manda sobre la casilla de pre-lanzamiento de GitHub: `v0.3.0-rc.1` s
 
 `node tools/mixer-sim/src/server.mjs --port 8765`
 
-Doce canales y los escenarios `external-change`, `snapshot-recall`, `fader-drag`, `vu-gap`, `clipping`, `drop`. Se provocan enviando `!scenario <nombre>` por el propio WebSocket.
+Veinticuatro canales --como la consola-- y los escenarios `external-change`, `snapshot-recall`, `fader-drag`, `vu-gap`, `clipping`, `drop`. Se provocan enviando `!scenario <nombre>` por el propio WebSocket.
 
 **Advertencia que se repite en tres sitios y conviene repetir acá:** el simulador reproduce *nuestras hipótesis* del protocolo. Si son equivocadas, está equivocado igual y las pruebas pasan igual. Ninguna invariante se cierra contra el simulador.

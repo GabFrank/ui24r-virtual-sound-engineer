@@ -3,9 +3,25 @@ import type {
   ReadResult, WriteResult,
 } from './api.ts';
 import { ConfirmedStateStore, type EntradaEstado } from './confirmed-store.ts';
-import { codificarSetd, decodificar, decodificarVu } from './protocol.ts';
+import { actualizarPico, type Pico } from './retencion-pico.ts';
+import {
+  codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
+} from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
+import { confirmarPorMedidor, NIVEL_MINIMO_PARA_CONFIRMAR_DB } from './confirmacion-por-medidor.ts';
+import { comoConfirmarPorMedidor, type PuntoDeMedida } from './que-medidor-mira.ts';
+import { leerDinamica } from './dinamica.ts';
+import { rutaDeGanancia, tomaPistaGrabada } from './fuente-de-canal.ts';
+import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
+import { decodificarEspectro, hayEspectro } from './espectro.ts';
+import {
+  nombreDeInstantanea, comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
+  comandoDevolverEtiqueta, comandoBorrar,
+} from './instantaneas.ts';
+import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
+import type { DinamicaDeCanal } from '@vse/domain';
+import { snapshotsABorrar } from '@vse/domain';
 
 export interface OpcionesAdapter {
   /**
@@ -33,14 +49,66 @@ export interface OpcionesAdapter {
    * consola real no: contra el aparato, el estado confirmado se quedaba en
    * INVALID para siempre y ninguna lectura era confiable.
    *
-   * El volcado son ~6 665 claves en unos 220 mensajes seguidos, y entra
+   * El volcado son del orden de seis mil claves en unos 220 mensajes seguidos
+   * —6 665 y 6 087 en dos sesiones, no es constante—, y entra
    * completo entre 112 y 158 ms (20 de 20 ciclos medidos el 2026-09-08). Un
    * cuarto de segundo sin una sola línea de estado es holgado para ese ritmo y
    * corto para el operador. Las tramas de medidores y de analizador no cuentan:
    * llegan siempre y no dirían nada.
    */
   readonly quietudVolcadoMs?: number;
+  /** Cuánto esperar a que la consola escriba una instantánea antes de verificarla. */
+  readonly esperaGuardadoMs?: number;
+  /**
+   * Cuánto se espera al medidor antes de leer el nivel de después.
+   *
+   * Sale de tres cosas medidas y ninguna es un número redondo por gusto: la
+   * consola difunde en un tic de **~34 ms**, la subida del medidor no se
+   * resuelve por debajo de la cadencia de tramas —44 ms con señal— y la caída
+   * de 20 dB tarda 37 ms de mediana. Trescientos milisegundos son varias veces
+   * todo eso, y siguen siendo cortos frente a los 500 ms del testigo.
+   */
+  readonly esperaMedidorMs?: number;
+  /**
+   * Cuánto se espera la respuesta a `SNAPSHOTLIST`.
+   *
+   * Medido: mediana 6 ms, máximo 277 en doce pedidos. Mil quinientos son más de
+   * cinco veces el peor caso, y no cuestan nada porque esto pasa una vez por
+   * transacción y no una vez por escritura.
+   */
+  readonly timeoutListaMs?: number;
+  /**
+   * Cuánto se espera antes de comprobar que un borrado ocurrió.
+   *
+   * La consola no acusa recibo de `DELETESNAPSHOT`, así que hay que darle
+   * tiempo a escribir en su disco antes de preguntar. Es el mismo criterio del
+   * guardado, con menos espera porque borrar mueve menos datos.
+   */
+  readonly esperaBorradoMs?: number;
+  /**
+   * Aviso de que la retención no pudo borrar algo.
+   *
+   * No es un error de la transacción: el punto de retorno se guardó igual y eso
+   * es lo que INV-001 pide. Pero **tampoco puede ser silencioso**, porque el
+   * modo de fallo es que el show crezca sin límite sin que nadie se entere.
+   * Existe como callback y no como excepción por eso: quien llama decide si lo
+   * anota en el diario o lo muestra, y la transacción sigue.
+   */
+  readonly alNoPoderBorrar?: (nombres: readonly string[]) => void;
   readonly ahora?: () => number;
+  /**
+   * Cómo se abre la **segunda conexión testigo**, la que confirma las
+   * escrituras (ADR-024).
+   *
+   * Por defecto se le pide al propio transporte con `nuevaSesion()`, que es lo
+   * que hace que esto funcione sin que quien construye el adaptador tenga que
+   * saber que existe un testigo. Se puede sustituir para los tests y para un
+   * despliegue que quiera abrir la sesión de otra manera.
+   *
+   * Si no hay fábrica ni `nuevaSesion()`, el adaptador **no escribe**: lo dice
+   * y devuelve `REJECTED`. Ver `escribir()`.
+   */
+  readonly crearTestigo?: () => Transport;
 }
 
 export interface EstadoCanal {
@@ -59,9 +127,100 @@ export interface EstadoCanal {
    */
   readonly gainDb: number | null;
   readonly silenciado: boolean;
+  /**
+   * Nivel de **entrada**, antes del fader y **después del proceso dinámico**.
+   *
+   * Es el que importa para el margen del previo en un sentido: no cambia
+   * porque alguien mueva un fader. En la consola es la marca fantasma del
+   * medidor, no la barra de color.
+   *
+   * **Lo que no es, y costó descubrirlo:** no es la señal que entra al canal.
+   * El compresor y la puerta ya pasaron. Medido el 2026-09-09 con un tono fijo,
+   * bajar el umbral del compresor movió esta lectura de −29,66 a −40,46 dB. Un
+   * consejo de ganancia calculado sobre este número sin mirar `reduccionDb` es
+   * un consejo calculado sobre una señal procesada.
+   */
   readonly nivelDb: number;
   readonly picoDb: number;
-  readonly eventosSaturacion: number;
+  /**
+   * Nivel **después del previo y antes del procesamiento dinámico**.
+   *
+   * Es el que hay que mirar para aconsejar ganancia, y el que muestrea el
+   * asistente. `nivelDb` es lo que la consola dibuja en su tira —sirve para
+   * hablar el mismo idioma que el operador— pero llega con el compresor
+   * encima; este no.
+   *
+   * Medido el 2026-09-09: con el compresor apretando 5 dB, `nivelDb` cayó a
+   * −53,33 y este se quedó en −48,66; y subiendo `hw.N.gain` de 10 a 22 dB,
+   * los dos subieron lo mismo. Ver `MedidorCanal.pre`, donde está también qué
+   * parte de esto sigue inferida.
+   */
+  readonly nivelPreProcesoDb: number;
+  readonly picoPreProcesoDb: number;
+  /**
+   * Cuántos decibeles le está sacando el procesador dinámico ahora mismo.
+   *
+   * Cero cuando no está actuando, que es lo que informa la consola en un canal
+   * sin compresor **y** en un canal con compresor puesto que no llega a su
+   * umbral. Esa diferencia es la que convierte un aviso genérico —«hay un
+   * compresor, cuidado»— en un dato accionable: «este nivel ya viene 9 dB
+   * comprimido».
+   */
+  readonly reduccionDb: number;
+  /** La mayor reducción vista desde el último reinicio de picos. */
+  readonly reduccionPicoDb: number;
+  /**
+   * Qué proceso dinámico tiene puesto el canal.
+   *
+   * Es configuración, no medición: `reduccionDb` dice cuánto está haciendo el
+   * compresor, y esto dice qué hay en el camino. Los dos hacen falta, porque la
+   * puerta y el de-esser no tienen medidor propio en la trama.
+   */
+  readonly dinamica: DinamicaDeCanal;
+  /**
+   * Nivel de **salida**, después del fader.
+   *
+   * Es la barra de color que dibuja la consola en su tira. Se muestra para
+   * que quien mire las dos pantallas a la vez encuentre el mismo número, y
+   * porque la diferencia con la entrada es el fader: sirve para ver de un
+   * vistazo cuánto se está atenuando un canal.
+   */
+  readonly nivelSalidaDb: number;
+  readonly picoSalidaDb: number;
+  /**
+   * Veces que saturó el **previo**, byte `+0`.
+   *
+   * Es el que le importa a la ganancia: la consola lo vigila en su página de
+   * ganancia con `setVUPre`, y cuando se enciende **congela el deslizador de
+   * ganancia** para que nadie siga subiendo. Si este cuenta, la perilla del
+   * previo está de más.
+   */
+  readonly saturacionesPrevio: number;
+  /**
+   * Veces que saturó la **salida** del canal, byte `+2`.
+   *
+   * Es el clip que la consola dibuja en la tira del canal, con `setVU(n, q, …)`
+   * y `1 <= q`. Depende del fader, así que se arregla bajando el canal y no
+   * tocando el previo.
+   */
+  readonly saturacionesSalida: number;
+  /**
+   * La ruta del previo que alimenta a este canal, o `null` si no se sabe.
+   *
+   * Sale de `i.N.src` y no del número del canal. Se expone porque quien vaya a
+   * **escribir** la ganancia necesita saber dónde, y derivarlo dos veces —una
+   * acá y otra en el llamador— es la forma de que las dos derivaciones se
+   * separen con el tiempo.
+   */
+  readonly rutaGanancia: string | null;
+  /**
+   * Si el canal está reproduciendo una pista grabada en vez de su entrada.
+   *
+   * Cuando es cierto, **la ganancia del previo no afecta lo que suena**: el
+   * canal reproduce lo grabado. Un consejo de ganancia ahí no es impreciso, es
+   * inaplicable.
+   */
+  readonly tomaPistaGrabada: boolean;
 }
 
 /**
@@ -86,24 +245,99 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly ahora: () => number;
 
   private readonly nombresCanal = new Map<number, string>();
+  /** De qué previo viene cada canal, según `i.N.src`. Ver `fuente-de-canal.ts`. */
+  private readonly fuentesCanal = new Map<number, string>();
+  private oyentesEspectro: ((bandas: readonly number[]) => void)[] = [];
+  /**
+   * La fuente que el analizador tenía cuando llegamos.
+   *
+   * `var.rta` es **global**: elegir la fuente le cambia la pantalla al operador
+   * (R-28, ADR-025). Se anota lo que había para poder devolverlo, y se anota lo
+   * que llega en el volcado —no se reconstruye—: la clave viaja una sola vez y
+   * quien no la escuche entonces no la ve nunca.
+   */
+  private fuenteDelAnalizador: string | null = null;
+  private analizadorPrestado = false;
+  /** `stereoIndex` por canal. 0 es el izquierdo, 1 el derecho, −1 sin enlazar. */
+  private readonly enlacesEstereo = new Map<number, number>();
+  /**
+   * La instantánea que la consola tiene por «actual».
+   *
+   * Se sigue acá y no en el almacén confirmado porque llega como `SETS` y ese
+   * almacén solo procesa `SETD`. Hace falta para poder devolverla después de
+   * guardar: ver `comandoDevolverEtiqueta`.
+   */
+  private instantaneaActual: string | null = null;
+  /** La pista de soundcheck asignada a cada canal, por `i.N.scsrc`. */
+  private readonly pistasDeSoundcheck = new Map<number, string>();
+  /** Si el modo de soundcheck virtual está encendido. Es global. */
+  private soundcheckEncendido = false;
+  /**
+   * Cuántos canales tiene la consola de enfrente.
+   *
+   * No se supone: la cabecera de cada trama `VU2` lo dice, y el volcado manda
+   * un `i.N.name` por cada entrada. Estaba fijo en doce, y una Ui24R tiene
+   * veinticuatro: las dos entradas RCA son los canales 21 y 22, así que con
+   * doce no se veía justamente la fuente que se usa para probar.
+   */
+  private canalesDetectados = 0;
   private readonly nivelesVu = new Map<number, number>();
-  private readonly picosVu = new Map<number, number>();
-  private readonly saturaciones = new Map<number, number>();
+  private readonly picosVu = new Map<number, Pico>();
+  private readonly nivelesSalida = new Map<number, number>();
+  private readonly picosSalida = new Map<number, number>();
+  private readonly saturacionesPrevio = new Map<number, number>();
+  private readonly saturacionesSalida = new Map<number, number>();
+  private readonly reducciones = new Map<number, number>();
+  private readonly picosReduccion = new Map<number, number>();
+  private readonly nivelesPreProceso = new Map<number, number>();
+  private readonly picosPreProceso = new Map<number, number>();
 
   private info: DeviceInfo = { modelo: 'desconocido', firmware: 'desconocido' };
   private oyentesConexion: ((e: ConnectionState) => void)[] = [];
   private oyentesTelemetria: (() => void)[] = [];
+  private oyentesLatido: (() => void)[] = [];
   private desuscribir: (() => void)[] = [];
   private vigilanteVu: ReturnType<typeof setInterval> | null = null;
   private temporizadorVolcado: ReturnType<typeof setTimeout> | null = null;
   private readonly quietudVolcadoMs: number;
+  private readonly esperaGuardadoMs: number;
+  private readonly esperaMedidorMs: number;
+  private readonly timeoutListaMs: number;
+  private readonly esperaBorradoMs: number;
+  private readonly alNoPoderBorrar: ((nombres: readonly string[]) => void) | null;
   /** La última dirección conectada, para poder releer el estado. */
   private url: string | null = null;
 
   private readonly transporte: Transport;
 
+  /**
+   * La conexión testigo, o `null` mientras no haya hecho falta.
+   *
+   * **Se abre perezosamente, en la primera escritura, y esa es la decisión.**
+   * Hoy la aplicación está en nivel OBSERVE: mira, mide y propone, y no escribe
+   * un solo parámetro. Abrir el testigo al conectar le cobraría a ese uso un
+   * costo que no es simbólico, y está medido: cada sesión recibe el **volcado
+   * completo, del orden de seis mil claves —no es un número fijo—** —112 a 158 ms de ráfaga— y después los flujos de
+   * medidores y analizador, que son 30 tramas por segundo de `RTA` más las de
+   * `VU2` con señal, sostenidas mientras dure el show. En una tablet sobre la
+   * red que levanta la propia consola eso se paga en batería y en ancho de
+   * banda, para nada.
+   *
+   * El costo es real, así que se paga cuando se usa. La primera escritura de la
+   * sesión espera a que el testigo abra y termine su volcado; las siguientes ya
+   * no. Ver `asegurarTestigo()`.
+   */
+  private testigo: TestigoDeEscrituras | null = null;
+  /** Apertura en curso, para que dos escrituras a la vez no abran dos sesiones. */
+  private aperturaTestigo: Promise<TestigoDeEscrituras | null> | null = null;
+  private readonly crearTestigo: (() => Transport) | null;
+
   constructor(transporte: Transport, opciones: OpcionesAdapter = {}) {
     this.transporte = transporte;
+    this.crearTestigo = opciones.crearTestigo
+      ?? (typeof transporte.nuevaSesion === 'function'
+        ? () => transporte.nuevaSesion!()
+        : null);
     this.ahora = opciones.ahora ?? (() => Date.now());
     // 300 ms serian ocho tramas perdidas del analizador, que va a 30 Hz con
     // percentil 95 de 37 ms. Se mantiene el valor: sobre RTA es holgado y
@@ -111,6 +345,13 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.umbralHuecoRtaMs = opciones.umbralHuecoRtaMs ?? 300;
     this.timeoutMs = opciones.timeoutConfirmacionMs ?? 500;
     this.quietudVolcadoMs = opciones.quietudVolcadoMs ?? 250;
+    // Cuánto se le da a la consola para escribir la instantánea en su disco
+    // antes de preguntarle si quedó. No está medido: es una espera prudente.
+    this.esperaGuardadoMs = opciones.esperaGuardadoMs ?? 800;
+    this.esperaMedidorMs = opciones.esperaMedidorMs ?? 300;
+    this.timeoutListaMs = opciones.timeoutListaMs ?? 1500;
+    this.esperaBorradoMs = opciones.esperaBorradoMs ?? 400;
+    this.alNoPoderBorrar = opciones.alNoPoderBorrar ?? null;
     this.store = new ConfirmedStateStore({ ahora: this.ahora });
   }
 
@@ -182,6 +423,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     this.temporizadorVolcado = null;
     for (const f of this.desuscribir) f();
     this.desuscribir = [];
+    // El testigo se cierra con la principal. Dejarlo abierto sería seguir
+    // pagando el volcado y los medidores de una sesión que ya no atestigua nada.
+    await this.cerrarTestigo();
     await this.transporte.desconectar();
     this.store.invalidar();
     this.cambiarEstado('DISCONNECTED');
@@ -214,11 +458,150 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    */
   private readonly oyentesVolcado: (() => void)[] = [];
 
+  /**
+   * Las instantáneas de la aplicación que hay **ahora** en la consola.
+   *
+   * Se pide y se espera la respuesta; no se cachea. El punto de INV-001 es
+   * justamente que alguien pudo borrar la instantánea desde el navegador de la
+   * consola entre que se guardó y ahora, así que una lista guardada en memoria
+   * respondería la pregunta equivocada.
+   *
+   * Devuelve **solo las nuestras**. Si el usuario guardó algo a mano en el show
+   * de la aplicación, no es un punto de retorno que le corresponda usar a
+   * nadie más.
+   */
   async listarSnapshots(): Promise<readonly string[]> {
-    throw new Error(
-      'listarSnapshots todavía no está implementado: depende de SPK-P0.4. ' +
-      'Hasta entonces ninguna transacción con instantánea puede verificarse.',
-    );
+    if (this._estadoConexion !== 'CONNECTED') return [];
+    // Acá el `null` de «no contestó» se aplana a lista vacía **a propósito**:
+    // esto alimenta una pantalla de consulta, donde no poder distinguir los dos
+    // casos no lleva a nadie a escribir nada. Donde sí importa —verificar el
+    // punto de retorno— se mira el `null` sin aplanar.
+    return await this.pedirLista() ?? [];
+  }
+
+  /**
+   * Crea el punto de retorno que INV-001 exige, y lo verifica.
+   *
+   * Tres pasos, y el tercero es el que importa: se pide el show —la consola lo
+   * ignora si ya existe—, se guarda, y **se relee la lista** para confirmar que
+   * está. Sin ese último paso esto sería una escritura con esperanza, que es
+   * exactamente lo que la invariante prohíbe.
+   *
+   * Devuelve el nombre si quedó, o `null`. Un `null` no es un fallo silencioso:
+   * el ejecutor lo va a leer como «no hay instantánea» y va a rechazar la
+   * transacción, que es lo correcto.
+   */
+  async guardarInstantanea(): Promise<string | null> {
+    if (this._estadoConexion !== 'CONNECTED') return null;
+
+    // Se anota ANTES de guardar: guardar es lo que la cambia.
+    const anterior = this.instantaneaActual;
+
+    const nombre = nombreDeInstantanea(this.ahora());
+    this.transporte.enviar(comandoCrearShow());
+    this.transporte.enviar(comandoGuardar(nombre));
+
+    // La consola no acusa recibo de estas órdenes, así que se le da tiempo a
+    // que escriba en su disco antes de preguntar. Es el mismo criterio que el
+    // resto del adaptador: preguntar en vez de suponer.
+    await new Promise((r) => setTimeout(r, this.esperaGuardadoMs));
+
+    const lista = await this.pedirLista();
+    // `null` es «la consola no contestó», que no es lo mismo que «no hay
+    // ninguna». Sin punto de retorno verificado no hay transacción, así que se
+    // devuelve `null` igual que si no hubiera quedado —pero la etiqueta se
+    // devuelve de todos modos, porque guardar sí pudo haber ocurrido.
+    const quedo = lista !== null && lista.includes(nombre);
+
+    // **Devolver la etiqueta de «instantánea actual», que guardar cambió.**
+    // Se descubrió midiendo: `var.currentSnapshot` pasa a apuntar a la que
+    // acabamos de crear. Si el operador toca «actualizar instantánea actual»
+    // en su consola después de esto, escribiría sobre la nuestra en vez de
+    // sobre la suya y perdería su trabajo sin enterarse.
+    //
+    // Se devuelve **solo la etiqueta**. Cargar la instantánea aplicaría todo su
+    // contenido y cambiaría el estado entero de la consola, que es lo contrario
+    // de restaurar.
+    if (anterior !== null && anterior !== nombre) {
+      this.transporte.enviar(comandoDevolverEtiqueta(anterior));
+      this.instantaneaActual = anterior;
+    }
+
+    // **La retención, después de guardar y nunca antes.** Si se borrara primero
+    // y el guardado fallara, se habría perdido un punto de retorno sin ganar
+    // ninguno. Qué borrar lo decide el dominio (INV-003, máximo 20): acá solo
+    // se manda, y `comandoBorrar` se niega a construir nada que no sea una
+    // automática nuestra.
+    if (lista !== null) await this.aplicarRetencion(lista);
+
+    return quedo ? nombre : null;
+  }
+
+  /**
+   * Borra las automáticas que sobran, y **comprueba que se hayan borrado**.
+   *
+   * **Antes esto iba a ciegas.** Se mandaban los `DELETESNAPSHOT` y la función
+   * retornaba sin volver a leer. Que el comando funcione está medido contra la
+   * consola —2026-09-10— pero con un arnés de spike, y **el arnés no es el
+   * adaptador**: bastaba un cambio en el nombre del show, en la gramática o en
+   * el orden para que la retención dejara de retener sin que nada avisara. El
+   * modo de fallo es silencioso hacia el lado malo: el show crece igual.
+   *
+   * **Un borrado que no ocurre no aborta nada.** El punto de retorno ya se
+   * guardó y eso es lo que INV-001 pide; la retención es orden, no seguridad.
+   * Pero se avisa por `alNoPoderBorrar`, porque el problema de esta clase de
+   * fallo no es su gravedad sino que nadie lo note nunca.
+   */
+  private async aplicarRetencion(lista: readonly string[]): Promise<void> {
+    // Qué borrar lo decide el dominio (INV-003, máximo 20): acá solo se manda,
+    // y `comandoBorrar` se niega a construir nada que no sea una automática
+    // nuestra, aunque quien llame se distraiga.
+    const pedidas: string[] = [];
+    for (const vieja of snapshotsABorrar(lista)) {
+      const orden = comandoBorrar(vieja);
+      if (orden !== null) { this.transporte.enviar(orden); pedidas.push(vieja); }
+    }
+    if (pedidas.length === 0) return;
+
+    await new Promise((r) => setTimeout(r, this.esperaBorradoMs));
+    const despues = await this.pedirLista();
+    // Sin respuesta no se puede afirmar que fallaron: se avisa igual, porque
+    // «no sé si se borraron» y «no se borraron» piden lo mismo de quien mira.
+    const sobrevivientes = despues === null
+      ? pedidas
+      : pedidas.filter((n) => despues.includes(n));
+    if (sobrevivientes.length > 0) this.alNoPoderBorrar?.(sobrevivientes);
+  }
+
+  /**
+   * Pide `SNAPSHOTLIST` y espera la respuesta.
+   *
+   * **Devuelve `null` cuando la consola no contestó, y eso importa.** Antes
+   * devolvía `[]` al vencer, o sea lo mismo que un show sin instantáneas: quien
+   * llamaba no podía distinguir «no hay ninguna» de «no sé». Con esa confusión,
+   * un vencimiento hacía que `guardarInstantanea()` devolviera `null` y que
+   * INV-001 abortara la transacción con un motivo que no mencionaba el
+   * vencimiento por ningún lado.
+   *
+   * **El plazo es propio y no el de la confirmación de escritura.** Compartían
+   * `timeoutMs`, que son 500 ms elegidos para el testigo. Medido el 2026-09-10
+   * sobre doce pedidos: `SNAPSHOTLIST` contesta en **6 ms de mediana** —o sea
+   * más rápido que el testigo, no «del orden de un segundo» como decía la
+   * política— pero con un caso de **277 ms** que se come más de la mitad de
+   * aquel presupuesto. Un plazo propio y holgado cuesta nada acá: esto pasa una
+   * vez por transacción, no una vez por escritura.
+   */
+  private pedirLista(): Promise<readonly string[] | null> {
+    return new Promise((resolver) => {
+      const vencimiento = setTimeout(() => { quitar(); resolver(null); }, this.timeoutListaMs);
+      const quitar = this.transporte.alRecibir((linea) => {
+        if (!linea.startsWith('SNAPSHOTLIST^')) return;
+        clearTimeout(vencimiento);
+        quitar();
+        resolver(instantaneasDeLaLista(linea));
+      });
+      this.transporte.enviar(comandoListar());
+    });
   }
 
   leer(parametro: string): ReadResult {
@@ -233,11 +616,20 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   }
 
   /**
-   * Escribe comparando antes contra el valor esperado (INV-011).
+   * Escribe comparando antes contra el valor esperado (INV-011) y confirma por
+   * la conexión testigo (ADR-024).
    *
    * Si el valor actual no es el esperado, alguien lo cambió: se devuelve
    * conflicto y **no se escribe**. Sobrescribir el cambio de otra persona en
    * medio de un show es exactamente lo que este proyecto no puede hacer.
+   *
+   * La confirmación ya no espera el eco. Está medido que no llega: seis
+   * segundos escuchando la propia conexión, cero líneas para la ruta escrita, y
+   * el valor nuevo presente al pedir `INIT`. Lo que sí llega es la difusión a
+   * los **demás** clientes, y dos sockets del mismo proceso cuentan como
+   * clientes distintos: el testigo vio la escritura a los 27 ms. Así que se
+   * suscribe la espera en el testigo, después se envía, y se confirma con lo
+   * que el testigo vea.
    */
   async escribir(parametro: string, valor: number, esperado: number): Promise<WriteResult> {
     if (this._estadoConexion !== 'CONNECTED') {
@@ -249,26 +641,148 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       };
     }
 
+    // Se compara antes de abrir el testigo para no pagar una sesión entera por
+    // una escritura que ya sabemos que no va a salir.
+    const previa = this.store.coincideConEsperado(parametro, esperado);
+    if (!previa.coincide) {
+      return {
+        status: 'CONFLICT', confirmedBy: 'NONE', actual: previa.actual, motivo: previa.motivo,
+      };
+    }
+
+    const testigo = await this.asegurarTestigo();
+    if (testigo === null) {
+      // **Acá entra el respaldo por medidor, que hasta el 2026-09-10 estaba
+      // escrito y desconectado.** `confirmarPorMedidor` existía, tenía tests y
+      // la política le asignaba fila, pero ningún camino de escritura lo
+      // llamaba: sin testigo se devolvía `REJECTED` y no se enviaba nada. Una
+      // auditoría lo encontró porque el documento afirmaba lo contrario.
+      //
+      // INV-011 lo contempla desde siempre y esta es la situación que tenía en
+      // mente: la wifi saturada en pleno show, que es justo cuando más falta
+      // hace escribir. El testigo es una conexión más, así que es lo primero
+      // que no se puede abrir.
+      return await this.escribirConfirmandoPorMedidor(parametro, valor, esperado, previa.actual);
+    }
+
+    // La comparación se repite porque abrir el testigo tarda —conexión más su
+    // volcado— y en ese hueco alguien pudo mover el parámetro desde el navegador
+    // de la consola. La primera comprobación evita el gasto; esta es la que
+    // cumple INV-011.
     const cmp = this.store.coincideConEsperado(parametro, esperado);
     if (!cmp.coincide) {
       return { status: 'CONFLICT', confirmedBy: 'NONE', actual: cmp.actual, motivo: cmp.motivo };
     }
 
     this.store.registrarEscrituraPropia(parametro, valor);
+    // La suscripción va **antes** del envío: a 27 ms medidos, suscribirse
+    // después es una carrera que se pierde.
+    const confirmacion = testigo.esperar(parametro, valor, this.timeoutMs);
     this.transporte.enviar(codificarSetd(parametro, valor));
 
-    const confirmado = await this.esperarConfirmacion(parametro, valor);
-    if (confirmado) {
-      return { status: 'APPLIED', confirmedBy: 'ECHO', actual: valor, motivo: null };
+    if (await confirmacion) {
+      // El valor entra al estado confirmado por acá y no por otro lado: la
+      // conexión principal nunca va a ver su propia escritura, así que sin esto
+      // el segundo cambio sobre la misma ruta chocaría contra el valor viejo.
+      this.store.confirmarPropia(parametro, valor);
+      return { status: 'APPLIED', confirmedBy: 'WITNESS', actual: valor, motivo: null };
     }
     return {
       status: 'UNVERIFIED',
       confirmedBy: 'TIMEOUT',
       actual: null,
       motivo:
-        `sin confirmación en ${this.timeoutMs} ms. El cambio pudo aplicarse o no: ` +
-        'la transacción queda detenida hasta que alguien decida',
+        `el testigo no vio ${parametro} = ${valor} en ${this.timeoutMs} ms. El cambio pudo ` +
+        'aplicarse o no: la transacción queda detenida hasta que alguien decida',
     };
+  }
+
+  /**
+   * Escribe y confirma mirando el medidor, cuando no hay testigo.
+   *
+   * **Es la segunda línea y se nota en el resultado**: `confirmedBy` queda en
+   * `VU`, nunca en `WITNESS`. El medidor confirma **el efecto** —el nivel se
+   * movió lo que tenía que moverse— y no el valor: no dice que el crudo escrito
+   * sea el que quedó en la consola. Un diario viejo tiene que seguir diciendo
+   * la verdad sobre con qué se comprobó cada cosa.
+   *
+   * **Sin señal no se escribe.** Un canal en silencio no mueve su medidor por
+   * más que la ganancia cambie, así que ahí no hay confirmación posible.
+   * Escribir igual y marcarlo «no verificado» dejaría al operador sin forma de
+   * distinguir eso de un cambio que sí funcionó, que es la decisión de ADR-026.
+   */
+  private async escribirConfirmandoPorMedidor(
+    parametro: string,
+    valor: number,
+    esperado: number,
+    actualPrevio: number | null,
+  ): Promise<WriteResult> {
+    const sinTestigo =
+      'no hay conexión testigo y es lo único que confirma el valor literal contra esta ' +
+      'consola, que no devuelve eco';
+
+    const como = comoConfirmarPorMedidor(parametro, valor, esperado);
+    if (como === null) {
+      return {
+        status: 'REJECTED',
+        confirmedBy: 'NONE',
+        actual: actualPrevio,
+        motivo: `${sinTestigo}. Y ${parametro} no se puede confirmar por medidor: `
+          + 'no tiene un efecto conocido sobre el nivel. No se envió nada',
+      };
+    }
+
+    const antesDb = this.nivelDelPunto(como.canal, como.punto);
+    if (antesDb < NIVEL_MINIMO_PARA_CONFIRMAR_DB) {
+      return {
+        status: 'REJECTED',
+        confirmedBy: 'NONE',
+        actual: actualPrevio,
+        motivo: `${sinTestigo}. El canal ${como.canal} está en `
+          + `${Number.isFinite(antesDb) ? `${antesDb.toFixed(1)} dB` : 'silencio'}, `
+          + 'así que su medidor tampoco puede confirmar nada. No se envió nada',
+      };
+    }
+
+    this.store.registrarEscrituraPropia(parametro, valor);
+    this.transporte.enviar(codificarSetd(parametro, valor));
+    await new Promise((r) => setTimeout(r, this.esperaMedidorMs));
+    const despuesDb = this.nivelDelPunto(como.canal, como.punto);
+
+    const veredicto = confirmarPorMedidor({
+      antesDb, despuesDb, esperadoDb: como.esperadoDb,
+    });
+
+    if (veredicto.estado === 'CONFIRMADO') {
+      // Entra al estado confirmado igual que por testigo: la conexión principal
+      // nunca ve su propia escritura, así que sin esto el segundo cambio sobre
+      // la misma ruta chocaría contra el valor viejo.
+      this.store.confirmarPropia(parametro, valor);
+      return { status: 'APPLIED', confirmedBy: 'VU', actual: valor, motivo: null };
+    }
+
+    return {
+      status: 'UNVERIFIED',
+      confirmedBy: 'TIMEOUT',
+      actual: null,
+      motivo: veredicto.estado === 'SIN_SENAL'
+        ? `${sinTestigo}. El canal ${como.canal} se quedó sin señal mientras se escribía, `
+          + 'así que el medidor no pudo confirmar. El cambio pudo aplicarse o no'
+        : `${sinTestigo}. Se esperaba que el nivel del canal ${como.canal} se moviera `
+          + `${como.esperadoDb.toFixed(1)} dB y se movió ${veredicto.cambioDb.toFixed(1)}. `
+          + 'El cambio pudo aplicarse o no',
+    };
+  }
+
+  /** El nivel de un canal en el punto que corresponda, o `-Infinity`. */
+  private nivelDelPunto(canal: number, punto: PuntoDeMedida): number {
+    const mapa = punto === 'ENTRADA' ? this.nivelesVu : this.nivelesSalida;
+    return mapa.get(canal) ?? -Infinity;
+  }
+
+  /** Si la segunda conexión está abierta. Para diagnóstico y para los tests. */
+  get testigoAbierto(): boolean {
+    return this.testigo !== null;
   }
 
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void {
@@ -306,22 +820,121 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return () => { this.oyentesTelemetria = this.oyentesTelemetria.filter((f) => f !== cb); };
   }
 
+  /**
+   * Cada trama del analizador (`RTA`).
+   *
+   * Es un aviso distinto del de telemetria a proposito. `VU2` **se apaga en
+   * silencio** --una trama en treinta segundos sin senal, frente a mas de
+   * veinte por segundo con musica-- asi que su cadencia mide cuanto silencio
+   * hubo, no como esta la conexion. `RTA` no se apaga: llega a 30 Hz con senal
+   * y sin ella, y por eso es el flujo sobre el que este adaptador ya decide si
+   * la conexion esta inestable. Quien quiera medir la salud de la conexion
+   * tiene que escuchar aca; quien quiera saber si habia audio, alla.
+   */
+  alLatido(cb: () => void): () => void {
+    this.oyentesLatido.push(cb);
+    return () => { this.oyentesLatido = this.oyentesLatido.filter((f) => f !== cb); };
+  }
+
+  /**
+   * Los pares estéreo que la consola tiene declarados.
+   *
+   * **Se lee, no se declara.** El plan era pedirle al usuario que dijera qué
+   * canales forman un par; resultó que la consola ya lo sabe. Ver
+   * `pares-estereo.ts` para qué significa el número y por qué acá solo se lee.
+   */
+  paresEstereo(): readonly ParEstereo[] {
+    return paresEstereo(this.enlacesEstereo);
+  }
+
+  /**
+   * Cada trama del analizador, ya en bandas de decibeles relativos.
+   *
+   * Suscribirse no enciende el analizador: eso lo hace `tomarAnalizador`, que
+   * es una escritura y necesita permiso. Sin fuente elegida esto no dispara
+   * nunca, porque la consola manda ceros y `hayEspectro` los descarta.
+   */
+  alEspectro(cb: (bandas: readonly number[]) => void): () => void {
+    this.oyentesEspectro.push(cb);
+    return () => { this.oyentesEspectro = this.oyentesEspectro.filter((f) => f !== cb); };
+  }
+
+  /**
+   * Apunta el analizador a una fuente. **Le cambia la pantalla al operador.**
+   *
+   * `var.rta` es una sola variable de la consola, no una por cliente: si la
+   * aplicación la toca en medio de un show, alguien va a ver su analizador
+   * saltar a otro canal sin haberlo tocado. Por eso ADR-025 exige permiso, y
+   * por eso esto no se llama solo desde ningún lado.
+   *
+   * Devuelve `false` si no se pudo, que hoy es solo cuando no hay conexión.
+   */
+  tomarAnalizador(fuente: string): boolean {
+    if (this._estadoConexion !== 'CONNECTED') return false;
+    this.transporte.enviar(`SETS^var.rta^${fuente}`);
+    this.analizadorPrestado = true;
+    return true;
+  }
+
+  /**
+   * Devuelve el analizador a la fuente que tenía cuando llegamos.
+   *
+   * **Se devuelve lo que se leyó, no una cadena vacía.** Reconstruir el valor
+   * en vez de leerlo fue exactamente el error que las sondas de medición
+   * cometieron durante días: «restaurar» a vacío parece inocente y no es lo
+   * mismo que devolver lo que había.
+   *
+   * Si nunca llegó la clave no se escribe nada: dejarlo como está es menos
+   * dañino que poner un valor que nadie leyó.
+   */
+  devolverAnalizador(): void {
+    if (!this.analizadorPrestado) return;
+    if (this.fuenteDelAnalizador === null) return;
+    this.transporte.enviar(`SETS^var.rta^${this.fuenteDelAnalizador}`);
+    this.analizadorPrestado = false;
+  }
+
+  /** Qué fuente tenía el analizador al conectar, para poder contarlo. */
+  fuenteOriginalDelAnalizador(): string | null {
+    return this.fuenteDelAnalizador;
+  }
+
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
-  canales(cantidad = 12): readonly EstadoCanal[] {
+  canales(cantidad = this.canalesDetectados || CANALES_HASTA_SABER): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
-    for (let i = 1; i <= cantidad; i++) {
-      const fader = this.store.leer(`i.${i}.mix`);
-      const gain = this.store.leer(`hw.${i}.gain`);
-      const mute = this.store.leer(`i.${i}.mute`);
+    for (let canal = 1; canal <= cantidad; canal++) {
+      const n = indiceDeRuta(canal);
+      const fader = this.store.leer(`i.${n}.mix`);
+      // **La ganancia se busca donde el canal dice, no donde su número sugiere.**
+      // Antes esto era `hw.${n}.gain`, que supone que el canal N usa el previo
+      // N. Coincide con el enrutamiento de fábrica y por eso nunca se notó.
+      const rutaGain = rutaDeGanancia(this.fuentesCanal.get(canal));
+      const gain = rutaGain === null ? undefined : this.store.leer(rutaGain);
+      const mute = this.store.leer(`i.${n}.mute`);
       salida.push({
-        indice: i,
-        nombre: this.nombresCanal.get(i) ?? `CANAL ${i}`,
+        indice: canal,
+        nombre: this.nombresCanal.get(canal) ?? `CANAL ${canal}`,
         faderDb: fader ? faderADb(fader.valor) : -Infinity,
         gainDb: gain ? gananciaADb(gain.valor) : null,
         silenciado: (mute?.valor ?? 0) > 0.5,
-        nivelDb: this.nivelesVu.get(i) ?? -Infinity,
-        picoDb: this.picosVu.get(i) ?? -Infinity,
-        eventosSaturacion: this.saturaciones.get(i) ?? 0,
+        nivelDb: this.nivelesVu.get(canal) ?? -Infinity,
+        picoDb: this.picosVu.get(canal)?.db ?? -Infinity,
+        nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
+        picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
+        rutaGanancia: rutaGain,
+        tomaPistaGrabada: tomaPistaGrabada(
+          this.soundcheckEncendido, this.pistasDeSoundcheck.get(canal),
+        ),
+        saturacionesPrevio: this.saturacionesPrevio.get(canal) ?? 0,
+        saturacionesSalida: this.saturacionesSalida.get(canal) ?? 0,
+        // Cero y no `null` cuando todavía no llegó una trama: la reducción es
+        // una medida acotada por abajo, y «no llegó ninguna trama de medidores»
+        // ya se distingue mirando el nivel, que sí es −∞.
+        nivelPreProcesoDb: this.nivelesPreProceso.get(canal) ?? -Infinity,
+        picoPreProcesoDb: this.picosPreProceso.get(canal) ?? -Infinity,
+        reduccionDb: this.reducciones.get(canal) ?? 0,
+        reduccionPicoDb: this.picosReduccion.get(canal) ?? 0,
+        dinamica: leerDinamica((path) => this.store.leer(path), n),
       });
     }
     return salida;
@@ -332,14 +945,48 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETD') {
       this.store.procesarLinea(linea);
+      // El enlace estéreo se guarda aparte y por canal: el almacén confirmado
+      // lo tiene igual, pero armar el par exige mirar dos rutas a la vez y
+      // traducir la base cero, y eso se hace una sola vez acá en el borde.
+      const enlace = /^i\.(\d+)\.stereoIndex$/.exec(m.path);
+      if (enlace) this.enlacesEstereo.set(canalDeIndice(Number(enlace[1])), m.valor);
+      // El modo de soundcheck es global y viaja como número.
+      if (m.path === 'var.mtk.soundcheck') this.soundcheckEncendido = m.valor > 0.5;
       this.reiniciarQuietudDeVolcado();
       return;
     }
 
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
+      if (m.path === 'var.currentSnapshot') this.instantaneaActual = m.texto;
+      // Solo la primera: las siguientes pueden ser nuestras propias escrituras
+      // rebotando por otros clientes, y guardarlas sería devolver lo que
+      // nosotros mismos pusimos.
+      if (m.path === 'var.rta' && this.fuenteDelAnalizador === null) {
+        this.fuenteDelAnalizador = m.texto;
+      }
+
+      const pista = /^i\.(\d+)\.scsrc$/.exec(m.path);
+      if (pista) this.pistasDeSoundcheck.set(canalDeIndice(Number(pista[1])), m.texto);
+
+      const fuente = /^i\.(\d+)\.src$/.exec(m.path);
+      if (fuente) {
+        // La fuente también se guarda por canal y no por índice de ruta, igual
+        // que el nombre: el borde traduce una sola vez y el resto del
+        // adaptador no vuelve a pensar en la base cero.
+        this.fuentesCanal.set(canalDeIndice(Number(fuente[1])), m.texto);
+        return;
+      }
+
       const coincidencia = /^i\.(\d+)\.name$/.exec(m.path);
-      if (coincidencia) this.nombresCanal.set(Number(coincidencia[1]), m.texto);
+      // El nombre se guarda por canal, no por índice de ruta: `i.0.name` es el
+      // canal 1. Se convierte acá, en el borde, para que el resto del
+      // adaptador hable un solo idioma.
+      if (coincidencia) {
+        const canal = canalDeIndice(Number(coincidencia[1]));
+        this.nombresCanal.set(canal, m.texto);
+        this.canalesDetectados = Math.max(this.canalesDetectados, canal);
+      }
       return;
     }
 
@@ -353,6 +1000,15 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (m.tipo === 'RTA') {
       this.ultimaTramaRtaMs = this.ahora();
       if (this._estadoConexion === 'UNSTABLE') this.cambiarEstado('CONNECTED');
+      for (const cb of this.oyentesLatido) cb();
+
+      // La carga ya no se tira. Se decodifica solo si alguien la está mirando:
+      // son 30 tramas por segundo y decodificarlas para nadie es batería de la
+      // tablet gastada en nada.
+      if (this.oyentesEspectro.length > 0) {
+        const bandas = decodificarEspectro(m.cargaBase64);
+        if (hayEspectro(bandas)) for (const cb of this.oyentesEspectro) cb(bandas);
+      }
       return;
     }
 
@@ -367,22 +1023,62 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // Se anota la marca de tiempo para la estadistica de cadencia, pero **no**
     // se toca el estado de la conexion: la ausencia de VU2 significa silencio,
     // no caida. Quien decide sobre la conexion es el analizador.
-    this.ultimaTramaVuMs = this.ahora();
+    const ahoraMs = this.ahora();
+    this.ultimaTramaVuMs = ahoraMs;
 
-    const niveles = decodificarVu(base64);
-    for (let i = 0; i < niveles.length; i++) {
+    const medidores = decodificarVuCanales(base64);
+    this.canalesDetectados = Math.max(this.canalesDetectados, medidores.length);
+    for (let i = 0; i < medidores.length; i++) {
       const canal = i + 1;
-      const db = niveles[i]!;
+      const medidor = medidores[i]!;
+      const db = dbDeMedidor(medidor.entrada);
       this.nivelesVu.set(canal, db);
 
-      const picoPrevio = this.picosVu.get(canal) ?? -Infinity;
-      this.picosVu.set(canal, Math.max(picoPrevio, db));
+      // El pico se sostiene y cae, como lo dibuja la consola. Ver
+      // `retencion-pico.ts`: la balistica no viene del aparato, la calcula el
+      // cliente, asi que esto es una decision nuestra y no una herencia.
+      this.picosVu.set(canal, actualizarPico(this.picosVu.get(canal), db, ahoraMs));
 
-      // Saturación por telemetría: el valor de referencia se calibra en
-      // SPK-P0.10b. Hasta entonces se usa -1 dB, y el número real lo fija
-      // ese spike.
-      if (db >= -1) {
-        this.saturaciones.set(canal, (this.saturaciones.get(canal) ?? 0) + 1);
+      // El nivel anterior al procesamiento dinámico. Es el que usa el asistente
+      // de ganancia: `db` de acá arriba ya pasó por el compresor.
+      const dbPreProceso = dbDeMedidor(medidor.pre);
+      this.nivelesPreProceso.set(canal, dbPreProceso);
+      const picoPreProcesoPrevio = this.picosPreProceso.get(canal) ?? -Infinity;
+      this.picosPreProceso.set(canal, Math.max(picoPreProcesoPrevio, dbPreProceso));
+
+      // La reducción viaja en el sexto byte de cada canal y estuvo llegando
+      // desde siempre sin que nadie la leyera. Es lo que permite saber si el
+      // nivel de arriba viene condicionado y por cuánto.
+      this.reducciones.set(canal, medidor.reduccionDb);
+      const picoReduccionPrevio = this.picosReduccion.get(canal) ?? 0;
+      this.picosReduccion.set(canal, Math.max(picoReduccionPrevio, medidor.reduccionDb));
+
+      const dbSalida = dbDeMedidor(medidor.salida);
+      this.nivelesSalida.set(canal, dbSalida);
+      const picoSalidaPrevio = this.picosSalida.get(canal) ?? -Infinity;
+      this.picosSalida.set(canal, Math.max(picoSalidaPrevio, dbSalida));
+
+      // **Saturación: son dos indicadores, y ninguno es `entrada`.**
+      //
+      // Esto contaba sobre `entrada` —el byte `+1`— con la duda anotada de
+      // «cuál de los dos debe mirar un asistente de ganancia lo decide
+      // SPK-P0.10b». Leído el `mixer.html` de la consola el 2026-09-09, la
+      // respuesta es que `+1` **no tiene indicador de clip**:
+      //
+      //     m = +0 (pre)   n = +1 (entrada)   q = +2 (salida)
+      //     inStrips[g].setVU(n, q, …)   // clip sobre q, la SALIDA
+      //     gainStrips[g].setVUPre(m)    // clip propio sobre m, el PREVIO
+      //
+      // Son dos cosas distintas y se arreglan distinto: el del previo se baja
+      // con la perilla de ganancia —tanto es así que la consola congela ese
+      // deslizador mientras está encendido— y el de la salida, con el fader.
+      // Contarlos juntos, o contarlos sobre un byte que la consola no vigila,
+      // le da al asistente una señal que no corresponde a ninguna acción.
+      if (medidor.pre >= MEDIDOR_SATURACION) {
+        this.saturacionesPrevio.set(canal, (this.saturacionesPrevio.get(canal) ?? 0) + 1);
+      }
+      if (medidor.salida >= MEDIDOR_SATURACION) {
+        this.saturacionesSalida.set(canal, (this.saturacionesSalida.get(canal) ?? 0) + 1);
       }
     }
     for (const cb of this.oyentesTelemetria) cb();
@@ -395,7 +1091,13 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    * son cambios normales y no tienen que reabrir nada.
    */
   private reiniciarQuietudDeVolcado(): void {
-    if (this.store.storeState === 'VALID') return;
+    // **Solo mientras hay un volcado en curso.** Antes la condicion era que el
+    // almacen no estuviera valido, y eso incluia el estado invalidado por una
+    // avalancha: la linea siguiente rearmaba la cuenta y un cuarto de segundo
+    // despues el estado se declaraba valido sin que nadie hubiera releido nada.
+    // INV-021 se apagaba sola a los 250 ms, que es lo mismo que no existir.
+    // Lo encontro el guion de capturas y se reprodujo en aislamiento.
+    if (!this.store.recibiendoVolcado) return;
     if (this.temporizadorVolcado !== null) clearTimeout(this.temporizadorVolcado);
     this.temporizadorVolcado = setTimeout(
       () => this.completarVolcado(), this.quietudVolcadoMs,
@@ -408,6 +1110,16 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       clearTimeout(this.temporizadorVolcado);
       this.temporizadorVolcado = null;
     }
+    // **El mismo resguardo que `reiniciarQuietudDeVolcado`, y por lo mismo.**
+    // A esto se llega por dos caminos: el temporizador de quietud, que solo se
+    // arma con un volcado en curso, y un `DUMP_END` suelto desde `procesar()`,
+    // que no comprobaba nada. Con el estado invalidado por una avalancha y sin
+    // volcado en curso, ese segundo camino declaraba el almacén válido sin que
+    // nadie hubiera releído: INV-021 apagada, igual que antes pero por la otra
+    // puerta. Contra la consola real es inalcanzable —no manda `DUMP_END`—;
+    // contra el simulador, que sí lo manda, no lo es, y el simulador es donde
+    // se descubrió el defecto original.
+    if (!this.store.recibiendoVolcado) return;
     if (this.store.storeState === 'VALID') return;
     this.store.volcadoCompletoRecibido();
     this.cambiarEstado('CONNECTED');
@@ -423,23 +1135,54 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     }
   }
 
-  private esperarConfirmacion(parametro: string, valor: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const inicio = this.ahora();
-      const revisar = () => {
-        const e = this.store.leer(parametro);
-        if (e && Math.abs(e.valor - valor) < 1e-9 && e.origen === 'SELF') {
-          clearInterval(temporizador);
-          resolve(true);
-          return;
-        }
-        if (this.ahora() - inicio >= this.timeoutMs) {
-          clearInterval(temporizador);
-          resolve(false);
-        }
-      };
-      const temporizador = setInterval(revisar, 10);
+  /**
+   * Devuelve el testigo listo para atestiguar, abriéndolo si hace falta.
+   *
+   * **Acá vive la pereza.** No hay ninguna llamada a esto fuera de `escribir()`,
+   * y es deliberado: mientras la aplicación observe y no escriba, la segunda
+   * sesión no existe y no cuesta un byte. La primera escritura de la sesión
+   * paga la apertura y el volcado del testigo; el resto no paga nada.
+   *
+   * Devuelve `null` cuando no se puede atestiguar: sin fábrica de sesiones, sin
+   * dirección conocida, o porque la apertura falló. Quien llama no escribe.
+   */
+  private async asegurarTestigo(): Promise<TestigoDeEscrituras | null> {
+    if (this.testigo !== null) {
+      if (this.testigo.listoParaAtestiguar) return this.testigo;
+      // Se cayó. Se descarta y se vuelve a abrir con la escritura que lo pidió.
+      const caido = this.testigo;
+      this.testigo = null;
+      await caido.cerrar().catch(() => { /* ya estaba cerrado */ });
+    }
+    if (this.crearTestigo === null || this.url === null) return null;
+
+    this.aperturaTestigo ??= this.abrirTestigo(this.url);
+    try {
+      return await this.aperturaTestigo;
+    } finally {
+      this.aperturaTestigo = null;
+    }
+  }
+
+  private async abrirTestigo(destino: string): Promise<TestigoDeEscrituras | null> {
+    const testigo = new TestigoDeEscrituras(this.crearTestigo!(), {
+      quietudVolcadoMs: this.quietudVolcadoMs,
     });
+    try {
+      await testigo.conectar(destino);
+    } catch {
+      await testigo.cerrar().catch(() => { /* nunca llegó a abrir */ });
+      return null;
+    }
+    this.testigo = testigo;
+    return testigo;
+  }
+
+  private async cerrarTestigo(): Promise<void> {
+    const testigo = this.testigo;
+    this.testigo = null;
+    this.aperturaTestigo = null;
+    if (testigo !== null) await testigo.cerrar().catch(() => { /* ya estaba cerrado */ });
   }
 
   private cambiarEstado(e: ConnectionState): void {
@@ -450,7 +1193,49 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
   /** Reinicia los contadores de pico y saturación al empezar una captura. */
   reiniciarPicos(): void {
+    this.picosSalida.clear();
     this.picosVu.clear();
-    this.saturaciones.clear();
+    this.saturacionesPrevio.clear();
+    this.saturacionesSalida.clear();
+    // El pico de reducción se reinicia con los demás: si no, la insignia de
+    // «este canal viene comprimido» sobreviviría a puentear el compresor y
+    // seguiría acusando a un canal ya limpio.
+    this.picosReduccion.clear();
+    this.picosPreProceso.clear();
   }
 }
+
+/**
+ * Canal de la consola —el número de la serigrafía, desde 1— al índice que usan
+ * las rutas del protocolo.
+ *
+ * **Las rutas son de base cero.** El canal 1 es `i.0.mix`, `hw.0.gain` e
+ * `i.0.name`. Está medido contra el aparato y escrito en
+ * `docs/protocol-spec.md`, pero este adaptador componía `i.1` para el canal 1,
+ * y el resultado era una fila de la interfaz que mezclaba dos canales
+ * distintos: el medidor del canal 1 —que sí llega en la posición 0 de la trama
+ * `VU2`, y por eso se veía correcto— junto al nombre, la ganancia, el fader y
+ * el silencio del canal 2.
+ *
+ * **Por qué no lo agarró ningún test.** El simulador construía su estado con
+ * la misma suposición equivocada, así que los dos errores se cancelaban y
+ * contra el simulador todo cuadraba. Es el caso exacto que advierte
+ * CONTRIBUTING: un test que pasa contra el simulador no cierra nada.
+ */
+function indiceDeRuta(canal: number): number {
+  return canal - 1;
+}
+
+/** La vuelta: índice de ruta a canal. */
+function canalDeIndice(indice: number): number {
+  return indice + 1;
+}
+
+/**
+ * Cuántos canales mostrar mientras la consola todavía no dijo cuántos tiene.
+ *
+ * Pasa solo entre que se abre el socket y llega la primera línea. Doce es lo
+ * que entra en una pantalla sin desplazar; en cuanto llega el volcado o una
+ * trama de medidores, manda el número real.
+ */
+const CANALES_HASTA_SABER = 12;

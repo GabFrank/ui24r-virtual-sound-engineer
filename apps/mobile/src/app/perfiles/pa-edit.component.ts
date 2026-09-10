@@ -9,6 +9,7 @@ import {
   type BusRef, type PAComponentSpec, type PAProfile, type PAProfileId,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
+import { cuenta } from '../ui/plural';
 import {
   BadgeComponent, ButtonComponent, CamposTocados, CardComponent, CargandoComponent,
   DialogComponent, EmptyStateComponent, FalloComponent, FieldComponent, Lectura,
@@ -187,7 +188,7 @@ function textoDeBus(b: BusRef): string {
                [cerrableAlTocarFuera]="false" (cerrado)="confirmarBorrado.set(false)">
       @if (usosDelSistema().length > 0) {
         <p class="lectura">
-          No se puede borrar: lo usan {{ usosDelSistema().length }} local(es)
+          No se puede borrar: lo usan {{ cuentaDeUsos() }}
           ({{ textoDeUsos() }}). Un local sin sistema de amplificación no dice
           con qué equipo se toca, y sin eso la aplicación no puede decidir dónde
           corregir. Cambiá primero el sistema de esos locales.
@@ -304,6 +305,8 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
 
   readonly usosDelSistema = signal<readonly string[]>([]);
   readonly textoDeUsos = computed(() => this.usosDelSistema().join(', '));
+  /** «1 local» y no «1 local(es)»: ver `ui/plural.ts`. */
+  readonly cuentaDeUsos = computed(() => cuenta(this.usosDelSistema().length, 'local', 'locales'));
 
   readonly tocados = new CamposTocados();
   readonly tocadosDialogo = new CamposTocados();

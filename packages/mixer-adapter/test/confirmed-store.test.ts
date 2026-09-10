@@ -5,13 +5,47 @@ import type { BulkExternalChange } from '../src/api.ts';
 import { codificarSetd } from '../src/protocol.ts';
 
 /** Reloj controlado: probar tiempo esperándolo es lento y frágil. */
+/**
+ * Reloj falso, y desde el 2026-09-10 tambien temporizadores falsos.
+ *
+ * La agrupacion de cambios externos --que junta un arrastre en un solo aviso--
+ * necesita esperar a que el gesto termine. Con `setTimeout` de verdad, este
+ * archivo dejaba de poder probar el tiempo sin esperarlo, que es justamente la
+ * razon por la que el almacen tiene reloj inyectable. `avanzar()` mueve el
+ * reloj Y dispara lo que venciera en ese tramo, en orden.
+ */
 function relojFalso(inicio = 1_000_000) {
   let t = inicio;
-  return { ahora: () => t, avanzar: (ms: number) => { t += ms; } };
+  let siguiente = 0;
+  const pendientes = new Map<number, { en: number; fn: () => void }>();
+  return {
+    ahora: () => t,
+    programar: (fn: () => void, ms: number) => {
+      const id = siguiente++;
+      pendientes.set(id, { en: t + ms, fn });
+      return { cancelar: () => { pendientes.delete(id); } };
+    },
+    avanzar: (ms: number) => {
+      t += ms;
+      const vencidos = [...pendientes.entries()]
+        .filter(([, p]) => p.en <= t)
+        .sort((a, b) => a[1].en - b[1].en);
+      for (const [id, p] of vencidos) { pendientes.delete(id); p.fn(); }
+    },
+  };
 }
 
-function nuevoStore(reloj = relojFalso()) {
-  const store = new ConfirmedStateStore({ ahora: reloj.ahora });
+/**
+ * El almacen listo para probar.
+ *
+ * **La ventana de agrupacion arranca en cero** para que los tests que miran el
+ * etiquetado no tengan que pensar en ella: con cero, un `avanzar(0)` alcanza
+ * para que el aviso salga. Los que prueban la agrupacion la piden explicita.
+ */
+function nuevoStore(reloj = relojFalso(), ventanaAgrupacionMs = 0) {
+  const store = new ConfirmedStateStore({
+    ahora: reloj.ahora, programar: reloj.programar, ventanaAgrupacionMs,
+  });
   store.volcadoCompletoRecibido();
   return { store, reloj };
 }
@@ -30,22 +64,44 @@ test('ADR-005: una escritura propia no aparece como confirmada hasta que vuelve'
     'registrar el envío no puede alterar el estado confirmado');
 });
 
-test('el eco de una escritura propia se etiqueta como propio', () => {
+/**
+ * Lo que llega por la conexion principal es SIEMPRE ajeno.
+ *
+ * Antes habia dos tests que fijaban lo contrario: que una linea coincidente en
+ * ruta, valor y ventana temporal se etiquetaba SELF --el eco-- y que fuera de
+ * la ventana pasaba a EXTERNAL. Medido el 2026-09-08: LA CONSOLA NO LE DEVUELVE
+ * NADA A QUIEN ESCRIBE, asi que por este socket nuestra escritura no vuelve
+ * nunca y esa rama no podia acertar por el motivo que decia.
+ *
+ * Peor: podia acertar por coincidencia. Si una escritura nuestra vencia sin
+ * testigo quedaba pendiente hasta un segundo, y un cambio de OTRO operador a la
+ * misma ruta y el mismo valor dentro de esa ventana se tragaba como propio y no
+ * disparaba el aviso de cambio ajeno. Eso es lo que este test protege ahora.
+ */
+test('una linea que coincide con una escritura nuestra sigue siendo ajena', () => {
   const { store, reloj } = nuevoStore();
+  const vistos: string[] = [];
+  store.alCambioExterno((path) => vistos.push(path));
+
   store.registrarEscrituraPropia('i.3.mix', 0.7);
   reloj.avanzar(50);
   store.procesarLinea(codificarSetd('i.3.mix', 0.7));
-  assert.equal(store.leer('i.3.mix')?.origen, 'SELF');
+
+  assert.equal(store.leer('i.3.mix')?.origen, 'EXTERNAL',
+    'no hay eco: si llego por aca, lo escribio otro');
+  assert.deepEqual(vistos, ['i.3.mix'], 'y tiene que avisar, que es lo que antes se perdia');
 });
 
-test('un eco que llega demasiado tarde ya no se reconoce como propio', () => {
-  // Dirección segura: ante la duda, se trata como ajeno y se pide confirmación
-  // humana, en vez de sobrescribir el cambio de otro.
-  const { store, reloj } = nuevoStore();
+test('lo nuestro entra por el testigo, y ese si es propio', () => {
+  const { store } = nuevoStore();
+  const vistos: string[] = [];
+  store.alCambioExterno((path) => vistos.push(path));
+
   store.registrarEscrituraPropia('i.3.mix', 0.7);
-  reloj.avanzar(400);
-  store.procesarLinea(codificarSetd('i.3.mix', 0.7));
-  assert.equal(store.leer('i.3.mix')?.origen, 'EXTERNAL');
+  store.confirmarPropia('i.3.mix', 0.7);
+
+  assert.equal(store.leer('i.3.mix')?.origen, 'SELF');
+  assert.deepEqual(vistos, [], 'nuestro propio cambio no es un aviso de cambio ajeno');
 });
 
 test('un cambio de otro cliente se etiqueta como externo y avisa', () => {
@@ -57,7 +113,7 @@ test('un cambio de otro cliente se etiqueta como externo y avisa', () => {
   assert.deepEqual(vistos, ['i.5.mix']);
 });
 
-test('un valor distinto al enviado no cuenta como eco propio', () => {
+test('un valor distinto al enviado tambien es ajeno', () => {
   const { store, reloj } = nuevoStore();
   store.registrarEscrituraPropia('i.3.mix', 0.7);
   reloj.avanzar(10);
@@ -256,8 +312,8 @@ test('la causa no se inventa: sin instantanea de por medio no es un recall', () 
   }
 
   assert.equal(rafagas.length, 1);
-  assert.equal(rafagas[0]?.probableCausa, 'FADER_DRAG',
-    'doce canales, un solo parametro: alguien arrastro un grupo de faders');
+  assert.equal(rafagas[0]?.probableCausa, 'GRUPO_DE_CANALES',
+    'doce canales, un solo parametro: un grupo movido a la vez. NO es un arrastre: eso es una sola ruta muchas veces');
 });
 
 test('rutas de distinto parametro dan causa desconocida', () => {
@@ -304,7 +360,7 @@ test('si la instantanea llega despues de los parametros, se corrige la causa', (
   for (let canal = 1; canal <= 12; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
-  assert.equal(rafagas[0]?.probableCausa, 'FADER_DRAG', 'con lo visto hasta acá, eso parecía');
+  assert.equal(rafagas[0]?.probableCausa, 'GRUPO_DE_CANALES', 'con lo visto hasta acá, eso parecía');
 
   store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
   assert.equal(rafagas.length, 2);
@@ -381,4 +437,131 @@ test('una avalancha dentro de la ventana de silencio invalida igual', () => {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
   assert.equal(store.storeState, 'INVALID', 'no avisar no es lo mismo que no invalidar');
+});
+
+// --- Un arrastre ajeno se agrupa en un solo aviso ---------------------------
+//
+// EL DANO QUE ESTO EVITA ES CONCRETO. Cada cambio externo va al registro y a la
+// lista de «ultimos veinte cambios» de la aplicacion. Un arrastre de fader desde
+// otro dispositivo produce del orden de veinte lineas --medido contra la consola
+// el 2026-09-10: de 40 escrituras cada 15 ms difunde 20-- y con eso UNA SOLA
+// PASADA DE FADER AJENA BORRA TODO EL HISTORIAL RECIENTE, que es justo lo que el
+// operador iba a mirar para entender que paso.
+
+test('veinte lineas de un arrastre dan UN aviso, con el valor final', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  const vistos: { path: string; valor: number }[] = [];
+  store.alCambioExterno((path, valor) => vistos.push({ path, valor }));
+
+  // El ritmo es el de la consola: un tic de ~34 ms.
+  for (let i = 0; i < 20; i++) {
+    store.procesarLinea(codificarSetd('i.4.mix', 0.30 + i * 0.01));
+    reloj.avanzar(34);
+  }
+  // `assert.equal` sobre la longitud y no `deepEqual` contra `[]`: lo segundo
+  // hace que TypeScript estreche el array a `never` y las lineas siguientes
+  // dejen de compilar.
+  assert.equal(vistos.length, 0, 'mientras el gesto sigue, no se avisa nada');
+
+  reloj.avanzar(250);
+  assert.equal(vistos.length, 1, 'un gesto, un aviso');
+  assert.ok(Math.abs(vistos[0]!.valor - 0.49) < 1e-9,
+    'y con el valor DONDE QUEDO el fader, no donde arranco: el primero es el que ya no esta');
+});
+
+test('la ventana tiene que ser mayor que el tic de la consola', () => {
+  // Durante un arrastre las lineas llegan cada ~34 ms. Con una ventana mas
+  // chica que eso el gesto se partiria en pedazos y volveriamos al problema.
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 20);   // demasiado chica a proposito
+  const vistos: number[] = [];
+  store.alCambioExterno((_p, v) => vistos.push(v));
+
+  for (let i = 0; i < 5; i++) {
+    store.procesarLinea(codificarSetd('i.4.mix', 0.30 + i * 0.01));
+    reloj.avanzar(34);
+  }
+  assert.ok(vistos.length > 1,
+    'con la ventana por debajo del tic, el gesto se parte: por eso el valor real es 250');
+});
+
+test('dos rutas distintas en el mismo gesto dan un aviso cada una', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  const vistos: string[] = [];
+  store.alCambioExterno((path) => vistos.push(path));
+
+  store.procesarLinea(codificarSetd('i.4.mix', 0.3));
+  store.procesarLinea(codificarSetd('i.5.mix', 0.4));
+  reloj.avanzar(300);
+
+  assert.deepEqual([...vistos].sort(), ['i.4.mix', 'i.5.mix'],
+    'agrupar es por ruta: dos faders movidos a la vez son dos cambios, no uno');
+});
+
+test('un movimiento deliberado cada medio segundo cuenta como cambios distintos', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  const vistos: number[] = [];
+  store.alCambioExterno((_p, v) => vistos.push(v));
+
+  store.procesarLinea(codificarSetd('i.4.mix', 0.3));
+  reloj.avanzar(500);
+  store.procesarLinea(codificarSetd('i.4.mix', 0.4));
+  reloj.avanzar(500);
+
+  assert.deepEqual(vistos, [0.3, 0.4],
+    'agrupar un gesto no puede tragarse dos decisiones separadas del operador');
+});
+
+test('agrupar no toca la deteccion de avalancha, que cuenta rutas distintas', () => {
+  // La avalancha invalida el estado (INV-021) y se decide por RUTAS DISTINTAS.
+  // Un arrastre es una sola ruta: no es una avalancha y no tiene que invalidar
+  // nada, por mas lineas que mande.
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let i = 0; i < 30; i++) {
+    store.procesarLinea(codificarSetd('i.4.mix', 0.30 + i * 0.005));
+    reloj.avanzar(10);
+  }
+  assert.deepEqual(rafagas, [], 'un gesto sobre un fader no es una avalancha');
+  assert.equal(store.storeState, 'VALID', 'y no puede invalidar el estado');
+});
+
+test('lo que la agrupacion cuesta, fijado para que no sorprenda', () => {
+  // Dos cambios sobre la misma ruta separados por MENOS que la ventana se
+  // avisan como uno. Este test existe para que ese costo sea una decision
+  // escrita y no un descubrimiento: se rompio el criterio 1 de SPK-P0.9 --100
+  // cambios espaciados 120 ms daban 1 aviso-- y asi se encontro.
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  const vistos: number[] = [];
+  store.alCambioExterno((_p, v) => vistos.push(v));
+
+  store.procesarLinea(codificarSetd('i.4.mix', 0.3));
+  reloj.avanzar(120);
+  store.procesarLinea(codificarSetd('i.4.mix', 0.4));
+  reloj.avanzar(300);
+
+  assert.deepEqual(vistos, [0.4], 'uno solo, con el ultimo valor');
+});
+
+test('agrupar NO retrasa lo que el estado confirmado sabe', () => {
+  // Es la mitad que importa para la seguridad. La comprobacion de INV-011
+  // --¿el valor sigue siendo el que creo?-- lee del estado, no del aviso. Si
+  // agrupar retrasara tambien el estado, una escritura nuestra podria pisar un
+  // cambio ajeno que todavia no «existe».
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj, 250);
+  store.alCambioExterno(() => {});
+
+  store.procesarLinea(codificarSetd('i.4.mix', 0.42));
+  assert.equal(store.leer('i.4.mix')?.valor, 0.42,
+    'el estado se actualiza con la linea, sin esperar a que el gesto termine');
+  assert.equal(store.coincideConEsperado('i.4.mix', 0.30).coincide, false,
+    'y por eso una escritura contra el valor viejo da conflicto en el acto');
 });

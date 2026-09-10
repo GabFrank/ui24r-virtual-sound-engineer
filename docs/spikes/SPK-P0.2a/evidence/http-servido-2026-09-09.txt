@@ -1,0 +1,84 @@
+QUE SIRVE LA CONSOLA POR HTTP — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24. Solo peticiones GET, nada que escriba.
+
+MOTIVO
+Se pregunto si convenia desensamblar el firmware para descubrir que es cada
+byte. Antes de eso, barrer lo que la consola ya sirve por HTTP, que es gratis y
+sin riesgo. Rindio.
+
+=== EL HALLAZGO PRINCIPAL: /raw ===
+GET http://<consola>/raw devuelve TODO EL ESTADO en formato de protocolo, sin
+socket.io, sin apreton de manos, sin WebSocket. Y ademas tramas VU2 y RTA.
+
+  6089 lineas SETD    147 RTA
+   640 lineas SETS    112 VU2
+                        1 VUA    1 UPDATE_PLAYLIST
+
+NO ES UNA INSTANTANEA: ES UN FLUJO EN VIVO. La conexion no cierra --por eso
+manda medidores-- asi que `fetch` se cuelga esperando el fin del cuerpo y curl
+sale con codigo 28. Los datos igual llegan; hay que leer con limite de tiempo y
+tolerar ese codigo de salida.
+
+ES EL MISMO ESTADO QUE EL WEBSOCKET, comprobado capturando los dos EN EL MISMO
+MOMENTO:
+    WebSocket: 6728 claves
+    HTTP /raw: 6728 claves
+    solo en HTTP: 0        solo en WebSocket: 0
+
+Una comparacion contra un volcado archivado de OTRO DIA daba 63 claves de
+diferencia --i.N.mtx.*, i.N.hiz, i.9.gate.threshold-- y parecia que el HTTP
+traia mas. Era el estado que habia cambiado, no el protocolo. La diferencia
+desaparece cuando los dos se capturan a la vez.
+
+PARA QUE SIRVE
+- Diagnostico de una linea: `curl -s --max-time 10 http://<consola>/raw` da el
+  estado entero. Sin abrir la aplicacion, sin cliente.
+- Fixtures de prueba con estado real, sin hardware presente.
+- Comprobar "lo deje como lo encontre" comparando dos volcados.
+
+=== OTROS ARCHIVOS SERVIDOS ===
+  /                    6 KB    elige entre mixer, phone y config
+  /mixer.html        1,2 MB    el cliente de tableta. La fuente mas autoritativa
+                               del protocolo; de aca salieron PEAK_HOLD_TIME,
+                               los dos indicadores de clip y las cuentas de la
+                               cabecera de VU2.
+  /phone.html        862 KB    SEGUNDO CLIENTE, sin explotar todavia. Sirve para
+                               contrastar: si los dos convierten distinto, algo
+                               esta mal en nuestra lectura.
+  /js/initparams.js  148 KB    curSetup + los valores POR DEFECTO de cada clave
+  /sel/retina.js     5,7 KB    nada de interes
+  /config.html        401      pide autenticacion. No se insistio.
+
+curSetup, la topologia declarada por el aparato:
+  {input:24, fx:4, aux:10, bankSize:8, sub:6, maxx:false, rec:true,
+   phantom:20, linein:2, uniqueid:"8100C0022046A0250089377994042254"}
+
+Coincide con la cabecera de VU2 (24 2 6 4 10 2 2 0) y agrega dos datos que la
+cabecera no da: bankSize=8 y phantom=20, o sea que solo 20 de las 24 entradas
+tienen alimentacion fantasma. Cuadra con que i.N.src valga `none` en los cuatro
+ultimos: esos no tienen previo.
+
+=== FAMILIAS DE CLAVES QUE EL PROYECTO NO CONOCIA ===
+  i.N.hiz             conmutador de alta impedancia (entrada de instrumento)
+  hwoutaux.N.src      que sale por cada salida fisica de auxiliar
+  hwoutm.N.src        idem para el general
+  hwouthp.N.src       idem para auriculares
+  hwouthpdsp.N.src    idem, con procesamiento
+  usbdaw.N.src        32 canales USB hacia la computadora, con su fuente
+  casc.N.src          cascada, 32 ranuras, todas vacias en este aparato
+  mtk.out.N           multipista: que se graba en cada pista
+  mtk.scout.N         multipista: que reproduce cada pista en soundcheck
+  mg.N.name           grupos de silencio, CON NOMBRES REALES DEL USUARIO
+  vg.N.name           grupos de vista
+  iso.ch / iso.bus / iso.m / iso.mtx / iso.fx / iso.gr   aislamiento
+  firmware            "3.4.8318-ui24"
+  model               "ui24"
+
+Las de `hwout*.src` importan mas de lo que parece: dicen QUE SALE FISICAMENTE
+por cada conector. En este aparato hwoutaux.6.src vale `none`, o sea una salida
+sin asignar. Hoy el proyecto no lee nada de eso.
+
+=== LO QUE NO SE HIZO ===
+- /config.html pide credenciales. No se intento adivinarlas.
+- phone.html sigue sin minar. Es el candidato mas barato que queda.
+- No se toco el firmware. Sigue sin hacer falta.

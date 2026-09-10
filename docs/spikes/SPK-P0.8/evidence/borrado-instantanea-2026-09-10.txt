@@ -1,0 +1,33 @@
+Borrado de instantanea contra la consola — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, show de la aplicacion: VSE
+
+POR QUE SE MIDIO. La retencion de INV-003 se implemento el 2026-09-09 y manda
+DELETESNAPSHOT. La prueba que la acompano corrio con cuatro automaticas, POR
+DEBAJO DEL MAXIMO DE VEINTE, asi que no borro nada: el comando se escribio, se
+probo contra un transporte falso y NUNCA SE EJECUTO CONTRA EL APARATO. Se
+descubrio repasando el acta G-A contra la realidad, no corriendo tests.
+
+Un comando de borrado que no funciona falla hacia el lado silencioso: la
+retencion no retiene, el show crece igual y nada avisa.
+
+show de la aplicacion: VSE
+ANTES: 4 -> VSE_AUTO_1789002978618, VSE_AUTO_1789003364992, VSE_AUTO_1789004502505, VSE_AUTO_1789008072466
+GUARDADA: VSE_AUTO_1789012302514 -> la consola lista 5
+orden de borrado: DELETESNAPSHOT^VSE^VSE_AUTO_1789012302514
+DESPUES: 4 -> VSE_AUTO_1789002978618, VSE_AUTO_1789003364992, VSE_AUTO_1789004502505, VSE_AUTO_1789008072466
+
+la borro de verdad:            SI
+quedo como estaba al empezar:  SI
+lineas que rozan lo del usuario: SETS^var.currentSnapshot^Prueba asistente
+
+RESULTADO: DELETESNAPSHOT^VSE^<nombre> borra, y la consola queda con la misma
+lista que tenia al empezar.
+
+SOBRE LA ULTIMA LINEA. El filtro de la prueba marca cualquier linea saliente
+que nombre algo del usuario, y salio una: SETS^var.currentSnapshot^Prueba
+asistente. NO ES UN BORRADO: es la restauracion del puntero de instantanea
+actual, que guardar una automatica desplaza y que devolvemos a como estaba
+(tarea 34). O sea que el filtro hizo bien en marcarla y la linea hizo bien en
+existir. Se anota para que quien lea la corrida no la lea como un susto.
+
+QUE NO SE MIDIO: renombrar. Sigue sin clave conocida y sin probar.

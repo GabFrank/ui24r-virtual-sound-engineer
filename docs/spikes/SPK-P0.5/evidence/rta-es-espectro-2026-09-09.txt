@@ -1,0 +1,110 @@
+EL FLUJO RTA ES UN ANALIZADOR DE ESPECTRO — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24, fuente conocida por el canal 10.
+
+CORRIGE LA CONCLUSION ANTERIOR DE ESTE MISMO DIA, que decia que el RTA no
+traia espectro. El error: `parseVUAdata` hace `a.slice(4)` y se le atribuyo el
+manejo del RTA, pero "VUA^" y "RTA^" miden los dos cuatro caracteres. El censo
+de vocabulario destapo que la consola emite AMBOS, y son cosas distintas:
+  VUA^  -> niveles por entrada para la pagina de Automix (parseVUAdata)
+  RTA^  -> espectro                                      (parseRTAdata)
+
+POR QUE LLEGABA EN CEROS
+`parseRTAdata` lee `dataValue["var.rta"]`, que nombra el canal que el
+analizador esta mirando, y sin fuente elegida no hace nada. En el volcado de
+esta consola `var.rta` NO EXISTIA: nadie lo habia elegido nunca. Se enciende
+escribiendo `SETS^var.rta^i.9` (la ruta del canal, sin el punto final).
+
+FORMATO
+122 bytes por trama, ~30 tramas por segundo, un byte por banda.
+Sin senal: todo en cero. Con un tono: una campana con pico en su banda y
+decaimiento simetrico, de unas 5 posiciones de ancho a media altura.
+
+CALIBRACION (tono de -12 dBFS, pico por banda)
+     63 Hz -> banda  19        2000 Hz -> banda  79
+    125 Hz -> banda  31        4000 Hz -> banda  91
+    250 Hz -> banda  43        8000 Hz -> banda 103
+    500 Hz -> banda  55       16000 Hz -> banda 115
+   1000 Hz -> banda  67
+
+Cada octava son EXACTAMENTE 12 bandas. La ley es:
+    banda = 67 + 12 * log2(f / 1000)
+    f = 1000 * 2^((banda - 67) / 12)
+Resolucion de un doceavo de octava, o sea un semitono.
+Banda 0   -> ~20,9 Hz
+Banda 121 -> ~22,6 kHz
+Las 122 bandas cubren toda la banda audible.
+
+LO QUE ESTO ABRE
+Informacion de frecuencia por canal, a 30 Hz, SIN motor de audio, SIN
+microfono de medicion y sin esperar al control de paso G-B: identificar que
+banda esta creciendo antes de realimentar, ver solapamiento entre fuentes,
+juzgar balance tonal.
+
+LO QUE NO ABRE, y conviene no confundir
+Esto mide la SENAL DE UN CANAL, no la sala. La respuesta del recinto sigue
+necesitando un microfono de medicion: ningun canal de la consola escucha lo
+que pasa en el aire.
+
+LO QUE FALTA MEDIR
+- Que unidad tiene el byte. Se calibra con tonos de nivel conocido, igual que
+  se hizo con el medidor.
+- Si `var.rta` es por cliente o global. Si es global, elegir la fuente le
+  cambia la pantalla al operador, y eso hay que saberlo antes de tocarlo en un
+  show.
+- Si acepta salidas ademas de entradas (el general, los auxiliares).
+- El tiempo de integracion: cuanto promedia cada trama.
+
+ESTADO EN QUE QUEDO LA CONSOLA
+`var.rta` quedo DEFINIDA Y VACIA. Antes de esta prueba no existia en el
+volcado. Es equivalente en funcionamiento --`parseRTAdata` hace `if (b)` y la
+cadena vacia es falsa, asi que el analizador sigue apagado-- pero no es
+identico: la clave ahora esta. No hay forma de borrarla por protocolo, solo de
+vaciarla. Queda dicho para que nadie lo lea como un cambio del aparato.
+
+=== LAS TRES PREGUNTAS ABIERTAS, CONTESTADAS (misma sesion) ===
+
+1. UNIDAD DEL BYTE: lineal en decibeles, 0,375 dB por byte.
+   Tono de 1 kHz a niveles conocidos, leyendo la banda 67:
+     -36 dBFS -> 25,6      -18 dBFS -> 73,0
+     -30 dBFS -> 41,0      -12 dBFS -> 89,0
+     -24 dBFS -> 57,0       -6 dBFS -> 105,0
+   Los pasos de 6 dB dieron 16,0 bytes EXACTOS cuatro veces seguidas. El unico
+   que se desvio --15,4-- es el mas bajo, junto al piso de ruido, que es donde
+   siempre se desvia.
+   0,375 dB/byte no es la escala del medidor de nivel (0,333): son dos escalas
+   distintas y conviene no mezclarlas.
+
+2. `var.rta` ES GLOBAL. Una segunda conexion vio el cambio inmediatamente.
+   CONSECUENCIA DE PRODUCTO, y no es menor: elegir la fuente del analizador
+   LE CAMBIA LA PANTALLA AL OPERADOR. Si la aplicacion lo hace sola en medio de
+   un show, alguien va a ver su analizador saltar a otro canal sin haberlo
+   tocado. Es una decision de producto --pedir permiso, avisar, o no usarlo con
+   la consola en uso-- y no una de medicion.
+
+3. FUENTES QUE ACEPTA:
+     "i.9"  (entrada)  -> funciona
+     "m"    (general)  -> funciona, 78 bandas con valor
+     "a.0"  (auxiliar) -> 0 bandas: o no es fuente valida o se nombra distinto
+   Que el general funcione importa mas de lo que parece: es lo mas cercano a
+   "que esta saliendo" que hay sin microfono de medicion.
+
+QUEDA SIN MEDIR: el tiempo de integracion de cada trama.
+
+=== TIEMPO DE INTEGRACION (la ultima pregunta abierta) ===
+Cinco rafagas de 2 s a 1 kHz, midiendo la banda 67.
+
+  subida al 90% de la meseta: 0 a 34 ms -> DENTRO DE UNA SOLA TRAMA
+  caida de 20 dB: mediana 300 ms (minimo 267, maximo 304)
+  cadencia: 30,2 tramas por segundo, estable en las cinco
+
+Ataque instantaneo y caida lenta: ~67 dB por segundo. Es una balistica de
+retencion con decaimiento, no un promedio deslizante.
+
+LO QUE ESTO FIJA PARA LA DETECCION DE REALIMENTACION
+El decaimiento es la memoria del analizador. Un golpe de caja va a quedar
+visible unos 300 ms por cada 20 dB, sin que haya nada sonando. Entonces:
+- Nada por debajo de ~0,5 s puede distinguirse de la propia cola del medidor.
+- Una banda que sigue arriba pasado ese tiempo ya no es memoria: es senal.
+- Un acople se distingue de un golpe justamente ahi: el golpe cae con la
+  pendiente del analizador, ~67 dB/s, y el acople no cae o crece.
+La regla candidata, entonces, no es "crecio" sino "no cayo como deberia".

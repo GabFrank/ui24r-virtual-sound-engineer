@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ALIVE_INTERVALO_MS, MENSAJE_ALIVE, VU_BYTES_POR_CANAL, VU_CABECERA_BYTES,
-  codificarVu, decodificar, decodificarVu, decodificarVuCanales, despojarSocketIo,
+  bytesABase64, codificarVu, dbDeMedidor, decodificar, decodificarVu, decodificarVuCanales,
+  despojarSocketIo, MEDIDOR_RANGO_DB, MEDIDOR_SATURACION, VU_ESCALA,
 } from '../src/protocol.ts';
 import { faderADb } from '../src/conversiones.ts';
 
@@ -93,16 +94,82 @@ test('VU2: ida y vuelta por el codificador del simulador', () => {
   }
 });
 
-test('la ley de fader duplicada en protocol coincide con la de conversiones', () => {
-  // `protocol.ts` repite la formula para no depender del modulo de unidades.
-  // Si alguna vez divergen, esto lo detecta.
-  for (const posicion of [0.1, 0.25, 0.5, 0.7647058823529421, 0.9, 1]) {
-    const porProtocolo = decodificarVu(codificarVu([posicion]))[0]!;
-    const porConversiones = faderADb(Math.round(posicion / 0.004167508166392142)
-      * 0.004167508166392142);
-    assert.ok(Math.abs(porProtocolo - porConversiones) < 1e-9,
-      `en ${posicion}: protocolo ${porProtocolo}, conversiones ${porConversiones}`);
+test('VU2: el medidor es lineal en decibeles, no la ley del fader', () => {
+  // Sale del `mixer.html` de la consola: dibuja la barra con `c = h * value`,
+  // proporcional a la posicion, y pone las marcas de su escala en
+  // `-dB * h / VU_RANGE` con `VU_RANGE = 80`. Las dos cosas juntas no dejan
+  // otra recta posible. Este test existe porque aca vivia el contrario: uno
+  // que exigia que la conversion del medidor coincidiera con la del fader,
+  // que era la hipotesis, y la hipotesis resulto falsa.
+  assert.equal(MEDIDOR_RANGO_DB, 80);
+  assert.equal(dbDeMedidor(1), 0, 'la punta de la escala es 0 dB');
+  assert.equal(dbDeMedidor(0.5), -MEDIDOR_RANGO_DB / 2, 'la mitad de la barra es la mitad del recorrido');
+  assert.equal(dbDeMedidor(0), -Infinity, 'sin senal no hay decibeles que dar');
+
+  for (const posicion of [0.1, 0.25, 0.5, 0.9, 1]) {
+    const porFader = faderADb(posicion);
+    assert.ok(Math.abs(dbDeMedidor(posicion) - porFader) > 1,
+      `en ${posicion} las dos leyes coinciden, y no deberian`);
   }
+});
+
+test('VU2: la escala coincide con la ley de fader de la propia consola', () => {
+  // La prueba fuerte de la escala, y la unica sin cadena analogica en el medio:
+  // el fader es una ganancia digital dentro de la consola. Con la fuente fija,
+  // bajarlo del crudo 0,7647 al 0,20 movio el medidor de salida del byte 181,0
+  // al 66,3. Segun la ley de fader eso son 38,19 dB de atenuacion, y nuestra
+  // conversion tiene que dar lo mismo.
+  //
+  // Medir con una fuente externa da otro numero --y tres numeros distintos
+  // segun el nivel-- porque mide la cadena entera y no el medidor. Ver la nota
+  // de MEDIDOR_RANGO_DB.
+  const dbDeByte = (byte: number): number => dbDeMedidor(byte * VU_ESCALA);
+  const medido = dbDeByte(181.0) - dbDeByte(66.3);
+  const segunElFader = faderADb(0.7647058824) - faderADb(0.2);
+
+  assert.ok(
+    Math.abs(medido - segunElFader) < 0.2,
+    `el medidor dio ${medido.toFixed(2)} dB y el fader ${segunElFader.toFixed(2)}`,
+  );
+});
+
+test('VU2: coincide con lo que se leyo en la pantalla de la consola', () => {
+  // Estos son los puntos de la primera sesion, leidos a ojo de una barra en
+  // movimiento: valen como control de sensatez, no como calibracion. La
+  // tolerancia es la de leer una barra, no la de la medicion de arriba.
+  const dbDeByte = (byte: number): number => dbDeMedidor(byte * VU_ESCALA);
+
+  // Guitarra en el canal 1: byte de entrada 225, fader del canal en -6,9 dB,
+  // y la consola mostraba unos -12 en la barra, que es la salida.
+  assert.ok(Math.abs((dbDeByte(225) - 6.9) - -12) < 3, `dio ${(dbDeByte(225) - 6.9).toFixed(1)}`);
+  // Musica por las RCA: byte de salida 102, barra alrededor de -40 a -45.
+  assert.ok(Math.abs(dbDeByte(102) - -43) < 6, `dio ${dbDeByte(102).toFixed(1)}`);
+});
+
+test('VU2: el umbral de saturacion es la punta de la escala, y lo pone la consola', () => {
+  // `setVU` hace `1 <= b ? this.clip.clip() : ...`. Saturar es llegar a 0 dB,
+  // no pasar un umbral elegido por nosotros.
+  assert.equal(MEDIDOR_SATURACION, 1);
+  assert.equal(dbDeMedidor(MEDIDOR_SATURACION), 0);
+});
+
+test('VU2: el bit 7 del ultimo byte es la puerta, no la saturacion', () => {
+  // Costo una lectura equivocada: el byte vale 247 en todos los canales
+  // quietos --con el bit 7 puesto-- y tomarlo por saturacion daba los 24
+  // canales saturando sin parar. En `parseVUdata` ese bit termina en
+  // `this.gi.setValue(...)`, y `gi` es un `GATEind`.
+  const cabecera = [1, 0, 0, 0, 0, 0, 0, 0];
+  const conPuerta = decodificarVuCanales(bytesABase64([...cabecera, 100, 100, 100, 0, 0, 247]));
+  const sinPuerta = decodificarVuCanales(bytesABase64([...cabecera, 100, 100, 100, 0, 0, 119]));
+
+  // Se comprueba que el bit se lee, no que signifique "abierta": la polaridad
+  // no esta medida y el nombre del campo ya no la afirma.
+  assert.equal(conPuerta[0]?.indicadorDePuerta, true);
+  assert.equal(sinPuerta[0]?.indicadorDePuerta, false);
+  assert.ok(
+    (conPuerta[0]?.entrada ?? 1) < MEDIDOR_SATURACION,
+    'y con el bit puesto el canal ni siquiera esta cerca de saturar',
+  );
 });
 
 test('ALIVE es el texto plano que espera la consola', () => {
@@ -110,4 +177,29 @@ test('ALIVE es el texto plano que espera la consola', () => {
   // cada segundo.
   assert.equal(MENSAJE_ALIVE, 'ALIVE');
   assert.equal(ALIVE_INTERVALO_MS, 1000);
+});
+
+/**
+ * Los dos indicadores de saturacion de la consola, y cual es cual.
+ *
+ * Leido del mixer.html el 2026-09-09, en parseVUdata:
+ *   m = +0 (pre)   n = +1 (entrada)   q = +2 (salida)
+ *   inStrips[g].setVU(n, q, ...)   -> clip sobre q, la SALIDA
+ *   gainStrips[g].setVUPre(m)      -> clip propio sobre m, el PREVIO
+ *
+ * El byte +1 NO tiene indicador de clip. El adaptador contaba sobre el, que
+ * es justo el unico de los tres que la consola no vigila.
+ */
+test('VU2: el byte +1 no es ninguno de los dos indicadores de saturacion', () => {
+  const cabecera = [1, 0, 0, 0, 0, 0, 0, 0];
+  // pre y salida por debajo del tope, entrada clavada arriba.
+  const soloEntrada = decodificarVuCanales(
+    bytesABase64([...cabecera, 100, 240, 100, 0, 0, 247]),
+  )[0];
+  assert.ok(soloEntrada !== undefined);
+  assert.ok(soloEntrada.pre < MEDIDOR_SATURACION, 'el previo no satura');
+  assert.ok(soloEntrada.salida < MEDIDOR_SATURACION, 'la salida tampoco');
+  // Y sin embargo `entrada` esta arriba: contar sobre este byte inventaria una
+  // saturacion que la consola no muestra en ningun lado.
+  assert.ok(soloEntrada.entrada >= MEDIDOR_SATURACION);
 });

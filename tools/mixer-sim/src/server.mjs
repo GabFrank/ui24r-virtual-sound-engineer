@@ -21,11 +21,17 @@
  */
 
 import { WebSocketServer } from 'ws';
-import { CANALES, estadoInicial, nombres, dbAFader } from './state.mjs';
+import { CANALES, estadoInicial, nombres, fuentes, dbAFader, PROCESO } from './state.mjs';
 
 const args = process.argv.slice(2);
 const puerto = Number(args[args.indexOf('--port') + 1]) || 8765;
-const conEco = !args.includes('--no-echo');
+// **Sin eco por defecto, que es como se comporta la consola.** Antes el eco
+// venia activado porque era lo que SPK-P0.1 tenia que medir; ya lo midio, y
+// la respuesta es que la Ui24R no le devuelve nada a quien escribe (ADR-024).
+// Dejarlo activado hacia que el simulador contradijera el hecho central del
+// mecanismo de confirmacion: una rama que esperara eco habria funcionado acá
+// y fallado contra el aparato. `--con-eco` conserva el mundo hipotetico.
+const conEco = args.includes('--con-eco');
 const vuHz = Number(args[args.indexOf('--vu-hz') + 1]) || 20;
 
 const estado = estadoInicial();
@@ -46,16 +52,146 @@ const VU_ESCALA = 0.004167508166392142;
  * Antes se mandaba un byte por canal sin cabecera, mapeado de −80 a 0 dB. Eso
  * era la hipótesis, y estaba equivocada en las tres cosas.
  */
-function codificarVu(nivelesDb) {
-  const bytes = [nivelesDb.length, 0, 0, 0, 0, 0, 0, 0];
-  for (const db of nivelesDb) {
-    const posicion = (!Number.isFinite(db) || db <= -90) ? 0 : dbAFader(db);
-    const b = Math.max(0, Math.min(255, Math.round(posicion / VU_ESCALA)));
+// El medidor es lineal en decibeles: 0 dB arriba, -80 abajo. Sale del propio
+// `mixer.html` de la consola, que dibuja la barra proporcional a la posicion y
+// pone las marcas en `-dB * h / 80`. Hasta el 2026-09-08 el simulador emitia
+// con la ley del fader, que es otra cosa.
+const MEDIDOR_RANGO_DB = 80;
+
+/**
+ * Ampliacion del medidor de reduccion. `COMP_ZOOM` en `mixer.html`: su recorrido
+ * es la mitad del de nivel, 40 dB y no 80.
+ */
+const COMP_ZOOM = 2;
+const REDUCCION_RANGO_DB = MEDIDOR_RANGO_DB / COMP_ZOOM;
+
+/**
+ * El byte de reduccion que corresponde a estos decibeles.
+ *
+ * La funcion directa de la consola es
+ * `fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM` con
+ * `a = (byte & 127) << 1`, y con reduccion nula el byte vale 247. Aca se
+ * invierte por busqueda, igual que en el adaptador, para no despejar a mano una
+ * cuenta con un bit doblado adentro.
+ */
+/**
+ * El bit 7 es el indicador de puerta, y se pone aparte a proposito.
+ *
+ * Este bucle buscaba entre 128 y 255, asi que TODOS los canales del simulador
+ * salian con el bit 7 puesto --por el rango de busqueda, no por modelar nada--.
+ * Coincidia con lo que hace la consola en los canales quietos, pero por
+ * accidente: quien mirara el indicador contra el simulador habria visto 24
+ * puertas en el mismo estado y lo habria tomado por normal.
+ *
+ * Ahora la reduccion se busca en 0..127, que es donde vive de verdad --la
+ * consola hace `a = (b & 127) << 1`-- y el bit se agrega despues.
+ *
+ * **Que significa que valga 1 no esta medido.** Se pone en todos los canales
+ * porque es lo que se observo en la consola con los canales quietos, y nada
+ * mas que por eso. No se debe leer como "puerta abierta": ver
+ * `MedidorCanal.indicadorDePuerta` en el adaptador.
+ */
+const BIT_INDICADOR_DE_PUERTA = 128;
+
+function byteDeReduccion(db) {
+  let mejor = 119;
+  let menorError = Infinity;
+  for (let b = 0; b <= 127; b++) {
+    const a = (b & 127) << 1;
+    let fraccion = (1 - VU_ESCALA * (a | ((a >> 7) & 1))) * COMP_ZOOM;
+    if (fraccion < 0.008) fraccion = 0;
+    else if (fraccion > 1) fraccion = 1;
+    const error = Math.abs(fraccion * REDUCCION_RANGO_DB - db);
+    if (error < menorError) { menorError = error; mejor = b; }
+  }
+  return mejor | BIT_INDICADOR_DE_PUERTA;
+}
+
+function aByte(db) {
+  const posicion = (!Number.isFinite(db) || db <= -MEDIDOR_RANGO_DB)
+    ? 0
+    : (db + MEDIDOR_RANGO_DB) / MEDIDOR_RANGO_DB;
+  return Math.max(0, Math.min(255, Math.round(posicion / VU_ESCALA)));
+}
+
+/**
+ * `nivelesDb` es el nivel ANTES del procesamiento dinamico, que es lo que sale
+ * por el primer byte de cada canal. El segundo --el que la consola dibuja en su
+ * tira-- lleva la reduccion descontada: medido el 2026-09-09, con el compresor
+ * apretando 5 dB los dos difieren en esos 5 dB. Antes el simulador mandaba el
+ * mismo numero en los dos y con eso el asistente de ganancia no podia notar la
+ * diferencia entre medir bien y medir mal.
+ */
+function codificarVu(nivelesDb, reduccionesDb = []) {
+  // **La cabecera dice cuantos hay de cada cosa, y el simulador la mandaba en
+  // cero.** Medido el 2026-09-09: el cliente de la consola avanza por la cola
+  // usando estas cuentas --`e += 7*charCodeAt(2)` para los subgrupos, y asi--,
+  // asi que con la cabecera en cero un decodificador correcto no encuentra
+  // ninguna seccion, por mas que la cola venga completa detras.
+  //
+  // La consola real manda `24 2 6 4 10`. Los bytes 5, 6 y 7 valen `2 2 0` y no
+  // se sabe que son; van en cero porque inventarlos seria peor.
+  const bytes = [
+    nivelesDb.length,
+    COLA_SECCIONES[0].cuantos,   // reproductor
+    COLA_SECCIONES[1].cuantos,   // subgrupos
+    COLA_SECCIONES[2].cuantos,   // efectos
+    COLA_SECCIONES[3].cuantos,   // auxiliares
+    0, 0, 0,
+  ];
+  for (let i = 0; i < nivelesDb.length; i++) {
+    const preDb = nivelesDb[i];
+    const reduccion = reduccionesDb[i] ?? 0;
+    const entradaDb = Number.isFinite(preDb) ? preDb - reduccion : preDb;
     // pre, entrada, salida, dinámico entrada, dinámico salida, reducción.
     // 247 en el último byte es "sin reducción de ganancia", como en la consola.
-    bytes.push(b, b, b, 0, 0, 247);
+    bytes.push(
+      aByte(preDb), aByte(entradaDb), aByte(entradaDb), 0, 0, byteDeReduccion(reduccion),
+    );
   }
+  bytes.push(...colaEnSilencio());
   return Buffer.from(bytes).toString('base64');
+}
+
+/**
+ * La cola de la trama: buses en silencio, con el reparto medido.
+ *
+ * Antes el simulador cortaba despues de las entradas y mandaba 152 bytes; la
+ * consola manda **306**. O sea que nada que leyera el general, los auxiliares,
+ * los subgrupos o los efectos se podia desarrollar ni probar contra el
+ * simulador, y el primer intento habria asumido el paso de 6 de las entradas
+ * --que es exactamente el error que la medicion desmintio: las secciones **no
+ * comparten el paso**.
+ *
+ * Reparto medido el 2026-09-09 (relativo al fin de las entradas):
+ *
+ *       0 ..  11   2 entradas de linea, 6 bytes cada una
+ *      12 ..  53   6 subgrupos, 7 bytes cada uno
+ *      54 ..  81   4 efectos, 7 bytes cada uno
+ *      82 .. 131  10 auxiliares, 5 bytes cada uno
+ *     132 .. 153   general
+ *
+ * Va todo en silencio salvo el byte de reduccion de cada bloque, que es 247
+ * --"sin reduccion"-- igual que en los canales. Que este en silencio es una
+ * simplificacion honesta: el simulador no encamina senal a los buses. Lo que
+ * si reproduce, y es lo que importa, es **el largo y el reparto**.
+ */
+const COLA_SECCIONES = [
+  { cuantos: 2,  ancho: 6, reduccion: null },
+  { cuantos: 6,  ancho: 7, reduccion: 6 },
+  { cuantos: 4,  ancho: 7, reduccion: 6 },
+  { cuantos: 10, ancho: 5, reduccion: 4 },
+  { cuantos: 1,  ancho: 22, reduccion: null },
+];
+
+function colaEnSilencio() {
+  const bytes = [];
+  for (const s of COLA_SECCIONES) {
+    for (let i = 0; i < s.cuantos; i++) {
+      for (let b = 0; b < s.ancho; b++) bytes.push(b === s.reduccion ? 247 : 0);
+    }
+  }
+  return bytes;
 }
 
 /**
@@ -79,8 +215,8 @@ function difundir(linea, excepto = null) {
 /** Aplica un cambio y lo difunde, como haría la consola con sus clientes. */
 function aplicar(path, valor, origen = null) {
   estado.set(path, valor);
-  // El eco al propio emisor es justo lo que el spike P0.1 tiene que medir.
-  // Acá es configurable para poder probar la aplicación en los dos mundos.
+  // El eco al propio emisor no existe en la consola real: por eso `origen`
+  // queda excluido de la difusion salvo que se pida el mundo hipotetico.
   difundir(`SETD^${path}^${valor}`, conEco ? null : origen);
 }
 
@@ -90,6 +226,7 @@ function volcadoCompleto(ws) {
   const lineas = [];
   for (const [path, valor] of estado) lineas.push(`SETD^${path}^${valor}`);
   for (const [path, texto] of nombres()) lineas.push(`SETS^${path}^${texto}`);
+  for (const [path, texto] of fuentes()) lineas.push(`SETS^${path}^${texto}`);
   for (let i = 0; i < lineas.length; i += 40) {
     ws.send(envolver(...lineas.slice(i, i + 40)));
   }
@@ -112,7 +249,7 @@ const escenarios = {
       aplicar(`i.${c.idx}.mix`, dbAFader(c.faderDb - 3));
     }
     aplicar('var.currentSnapshot', 1);
-    log('escenario: recuperación de instantánea, 13 rutas en menos de un segundo');
+    log(`escenario: recuperación de instantánea, ${CANALES.length + 1} rutas en menos de un segundo`);
   },
 
   /** Arrastre de fader: muchos mensajes sobre una sola ruta. */
@@ -132,8 +269,21 @@ const escenarios = {
 
   /** Un canal empieza a saturar. */
   clipping: () => {
-    canalSaturando = canalSaturando === null ? 1 : null;
+    canalSaturando = canalSaturando === null ? 0 : null;  // idx 0 = canal 1
     log(`escenario: saturación en el canal 1 ${canalSaturando ? 'activada' : 'desactivada'}`);
+  },
+
+  /**
+   * El analizador encendido y una banda que se queda colgada.
+   *
+   * Sirve para dos pantallas de una vez: el espectro con datos y el aviso de
+   * realimentación. Dura veinte segundos porque una captura con su espera
+   * previa no entra en menos, y **se apaga solo**: si quedara encendido, todas
+   * las capturas siguientes mostrarían una realimentación que no viene al caso.
+   */
+  realimentacion: () => {
+    realimentacionHasta = Date.now() + 20000;
+    log('escenario: analizador encendido, banda 83 (~2,5 kHz) colgada durante veinte segundos');
   },
 
   /** Corte de conexión. */
@@ -188,6 +338,7 @@ setInterval(() => {
   if (Date.now() < vuCortadoHasta) return;
   const t = Date.now() / 1000;
   const niveles = [];
+  const reducciones = [];
   for (const c of CANALES) {
     // Movimiento verosímil: una envolvente lenta más variación rápida.
     const lento = Math.sin(t * 0.7 + c.idx) * (c.dinamica / 2);
@@ -195,8 +346,16 @@ setInterval(() => {
     let db = c.nivelBase + lento + rapido;
     if (canalSaturando === c.idx) db = -0.3 + Math.random() * 0.4;
     niveles.push(db);
+
+    // La reduccion sigue a la envolvente: un compresor aprieta mas en los
+    // picos y suelta entre frase y frase. Un canal sin compresor manda cero, y
+    // uno con compresor puesto pero `comprimeDb` en cero tambien: es la
+    // diferencia entre "hay compresor" y "hay compresor actuando".
+    const p = PROCESO.get(c.idx);
+    const tope = p?.compresor ? p.comprimeDb : 0;
+    reducciones.push(tope > 0 ? Math.max(0, tope * (0.55 + lento / 12)) : 0);
   }
-  difundir(`VU2^${codificarVu(niveles)}`);
+  difundir(`VU2^${codificarVu(niveles, reducciones)}`);
 }, Math.round(1000 / vuHz));
 
 // El analizador de espectro, que es lo que la consola emite pase lo que pase.
@@ -210,10 +369,66 @@ setInterval(() => {
 // los silencios y `RTA` no—, así que un simulador sin `RTA` deja toda sesión
 // marcada como inestable a los 300 ms.
 //
-// La carga es un espectro en silencio: 30 bandas en cero. El cliente todavía no
-// decodifica `RTA`, solo cuenta que llegó.
-const RTA_SILENCIO = Buffer.alloc(30).toString('base64');
-setInterval(() => difundir(`RTA^${RTA_SILENCIO}`), Math.round(1000 / 30));
+// La carga es un espectro en silencio: **122 bandas** en cero, que es lo que
+// manda la consola --un doceavo de octava, de ~20,9 Hz a ~22,6 kHz, medido el
+// 2026-09-09--. Antes eran 30, un numero que no salia de ninguna medicion y
+// que el dia que se decodifique `RTA` habria hecho validar un largo
+// inexistente. Hoy el cliente solo cuenta que llegó.
+const RTA_BANDAS = 122;
+const RTA_SILENCIO = Buffer.alloc(RTA_BANDAS).toString('base64');
+
+/**
+ * Un espectro con forma, para poder mirar la pantalla del espectro.
+ *
+ * **Por qué dejó de ser silencio.** El silencio alcanzaba mientras el cliente
+ * solo contaba que la trama llegaba. Desde que la aplicación *dibuja* el
+ * espectro y vigila la realimentación, un simulador en cero deja esa pantalla
+ * en blanco y el escenario de capturas no puede mostrarla: se estaría revisando
+ * una pantalla que nunca se ve con datos.
+ *
+ * La forma es una caída suave hacia los agudos con una ondulación encima, que
+ * es lo que se parece a música. **No sale de ninguna medición** y no pretende
+ * serlo: lo único que importa acá es que las bandas no sean todas iguales, para
+ * que se note si la pantalla dibuja mal el orden o la escala.
+ *
+ * **Es determinista a propósito**: sin `Math.random()`, la misma captura sale
+ * igual todos los días y una diferencia en la imagen significa un cambio de
+ * verdad y no ruido del simulador.
+ */
+function espectroBase() {
+  const b = Buffer.alloc(RTA_BANDAS);
+  for (let i = 0; i < RTA_BANDAS; i++) {
+    const caida = 150 - i * 0.55;
+    const ondulacion = 12 * Math.sin(i / 7) + 6 * Math.sin(i / 2.3);
+    b[i] = Math.max(0, Math.min(255, Math.round(caida + ondulacion)));
+  }
+  return b;
+}
+
+/**
+ * La banda que se queda colgada en el escenario de realimentación, y hasta
+ * cuándo.
+ *
+ * 2,5 kHz cae en la banda 83 con la ley medida --`67 + 12·log2(f/1000)`-- y es
+ * una frecuencia de realimentación creíble en una sala chica. El valor tiene
+ * que quedar bien por encima de sus vecinas: el vigilante pide 9 dB de exceso
+ * sobre la vecindad, y con 0,375 dB por byte eso son 24 bytes.
+ */
+const RTA_BANDA_COLGADA = 83;
+let realimentacionHasta = 0;
+
+setInterval(() => {
+  if (Date.now() >= realimentacionHasta) {
+    difundir(`RTA^${RTA_SILENCIO}`);
+    return;
+  }
+  const b = espectroBase();
+  // 210 bytes son 78,75 dB, contra ~100 bytes de las vecinas: mas de los 24
+  // bytes de exceso que pide la regla, y sostenido mientras dure el escenario,
+  // que es justamente lo que el vigilante llama «no cayo como debia».
+  b[RTA_BANDA_COLGADA] = 210;
+  difundir(`RTA^${b.toString('base64')}`);
+}, Math.round(1000 / 30));
 
 function log(msg) {
   process.stdout.write(`[sim] ${msg}\n`);

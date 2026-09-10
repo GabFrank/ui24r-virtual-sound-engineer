@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import {
   Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoCanal,
+  type MixerDomainAPI,
   type ConnectionState, type BulkExternalChange,
 } from '@vse/mixer-adapter';
 import { esSimulador } from '@vse/domain';
@@ -28,11 +29,56 @@ export interface AvisoCambioExterno {
  */
 const ESPERA_VOLCADO_MS = 5000;
 
+/**
+ * Cada cuánto se reintenta conectar mientras la consola no está.
+ *
+ * Un segundo: lo bastante seguido para no inflar la medición del criterio 1 de
+ * SPK-P0.1 —su umbral son diez segundos— y lo bastante espaciado para no
+ * castigar la batería con intentos que van a fallar igual. Es el mismo número
+ * que usaba la prueba de diagnóstico, que era donde vivía este reintento.
+ */
+const REINTENTO_MS = 1000;
+
 @Injectable({ providedIn: 'root' })
 export class MixerService {
   private readonly log = inject(Logger);
   private readonly conexion = inject(ConnectionStateService);
   private adapter: Ui24rMixerAdapter | null = null;
+
+  /**
+   * El adaptador, para quien necesite hablarle a la consola de verdad.
+   *
+   * **Se expone a regañadientes y con el tipo angosto.** El resto de la
+   * aplicación toca la consola a través de las señales de este servicio, que es
+   * lo que mantiene a Angular fuera del adaptador y al adaptador fuera de
+   * Angular. Pero el ejecutor de transacciones necesita la API del dominio
+   * entera —lee, escribe y comprueba— y envolverla señal por señal sería copiar
+   * su superficie sin agregar nada.
+   *
+   * Devuelve `null` cuando no hay conexión, que es lo que obliga al llamador a
+   * decidir qué hacer en vez de recibir un objeto que va a fallar después.
+   */
+  /**
+   * La ruta de la ganancia del previo que alimenta a un canal, o `null`.
+   *
+   * Sale de `i.N.src`, no del número del canal: con el enrutamiento de fábrica
+   * coinciden, y por eso suponerlo pasa desapercibido hasta que alguien
+   * repatchea. Ver `fuente-de-canal.ts`.
+   */
+  rutaDeGananciaDe(canal: number): string | null {
+    const c = this.canales().find((x) => x.indice === canal);
+    return c?.rutaGanancia ?? null;
+  }
+
+  /** El valor crudo confirmado de una ruta, para la comprobación previa a escribir. */
+  crudoDe(ruta: string | null): number | null {
+    if (ruta === null || this.adapter === null) return null;
+    return this.adapter.leer(ruta)?.value ?? null;
+  }
+
+  api(): MixerDomainAPI | null {
+    return this.conexion.estado() === 'CONNECTED' ? this.adapter : null;
+  }
 
   readonly canales = signal<readonly EstadoCanal[]>([]);
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);
@@ -51,12 +97,22 @@ export class MixerService {
    * justo lo que el diagnóstico mide-- los dejaría sin oír nada.
    */
   private readonly oyentesTelemetria: (() => void)[] = [];
+  private readonly oyentesLatido: (() => void)[] = [];
   private readonly oyentesVolcado: (() => void)[] = [];
   private readonly oyentesConexion: ((estado: ConnectionState) => void)[] = [];
 
   observarTelemetria(cb: () => void): () => void {
     this.oyentesTelemetria.push(cb);
     return () => quitar(this.oyentesTelemetria, cb);
+  }
+
+  /**
+   * Cada trama del analizador. Es la señal de vida de la conexión, y llega
+   * igual en silencio; los medidores no. La distinción está en el adaptador.
+   */
+  observarLatido(cb: () => void): () => void {
+    this.oyentesLatido.push(cb);
+    return () => quitar(this.oyentesLatido, cb);
   }
 
   observarVolcado(cb: () => void): () => void {
@@ -91,10 +147,36 @@ export class MixerService {
    * se abre con el transporte simple. Es lo que sostiene el desarrollo sin
    * consola a mano.
    */
-  async conectar(direccion: string): Promise<void> {
-    this.conectando.set(true);
+  /**
+   * @param automatico Si el intento lo hizo la aplicacion y no la persona.
+   *
+   * La distincion existe por un defecto que aparecio al capturar las pantallas:
+   * el reintento automatico dejaba `conectando` en verdadero casi todo el
+   * tiempo --intentos de hasta tres segundos, uno por segundo-- y el boton
+   * "Conectar" de Ajustes se pasaba deshabilitado. Quien hubiera escrito mal la
+   * direccion quedaba atrapado en el reintento sin poder corregirla, que es
+   * exactamente cuando mas falta hace poder tocarlo.
+   */
+  async conectar(direccion: string, automatico = false): Promise<void> {
+    this.quiereConectado = true;
+    // Un intento nuevo manda sobre el reintento en curso: si la persona
+    // escribio otra direccion, la vieja deja de tener sentido.
+    if (!automatico) {
+      this.detenerReintento();
+      this.direccionDeseada = direccion;
+    }
+    if (!automatico) this.conectando.set(true);
     this.ultimoError.set(null);
     const url = direccion;
+
+    // El adaptador anterior se cierra antes de crear otro. Cada uno deja un
+    // temporizador vigilando la cadencia del analizador, y reconectar sin
+    // cerrarlo dejaba uno vivo por intento: en un show con la red inestable,
+    // decenas de temporizadores mirando un socket muerto.
+    const anterior = this.adapter;
+    this.adapter = null;
+    if (anterior !== null) await anterior.desconectar().catch(() => { /* ya estaba caido */ });
+
     try {
       const transporte = esSimulador(direccion)
         ? new WebSocketTransport()
@@ -103,8 +185,13 @@ export class MixerService {
       this.adapter = adapter;
 
       adapter.alCambiarConexion((e: ConnectionState) => {
+        // Un adaptador que ya fue reemplazado sigue emitiendo mientras se
+        // cierra. Sin esta guarda, su `DISCONNECTED` de despedida apagaba la
+        // conexión nueva que acababa de reemplazarlo.
+        if (this.adapter !== adapter) return;
         this.sincronizarConexion(e);
         this.log.info('mixer', 'conexion_cambio', { estado: e });
+        if (e === 'DISCONNECTED') this.reconectarSiCorresponde();
         for (const cb of this.oyentesConexion) cb(e);
       });
 
@@ -117,6 +204,10 @@ export class MixerService {
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
         for (const cb of this.oyentesTelemetria) cb();
+      });
+
+      adapter.alLatido(() => {
+        for (const cb of this.oyentesLatido) cb();
       });
 
       adapter.alCambiarExterno((parametro, valor) => {
@@ -136,19 +227,86 @@ export class MixerService {
       await adapter.conectar(url);
       this.direccion.set(url);
       this.canales.set(adapter.canales());
+      this.detenerReintento();
     } catch (e) {
       this.ultimoError.set(String(e));
       this.log.error('mixer', 'conexion_fallida', { url, error: String(e) });
+      // El adaptador emitio RECONNECTING al empezar y, si el intento fallo,
+      // nunca llega a DISCONNECTED: se queda en un estado que promete algo que
+      // no esta pasando. Medido en el telefono el 2026-09-08 -- la aplicacion
+      // decia RECONECTANDO con la red ya restablecida y nadie reintentando,
+      // porque el reintento solo se programaba al recibir DISCONNECTED, que en
+      // este camino no llega. Hay que decir la verdad y programarlo aca.
+      // Solo se reintenta si esta sigue siendo la direccion que se quiere. Un
+      // intento viejo que termina tarde no debe resucitar su propio reintento
+      // ni pisar la conexion que la persona establecio mientras tanto.
+      if (url === this.direccionDeseada) {
+        this.adapter = null;
+        this.sincronizarConexion('DISCONNECTED');
+        this.reconectarSiCorresponde(url);
+      }
       throw e;
     } finally {
-      this.conectando.set(false);
+      if (!automatico) this.conectando.set(false);
     }
   }
 
   async desconectar(): Promise<void> {
+    // Primero se apaga la intención y el reintento. Al revés, el
+    // `DISCONNECTED` que produce el cierre dispararía una reconexión contra la
+    // voluntad de quien acaba de tocar Desconectar.
+    this.quiereConectado = false;
+    this.detenerReintento();
     await this.adapter?.desconectar();
     this.adapter = null;
     this.canales.set([]);
+  }
+
+  /**
+   * Vuelve a intentar mientras el usuario quiera estar conectado.
+   *
+   * **Por qué existe.** El adaptador no reconecta: al cerrarse el socket queda
+   * en DISCONNECTED y ahí se queda. Hasta hoy el único reintento del sistema
+   * vivía dentro de la prueba de diagnóstico, así que la aplicación de un show
+   * se quedaba mirando una consola que había vuelto. Un músico que está
+   * tocando no va a ir a Ajustes a tocar «Conectar».
+   *
+   * **Lo que este reintento no decide.** Cada cuánto reintentar y cuándo
+   * rendirse son números que fija el criterio 1 de SPK-P0.1, que todavía no se
+   * midió: pide veinte ciclos por cada forma de corte. Mientras tanto se
+   * reintenta cada segundo y no se rinde nunca, que es lo que hacía la prueba
+   * de diagnóstico y lo único que se puede sostener sin medición: rendirse a
+   * los N intentos sería elegir un N inventado, y en un show el costo de
+   * rendirse es quedarse ciego.
+   */
+  private reconectarSiCorresponde(direccion?: string): void {
+    if (!this.quiereConectado || this.reintento !== null) return;
+    // La direccion del argumento es la del intento que acaba de fallar: si es
+    // el primero, `direccion()` todavia es null porque solo se fija al
+    // conectar bien, y sin esto la primera caida no reintentaba nunca.
+    const url = direccion ?? this.direccion();
+    if (url === null) return;
+
+    this.reconectando.set(true);
+    this.log.warn('mixer', 'reconexion_iniciada', { url, intervaloMs: REINTENTO_MS });
+    this.reintento = setInterval(() => {
+      // Un intento por vez: el apretón de manos puede tardar más que el
+      // intervalo, y dos en paralelo se pisan el adaptador.
+      if (this.reintentoEnCurso) return;
+      this.reintentoEnCurso = true;
+      void this.conectar(url, true)
+        .catch(() => { /* sigue sin haber consola */ })
+        .finally(() => { this.reintentoEnCurso = false; });
+    }, REINTENTO_MS);
+  }
+
+  private detenerReintento(): void {
+    if (this.reintento !== null) {
+      clearInterval(this.reintento);
+      this.reintento = null;
+      this.log.info('mixer', 'reconexion_lograda', {});
+    }
+    this.reconectando.set(false);
   }
 
   reiniciarPicos(): void {
@@ -160,6 +318,31 @@ export class MixerService {
   }
 
   readonly releyendo = signal(false);
+
+  /**
+   * Si el usuario quiere estar conectado.
+   *
+   * No es lo mismo que estarlo. Distingue «se cayó la red» de «tocó
+   * Desconectar», que es lo único que separa una reconexión necesaria de una
+   * que pelea contra la voluntad de quien la apagó.
+   */
+  private quiereConectado = false;
+  /**
+   * La direccion que la persona quiere ahora.
+   *
+   * Sin esto, un intento automatico **en vuelo** contra la direccion vieja
+   * rearmaba el reintento al fallar --su `catch` corre despues de que la
+   * persona ya conecto a otra-- y los reintentos siguientes reemplazaban el
+   * adaptador bueno por uno apuntando a ninguna parte. El sintoma era una
+   * conexion que se caia sola unos segundos despues de establecerse.
+   */
+  private direccionDeseada: string | null = null;
+  private reintento: ReturnType<typeof setInterval> | null = null;
+  /** Un intento automatico por vez: el apreton puede tardar mas que el intervalo. */
+  private reintentoEnCurso = false;
+
+  /** Si hay una reconexión en curso, para poder decirlo en pantalla. */
+  readonly reconectando = signal(false);
 
   /**
    * Vuelve a leer el estado entero de la consola.

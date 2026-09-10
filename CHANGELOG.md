@@ -4,7 +4,369 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Con una pista de soundcheck sonando, la ganancia no se aplica.** El canal
+  reproduce lo grabado, así que mover la perilla del previo no cambia nada de lo
+  que se escucha: el consejo no es impreciso, es **inaplicable**. Dejar aplicar y
+  que no se oiga ningún cambio es peor que no dejar — le enseña al usuario a
+  desconfiar de la aplicación. El botón se apaga y el motivo lo explica.
+
+- **Pantalla de espectro, con aviso de realimentación.** Muestra qué
+  frecuencias están sonando en el general y avisa si alguna se queda colgada.
+  **Pide permiso antes de tocar nada** —el analizador de la consola es uno solo,
+  así que tomarlo le cambia la pantalla al operador— y lo devuelve al salir, a
+  la fuente que se leyó y no a una reconstruida (ADR-025).
+
+  **Se vigila el general y no un canal**: la realimentación es un lazo del
+  sistema, sale por los parlantes y vuelve por un micrófono, así que aparece ahí
+  venga del canal que venga. Lo que el general no dice —cuál canal la produce—
+  se acota con los medidores por canal, que ya llegan siempre: un canal en
+  silencio no puede ser la fuente. La pantalla lo presenta como pista y no como
+  veredicto, porque eso es lo que es.
+
+- **«No entró nada» y «entró muy bajo» dejaron de decir lo mismo.** Con un canal
+  sonando a −54 dB —por debajo del umbral con el que el asistente descarta
+  silencio— la pantalla decía «no hubo señal para medir». Es cierto para el
+  asistente y confuso para quien está escuchando: la fuente suena, solo que
+  bajo. Y los dos casos llevan a consejos opuestos —revisar el cable, o subir
+  la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
+  callejón sin salida. Ahora dice cuál de los dos es.
+
+- **Las mediciones se archivan solas, y una cifra sin respaldo ya no pasa.** Se
+  corría la medición dos veces —una para mirarla y otra para guardarla— y la
+  documentación terminaba citando números de la corrida que no quedó. Pasó tres
+  veces; una de ellas era el único argumento para cambiar un plazo, y al medirlo
+  de nuevo sesenta veces no volvió a aparecer. Ahora se muestra y se guarda la
+  misma corrida, y la verificación falla si un número con unidad no está en la
+  evidencia que lo respalda.
+
+- **La aplicación distingue sin fallar lo que cambió ella de lo que cambió otro.**
+  Cien de cien, medido contra la consola. No lo consigue adivinando por tiempo
+  —eso era imposible, porque la consola no le devuelve nada a quien escribe— sino
+  porque no hace falta: lo que llega por la conexión de trabajo es siempre de
+  otro, y lo propio se marca al verificarse.
+
+- **Un fader movido desde otro dispositivo ya no borra el historial reciente.**
+  Un arrastre llegaba como veinte cambios separados y llenaba solo él la lista de
+  los últimos veinte, que es justo lo que se mira para entender qué pasó. Ahora
+  es un único aviso, con el valor donde el fader quedó. El costo, dicho: dos
+  cambios sobre lo mismo a menos de un cuarto de segundo se cuentan como uno.
+
+- **La limpieza de instantáneas viejas ahora se comprueba.** Se mandaba el
+  borrado y nadie miraba si había ocurrido; si algo fallaba, el show crecía igual
+  y nada avisaba. Además, la aplicación ya no confunde «la consola no contestó»
+  con «no hay ninguna instantánea», que hacía abortar una transacción con un
+  motivo que no decía la verdad.
+
+- **La aplicación ya puede confirmar un cambio mirando el medidor**, para cuando
+  la wifi no da para abrir la segunda conexión que normalmente lo verifica —o
+  sea, en pleno show—. Estaba escrito y sin conectar: sin esa conexión, antes no
+  se escribía nada. Y si el canal está en silencio sigue sin escribirse, porque
+  ahí el medidor tampoco puede confirmar y un cambio a ciegas no se distingue de
+  uno que funcionó.
+
+- **Se descubrió que la consola difunde en un tic de ~34 ms**, y no una línea por
+  escritura. Dos cambios a la misma ruta dentro de ese tic producen uno solo, con
+  el segundo valor: el primero se aplica y su confirmación no llega nunca. Las
+  escrituras normales quedan fuera del problema porque van espaciadas 100 ms, casi
+  tres tics, pero ahora está medido en vez de ser suerte.
+
+- **La aplicación no pisa un cambio hecho desde otro dispositivo**, y ya no es
+  algo probado solo contra el simulador: medido contra la consola, con un segundo
+  cliente haciendo de otro operador. 100 de 100 cambios ajenos etiquetados, cero
+  sobrescrituras.
+
+- **La política de confirmación de escrituras quedó cerrada, y medida.** La tabla
+  de qué confirma cada escritura iba a escribirse a mano diciendo «se supone que
+  sí» en casi todas las filas; se midió en cambio, ruta por ruta contra la
+  consola: 18 de 18 difundidas, mediana 17 ms. Lo que no se midió queda marcado
+  como inferido, diciendo que lo es.
+
+- **La retención de instantáneas ya está probada contra la consola.** El comando
+  de borrado se había implementado sin ejecutarse nunca contra el aparato: la
+  prueba corrió por debajo del máximo y no borró nada. Medido, funciona y deja
+  los shows del usuario intactos.
+
+- **Las capturas viejas dejan de pasar por documentación buena.** Dos mostraban
+  un paso del recorrido que se había corrido de número. La verificación falla
+  ahora si el índice no nombra todo lo guardado, y —cuando se corre junto a los
+  guiones— si lo guardado no coincide con lo recién producido. En integración
+  continua solo se revisa el índice, porque ahí nadie sacó capturas.
+
+- **El aviso de realimentación ya señala qué banda es.** La barra tenía que
+  salir en color de aviso y salía blanca como todas: la pantalla usaba cinco
+  fichas de diseño que no existen, y `var()` con valor de reserva no falla. El
+  aviso contaba la banda sostenida y no marcaba cuál. Había otras nueve, con
+  dieciséis usos, en cinco pantallas más, y ahora la verificación falla si
+  alguna ficha usada no está declarada.
+
+- **Las instantáneas automáticas dejan de acumularse.** Se conservan las 20 más
+  recientes, que es lo que INV-003 ya tenía decidido. **Solo se borran las
+  propias y solo las que se pueden fechar**: una instantánea que guardaste a
+  mano no se puede borrar ni por error, porque el comando ni siquiera se
+  construye para ella. Sin esto, con una instantánea por aplicación de ganancia,
+  una sesión de veinte canales dejaba sesenta.
+
+- **Guardar una instantánea ya no te cambia cuál es la actual.** Se descubrió
+  midiendo: al crear su punto de retorno, la aplicación hacía que la consola
+  pasara a considerar «actual» la automática en vez de la tuya. Si después
+  tocabas «actualizar instantánea actual» en la consola, escribías sobre la
+  automática y perdías tu trabajo sin enterarte. Ahora la aplicación devuelve la
+  etiqueta sola, escribiendo **solo la etiqueta** — cargar la instantánea
+  aplicaría todo su contenido, que es lo contrario de restaurar.
+
+- **El lazo se cerró: medir, proponer, aplicar y verificar.** Comprobado contra
+  la consola real: midió 30,7 dB de margen, propuso +3, escribió la ganancia de
+  30 a 33 dB, volvió a medir y dijo «mejoró, quedó en 27,7 y faltan 13,7». El
+  margen bajó exactamente los 3 dB aplicados.
+
+- **La aplicación crea su propio punto de retorno antes de escribir.** INV-001
+  lo exigía y no estaba implementado. Guarda en un show propio llamado `VSE`
+  —**nunca en los del usuario**, y no por convención sino porque el show no es
+  un parámetro del comando— y lo verifica releyendo la lista de la consola. **No
+  sabe borrar**: el protocolo tiene `DELETESNAPSHOT` y el módulo no lo
+  construye, con un test que lo fija leyendo su propio código.
+
+- **La aplicación aplica la ganancia en la consola.** Hasta ahora medía,
+  proponía y ahí se cortaba: el cambio lo hacía el usuario a mano. El
+  mecanismo estaba entero desde antes —motor de seguridad, ejecutor de
+  transacciones, tabla del diario— y **nadie lo instanciaba**. Se aplica con
+  confianza ALTA o MEDIA, un canal por vez, solo en configuración de canales, y
+  se verifica volviendo a medir: que el valor haya llegado prueba que la
+  perilla se movió, no que haya servido (ADR-026).
+
+- **El diario de transacciones se guarda en la base.** Había uno en memoria,
+  que sirve para los tests y el simulador. Pero ADR-013 pide anotar **antes**
+  de escribir para que, si la aplicación se cae a mitad de una transacción, al
+  volver se sepa qué quedó tocado — y un diario en memoria se lleva esa
+  información en la misma caída que tenía que sobrevivir.
+
+- **Sin conexión testigo, la escritura se confirma por el medidor.** Es lo que
+  INV-011 ya contemplaba para la ganancia con señal presente: si se subió 3 dB,
+  el nivel tiene que subir 3 dB. Comprueba el efecto y no el valor, así que se
+  anota como `VU` y nunca como `WITNESS`. Sin señal no hay confirmación posible
+  y no se escribe.
+
+- **Los medidores de las salidas se leen: general, subgrupos, efectos,
+  auxiliares y reproductor.** La cola de `VU2` estuvo meses declarada
+  indescifrable porque se la leía con el paso de las entradas y las secciones
+  **no comparten el paso**. Además resultó **autodescriptiva**: la cabecera
+  dice cuántos hay de cada cosa, así que el decodificador lee las cuentas en
+  vez de tenerlas escritas —fijarlas sería la misma trampa que suponer
+  enrutamiento identidad, que coincide hasta que alguien cambia la
+  configuración de la consola.
+
+- **Detección de realimentación sobre el espectro de la consola.** La regla es
+  «no cayó como debía», no «creció»: cualquier golpe de música crece, lo que
+  distingue a una resonancia es que **se queda**. Como la balística del
+  analizador está medida —cae 20 dB en unos 300 ms— hay un valor esperado para
+  cuánto tendría que haber bajado una banda, y se avisa de la que no bajó eso
+  y además sobresale de sus vecinas. Comprobado contra la consola: un tono
+  sostenido en el canal 10 sale como **una** candidata en 1000 Hz exactos, y
+  doce segundos de música no dan ninguna. **Devuelve candidatas, no un
+  veredicto**: sin micrófono de medición no se puede distinguir por señal una
+  resonancia de la sala de una nota tenida, porque el analizador mira el canal
+  y no el aire.
+
+- **Los pares estéreo se leen de la consola en vez de declararse a mano.** El
+  plan era pedirle al usuario que dijera qué canales forman un par —era lo
+  primero de la lista de lo que faltaba para el panorama—. Resultó que la
+  consola ya lo sabe: `i.N.stereoIndex` vale 0 en el primero del par, 1 en el
+  segundo y −1 sin enlazar. Una cosa menos que el usuario tiene que decir, y
+  una cosa menos que se puede desincronizar. **El adaptador solo lee**: enlazar
+  desde la aplicación sería destructivo, porque el cliente de la consola copia
+  todos los ajustes del canal izquierdo sobre el derecho antes de enlazar.
+
+- **El analizador de espectro se toma prestado con permiso y se devuelve.**
+  `RTA` resultó ser el analizador de la consola y no un latido, pero la fuente
+  se elige con `var.rta`, que es **global**: apuntarlo a un canal le cambia el
+  RTA al operador en su propia pantalla. ADR-025 decide cómo se pide: permiso
+  una vez por sesión, y la fuente vuelve al valor **leído** del volcado. Hoy la
+  aplicación no lo escribe en ningún nivel de autonomía; lo que ya cambió es
+  que los guiones de medición leen antes de escribir en vez de restaurar a un
+  valor reconstruido.
+
+- **Las escrituras se confirman con una segunda conexión testigo.** La consola
+  no le devuelve eco a quien escribe, pero sí difunde el cambio a los demás
+  clientes: abrir una segunda conexión del mismo proceso y escuchar por ahí ve
+  la escritura a los 27 ms. Cambia la semántica de `escribir()`: `APPLIED` pasa
+  a ser alcanzable de verdad, aparece `REJECTED` cuando el testigo no abre —se
+  prefiere no escribir antes que escribir a ciegas— y `ECHO` deja de poder
+  producirse. Es ADR-024 en código.
+
+- **Retención y caída del pico en el medidor.** La consola manda el nivel
+  instantáneo y la balística la dibuja su cliente, así que esto es una decisión
+  de producto y no algo heredado: el pico se sostiene 3 ms y cae 24 dB por
+  segundo, que son las constantes del `mixer.html` traducidas a tiempo real
+  suponiendo 60 cuadros por segundo. Antes se guardaba el máximo absoluto hasta
+  que alguien lo reiniciaba, que responde otra pregunta.
+
+- **Aviso cuando el compresor está apretando durante la medición.** El nivel de
+  entrada viene procesado; si el compresor actúa, la lectura dice cuánta señal
+  queda, no cuánta entra.
+
 ### Corregido
+
+- **La ganancia informa lo que el previo entrega, no lo que la tabla promete.**
+  Medida la curva completa contra el aparato: de −6 a +24 dB la tabla de la
+  consola es exacta dentro de 0,33 dB, pero el salto de 24 a 26 que promete
+  2 dB entrega 0,71, y de ahí para arriba hay un déficit constante de ~1,15 dB.
+  Se corrige de nuestro lado. **Tiene una consecuencia visible**: por encima de
+  26 dB nuestra lectura deja de coincidir a propósito con la que el operador ve
+  en la pantalla de la consola. Es una decisión tomada sabiendo el costo.
+
+- **Un canal con la puerta trabajando ya no pierde confianza.** Era una
+  inferencia —que la puerta no toca el punto de medición— y pasó a estar
+  medida. Sigue costando confianza el de-esser, que es el único bloque del
+  canal que nadie midió.
+
+- **INV-021 se apagaba sola.** Después de una avalancha, el estado volvía a
+  declararse confirmado a los 250 ms sin que nadie hubiera releído nada, por el
+  temporizador de quietud. Y quedaba un segundo camino por el que pasaba lo
+  mismo: un `DUMP_END` suelto. Los dos llevan ahora el mismo resguardo.
+
+- **«1 integrantes».** Las cuentas concuerdan con su sustantivo.
+
+
+- **Catálogo de instrumentos, para elegirlos en vez de escribirlos.** Cada
+  instrumento se describe con tres facetas independientes —qué es, qué clase de
+  esa cosa es y para qué se lo usa en el tema— y no con un árbol de tres
+  niveles: el árbol multiplica hojas por combinación y obliga a recorrer ramas
+  para preguntar «todos los repiques», que con facetas es un filtro. Cada
+  fuente declara qué variantes y qué roles admite, así que un djembe no puede
+  quedar con tesitura de voz. Elegir una fuente trae su perfil de canal;
+  **djembe y bombo quedan a propósito sin perfil**, con el motivo escrito, en
+  vez de heredar el más parecido y presentar rangos que nadie midió para ellos.
+  El texto ya cargado no se pierde: la migración 4 le da forma al documento sin
+  interpretarlo, el dominio lo clasifica al guardarlo y la pantalla sigue
+  mostrando lo que el usuario escribió. Documentado en
+  [docs/instrumentos.md](docs/instrumentos.md), con un test que compara sus
+  tablas con el código.
+
+### Corregido
+
+- **A un integrante de la banda solo se lo podía borrar.** Un nombre mal escrito
+  o un instrumento equivocado obligaban a quitarlo y cargarlo de nuevo, y el
+  alta le da un identificador nuevo: todo lo que apuntaba al anterior
+  —empezando por la asignación de canal— quedaba huérfano en silencio. Ahora
+  cada integrante se corrige desde el mismo diálogo que lo dio de alta, y
+  `editarIntegrante()` conserva el identificador y el lugar en la lista.
+
+- **Un intento de conexión que no terminaba bloqueaba a todos los siguientes.**
+  Medido en el teléfono con la red cortada: el `fetch` del apretón de manos se
+  quedaba colgado sin resolver ni fallar, así que el intento nunca moría, el
+  reintento se saltaba por haber uno en curso, y la aplicación se quedaba en
+  RECONECTANDO **con la red ya restablecida**. Ahora el apretón y la apertura
+  del socket llevan corte de tiempo de tres segundos: la consola contesta en
+  menos de dos milisegundos en la misma red, así que tres segundos son mil veces
+  su tiempo de respuesta y siguen siendo menos de la mitad del umbral de diez
+  segundos del criterio 1 de SPK-P0.1.
+
+- **Si el primer intento de conexión fallaba, no se reintentaba nunca.** El
+  reintento sólo se programaba al recibir un `DISCONNECTED`, y ese camino no lo
+  emite: el adaptador anuncia `RECONNECTING` al empezar y, si el intento falla,
+  se queda ahí. La aplicación decía «RECONECTANDO» sin que nadie estuviera
+  reconectando. Ahora el fallo baja el estado a desconectado —que es la verdad—
+  y programa el reintento. Medido con cortes de wifi reales: vuelve en 3,8 a
+  4,9 segundos desde que la red se restablece.
+
+- **El simulador se había quedado en doce canales** mientras el adaptador ya
+  leía la cantidad real, o sea el mismo agujero de antes reabierto por el otro
+  lado: contra el simulador, el camino que descubre cuántas entradas hay no se
+  ejercitaba nunca. Ahora sirve veinticuatro, con las dos entradas de línea en
+  los canales 21 y 22 como la consola, y las que no se usan con el nombre vacío
+  —que es como llegan de verdad—.
+
+- **La aplicación decía «dBFS» sobre números que no son dBFS.** El pico de la
+  pantalla de ganancia, el texto accesible del medidor y la explicación del
+  asistente afirmaban una referencia de fondo de escala que nadie midió. Son dB
+  de la escala de la consola; la correspondencia con un nivel digital real la
+  mide SPK-P0.10b. Una etiqueta que afirma de más es peor que una que no dice
+  nada: enseña a desconfiar del resto.
+
+- **Los medidores mostraban decibeles que no eran los de la consola, y contaban
+  saturaciones que no existían.** La conversión usaba la ley del fader, sobre la
+  hipótesis —escrita como tal en el código— de que la consola dibuja sus
+  medidores con la misma regla que sus faders. Es falsa. Con la guitarra en el
+  canal 1 de una Ui24R real, el byte 225 daba «+4,6 dB», recortado a +10 en
+  pantalla y con mil saturaciones por minuto, mientras la consola mostraba −12.
+
+  La ley sale ahora del `mixer.html` de la propia consola, que dibuja la barra
+  proporcional a la posición y coloca las marcas de su escala en
+  `-dB · h / VU_RANGE`, con `VU_RANGE = 80`. Eso deja una sola recta posible:
+  `dB = 80 · posición − 80`, o sea 0,333 dB por escalón del byte. Comprobada
+  contra el aparato en dos puntos independientes: la guitarra, con el fader en
+  −6,9 dB, da −11,9 a la salida —los «−12» de la consola—; y la música por las
+  RCA da −46 dB, que es la barra que se ve en pantalla.
+
+  La saturación tampoco se deduce ya de un umbral propio: la consola enciende su
+  indicador cuando el medidor llega a la punta de la escala. Y el bit 7 del
+  último byte del canal, que invita a leerse como saturación, es el **indicador
+  de puerta de ruido**: vale 1 en todos los canales quietos.
+
+  Sigue sin ser dBFS verificado. Es lo que ve el operador en su pantalla, que es
+  lo que hace falta para hablarle en sus términos; la correspondencia con un
+  nivel digital real la mide SPK-P0.10b.
+
+- **La aplicación leía doce canales de una consola de veinticuatro.** El número
+  estaba fijo en el adaptador, así que las dos entradas RCA —los canales 21 y
+  22, que son con los que se prueba con música— no se veían. Ahora sale de lo
+  que informa la consola: la cabecera de cada trama `VU2` trae la cantidad de
+  entradas y el volcado manda un `i.N.name` por cada una.
+
+- **La aplicación mostraba, en una misma fila, el medidor de un canal junto al
+  nombre y la ganancia del siguiente.** Las rutas del protocolo son de base
+  cero —el canal 1 es `i.0.mix`, `hw.0.gain`, `i.0.name`— y estaba medido y
+  escrito en [docs/protocol-spec.md](docs/protocol-spec.md) desde el
+  2026-09-08, pero el adaptador componía `i.1` para el canal 1. La trama `VU2`
+  **sí** trae el canal 1 en su posición 0, así que el nivel caía en la fila
+  correcta y todo lo demás corrido uno.
+
+  Con una guitarra en el canal 1 de una Ui24R real, la aplicación decía «BAJO
+  OKU · Ganancia 14» —los datos del canal 2— al lado del nivel de la guitarra.
+  Un asistente que propusiera bajar la ganancia de ese canal habría nombrado el
+  canal equivocado, y en el nivel ASISTIDO habría escrito en el equivocado.
+
+  **Ningún test lo agarró porque el simulador cargaba la misma suposición**, así
+  que los dos errores se cancelaban. Se corrigieron los dos: el adaptador
+  convierte canal ↔ índice en un solo lugar, y el simulador numera sus rutas
+  desde cero como la consola. Los tests nuevos van contra un transporte falso,
+  no contra el simulador.
+
+- **La prueba de conexión medía el flujo equivocado.** Contaba tramas `VU2`,
+  que la consola **deja de emitir cuando no hay señal**, y presentaba su
+  cadencia como la de la conexión. En una sala callada eso da un percentil 95
+  de varios segundos y parece una conexión moribunda; con música, 44 ms. El
+  criterio 4 de SPK-P0.1 se decide sobre `RTA`, que llega igual siempre, y era
+  el único flujo que la prueba no miraba.
+
+  El adaptador expone ahora `alLatido()` para `RTA`, separado de la telemetría,
+  y el informe —versión 2— trae las dos cadencias con su significado: la del
+  analizador juzga la conexión, la de los medidores dice cuánto audio hubo.
+
+  Medido desde el Motorola Edge 60 Pro contra la consola: `RTA` a **33 ms de
+  media, p95 40 ms**, idéntico en silencio y con la guitarra sonando. `VU2`
+  pasó de 1 231 ms a 44 ms entre una cosa y la otra.
+
+- **La base local no se creaba nunca, en ninguna instalación.** La migración
+  abría su propia transacción con `BEGIN;`, pero el `execute()` del complemento
+  de SQLite ya abre una y la cierra con `COMMIT`. SQLite rechazaba la
+  transacción anidada —`cannot start a transaction within a transaction`— y con
+  eso **ninguna migración se aplicaba**: la base quedaba sin una sola tabla. El
+  `ROLLBACK;` del manejo de error, envuelto igual, fallaba después por su
+  cuenta. Lo que se veía era `arranque_incompleto` y `no such table:
+  sound_session`, que apuntan al almacén y no a la transacción.
+
+  Cada migración se manda ahora en **un solo lote**, con su `PRAGMA
+  user_version` adentro, y la transacción la hace el complemento —que revierte
+  sola si algo falla, así que la atomicidad no se pierde. La lógica salió de
+  `DatabaseService` a `core/migracion.ts` para poder probarla: los tests emulan
+  el `execute()` del complemento contra SQLite de verdad, que es lo único que
+  reproduce el error, y verifican que ningún lote lleve transacción propia.
+
+  Medido en el Motorola Edge 60 Pro el 2026-09-08: tres migraciones aplicadas y
+  `base_abierta` en el registro, donde antes había tres errores seguidos.
 
 - **Tres bloqueos encadenados impedían que la aplicación hablara con una Ui24R, y
   ninguno se ve en el navegador de escritorio.** Los tres se encontraron en el
@@ -83,7 +445,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   marcaba la conexión como inestable entre tema y tema y durante toda la prueba
   de sonido, justo cuando el operador mira la pantalla. Ahora se vigila el
   analizador, que no hace esa supresión: 30,0 Hz con señal y 30,2 Hz en silencio,
-  con percentil 95 de 37 ms. La opción pasó de `umbralHuecoVuMs` a
+  con percentil 95 de 37 ms. Ese percentil es **el de la laptop**; el que fija el umbral de 99 ms es el de la **tablet**, 40 ms, que es el aparato donde corre la aplicación.
   `umbralHuecoRtaMs`.
 
 ### Cambiado

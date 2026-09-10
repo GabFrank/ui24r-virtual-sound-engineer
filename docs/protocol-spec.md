@@ -9,6 +9,36 @@ Este documento describe **lo que la consola hace**. Lo que la aplicación tiene 
 
 ---
 
+## La consola difunde en un tic de ~34 ms
+
+**Medido el 2026-09-10** sobre `i.16.mix`, escribiendo desde un cliente y
+mirando desde otro. La consola **no difunde cada escritura**: junta los cambios
+de una ventana y manda **el último valor** de cada ruta.
+
+| Se escribe cada | De 40, llegan | Intervalo entre llegadas |
+|---|---|---|
+| 5 ms | 5 (13 %) | mediana 34 ms |
+| 10 ms | 13–14 (33 %) | mediana 34 ms |
+| 15 ms | 20 (50 %) | mediana 34 ms |
+| 25 ms | 31 (78 %) | mediana 34 ms |
+| 40 ms | 40 (100 %) | mediana 34 ms |
+| 60 ms | 40 (100 %) | mediana 67 ms = dos tics |
+| 100 ms | 40 (100 %) | mediana 100 ms = tres tics |
+
+Las dos últimas filas son la prueba más fuerte de que el tic existe: **las
+llegadas quedan cuantizadas en múltiplos de él** aunque se escriba a otro ritmo.
+
+Es el mismo ~33 ms de la cadencia de `RTA`, así que lo más económico es suponer
+**un solo reloj de difusión** para todo lo que la consola emite.
+
+**Qué se rompe si no se sabe.** Dos escrituras a la misma ruta dentro de un tic
+producen una sola línea con el segundo valor: la primera se aplica y **nadie la
+ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
+consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
+confirmada aunque haya funcionado. Evidencia:
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` y
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+
 ## 1. Transporte
 
 ### 1.1 No es un WebSocket pelado
@@ -93,13 +123,35 @@ De estos, la sesión de medición solo usó `ALIVE` e `INIT`, que son de consult
 
 ---
 
+## 2.3 Lo que la consola sirve por HTTP
+
+Medido el 2026-09-09, solo con peticiones de lectura.
+
+**`GET /raw` devuelve el estado entero en formato de protocolo**, sin socket.io, sin apretón de manos y sin WebSocket, más tramas `VU2` y `RTA`. Comprobado capturando los dos transportes **en el mismo momento**: 6728 claves cada uno, diferencia cero. Una comparación contra un volcado archivado de otro día daba 63 claves de diferencia y parecía que HTTP traía más — era el estado que había cambiado, no el protocolo.
+
+**No es una instantánea, es un flujo en vivo**: la conexión no cierra, así que `fetch` se cuelga esperando el fin del cuerpo y `curl` termina con código 28. Los datos llegan igual; hay que leer con límite de tiempo y tolerar ese código.
+
+Sirve para diagnóstico de una línea —`curl -s --max-time 10 http://<consola>/raw`—, para armar fixtures con estado real sin hardware, y para comprobar «lo dejé como lo encontré» comparando dos volcados.
+
+| Ruta | Qué es |
+|---|---|
+| `/raw` | el estado entero, en vivo |
+| `/mixer.html` | el cliente de tableta, 1,2 MB. La fuente más autoritativa del protocolo |
+| `/phone.html` | un **segundo cliente**, 862 KB. Sin explotar: sirve para contrastar conversiones |
+| `/js/initparams.js` | `curSetup` y los valores por defecto de cada clave |
+| `/config.html` | pide autenticación |
+
+`curSetup` declara la topología: `input:24, fx:4, aux:10, sub:6, linein:2, bankSize:8, phantom:20`. Coincide con la cabecera de `VU2` y agrega que **solo 20 de las 24 entradas tienen alimentación fantasma** — coherente con que `i.N.src` valga `none` en los cuatro últimos.
+
+**Familias de claves que este documento no listaba**: `i.N.hiz` (alta impedancia), `hwoutaux.N.src` / `hwoutm.N.src` / `hwouthp.N.src` (qué sale por cada conector físico), `usbdaw.N.src` (32 canales hacia la computadora), `casc.N.src`, `mtk.out.N` y `mtk.scout.N` (multipista), `mg.N.name` y `vg.N.name` (grupos de silencio y de vista), `iso.*`, `firmware`, `model`.
+
 ## 3. Volcado de estado
 
 Al abrir el socket la consola manda su estado completo, sin pedirlo. `INIT` lo vuelve a pedir.
 
 | | |
 |---|---|
-| claves distintas | **6 665** |
+| claves distintas | **6 665** en la sesión del 2026-09-08; **6 087** en la del 2026-09-09 |
 | líneas `SETD` / `SETS` | 6 025 / 640 |
 | reparto | ~220 mensajes de ~2 KB |
 | tiempo hasta el volcado completo | **112–158 ms**, mediana 118 ms, 20 de 20 ciclos |
@@ -110,6 +162,8 @@ Prefijos de clave por cantidad: `i` 3252, `a` 1330, `s` 612, `f` 452, `l` 246, `
 
 **No se observó ninguna marca de fin de volcado.** El adaptador espera una línea `DUMP_END` que **esta consola no manda**. Hay que detectarlo por conteo o por quietud, no por centinela.
 
+> **El tamaño del volcado no es una constante, y este documento lo escribió como si lo fuera.** El 2026-09-08 dio 6 665 claves, en tres clientes a la vez y en veinte reconexiones seguidas; el 2026-09-09, con la consola en el mismo firmware, dio **6 087**, otra vez idénticas entre los tres clientes de esa sesión. O sea que es estable **dentro** de una sesión y no **entre** sesiones: depende de lo que la consola tenga configurado —efectos, subgrupos, lo que sea que haya cambiado en el medio—, y nadie lo acotó todavía. Consecuencia práctica: **nada puede detectar el fin del volcado comparando contra un número escrito a mano.** El desglose por prefijo de más arriba es el de la sesión del 2026-09-08 y vale como retrato, no como especificación.
+
 ---
 
 ## 4. Medidores
@@ -119,14 +173,14 @@ Prefijos de clave por cantidad: `i` 3252, `a` 1330, `s` 612, `f` 452, `l` 246, `
 | | consola en silencio, 30 s | música por las RCA, 90 s |
 |---|---|---|
 | `VU2` | **1 trama** | **1 932 tramas** |
-| `VUA` | 1 | 1 (los auxiliares seguían en silencio) |
+| `VUA` | 1 | 1 (nadie tenía abierta la página de Automix) |
 | `RTA` | 905, a 30,2 Hz | 2 569, a 30,0 Hz |
 
 Con `INIT` a los 3 s llegó exactamente **una** `VU2` más. O sea: `VU2` viaja con el volcado de estado, y además fluye mientras haya algo que medir.
 
 No hay comando de suscripción a medidores: ninguno de los dieciséis comandos del cliente oficial los pide. `settings.disableVUs` es una preferencia **del cliente**, que filtra en `parseVUdata()`.
 
-**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**.
+**Cadencia de `VU2` con señal:** n=1932, media 44,3 ms, mediana 34 ms, percentil 95 68 ms, mínimo 0 ms, máximo 100 ms. Umbral de inestabilidad por la fórmula del charter, tres veces la media: **≈133 ms**. **Ese umbral está derogado**: sale de la media de `VU2`, y `VU2` se calla en silencio, así que la conexión se declararía inestable entre tema y tema (R-25). El de la fórmula son **99 ms sobre `RTA`**, que es el flujo que no se apaga — y el que el código vigila son **300 ms**, un margen elegido a propósito sobre ese resultado: con 99 bastarían tres tramas perdidas para declarar inestable.
 
 Tres advertencias sobre ese número:
 
@@ -148,12 +202,12 @@ Bloque del canal `g`, en el desplazamiento `8 + 6·g`:
 
 | Desplazamiento | Contenido |
 |---|---|
-| `+0` | nivel previo a la ganancia del previo |
+| `+0` | nivel **después** del previo y **antes** del procesamiento del canal — compresor, ecualizador y puerta comprobados; el de-esser no se midió. Ver §4.3 |
 | `+1` | nivel de entrada |
 | `+2` | nivel de salida, después del fader |
 | `+3` | entrada del dinámico (solo lo llena el canal seleccionado) |
 | `+4` | salida del dinámico |
-| `+5` | bits 0-6 reducción de ganancia del compresor, bit 7 una bandera |
+| `+5` | bits 0-6 reducción de ganancia del compresor, bit 7 **indicador de puerta** |
 
 Escala, literal del código de la consola:
 
@@ -162,19 +216,254 @@ deconvertVU(b)      = 0.004167508166392142 * b            // ~ b/239,95 -> 0..1
 deconvertVU_comp(b) = (1 - 0.004167508166392142*b) * COMP_ZOOM
 ```
 
-**Lo que devuelve `deconvertVU` es una posición normalizada de 0 a 1, no decibeles.** Es la misma escala con la que se dibuja un fader.
+**Lo que devuelve `deconvertVU` es una posición normalizada de 0 a 1, no decibeles.** No es la escala del fader: ver 4.3.
 
 **Verificación contra una fuente conocida.** Con música entrando solo por las entradas RCA, la trama dio nivel en los canales 21 y 22 y cero en los otros veintidós; las RCA de esta consola son exactamente esos dos canales. El canal 21 dio `pre=120, entrada=120, salida=86`, con la salida por debajo de la entrada, coherente con el fader por debajo de 0 dB. Máximos en 90 s: `pre=entrada=142` (0,592 normalizado), `salida=108`.
 
-**Sobre el byte `+5`:** se observaron solo dos valores, `247` y `119`, y `247` en casi todo. Como `247 = 119 | 128`, los siete bits bajos fueron siempre 119. La interpretación de la tabla sale del código de la consola, **no de haber visto variar el valor**.
+**Sobre el byte `+5`:** se observaron solo dos valores, `247` y `119`, y `247` en casi todo. Como `247 = 119 | 128`, los siete bits bajos fueron siempre 119.
 
-**Sin decodificar:** la sección posterior a las entradas —media, auxiliares, efectos—. Los 145 bytes restantes no cierran en múltiplo de 6 con la lectura de arriba y el patrón resultante parece desalineado. Queda sin afirmar.
+El bit 7 es el **indicador de puerta de ruido**, no el de saturación. En `parseVUdata` sale con `p = 0 != (byte & 128)` y termina en `this.gi.setValue(p)`, donde `gi` es un `GATEind`. Conviene tenerlo escrito porque induce al error: vale 1 en todos los canales quietos, y leerlo como saturación da los veinticuatro canales saturando sin parar. Se probó el 2026-09-08 y así fue.
 
-### 4.3 Lo que `VU2` no dice
+**La cola, decodificada el 2026-09-09.** La trama son **306 bytes**: 8 de cabecera, 144 de entradas (24 × 6) y **154 de cola**. Antes este documento decía «145 bytes» —que no cierra ni con su propia aritmética— y que el patrón «parece desalineado». No está desalineado: **las secciones no comparten el paso**, y leerlas todas con el 6 de las entradas es lo que las desalineaba.
 
-La correspondencia entre la posición del medidor y un nivel digital real **no está medida**. Es lo que pide SPK-P0.10b, con tonos de −20, −6 y −1 dBFS por un bucle físico. Hasta que ese spike cierre, «pico a menos un decibel» no significa nada verificable.
+Reparto, en posiciones relativas al fin de las entradas (byte 152 absoluto):
+
+| Relativo | Contenido | Paso |
+|---|---|---|
+| `0 .. 11` | 2 del **reproductor de medios** | 6 |
+| `12 .. 53` | 6 subgrupos | 7 |
+| `54 .. 81` | 4 efectos | 7 |
+| `82 .. 131` | 10 auxiliares | 5 |
+| `132 .. 141` | **general**, dos bloques de 5: izquierdo y derecho | 5 |
+| `142 .. 153` | **2 entradas de línea**, con el formato de 6 de las entradas | 6 |
+
+**Dos rótulos estuvieron invertidos hasta el 2026-09-09.** Esta tabla decía «2 entradas de línea» para la primera sección —que es el reproductor— y «general» para los 22 finales, que son 10 del general más 12 de las entradas de línea. Coinciden en número —reproductor y línea son los dos *dos bloques de seis*— y por eso el censo del vocabulario, presentado como comprobación independiente, no podía distinguirlos. Lo destapó una trama archivada con música por las RCA: los bytes con señal están en 294–305, no en 152–163.
+
+El tamaño del general lo declara el **byte 6** de la cabecera (`l = e += 5·charCodeAt(6)` justo antes de leer las líneas). El byte 5 vale 2 y sigue sin saberse qué es. La cantidad de entradas de línea **no** está en la cabecera.
+
+Cada límite se fijó provocando señal en una sola sección y viendo qué bytes se movían: envío a un efecto, asignación a un subgrupo, envío a un auxiliar. Las cuentas cierran sin holgura —2×6 + 6×7 + 4×7 = 82— y el censo del vocabulario (`l.0..1`, `s.0..5`, `f.0..3`, `a.0..9`) llega a los mismos tamaños por otro camino. La sección de línea es la única que no se provocó con señal: sale por resta y por el censo.
+
+**Y la cabecera dice cuántos hay de cada cosa, así que la cola no tiene un reparto fijo.** El cliente avanza con `e += 6·charCodeAt(0)` para las entradas, `6·charCodeAt(1)` el reproductor, `7·charCodeAt(2)` los subgrupos, `7·charCodeAt(3)` los efectos, y `charCodeAt(4)` auxiliares de a 5. Comprobado: la cabecera trae `24 2 6 4 10` —el mismo mapa levantado a mano— y `8 + 6·24 + 6·2 + 7·6 + 7·4 + 5·10 = 284` contra 306, o sea 22 bytes de general. **Escribir esas cuentas en el código sería la misma trampa que el enrutamiento identidad**: coincide hasta que alguien cambia la configuración de la consola. Los bytes 5, 6 y 7 de la cabecera valen `2 2 0` y no se sabe qué son.
+
+#### El formato de cada bloque
+
+**Subgrupo y efecto — 7 bytes, tira estéreo de dos medidores.** `setVU(n=+0, h=+2, q=+1, m=+3, …)` sobre la firma `setVU(a,b,c,d,…)`, que arma `vu=(a,b)` y `vu2=(c,d)`:
+
+| Byte | Qué es |
+|---|---|
+| `+0` / `+1` | previo, izquierdo y derecho |
+| `+2` / `+3` | posterior al fader, izquierdo y derecho |
+| `+4` / `+5` | entrada y salida del bloque dinámico, solo para la tira seleccionada |
+| `+6` | reducción en los 7 bits bajos, indicador de puerta en el alto |
+
+Comprobado moviendo el fader del subgrupo 1 con el canal 10 asignado: `+2` y `+3` bajaron 94 → 50 → 0 y `+0` y `+1` no se movieron.
+
+**Auxiliar — 5 bytes, tira mono.** `+0` previo, `+1` posterior al fader, `+4` reducción e indicador. Comprobado moviendo `a.0.mix`: el `+1` bajó 104 → 77 → 37.
+
+**Reproductor — 6 bytes, el mismo formato que una entrada** y no el de los buses: `+0` previo, `+1` entrada, `+2` salida. Comparte posición en la cola pero no formato.
+
+**Una conclusión que hubo que retirar.** La primera lectura del bloque de subgrupo dijo «el medidor es anterior al fader», porque mover `s.0.mix` no movía nada y el testigo confirmaba que la escritura sí se aplicaba. Era falsa: `s.0.mute` valía 1, los bytes posteriores estaban en cero y se estaba mirando los previos. Dos bytes en cero con señal presente eran la pista que faltó seguir.
+
+### 4.3 De posición a decibeles: el medidor es lineal, y no usa la ley del fader
+
+Leído del `mixer.html` de la consola el 2026-09-08. Son dos piezas y juntas no dejan otra lectura posible:
+
+```js
+VU_RANGE = 80
+vuPosMark(dB, h) = -dB * h / VU_RANGE     // donde va cada marca de la escala
+paint()          { c = h * this.value }   // alto de la barra, proporcional a la posicion
+```
+
+Si la barra es proporcional a la posición y las marcas están espaciadas linealmente en decibeles, la correspondencia es una recta:
+
+```
+dB = 80 · posicion − 80        // 0 dB en la punta, −80 en el fondo
+```
+
+Un escalón del byte son `80 × 0,004167` = **0,333 dB**. Ese 80 es `MEDIDOR_RANGO_DB` en el adaptador; el escalón sale de multiplicarlo por la escala, no es la constante misma.
+
+**El recorrido está medido, y da 80.** No es solo lectura de código. Medido el 2026-09-09 contra la consola en `192.168.0.78`, moviendo **el fader del canal**, que es una ganancia digital *dentro* de la consola: entre la fuente y el medidor no hay nada analógico que pueda mentir. Fuente fija, y el medidor de entrada como testigo —se mantuvo clavado en **−20,76 dB en las quince posiciones**—:
+
+| | |
+|---|---|
+| crudo 0,7647 | byte de salida **181,0** |
+| crudo 0,2000 | byte de salida **66,3** |
+| recorrido del medidor | **114,7 escalones** |
+| atenuación según la ley de fader de la consola | **38,19 dB** |
+| lo que dan 114,7 escalones con `VU_RANGE = 80` | **38,24 dB** |
+
+**Coincide en 0,05 dB sobre 38.** `VU_RANGE` y `VtoLIN` son dos hechos independientes del código de la consola, y concuerdan entre sí y con esta medición.
+
+> **El recorrido estuvo escrito como 84,5 dB en este documento durante unas horas, y era falso.** Venía de tres barridos de tono con una fuente externa conocida, cada uno una recta impecable —pendientes de 0,9438, 0,9379 y 0,9507 contra el recorrido de 80, desvíos de 0,79, 0,21 y 0,39 dB—. Lo que faltaba mirar es que **no coincidían entre sí**: en dB por escalón del byte daban 0,3516, 0,3582 y 0,3644 según la zona del medidor en la que se midiera, y un cuarto barrido a niveles altos confirmó el 0,3644. Una escala tiene un solo factor; tres factores según el nivel son la cadena analógica —conversor, cable, previo, ruido— metiéndose en el medio.
+>
+> **Una fuente externa mide la cadena entera, no el medidor. Para medir el medidor hay que mover algo que ya esté adentro.** Los datos crudos quedan en `docs/spikes/SPK-P0.10b/evidence/barridos-2026-09-08.txt` con el motivo por el que no fijan la escala. Cae con ellos la «causa probable» que se les había buscado —los nueve píxeles de diferencia entre `drawVUMarks` y `paint()`—: era una explicación razonable para un número que no existía.
+
+**Lo que esta medición no contesta:** la correspondencia con dBFS absolutos. El camino de la fuente llevaba una ganancia analógica desconocida —perilla de la interfaz más previo del canal— que se mantuvo fija, así que valen las diferencias y no los valores absolutos. Eso exige un bucle calibrado y lo sigue debiendo SPK-P0.10b.
+
+**Control de sensatez contra el aparato en dos puntos**, con la consola en `192.168.0.78`. Son lecturas a ojo de una barra en movimiento, así que valen con esa tolerancia:
+
+| Fuente | Byte | Según la recta de 80 dB | Lo que mostraba la consola |
+|---|---|---|---|
+| Guitarra en el canal 1 | entrada 225 | −5,0 dB de entrada; con el fader en −6,9 dB, **−11,9 a la salida** | −12 |
+| Música por las RCA (21 y 22) | salida 102 | **−46 dB** | coincide con la barra |
+
+**Respuesta en frecuencia: plana.** Mismo nivel de fuente a tres frecuencias dio bytes **160,3** a 100 Hz, **160,7** a 1 kHz y **160,0** a 10 kHz: **0,23 dB de dispersión**, o sea que no hay ponderación por frecuencia. La medición incluye la cadena analógica, que también es plana, así que lo afirmable es que **no hay ponderación apreciable en el conjunto**.
+
+**Repetibilidad: 0,3 dB.** El mismo tono en tres corridas separadas en el tiempo dio bytes 69,9, 69,1 y 70,0. Es el piso de ruido del montaje entero, y el número contra el que hay que comparar cualquier diferencia que se quiera declarar significativa.
+
+**Balística: la consola manda nivel instantáneo.** Cinco ráfagas de 1 200 ms a −15 dBFS: subida de **0 ms** —no se resuelve, la lectura llega a la meseta dentro de una sola trama— y caída de 20 dB con **mediana de 37 ms**, mínimo 33 y máximo 66. La cadencia con señal es de ~44 ms, así que nada por debajo de eso se puede afirmar. La balística la dibuja el **cliente**: en el `mixer.html` son `GLOBAL_VU_FALL_SPEED = 0.01` y `PEAK_HOLD_TIME = 3`. Para nuestra aplicación eso significa que **la retención de picos es una decisión de producto, no algo heredado del protocolo**.
+
+Antes de esto el adaptador convertía con la ley del fader, sobre la hipótesis —escrita como tal— de que la consola dibuja sus medidores con la misma regla que sus faders. **Es falsa.** Con esa ley el byte 225 daba +4,6 dB, recortado a +10 en pantalla.
+
+**Qué medidor dibuja cada widget**, de `parseVUdata` y `setVU`:
+
+| Widget | Byte | Nota |
+|---|---|---|
+| Barra de la tira | `+2` salida | `setValueExt(a, b)` guarda `this.value = b` |
+| Fantasma de la tira | `+1` entrada | el segundo valor de `setValueExt` |
+| Página de ganancia | `+0` pre | `setVUPre(m)` |
+
+**Dónde está tomado cada medidor, medido el 2026-09-09.** La tabla de arriba decía «nivel previo a la ganancia del previo» para el byte `+0`, y eso es falso: está **después** del previo. Lo que sí es, y es más útil, es que está **antes del procesamiento dinámico**.
+
+Las dos mitades se midieron por separado, con una fuente conocida entrando por el canal 10:
+
+| Qué se movió | `pre` (`+0`) | `entrada` (`+1`) |
+|---|---|---|
+| Ganancia del previo, de 10 a 22 dB | sube 6,00 y 6,01 dB | sube igual |
+| Compresor apretando 5 dB | **no se mueve** | baja 4,7 dB |
+
+Consecuencia para cualquiera que mida niveles: **`entrada` viene procesado**. Si el canal tiene compresor o puerta actuando, ese byte no dice cuánta señal entra sino cuánta queda después del procesamiento. Para ajustar la ganancia del previo —que es lo que hace el asistente— el byte que corresponde es `+0`.
+
+**El ecualizador tampoco lo toca.** Medido el 2026-09-09 con la misma fuente: realzando y cortando una banda al máximo, `entrada` y `salida` se movieron ±2,33 dB y `pre` se quedó en −48,66 en los tres estados, sin variar un decimal.
+
+Con eso, `pre` queda como el punto más limpio que la consola ofrece: **después del previo y antes de todo el procesamiento del canal**. Es exactamente lo que necesita un asistente de ganancia, que tiene que medir el margen del previo sin que lo coloreen decisiones de timbre ni de dinámica.
+
+**La puerta tampoco.** Medido el 2026-09-09 subiendo su umbral por encima de la señal: `entrada` cayó a −∞ —la puerta cierra con su atenuación máxima— y `pre` se quedó en −48,66 sin moverse. Con esto son tres los bloques comprobados —compresor, ecualizador y puerta— y ninguno toca el punto `+0`. **El cuarto, el de-esser, sigue sin medir**: no informa cuánto atenúa y no se probó con sibilancia, así que «el bloque dinámico está comprobado» sería decir de más.
+
+Dos trampas de escala que costaron una corrida cada una, y que conviene tener escritas: la ruta del umbral es `gate.thresh`, no `gate.threshold`; y `VtoGATE_DEPTH(a) = 60a − 60`, o sea que **profundidad 0 es atenuación máxima y 1 es ninguna**. Es la tercera escala invertida de esta consola, después de `VtoRATIO(a) = 1/a`.
+
+**La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
+
+**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera de esta sesión se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+
+**Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
+
+**El techo es el byte 255, y lo que estuvo escrito acá era el techo de otra cosa.**
+
+Decía: «con la ganancia del canal al máximo y la fuente subiendo, el byte se clava en 239 y la lectura deja de subir; el medidor no informa nada por encima». **Ese 239 es donde satura la interfaz de audio, no el medidor.**
+
+Medido el 2026-09-09, por dos personas y con el mismo método: dejar el nivel **previo al fader** en 232 —sin saturar— y subir el **fader**, que es ganancia digital interna y no tiene nada analógico en el medio. La salida siguió creciendo lineal: 232 → 242 → 248 → 255. Con la ley del fader, la posición 0,95 predice exactamente 255 y en 1,0 se planta. El tope real del número que manda la consola es **255**.
+
+Es el mismo error que costó el episodio de los 84,5 dB —medir la cadena entera creyendo medir el medidor— aplicado al techo en vez de a la escala. La lección estaba escrita en este documento y se había aplicado solo a la mitad.
+
+**Consecuencias.** Los bytes 240 a 255 son posiciones **mayores que 1**: de +0,02 a +5,0 dB. `MEDIDOR_SATURACION = 1` es el byte 240 y **sí es alcanzable** —una duda razonable que surgió de auditar con el techo viejo—. Y cualquier normalización que trate 240 como tope entrega posiciones fuera de rango con señal caliente.
+
+**Comprobación cruzada del modelo entero.** Si la barra es la salida y el fantasma la entrada, la diferencia entre las dos tiene que ser exactamente el fader del canal. Medido el 2026-09-08 con música por las RCA:
+
+| Canal | Entrada (byte) | Salida (byte) | Diferencia con recorrido 80 | `i.N.mix` |
+|---|---|---|---|---|
+| 21 | 171,9 | 137,1 | **11,6 dB** | −11,6 dB |
+| 22 | 174,9 | 140,1 | **11,6 dB** | −11,5 dB |
+
+Cierra en una décima de decibel. El reparto de bytes, la relación entre la barra, el fantasma y el fader, y el recorrido de 80 dB quedan comprobados a la vez.
+
+> **Esta comprobación estuvo marcada como «pregunta abierta» y ya no lo está.** Daba un recorrido implícito de 79 a 80 dB mientras los barridos de tono daban 84 a 85, y se anotó como una discrepancia del 6 % sin resolver, adoptando el número de los tonos por ser la medición «más fuerte». No había dos respuestas: había una medición limpia y otra contaminada por la cadena analógica, y la contaminada era la de los tonos. La hipótesis que se había escrito para salvarla —que `faderADb` arrastrara un error de escala del mismo orden, invisible porque afecta a sus dos términos por igual— **queda descartada**: la medición del fader de 4.3 la habría amplificado, y cerró en 0,06 dB.
+
+**La aplicación muestra la entrada**, no la salida: lo que le importa es el margen del previo, y ese no cambia porque alguien mueva un fader. El operador que compare con la barra de su consola va a ver un número más alto en la aplicación, por lo que baje el fader; la pantalla lo dice.
+
+### 4.4 Lo que `VU2` sigue sin decir
+
+La correspondencia entre lo que muestra el medidor y un **nivel digital real** no está medida, y a esta altura es lo **único** que falta. La recta de 4.3 da el número que ve el operador en su pantalla, que es lo que hace falta para hablar su mismo idioma; que ese número sean dBFS es otra afirmación, y la mide SPK-P0.10b con tonos de −20, −6 y −1 dBFS por un bucle físico calibrado.
+
+Todo lo demás de 4.3 son **diferencias** —forma, recorrido, balística, respuesta en frecuencia, repetibilidad, techo— y las diferencias no dependen de la ganancia analógica del camino. Por eso quedaron contestadas sin el bucle y el nivel absoluto no.
+
+De la cola de `VU2` está ubicada cada sección (§4.3) y falta el papel de cada byte dentro de los bloques de subgrupo y efecto.
 
 ---
+
+### 4.4.1 Los dos indicadores de saturación, y cuál mira cada uno
+
+Medido leyendo `parseVUdata` en el `mixer.html`, el 2026-09-09:
+
+```js
+m = deconvertVU(a.charCodeAt(l+0));   // pre
+n = deconvertVU(a.charCodeAt(l+1));   // entrada
+q = deconvertVU(a.charCodeAt(l+2));   // salida
+inStrips[g].setVU(n, q, 0, 0, r, 0, p, 0);   // clip sobre q  → la SALIDA
+gainStrips[g].setVUPre(m);                    // clip propio sobre m → el PREVIO
+```
+
+| Indicador | Byte | Dónde lo dibuja la consola | Cómo se arregla |
+|---|---|---|---|
+| Clip del previo | `+0` | página de ganancia; **congela el deslizador de ganancia** mientras está encendido | bajando la ganancia del previo |
+| Clip de la tira | `+2` | tira del canal | bajando el fader |
+
+**El byte `+1` no tiene indicador de clip.** Es el que la aplicación estuvo contando: ni el que la consola vigila para el previo ni el que vigila para la tira. Son dos problemas distintos que se arreglan de manera distinta, así que contarlos juntos —o contarlos sobre un byte que la consola no mira— le da al asistente una señal que no corresponde a ninguna acción.
+
+### 4.5 `RTA`: el analizador de espectro
+
+**Medido el 2026-09-09.** Durante meses este flujo se usó solo como señal de vida y se tiraba la carga. No es un latido: es **el analizador de espectro de la consola**, y es la única fuente de información frecuencial que el proyecto tiene sin motor de audio ni micrófono propio.
+
+Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `slice(4)` sobre la carga, y `"VUA^"` y `"RTA^"` miden los dos cuatro caracteres. Leer el código de una y atribuírsela a la otra es un error de una línea que cuesta un hallazgo entero.
+
+| Qué | Cuánto |
+|---|---|
+| Bandas | **122**, un doceavo de octava |
+| Ley de bandas | `banda = 67 + 12·log2(f/1000)` |
+| Alcance | ~20,9 Hz a ~22,6 kHz |
+| Escala | **0,375 dB por byte** — no es la del medidor |
+| Cadencia | ~30 tramas por segundo |
+| Balística | sube dentro de una trama —≤ 33 ms, no se resuelve más fino— y **cae con su propia rampa lineal**, ~5,2 bytes por trama, unos 59 dB/s. De 90 % a 10 % tarda ~536 ms |
+
+**La caída del `RTA` viene en los datos, y la del medidor no.** Es una diferencia que importa y que el marco general de este documento no cubría: de `VU2` está medido que la consola manda el **nivel instantáneo** y que la balística la dibuja el cliente. Con el analizador es al revés — el suavizado ya viene hecho del otro lado del cable. En las mismas tramas, con el mismo corte de señal:
+
+```
+t=5296  rta=92  vu=112
+t=5329  rta=86  vu=0      <- el VU cae de golpe
+t=5362  rta=79  vu=0
+...
+t=5900  rta=0   vu=0      <- el RTA tarda ~600 ms
+```
+
+Quien suavice el espectro del lado de la aplicación estaría **apilando dos balísticas**. La detección de realimentación no lo hace: su regla —«no cayó como debía»— usa justamente esta caída como referencia.
+
+**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. **Llega en el volcado inicial** —`SETS^var.rta^`, medido el 2026-09-09—, así que el valor anterior se puede leer antes de tocarlo. Una nota anterior de este repositorio decía que la clave no existía en el volcado y estaba equivocada; sobre ella se apoyaba la costumbre de «restaurar» a cadena vacía, que es reconstruir y no devolver. Aceptan `i.N` y `m` —el general— y `a.0` no respondió.
+
+**El general devuelve las mismas 122 bandas y con la misma ley**, medido el 2026-09-09: 125 Hz → banda 31, 500 → 55, 1000 → 67, 8000 → 103, idéntico a una entrada. Una nota anterior decía «el general devuelve 78 bandas y no 122»; era una lectura equivocada de la evidencia, que dice **«78 bandas con valor»** —o sea distintas de cero, porque el general no tenía energía en el resto—. Importa porque si fueran 78 bandas la ley tendría que ser otra, y no lo es: el mismo `frecuenciaDeBanda` sirve para las dos fuentes. Mientras esté vacía no llega espectro, solo la trama de vida.
+
+Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
+
+### 4.5.1 `i.N.stereoIndex`: qué canales van enlazados
+
+Medido el 2026-09-09. Está en los 24 canales y dice la **posición dentro del par**, no un identificador de par:
+
+| Valor | Significa |
+|---|---|
+| `0` | primer miembro; el compañero es el canal **siguiente** |
+| `1` | segundo miembro; el compañero es el **anterior** |
+| `-1` | sin enlazar |
+
+Se corrobora solo: las entradas de línea, que son un par de verdad, valen `l.0 = 0` y `l.1 = 1`, igual que el reproductor. Del `mixer.html`: `setValue(this.name + "stereoIndex", 0)` y `setValue(this.linkTarget.name + "stereoIndex", 1)`, con `linkTarget = allStrips[this.id + 1]`.
+
+**La consola no mantiene la relación.** Medido con la conexión testigo: escribir `i.4.stereoIndex = 0` no movió `i.5`. Las dos escrituras son independientes, así que un par a medias es un estado alcanzable y hay que leerlo como «no hay par».
+
+**Enlazar es destructivo.** Antes de escribir las dos claves, el cliente oficial hace `copySettings()` sobre el izquierdo y `pasteSettings()` sobre el derecho: **el enlace pisa todos los ajustes del canal derecho**. La copia la hace el cliente y no la consola, así que escribir solo las dos claves no copia nada — pero dejaría un par que la consola dibuja enlazado con dos canales que suenan distinto. Por eso el adaptador solo lee.
+
+### 4.6 Las constantes medidas, en un solo lugar
+
+Cada una de estas salió de una medición contra el aparato o de leer el código de la consola, y cada una **está comprobada contra el código en cada integración** por `tools/docs/validate-numeros.mjs`. Si alguien cambia el valor en un lado y no en el otro, falla la integración en vez de sobrevivir hasta que alguien relea.
+
+No es un detalle de proceso: el recorrido del medidor estuvo escrito como 84,5 dB en cuatro documentos durante horas, y lo que lo encontró fue una relectura, no una comprobación.
+
+| Constante | Valor | Qué es |
+|---|---|---|
+| `MEDIDOR_RANGO_DB` | 80 | Recorrido del medidor, de 0 dB en la punta a −80 en el fondo |
+| `MEDIDOR_SATURACION` | 1 | Posición normalizada donde la lectura deja de subir |
+| `VU_CABECERA_BYTES` | 8 | Cabecera de la trama `VU2` |
+| `VU_BYTES_POR_CANAL` | 6 | Paso de la sección de entradas —y **solo** de esa sección |
+| `CORRECCION_PREVIO_DB` | −1.15 | Lo que el previo no entrega respecto de lo que su tabla promete |
+| `CORRECCION_DESDE_DB` | 26 | Desde qué ganancia aparece ese déficit |
+| `RETENCION_PICO_MS` | 3000 | Cuánto sostiene el pico antes de caer. `CLIP_HOLD_TIME = PEAK_HOLD_TIME = 3E3` en el `mixer.html`: **tres segundos**. Estuvo escrito como 3 —error de factor mil— con un comentario que lo explicaba y lo hacía sonar razonable |
 
 ## 5. Rutas confirmadas contra el aparato
 
@@ -193,6 +482,24 @@ Siete controles movidos a mano desde la interfaz web de la consola, uno por vez,
 La ganancia de entrada cuelga del espacio de hardware, `hw.N.gain`, no del canal. Ya estaba así en la matriz y en `clasificar-ruta.ts`; lo que agrega esta medición es la comprobación contra el aparato.
 
 **Granularidad:** mover un fader produjo 118 mensajes en unos nueve segundos. La consola emite el valor de forma continua mientras se arrastra el control, sin agrupar: unas trece actualizaciones por segundo por control movido.
+
+### 5.1 Cómo se comporta una escritura, medido el 2026-09-08
+
+Una sesión posterior sí escribió, desde un script de spike y no desde la aplicación —el nivel de autonomía sigue en OBSERVE—, en `i.9.mute` y en `i.9.mix`. Es el criterio 3 de SPK-P0.1.
+
+**Forma.** Escribir usa **el mismo envoltorio socket.io que todo lo demás**: `3:::SETD^ruta^valor`. Sin él la consola ignora el mensaje. Se probaron cinco variantes —con y sin envoltorio, con decimal, con `@` delante, con `INIT` previo— y la que funciona es la de siempre. **No hace falta ningún `INIT` previo** para que la escritura sea aceptada.
+
+**Qué hace la consola con ella**, y son tres hechos distintos:
+
+| | |
+|---|---|
+| ¿La aplica? | **Sí.** Un `INIT` posterior trae el valor nuevo a los ~100 ms |
+| ¿Se la devuelve a quien escribió? | **No.** Seis segundos escuchando, cero líneas para esa ruta |
+| ¿Se la manda a los demás clientes? | **Sí.** La aplicación conectada en la tablet lo registró en el mismo instante |
+
+La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la difunde al resto. Con eso, **un cliente solo puede verificar su propia escritura de dos maneras**: pidiendo `INIT`, que trae el valor nuevo y con él el volcado entero —del orden de seis mil claves—, o **abriendo una segunda conexión que haga de testigo**. Lo segundo estaba anotado como pregunta y el 2026-09-09 quedó medido: dos conexiones del mismo proceso son dos clientes distintos para la consola, y el testigo ve la escritura a los **27 ms**. Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY, que con este dato ya eligió.
+
+Se escribió además en `i.9.dyn.bypass` y `i.9.gate.enabled` para puentear el procesamiento del canal antes de medir su medidor. Las dos claves existen y aceptan escritura; su efecto se verificó de forma indirecta, por lo que le pasó a la recta del §4.3, y no se midió ninguna curva ni ningún rango.
 
 ---
 
@@ -256,9 +563,12 @@ Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el apara
 
 ## 7. Concurrencia y reconexión
 
-- **Tres clientes simultáneos** durante 120 s: las mismas 6 665 claves y la misma huella SHA-256 en los tres. **Vale poco**: el estado no cambió durante la ventana, así que demuestra que el volcado es determinista, no que no se pierda estado. La prueba que pide el criterio 5 de SPK-P0.1 necesita cambios ocurriendo, tres clientes distintos y diez minutos.
-- **La consola acepta al menos tres sesiones a la vez** sin rechazar ninguna ni degradar el volcado.
-- **Reconexión:** 20 de 20 ciclos de apretón de manos a volcado completo, entre 112 y 158 ms. Es el piso del protocolo desde una laptop por cable, **no** la reconexión de una tablet tras un corte de red, que es lo que pide el charter.
+- **La consola acepta al menos tres sesiones a la vez** sin rechazar ninguna ni degradar el volcado. Probado dos veces, en sesiones distintas.
+- **Tres clientes simultáneos, con el estado quieto** (2026-09-08, 120 s): mismas claves y misma huella SHA-256 en los tres. Demuestra que el volcado es determinista, no que no se pierda estado.
+- **Tres clientes simultáneos, con uno escribiendo** (2026-09-09): los tres recibieron **6 087 claves** y la **misma huella exacta**. Y con los tres conectados, **el que escribe ve 0 líneas de su propia escritura mientras los otros dos ven 1 cada uno.** Es la regla del §5.1 confirmada con tres testigos a la vez: la difusión llega a todo el mundo menos al origen, y llega **una sola vez**, sin repeticiones ni pérdidas. La prueba duró minutos y no los diez que pide el criterio 5 de SPK-P0.1, así que el criterio sigue abierto.
+- **Dos conexiones del mismo proceso son dos clientes distintos para la consola.** Medido el 2026-09-09: se escribe por una y la otra recibe el cambio a los **27 ms**. Es lo que faltaba para que la opción de la segunda conexión testigo dejara de ser una pregunta; ver SPK-ACK-POLICY.
+- **Reconexión, piso del protocolo:** 20 de 20 ciclos de apretón de manos a volcado completo, entre 112 y 158 ms, desde una laptop por cable y sin cortar nada.
+- **Reconexión real tras cortar la red inalámbrica**, desde la tablet: 20 de 20 ciclos, **mediana 3,7 s**, mínimo 3,7 y máximo 5,0, todos por debajo del umbral de 10 s del criterio 1 de SPK-P0.1. Faltan los otros dos modos de corte.
 
 ---
 
@@ -266,11 +576,9 @@ Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el apara
 
 Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia no se lea como verificación.
 
-- **Si la consola devuelve eco de las escrituras propias** (SPK-P0.1, criterio 3). Exige escribir. Nivel OBSERVE: no se hizo.
-- **La calibración y la balística de los medidores** (SPK-P0.10b entero). Necesita tonos y bucle físico.
-- **La cadencia de medidores desde la tablet.**
-- **La reconexión con cortes de red reales.**
+- **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala, su recorrido, su balística, su respuesta en frecuencia y su techo ya están medidos; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
+- **La reconexión con cortes de red reales en los otros dos modos**: apagar el router y cambiar la IP de la tablet. El corte de red inalámbrica sí está medido, 20 de 20 ciclos.
 - **La transición de señal a silencio en `VU2`.**
-- **La sección de `VU2` posterior a las entradas.**
-- **El mapeo `canal → entrada física` con el enrutamiento cambiado.** `i.N.src` existe en el espacio de claves; con el enrutamiento por defecto `i.N` y `hw.N` coinciden y por eso es fácil no notar la diferencia.
+- **El papel de cada byte dentro de un bloque de subgrupo o de efecto.** Las secciones ya están ubicadas; lo que falta es cuál es el nivel y si hay pre y post.
+- **El mapeo `canal → entrada física` con el enrutamiento cambiado.** Medido el 2026-09-09: `src` vale `hw.0`…`hw.19` en los canales 1 a 20 y **`none` en el 21 al 24**, o sea que la segunda mitad de la frase vieja —«`i.N` y `hw.N` coinciden»— es falsa para esos cuatro. Con el enrutamiento por defecto coinciden en los veinte primeros y por eso es fácil no notar la diferencia; el código sigue armando `hw.${canal-1}` (R-24).
 - **Todo lo de SPK-P0.2b y P0.2c:** ecualizador, compresor, puerta, deesser, salidas, retardos, matriz, instantáneas, reproductor, grabación.

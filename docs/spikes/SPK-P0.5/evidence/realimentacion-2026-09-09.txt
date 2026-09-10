@@ -1,0 +1,51 @@
+EL DETECTOR DE REALIMENTACION CONTRA EL ESPECTRO REAL — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24.
+Sonda: tools/spikes/p0-10b-vu/realimentacion-real.ts
+
+LA REGLA ES "NO CAYO COMO DEBIA", NO "CRECIO"
+Cualquier golpe de musica crece: un platillo, un ataque de piano, una palmada.
+Lo que distingue a la realimentacion es que SE QUEDA. La balistica del
+analizador esta medida --cae 20 dB en unos 300 ms-- asi que hay un valor
+esperado para cuanto tendria que haber bajado una banda desde su pico, y una
+banda que no bajo eso es una banda que algo esta sosteniendo.
+
+RESULTADO
+  CANAL 10 — tono de 1 kHz sostenido   (var.rta = i.9, 394 tramas en 12 s)
+    banda  67    1000 Hz   avisada en 343 tramas, sostenida hasta 11,9 s
+
+  CANAL 21 — musica                     (var.rta = i.20, 257 tramas en 12 s)
+    sin candidatas
+
+Dos cosas valen la pena aparte del si/no:
+
+1. UNA SOLA BANDA, no tres. Un tono da una campana de unas 5 bandas a media
+   altura, asi que cuando el pico se sostiene sus hombros se sostienen con el y
+   cada uno cumple la regla por su cuenta. Sin agrupar, una resonancia de 1 kHz
+   salia como tres avisos en 970, 1000 y 1030 Hz --al operador le suena a tres
+   problemas cuando tiene uno--. El agrupamiento de cumbres se escribio por eso
+   y aca se ve que funciona sobre datos reales.
+
+2. LA BANDA 67 ES 1000 Hz EXACTOS. Confirma por otro camino la ley de bandas
+   medida antes: banda = 67 + 12*log2(f/1000).
+
+LO QUE ESTO NO PRUEBA, Y CONVIENE NO EXAGERARLO
+Un tono sostenido NO ES realimentacion: es un sustituto: una banda estrecha que
+no cae, que es la firma que el detector busca. Que el detector la encuentre
+demuestra que EL MECANISMO funciona, no que sirva para avisar de una
+realimentacion de verdad.
+
+Lo que falta para eso, y no se puede hacer hoy:
+  - Una realimentacion real, que necesita parlantes conectados. Hoy no hay.
+  - Distinguirla de una nota tenida --un acorde de teclado, una voz con mucho
+    reverb-- que tambien es estrecha y tambien se sostiene. Sin microfono de
+    medicion no hay forma de saber por senal si el sostenimiento viene del
+    musico o del aire, PORQUE EL ANALIZADOR MIRA EL CANAL, NO LA SALA.
+  - Ajustar los tres umbrales elegidos (6 dB de exceso, 9 dB sobre las vecinas,
+    500 ms de espera) con el usuario delante de una sala de verdad.
+
+Por eso el detector devuelve CANDIDATAS y no un veredicto, y por eso el nivel
+de autonomia se queda en avisar: la decision de bajar algo es del operador.
+
+QUE SE TOCO Y COMO QUEDO
+var.rta se tomo prestado con tomarAnalizador() --lee antes de escribir,
+ADR-025-- y quedo devuelto a "" que es lo que habia.

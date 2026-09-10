@@ -1,0 +1,27 @@
+CONSTANTES LITERALES DEL CLIENTE DE LA CONSOLA — 2026-09-09
+Origen: http://192.168.0.78/mixer.html  (fw 3.4.8318-ui24)
+sha256 del archivo: 9279507d99832442b4c1544594348e7647887a52910267d87457171700304bf6
+
+POR QUE EXISTE ESTE ARCHIVO
+El validador de cifras comparaba el codigo contra una tabla del propio
+repositorio. Con RETENCION_PICO_MS los dos decian 3 --y la consola dice 3000--
+asi que pasaba en verde. Una comprobacion de coherencia interna NO PUEDE
+detectar un error de lectura de la fuente.
+
+Esto es la fuente, transcrita literal. validate-numeros.mjs compara contra
+esto, no contra la prosa.
+
+DECLARACIONES, tal como aparecen en el mixer.html:
+
+  VU_RANGE=80
+  COMP_ZOOM=2
+  CLIP_HOLD_TIME=PEAK_HOLD_TIME=3E3
+  PEAK_HOLD_TIME=3E3
+  GLOBAL_VU_FALL_SPEED=.01
+  GLOBAL_PEAK_FALL_SPEED=GLOBAL_VU_FALL_SPEED/10
+  GLOBAL_PEAK_FALL_ACC=GLOBAL_PEAK_FALL_SPEED/fps*2
+
+COMO SE REGENERA
+  curl -s http://<consola>/mixer.html -o /tmp/mixer.html
+  y volver a extraer con el mismo patron. Si el firmware cambia, este archivo
+  cambia y hay que revisar que sigue significando lo mismo.

@@ -1,5 +1,9 @@
 import type { BandMemberId, BandProfileId, ChannelAssignmentId, ChannelProfileId,
   MixSceneId, Ui24rInputIndex } from '../ids.ts';
+// Solo el tipo: `data/instrumentos.ts` importa de acá el tipo de perfil de
+// canal, así que la dependencia es mutua. Como `verbatimModuleSyntax` borra los
+// `import type` al compilar, el ciclo no existe en tiempo de ejecución.
+import type { Instrumento } from '../data/instrumentos.ts';
 
 /**
  * Rol musical de una fuente dentro de la mezcla.
@@ -52,7 +56,17 @@ export interface ChannelProfile {
 export interface BandMember {
   readonly id: BandMemberId;
   readonly nombre: string;
-  readonly instrumentos: readonly string[];
+  /**
+   * Instrumentos clasificados por fuente, variante y rol (ver
+   * `data/instrumentos.ts`).
+   *
+   * Era `readonly string[]` —texto libre— y los perfiles guardados hasta hoy
+   * tienen cadenas ahí dentro. Ninguna se tira: `Instrumento.textoOriginal`
+   * conserva lo que el usuario escribió, y la migración 4 del almacén le da
+   * forma al documento sin tocar el contenido. Se construyen con
+   * `normalizarInstrumentos`, que también acepta cadenas y las interpreta.
+   */
+  readonly instrumentos: readonly Instrumento[];
 }
 
 /**
@@ -67,7 +81,32 @@ export interface ChannelAssignment {
   readonly id: ChannelAssignmentId;
   readonly ui24rInputIndex: Ui24rInputIndex;
   readonly bandMemberId: BandMemberId | null;
+  /**
+   * La etiqueta del instrumento: lo que se muestra y lo que se sincroniza con
+   * el nombre del canal en la consola. Sigue siendo texto.
+   */
   readonly instrumento: string;
+  /**
+   * El mismo instrumento, ya clasificado.
+   *
+   * No son dos verdades: `instrumento` es la etiqueta y esto es la
+   * clasificación. `instrumentoDeAsignacion()` es la única forma correcta de
+   * leerla, porque cae en interpretar la etiqueta cuando la clasificación
+   * todavía no está —que es el caso de todo lo guardado hasta hoy—.
+   *
+   * Estuvo declarada opcional mientras la pantalla de canales no tenía de
+   * dónde sacar la clasificación. Ahora la escribe —el instrumento se elige
+   * entre los que toca el integrante—, así que pasa a ser obligatoria y
+   * `| null`, que es lo que manda el estilo de este repositorio: quien arme
+   * una asignación tiene que **decidir** si la clasificación está o no está,
+   * en vez de olvidarse del campo.
+   *
+   * `null` sigue siendo el caso de todo lo guardado hasta hoy, y también el de
+   * una asignación cuyo instrumento se escribió a mano en la consola. Los
+   * documentos viejos ni siquiera traen la clave; `instrumentoDeAsignacion()`
+   * trata los dos casos igual.
+   */
+  readonly instrumentoDetalle: Instrumento | null;
   readonly channelProfileId: ChannelProfileId;
   readonly defaultRole: MusicalRole;
   readonly micModelo: string | null;

@@ -1,0 +1,41 @@
+LA LEY DE BANDAS DEL ANALIZADOR MIRANDO EL GENERAL — 2026-09-09
+Consola 192.168.0.78. Sonda: tools/spikes/p0-10b-vu/rta-general.ts
+
+POR QUE SE MIDIO
+Para detectar realimentacion conviene vigilar EL GENERAL y no un canal: la
+realimentacion es un lazo del sistema --sale por los parlantes y vuelve por un
+microfono-- asi que aparece ahi venga del canal que venga. Vigilar un canal
+detecta solo ese.
+
+Pero una nota anterior de este repositorio decia que el general "devuelve 78
+bandas y no 122". Si fuera cierto, la ley de bandas tendria que ser otra y sin
+ella se podria decir "hay una banda sostenida" pero no en que frecuencia, que
+es justo el dato que el operador necesita.
+
+RESULTADO
+    Hz  | bandas | pico en la banda
+   125 |    122 | 31
+   250 |    122 | 43
+   500 |    122 | 55
+  1000 |    122 | 67
+  2000 |    122 | 79
+  4000 |    122 | 91
+  8000 |    122 | 103
+
+SON 122 BANDAS Y LA MISMA LEY que con una entrada: banda = 67 + 12*log2(f/1000).
+El mismo frecuenciaDeBanda() sirve para las dos fuentes, sin ningun caso
+especial.
+
+LA NOTA ANTERIOR ERA UNA MALA LECTURA MIA
+La evidencia original dice: "m (general) -> funciona, 78 BANDAS CON VALOR". O
+sea 78 bandas distintas de cero, porque el general no tenia energia en el
+resto. Lo lei como el total y lo propague a la especificacion.
+
+Es el mismo patron que ya aparecio tres veces en esta sesion: no fue un error
+de medicion sino de lectura de la propia evidencia, y sobrevivio porque nadie
+volvio a mirar el archivo original.
+
+QUE SE TOCO Y COMO QUEDO
+var.rta se tomo con tomarAnalizador('m') y se devolvio con
+devolverAnalizador() al valor leido del volcado. El supresor del general se
+apago antes de meter tonos y se restauro despues.

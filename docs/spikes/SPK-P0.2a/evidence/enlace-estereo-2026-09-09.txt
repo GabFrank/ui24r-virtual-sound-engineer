@@ -1,0 +1,48 @@
+QUE CANALES FORMAN UN PAR ESTEREO — 2026-09-09
+Consola 192.168.0.78 fw 3.4.8318-ui24.
+Sondas: tools/spikes/p0-10b-vu/enlace-estereo.ts y enlazar-estereo.ts
+
+LA PREGUNTA ERA OTRA
+docs/instrumentos.md tenia esto primero en la lista de lo que falta para el
+panorama: "que canales forman un par estereo es el dato que ninguna faceta
+contiene y sin el cual no se puede abrir nada". El plan era pedirselo al
+usuario en la asignacion de canales.
+
+EL DATO YA EXISTE
+  i.N.stereoIndex   en los 24 canales, todos en -1 (sin enlazar)
+  l.0.stereoIndex = 0    l.1.stereoIndex = 1     <- la linea SI es un par
+  p.0.stereoIndex = 0    p.1.stereoIndex = 1     <- el reproductor tambien
+  a.N.stereoIndex   en los 10 auxiliares, todos en -1
+
+QUE SIGNIFICA EL NUMERO, leido del mixer.html de la consola:
+  this.copySettings(!0);
+  this.linkTarget.pasteSettings();
+  setValue(this.name + "stereoIndex", 0);
+  setValue(this.linkTarget.name + "stereoIndex", 1);
+con linkTarget = allStrips[this.id + 1]. Y al desenlazar, -1 en las dos.
+
+  0  = primer miembro del par; el companero es el canal SIGUIENTE
+  1  = segundo miembro;        el companero es el ANTERIOR
+ -1  = sin enlazar
+
+O sea que NO es un identificador de par sino la POSICION dentro del par. Por
+eso los dos miembros valen distinto, que a primera vista parece un error.
+
+LA CONSOLA NO MANTIENE EL PAR, LO ESCRIBE EL CLIENTE
+Medido con la conexion testigo, en los canales 5 y 6 (libres):
+  se escribe SOLO i.4.stereoIndex = 0  -> el testigo ve i.4, y NADA de i.5
+  se escribe tambien i.5.stereoIndex = 1 -> el testigo ve i.5
+Las dos escrituras son independientes. Consecuencia para leer: un estado a
+medias es posible de verdad, asi que un par solo cuenta si las dos mitades se
+declaran entre si.
+
+ENLAZAR DESDE LA APLICACION SERIA DESTRUCTIVO
+El cliente, antes de escribir las dos claves, hace copySettings() sobre el
+izquierdo y pasteSettings() sobre el derecho: el enlace PISA TODOS LOS AJUSTES
+DEL CANAL DERECHO. Escribir solo las dos claves no copia nada --la copia es del
+lado del cliente-- pero dejaria un par que la consola dibuja enlazado con dos
+canales que suenan distinto. Ninguna de las dos cosas es aceptable sin decision
+explicita, asi que packages/mixer-adapter/src/pares-estereo.ts SOLO LEE.
+
+RESTAURACION
+i.4.stereoIndex y i.5.stereoIndex devueltos a -1, que es lo que habia.

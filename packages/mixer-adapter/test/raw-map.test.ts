@@ -46,6 +46,14 @@ test('las conversiones de ida y vuelta son consistentes', () => {
 });
 
 test('las rutas declaradas se pueden consultar por nombre', () => {
-  assert.ok(entrada('i.N.dyn.ratio'));
+  assert.ok(entrada('i.N.dyn.threshold'));
   assert.equal(entrada('no.existe'), undefined);
+});
+
+test('el ratio del compresor no esta en la tabla, y es a proposito', () => {
+  // Estuvo con un rango inventado de 1 a 20 en un archivo cuya cabecera
+  // promete que las entradas salen de mediciones. La funcion se conoce
+  // --VtoRATIO(a) = 1/a-- pero el crudo minimo no, y en 0 la razon es
+  // infinita: no hay rango fisico que declarar sin adivinarlo.
+  assert.equal(entrada('i.N.dyn.ratio'), undefined);
 });
