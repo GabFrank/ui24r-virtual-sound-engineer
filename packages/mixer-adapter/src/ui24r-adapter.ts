@@ -721,7 +721,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       'no hay conexión testigo y es lo único que confirma el valor literal contra esta ' +
       'consola, que no devuelve eco';
 
-    const como = comoConfirmarPorMedidor(parametro, valor, esperado);
+    const como = comoConfirmarPorMedidor(
+      parametro, valor, esperado, (fuente) => this.canalConFuente(fuente),
+    );
     if (como === null) {
       return {
         status: 'REJECTED',
@@ -772,6 +774,24 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
           + `${como.esperadoDb.toFixed(1)} dB y se movió ${veredicto.cambioDb.toFixed(1)}. `
           + 'El cambio pudo aplicarse o no',
     };
+  }
+
+  /**
+   * Qué canal tiene a este previo como fuente, o `null` si no se sabe.
+   *
+   * `fuentesCanal` va de canal a fuente y acá hace falta al revés. Se recorre en
+   * vez de mantener un índice inverso porque son veinte entradas y esto pasa una
+   * vez por escritura sin testigo, que es el camino raro.
+   *
+   * **`null` cuando no se sabe, y no el canal de fábrica.** Mientras no haya
+   * llegado el `src` —durante el volcado dura milisegundos, después de una
+   * avalancha es la verdad— suponer identidad sería mirar el medidor de otro.
+   */
+  private canalConFuente(fuente: string): number | null {
+    for (const [canal, suya] of this.fuentesCanal) {
+      if (suya === fuente) return canal;
+    }
+    return null;
   }
 
   /** El nivel de un canal en el punto que corresponda, o `-Infinity`. */

@@ -163,6 +163,16 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    esperado no alcanza, porque con 1 dB pedido y 1,5 de tolerancia, quedarse
    quieto entraría.
 
+   **Y el canal se saca del enrutamiento real, no del número del previo.**
+   `i.N.src` puede apuntar a cualquier `hw.M`, así que el previo 10 no siempre
+   alimenta al canal 10. **Si no se sabe qué canal alimenta, no se escribe**: es
+   la misma decisión que toma la lectura de ganancia cuando le falta el `src`, y
+   suponer el de fábrica sería mirar el medidor de otro. Comprobado contra la
+   consola que el camino de fábrica sigue funcionando —`APPLIED`/`VU` con el
+   `src` presente—: `spikes/SPK-ACK-POLICY/evidence/respaldo-enrutamiento-2026-09-10.txt`.
+   El enrutamiento cruzado no se pudo probar en el aparato porque **`i.N.src` no
+   es escribible por protocolo**; lo cubren los tests.
+
    **Cada parámetro se juzga en su propio medidor y no son intercambiables**: la
    ganancia en el de **entrada** y el fader en el de **salida**. El medidor de
    entrada está después del previo y antes del fader —medido el 2026-09-08—, así

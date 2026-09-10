@@ -43,6 +43,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
   que predice la ley medida, y es el pico del espectro.
 
+- **La confirmación por medidor ya no supone que el canal 10 use el previo 10.**
+  Con un enrutamiento distinto del de fábrica miraba el medidor de otro canal y
+  podía dar por buena una escritura mirando una señal ajena. Ahora saca el canal
+  del enrutamiento real, y si no lo sabe no escribe.
+
 - **Los graves sí llegaban: lo que faltaba era apagar el supresor.** Con él
   encendido, un tono de 63 Hz no aparecía en absoluto; con él apagado aparece
   claramente. La caída que queda por debajo de 250 Hz es real pero mucho más

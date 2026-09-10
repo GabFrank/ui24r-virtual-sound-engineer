@@ -54,7 +54,14 @@ async function leerDesdeFuera(ruta: string): Promise<number | null> {
   // `/raw` es un flujo que no termina: se lee un trozo y se corta.
   const lector = res.body.getReader();
   let texto = '';
-  for (let i = 0; i < 40; i++) {
+  // **El tope de trozos era 40 y no alcanzaba.** `/raw` manda del orden de seis
+  // mil claves y `i.9.mix` cae mas alla de ese corte: la lectura devolvia null
+  // e imprimia «¡NO! quedo en null» sobre un fader QUE SI ESTABA RESTAURADO.
+  // Otra comprobacion que contesta algo sin significado --la tercera de esta
+  // sesion-- y esta vez el error era del lado prudente: alarma falsa en vez de
+  // silencio falso. Se lee hasta encontrar la clave o hasta que el flujo se
+  // agote, con un tope alto que solo existe para no colgarse.
+  for (let i = 0; i < 2000; i++) {
     const { value, done } = await lector.read();
     if (done) break;
     texto += new TextDecoder().decode(value);
