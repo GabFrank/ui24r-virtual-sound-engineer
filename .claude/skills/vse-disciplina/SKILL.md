@@ -165,3 +165,48 @@ revertir: es difícil de *revisar*, y en este proyecto las cosas que se
 descubrieron tarde —el techo del medidor, la retención de picos, el respaldo por
 VU que no existía— se descubrieron leyendo, no ejecutando. Lo que no se puede
 leer con atención no se revisa.
+
+## Una medición que no se archiva no se midió: se contó
+
+Pasó **tres veces en un día**, y la tercera casi cuesta caro.
+
+La rutina era: correr el spike, leer la salida en la terminal, y después correrlo
+otra vez redirigiendo a un archivo de evidencia. **Son dos corridas.** Sobre
+hardware nunca dan igual —el testigo dio mediana 17 en una y 18 en la otra;
+`SNAPSHOTLIST` dio máximo 277 en una y 7 en la otra— y el documento terminaba
+citando un número que no estaba en ningún archivo.
+
+El peor fue el 277: era **el argumento entero** para cambiar un plazo. Al medirlo
+de nuevo, sesenta veces seguidas, no volvió a aparecer. Un número inventado no
+molesta mientras nadie dependa de él; molesta el día que alguien ajusta un plazo,
+un umbral o una espera confiando en él, **con la sala llena**.
+
+**La medición se corre con `tools/spikes/medir.mjs`**, que muestra y archiva la
+misma corrida a la vez:
+
+```
+node tools/spikes/medir.mjs docs/spikes/SPK-X/evidence/lo-que-sea-2026-09-10.txt \
+  tools/spikes/.../guion.ts [args...]
+```
+
+Escribe el encabezado con la fecha y el comando exacto, no deja archivar fuera de
+una carpeta `evidence/`, y **no pisa un archivo que ya existe** —la evidencia es
+el registro de un día, y sobrescribirla borra el rastro de que la anterior
+existió—. Y los parámetros de la medición se imprimen **dentro** de la medición:
+un archivo que no dice con qué ventana se midió obliga a buscarla en el código de
+ese día, y esa búsqueda es la que nadie hace.
+
+**`validate-cifras-medidas.mjs` atrapa lo que se escape.** Toma cada bloque de
+documentación que cite un archivo de evidencia y exige que los números **con
+unidad** —ms, s, dB, Hz— de ese bloque estén en ese archivo. Solo con unidad, y
+es deliberado: comprobar todos los números reportaba once cosas de las cuales una
+era real, y una guarda con esa proporción de ruido se desactiva en una semana.
+
+Dos cosas que se aprendieron construyéndolo, y que valen para cualquier guarda:
+
+- **Probala contra el caso que la motivó.** La primera versión no atrapaba el 277
+  —la cifra estaba en una línea y la cita en la siguiente— y estaba en verde. Una
+  guarda que no cubre su propio caso motivador es decorado.
+- **Que una entrada rota no la apague.** La segunda versión sí miraba el bloque,
+  pero una cita a una ruta que no resolvía hacía `return` en silencio y desactivaba
+  la comprobación del bloque entero. Ahora una cita rota **es un error**.

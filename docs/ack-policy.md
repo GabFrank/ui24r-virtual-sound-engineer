@@ -42,12 +42,14 @@ cuando exista, manda sobre este documento.
 
 **Está medida.** El 2026-09-10 se barrieron 18 rutas contra la consola, una por
 una: leer el valor, escribir una delta, preguntarle al testigo si la vio dentro
-de 500 ms, y restaurar. **18 de 18 difundidas**, mediana 18 ms, mínimo 14 y
-máximo 26 en la corrida archivada; una corrida anterior del mismo barrido dio
-mediana 17, mínimo 12 y máximo 19, y **está anotada al pie de la evidencia
-porque antes solo vivía en la consola de quien la corrió**. Las 18 quedaron
-restauradas según la relectura del arnés, y **once de ellas** además
+de 500 ms, y restaurar. **18 de 18 difundidas en las tres corridas**, con
+medianas de 17, 18 y 17 ms; mínimo 12 y máximo 29 entre las tres. Las 18
+quedaron restauradas según la relectura del arnés, y **once de ellas** además
 comprobadas desde fuera con un volcado HTTP nuevo.
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` y
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10b.txt`; la primera de
+las tres está transcrita al pie de la primera, porque antes solo vivía en la
+terminal de quien la corrió.
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`.
 
 El barrido usó el canal 17 —sin nombre, silenciado, fader abajo— con un punto de

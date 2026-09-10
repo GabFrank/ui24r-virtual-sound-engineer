@@ -33,6 +33,14 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Las mediciones se archivan solas, y una cifra sin respaldo ya no pasa.** Se
+  corría la medición dos veces —una para mirarla y otra para guardarla— y la
+  documentación terminaba citando números de la corrida que no quedó. Pasó tres
+  veces; una de ellas era el único argumento para cambiar un plazo, y al medirlo
+  de nuevo sesenta veces no volvió a aparecer. Ahora se muestra y se guarda la
+  misma corrida, y la verificación falla si un número con unidad no está en la
+  evidencia que lo respalda.
+
 - **La aplicación distingue sin fallar lo que cambió ella de lo que cambió otro.**
   Cien de cien, medido contra la consola. No lo consigue adivinando por tiempo
   —eso era imposible, porque la consola no le devuelve nada a quien escribe— sino

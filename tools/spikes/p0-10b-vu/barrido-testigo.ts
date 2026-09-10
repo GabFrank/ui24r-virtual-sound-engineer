@@ -108,6 +108,11 @@ if (!testigo.listoParaAtestiguar) {
 }
 
 console.log('');
+// Los parametros de la medicion van EN la medicion. Un archivo de evidencia que
+// no dice con que ventana se midio obliga a buscarla en el codigo del dia, y esa
+// busqueda es justo la que nadie hace.
+console.log(`canal ${N + 1} (i.${N}) · ventana del testigo: ${VENTANA_MS} ms · ${RUTAS.length} rutas`);
+console.log('');
 console.log('ruta                          | antes    | escrito  | testigo | ms   | restaurada');
 console.log('------------------------------+----------+----------+---------+------+-----------');
 
