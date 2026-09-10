@@ -57,17 +57,28 @@ app.alCambioMasivo((e) => masivos.push({ rutas: e.rutasAfectadas, causa: e.proba
 
 // --- Criterio 1: 100 cambios ajenos, etiquetados ---------------------------
 //
-// Espaciados 120 ms para que NO se agrupen: lo que se mide aca es el etiquetado
-// uno por uno, y la agrupacion se mide aparte en el criterio 5.
+// **El espaciado se subio de 120 a 400 ms el 2026-09-10, y hay que decir por
+// que.** Al agrupar el arrastre --criterio 5-- la ventana quedo en 250 ms, y con
+// 120 los cien cambios caian dentro de una misma ventana: esta prueba paso de
+// 100 de 100 a 1 DE 100 en la misma corrida. Los dos criterios estan en tension
+// y no se puede tener los dos para cualquier ritmo.
+//
+// Se elige medir el etiquetado con un ritmo que un operador puede producir de
+// verdad --un cambio cada 400 ms, o sea dos por segundo-- y NO se pretende que
+// cien cambios en doce segundos sigan contando de a uno. Lo que se pierde son
+// avisos, nunca conocimiento: el estado confirmado se actualiza con cada linea
+// sin pasar por la agrupacion, asi que el criterio 2 --no pisar lo ajeno-- no
+// depende de esto.
+const ESPACIADO_MS = 400;
 console.log('');
-console.log('criterio 1: 100 cambios desde el otro operador, espaciados 120 ms');
+console.log(`criterio 1: 100 cambios desde el otro operador, espaciados ${ESPACIADO_MS} ms`);
 ajenos.length = 0; masivos.length = 0;
 const esperados: number[] = [];
 for (let i = 0; i < 100; i++) {
   const v = Number((0.10 + (i % 20) * 0.005).toFixed(6));
   esperados.push(v);
   otro.enviar(codificarSetd(RUTA, v));
-  await new Promise((r) => setTimeout(r, 120));
+  await new Promise((r) => setTimeout(r, ESPACIADO_MS));
 }
 await new Promise((r) => setTimeout(r, 1500));
 
@@ -87,14 +98,16 @@ for (let i = 0; i < 40; i++) {
   await new Promise((r) => setTimeout(r, 15));
 }
 await new Promise((r) => setTimeout(r, 2000));
-const arrastre = masivos.filter((m) => m.causa === 'FADER_DRAG');
+// Un arrastre NO tiene que dar un cambio masivo: es un gesto sobre una ruta,
+// no una avalancha, y no invalida el estado. Lo que se mira es que se agrupe.
+const grupos = masivos.filter((m) => m.causa === 'GRUPO_DE_CANALES');
 const delArrastre = ajenos.filter((a) => a.parametro === RUTA);
 const ventana = delArrastre.length > 1
   ? delArrastre[delArrastre.length - 1]!.enMs - delArrastre[0]!.enMs
   : 0;
 console.log(`  lineas que la consola difundio y la aplicacion vio: ${delArrastre.length} de 40, en ${ventana} ms`);
 console.log(`  cambios masivos detectados: ${masivos.length} -> ${masivos.map((m) => `${m.causa}(${m.rutas} rutas)`).join(', ') || '(ninguno)'}`);
-console.log(`  clasificado como arrastre: ${arrastre.length > 0 ? 'si' : 'no'}`);
+console.log(`  clasificado como grupo de canales: ${grupos.length > 0 ? 'si' : 'no'} (tiene que ser no: es una sola ruta)`);
 console.log(`  AGRUPADO EN UNO SOLO: ${delArrastre.length <= 1 ? 'si' : `no — la aplicacion recibe ${delArrastre.length} avisos separados`}`);
 
 // --- Criterio 2: no pisar un cambio ajeno ----------------------------------

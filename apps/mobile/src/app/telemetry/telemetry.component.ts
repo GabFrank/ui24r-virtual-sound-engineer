@@ -386,7 +386,7 @@ export class TelemetryComponent {
           titulo: 'Alguien recuperó una instantánea en la consola.',
           detalle: 'Cambió la instantánea activa, así que cualquier parámetro pudo moverse.',
         };
-      case 'FADER_DRAG':
+      case 'GRUPO_DE_CANALES':
         return {
           titulo: 'Cambio masivo detectado en la consola.',
           detalle: `${ev.rutasAfectadas} canales cambiaron el mismo parámetro en menos de un ` +

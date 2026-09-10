@@ -20,12 +20,32 @@
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10.** Un segundo cliente hizo de otro operador y escribió 100 veces espaciado 120 ms; la aplicación etiquetó las 100 como ajenas, el último valor coincide, y no disparó ninguna avalancha por error. `evidence/concurrencia-2026-09-10.txt` | ✅ |
+| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt`; la corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt` | ✅ |
 | 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **Imposible por correlación de mensajes entrantes, y está medido.** La consola no le devuelve la escritura a quien la hizo, así que no hay nada que correlacionar: el 2026-09-09, con tres clientes conectados, **el que escribe ve 0 líneas de su propia escritura mientras los otros dos ven 1 cada uno**. El criterio se cumple por otra vía o no se cumple | ⬜ |
 | 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | | ⬜ |
-| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **No, y es imposible por construcción.** `causaProbable()` clasifica `FADER_DRAG` con `sufijos.size === 1 && rutas.size > 1`: pide **varias rutas distintas**. Un arrastre de un fader es **una sola ruta** escrita muchas veces, así que nunca entra por ahí. La aplicación recibe 19 o 20 avisos separados. Lo que ese código sí detecta —varios canales moviéndose juntos— está bien detectado y no es lo que dice la etiqueta | ⬜ |
+| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
 | 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | Sin elegir, y ahora con un requisito más: tiene que distinguir **nuestra propia conexión testigo** de un segundo operador. Ver R-27 | ⬜ |
+
+## Los criterios 1 y 5 están en tensión, y se eligió — 2026-09-10
+
+Agrupar el arrastre —criterio 5— significa que dos cambios sobre la misma ruta
+más juntos que la ventana se avisan como **uno**. Con la ventana en 250 ms, la
+medición del criterio 1 con cambios cada 120 ms pasó de **100 de 100 a 1 de
+100**: se rompió un criterio que se acababa de cerrar unas horas antes.
+
+No se pueden tener los dos para cualquier ritmo. Se eligió:
+
+- Medir el etiquetado con un ritmo que un operador produce de verdad —un cambio
+  cada 400 ms, dos por segundo—, y ahí son 100 de 100.
+- **No** pretender que cien cambios en doce segundos sigan contando de a uno.
+
+**Lo que hace aceptable la elección es que se pierden avisos, nunca
+conocimiento.** El estado confirmado se actualiza con cada línea, antes del
+aviso y sin pasar por la agrupación. La comprobación de INV-011 —¿el valor sigue
+siendo el que creo?— lee del estado y no del aviso, así que el **criterio 2 no
+depende de esto en absoluto**. Hay un test que lo fija, y otro que fija el costo
+para que no sea un descubrimiento.
 
 ## Lo que ya se midió, y a qué obliga — 2026-09-09
 

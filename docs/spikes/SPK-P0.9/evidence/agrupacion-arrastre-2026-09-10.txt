@@ -1,0 +1,84 @@
+Criterio 5 de SPK-P0.9, cerrado — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, canal 17 (i.16)
+
+QUE ESTABA MAL, Y ERAN DOS COSAS.
+
+1. LA ETIQUETA MENTIA. causaProbable() clasificaba FADER_DRAG con
+`sufijos.size === 1 && rutas.size > 1`, o sea VARIAS RUTAS DISTINTAS con el
+mismo sufijo: varios canales moviendo el mismo parametro a la vez --un grupo, un
+VCA, un recall parcial--. Un arrastre de UN fader es UNA sola ruta escrita
+muchas veces y nunca podia entrar por ahi. El texto que la aplicacion muestra
+siempre dijo la verdad --«N canales cambiaron el mismo parametro»--; el que
+mentia era el identificador, y por eso el criterio parecia cubierto. Se llama
+GRUPO_DE_CANALES.
+
+2. EL ARRASTRE NO SE AGRUPABA, y el dano es concreto. Cada cambio externo va al
+registro y a la lista de «ultimos veinte cambios» de la aplicacion. Un arrastre
+ajeno producia del orden de veinte lineas, asi que UNA SOLA PASADA DE FADER
+BORRABA TODO EL HISTORIAL RECIENTE, que es justo lo que el operador iba a mirar
+para entender que paso.
+
+punto de retorno: VSE_AUTO_1789053289442
+i.16.mix vale 0 y ahi tiene que volver al final
+
+criterio 1: 100 cambios desde el otro operador, espaciados 400 ms
+  etiquetados como ajenos: 100 de 100
+  el ultimo valor coincide: si
+  avalanchas disparadas por error: 0
+
+criterio 5: 40 escrituras seguidas sobre una sola ruta, cada 15 ms
+  lineas que la consola difundio y la aplicacion vio: 1 de 40, en 0 ms
+  cambios masivos detectados: 0 -> (ninguno)
+  clasificado como grupo de canales: no (tiene que ser no: es una sola ruta)
+  AGRUPADO EN UNO SOLO: si
+
+criterio 2: el otro operador cambia y la aplicacion intenta escribir encima
+  resultado: {"status":"CONFLICT","confirmedBy":"NONE","actual":0.3,"motivo":"se esperaba 0.256 y hay 0.3, cambiado desde otro cliente"}
+  i.16.mix quedo en 0.3 (0.3 = respeto lo ajeno; 0.9 = lo piso)
+  piso el cambio ajeno: no
+
+restaurada: si
+
+DE 40 ESCRITURAS, UN SOLO AVISO. Antes eran 19 o 20 --la consola difunde 20 de
+40 por su tic de 34 ms, y la aplicacion los pasaba todos--.
+
+SE RETRASA EL AVISO EN VEZ DE EMITIR EL PRIMERO Y SUPRIMIR EL RESTO. Un
+arrastre no tiene un valor «bueno» hasta que termina: el que importa es el
+ultimo, donde el fader quedo. Avisar el primero dejaria en el historial el valor
+del que arranco el gesto, que es el que ya no esta.
+
+LA VENTANA ES DE 250 MS Y TIENE QUE SER MAYOR QUE EL TIC DE LA CONSOLA. Durante
+un arrastre las lineas llegan cada ~34 ms; con una ventana mas chica el gesto se
+parte en pedazos. Hay un test que lo fija poniendola en 20 a proposito y
+comprobando que se rompa.
+
+=== LA TENSION ENTRE EL CRITERIO 1 Y EL 5, QUE APARECIO MIDIENDO ===
+
+Al agrupar, el criterio 1 --«100 de 100 cambios externos etiquetados»-- PASO DE
+100 A 1 EN LA MISMA CORRIDA. Los cien cambios iban espaciados 120 ms, o sea
+DENTRO de la ventana de 250, y se agruparon todos en uno. Se rompio un criterio
+que se acababa de cerrar hace unas horas.
+
+Los dos criterios no se pueden tener a la vez para cualquier ritmo, y elegir es
+parte de esto. Se eligio:
+
+  - Medir el etiquetado con un ritmo que un operador puede producir de verdad:
+    un cambio cada 400 ms, dos por segundo. Con eso son 100 de 100.
+  - NO pretender que cien cambios en doce segundos sigan contando de a uno.
+
+Y lo que hace aceptable la eleccion es esto: SE PIERDEN AVISOS, NUNCA
+CONOCIMIENTO. El estado confirmado se actualiza con cada linea, antes del aviso
+y sin pasar por la agrupacion. La comprobacion de INV-011 --¿el valor sigue
+siendo el que creo?-- lee del estado, no del aviso, asi que el criterio 2 --no
+pisar un cambio ajeno-- no depende de esto en absoluto. Hay un test que lo fija.
+
+El costo queda escrito y con su propio test: dos cambios sobre la misma ruta
+separados por menos de 250 ms se avisan como uno, con el ultimo valor.
+
+=== UN TROPIEZO DEL CAMINO ===
+
+La primera version de la agrupacion uso setTimeout a secas y rompio cuatro tests
+que llevaban tiempo pasando. El almacen se prueba con un reloj falso justamente
+para no esperar, y meter tiempo real por la ventana de atras lo deshace. QUE LOS
+TESTS SE CAYERAN FUE LA SENIAL, NO EL ESTORBO: el temporizador quedo inyectable
+como el reloj, y el reloj falso ahora dispara lo que venza.

@@ -69,11 +69,25 @@ export interface WriteResult {
   readonly motivo: string | null;
 }
 
-/** Cambio masivo externo: recuperación de instantánea o arrastre de fader. */
+/**
+ * Cambio masivo externo: muchas **rutas distintas** moviéndose a la vez.
+ *
+ * **`GRUPO_DE_CANALES` se llamaba `FADER_DRAG` y era un nombre falso.** Se
+ * dispara cuando varios canales cambian el mismo parámetro en la misma ventana
+ * —un grupo, un VCA, un recall parcial—, no cuando alguien arrastra un fader:
+ * eso es **una sola ruta** escrita muchas veces y nunca puede entrar acá. El
+ * texto que la aplicación muestra siempre dijo la verdad; el identificador no,
+ * y por eso el criterio 5 de SPK-P0.9 parecía cubierto hasta que se midió
+ * contra la consola el 2026-09-10.
+ *
+ * El arrastre no genera un evento de estos **a propósito**: es un gesto sobre
+ * un parámetro, no una avalancha, y no invalida el estado. Se agrupa en un
+ * único aviso de cambio externo.
+ */
 export interface BulkExternalChange {
   readonly rutasAfectadas: number;
   readonly ventanaMs: number;
-  readonly probableCausa: 'SNAPSHOT_RECALL' | 'FADER_DRAG' | 'DESCONOCIDA';
+  readonly probableCausa: 'SNAPSHOT_RECALL' | 'GRUPO_DE_CANALES' | 'DESCONOCIDA';
   readonly timestamp: string;
 }
 

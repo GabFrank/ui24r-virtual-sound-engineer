@@ -38,8 +38,24 @@ export interface OpcionesStore {
   /** Rutas distintas en la ventana que disparan la detección de avalancha. */
   readonly umbralRafagaRutas?: number;
   readonly ventanaRafagaMs?: number;
+  /**
+   * Cuánto se espera a que un gesto termine antes de avisar el cambio externo.
+   *
+   * Tiene que ser mayor que el tic de difusión de la consola —~34 ms medidos—
+   * o el arrastre se parte en pedazos.
+   */
+  readonly ventanaAgrupacionMs?: number;
   /** Reloj inyectable, para poder testear el tiempo sin esperarlo. */
   readonly ahora?: () => number;
+  /**
+   * Temporizador inyectable, por el mismo motivo que el reloj.
+   *
+   * La primera versión de la agrupación usó `setTimeout` a secas y rompió
+   * cuatro tests que llevaban años pasando: este almacén se prueba con un reloj
+   * falso justamente para no esperar, y meter tiempo real por la ventana de
+   * atrás lo deshace. Que los tests se cayeran fue la señal, no el estorbo.
+   */
+  readonly programar?: (fn: () => void, ms: number) => { cancelar: () => void };
 }
 
 interface EscrituraPendiente {
@@ -70,9 +86,17 @@ export class ConfirmedStateStore {
   private readonly ventanaRafagaCorrelacionMs: number;
   private readonly umbralRutas: number;
   private readonly ventanaRafagaMs: number;
+  private readonly ventanaAgrupacionMs: number;
   private readonly ahora: () => number;
+  private readonly programar: (fn: () => void, ms: number) => { cancelar: () => void };
 
   private oyentesExterno: ((path: string, valor: number) => void)[] = [];
+  /** Cambios externos esperando a que el gesto termine, por ruta. */
+  private readonly agrupando = new Map<string, {
+    valor: number;
+    cancelar: () => void;
+    desdeMs: number;
+  }>();
   private oyentesRafaga: ((e: BulkExternalChange) => void)[] = [];
 
   constructor(opciones: OpcionesStore = {}) {
@@ -80,7 +104,15 @@ export class ConfirmedStateStore {
     this.ventanaRafagaCorrelacionMs = opciones.ventanaCorrelacionEnRafagaMs ?? 1000;
     this.umbralRutas = opciones.umbralRafagaRutas ?? 10;
     this.ventanaRafagaMs = opciones.ventanaRafagaMs ?? 1000;
+    this.ventanaAgrupacionMs = opciones.ventanaAgrupacionMs ?? 250;
     this.ahora = opciones.ahora ?? (() => Date.now());
+    this.programar = opciones.programar ?? ((fn, ms) => {
+      const id = setTimeout(fn, ms);
+      // `unref` para que un aviso pendiente no mantenga vivo el proceso: un
+      // spike que termina no tiene por qué esperar a que se cierre una ventana.
+      (id as unknown as { unref?: () => void }).unref?.();
+      return { cancelar: () => clearTimeout(id) };
+    });
   }
 
   get storeState(): StoreState {
@@ -192,7 +224,7 @@ export class ConfirmedStateStore {
 
     if (origen === 'EXTERNAL' && !this.cargandoVolcado) {
       this.registrarCambioReciente(path, t);
-      for (const cb of this.oyentesExterno) cb(path, valor);
+      this.avisarCambioExterno(path, valor, t);
     }
   }
 
@@ -273,6 +305,63 @@ export class ConfirmedStateStore {
   }
 
   /**
+   * Avisa un cambio externo, **agrupando el arrastre en uno solo**.
+   *
+   * **El daño que esto evita es concreto.** Cada cambio externo va al registro y
+   * a la lista de «últimos veinte cambios» de la aplicación. Un arrastre de
+   * fader desde otro dispositivo produce del orden de veinte líneas —medido
+   * contra la consola el 2026-09-10: de 40 escrituras cada 15 ms difunde 20— y
+   * con eso **una sola pasada de fader ajena borra todo el historial reciente**,
+   * que es justo lo que el operador iba a mirar para entender qué pasó.
+   *
+   * **Se retrasa el aviso en vez de emitir el primero y suprimir el resto.** Un
+   * arrastre no tiene un valor «bueno» hasta que termina: el que importa es el
+   * último, donde el fader quedó. Avisar el primero y callar los demás dejaría
+   * en el historial el valor del que arrancó el gesto, que es el que ya no
+   * está. El precio es la demora de la ventana, y para una lista que se lee
+   * después no cuesta nada.
+   *
+   * **La ventana tiene que ser mayor que el tic de difusión de la consola**,
+   * que son ~34 ms medidos: durante un arrastre las líneas llegan a ese ritmo,
+   * así que con una ventana más chica el gesto se partiría en pedazos. Con 250
+   * cierra sola cuando el gesto para, y un movimiento deliberado cada medio
+   * segundo sigue contando como cambios distintos.
+   *
+   * **Lo que esto cuesta, dicho sin vueltas.** Dos cambios sobre la misma ruta
+   * separados por menos de 250 ms se avisan como uno solo, con el último valor.
+   * Si alguien mueve un fader en escalones rápidos y deliberados, el historial
+   * va a mostrar dónde terminó y no cada escalón. Se eligió así porque el caso
+   * frecuente es el arrastre —donde los escalones intermedios no le sirven a
+   * nadie— y el caso raro es alguien tecleando valores cada 100 ms.
+   *
+   * **Y lo que NO cuesta, que es lo que importa para la seguridad.** El estado
+   * confirmado se actualiza con cada línea, antes de este aviso y sin pasar por
+   * él. O sea que la comprobación de INV-011 —¿el valor sigue siendo el que
+   * creo?— ve todos los cambios, agrupados o no. Agrupar afecta lo que se
+   * *cuenta*, nunca lo que se *sabe*.
+   */
+  private avisarCambioExterno(path: string, valor: number, t: number): void {
+    // Ventana en cero significa **no agrupar**, y avisa en el acto sin pasar
+    // por ningún temporizador. Es lo que usan los tests que miran el etiquetado
+    // y no la agrupación: obligarlos a mover un reloj para recibir un aviso que
+    // no están probando sería ruido en cada uno de ellos.
+    if (this.ventanaAgrupacionMs <= 0) {
+      for (const cb of this.oyentesExterno) cb(path, valor);
+      return;
+    }
+
+    const pendiente = this.agrupando.get(path);
+    pendiente?.cancelar();
+    const { cancelar } = this.programar(() => {
+      const ultimo = this.agrupando.get(path);
+      this.agrupando.delete(path);
+      if (ultimo === undefined) return;
+      for (const cb of this.oyentesExterno) cb(path, ultimo.valor);
+    }, this.ventanaAgrupacionMs);
+    this.agrupando.set(path, { valor, cancelar, desdeMs: pendiente?.desdeMs ?? t });
+  }
+
+  /**
    * Detecta la avalancha por número de **rutas distintas**, no de mensajes.
    * Arrastrar un fader manda decenas de mensajes sobre una sola ruta: eso es
    * un gesto, no una avalancha. Recuperar una instantánea toca muchas rutas.
@@ -348,7 +437,15 @@ export class ConfirmedStateStore {
   ): BulkExternalChange['probableCausa'] {
     if (cambioDeInstantanea) return 'SNAPSHOT_RECALL';
     const sufijos = new Set([...rutas].map((r) => r.split('.').slice(2).join('.')));
-    if (sufijos.size === 1 && rutas.size > 1) return 'FADER_DRAG';
+    // **Esto NO es un arrastre, y llamarlo así durante meses no lo hizo serlo.**
+    // Pide varias rutas DISTINTAS con el mismo sufijo, o sea varios canales
+    // moviendo el mismo parámetro a la vez: un grupo, un VCA, o un recall
+    // parcial. Un arrastre de un fader es UNA sola ruta escrita muchas veces y
+    // nunca puede entrar por acá. El texto que la aplicación muestra siempre
+    // dijo la verdad —«N canales cambiaron el mismo parámetro»—; el que mentía
+    // era el identificador, y por eso el criterio 5 de SPK-P0.9 parecía cubierto
+    // hasta que se midió contra la consola.
+    if (sufijos.size === 1 && rutas.size > 1) return 'GRUPO_DE_CANALES';
     return 'DESCONOCIDA';
   }
 }

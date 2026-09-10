@@ -33,6 +33,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **Un fader movido desde otro dispositivo ya no borra el historial reciente.**
+  Un arrastre llegaba como veinte cambios separados y llenaba solo él la lista de
+  los últimos veinte, que es justo lo que se mira para entender qué pasó. Ahora
+  es un único aviso, con el valor donde el fader quedó. El costo, dicho: dos
+  cambios sobre lo mismo a menos de un cuarto de segundo se cuentan como uno.
+
 - **La limpieza de instantáneas viejas ahora se comprueba.** Se mandaba el
   borrado y nadie miraba si había ocurrido; si algo fallaba, el show crecía igual
   y nada avisaba. Además, la aplicación ya no confunde «la consola no contestó»
