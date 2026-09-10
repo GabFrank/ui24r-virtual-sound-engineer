@@ -11,6 +11,7 @@ import { faderADb, gananciaADb } from './conversiones.ts';
 import { leerDinamica } from './dinamica.ts';
 import { rutaDeGanancia } from './fuente-de-canal.ts';
 import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
+import { decodificarEspectro, hayEspectro } from './espectro.ts';
 import {
   nombreDeInstantanea, comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
   comandoDevolverEtiqueta,
@@ -199,6 +200,17 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly nombresCanal = new Map<number, string>();
   /** De qué previo viene cada canal, según `i.N.src`. Ver `fuente-de-canal.ts`. */
   private readonly fuentesCanal = new Map<number, string>();
+  private oyentesEspectro: ((bandas: readonly number[]) => void)[] = [];
+  /**
+   * La fuente que el analizador tenía cuando llegamos.
+   *
+   * `var.rta` es **global**: elegir la fuente le cambia la pantalla al operador
+   * (R-28, ADR-025). Se anota lo que había para poder devolverlo, y se anota lo
+   * que llega en el volcado —no se reconstruye—: la clave viaja una sola vez y
+   * quien no la escuche entonces no la ve nunca.
+   */
+  private fuenteDelAnalizador: string | null = null;
+  private analizadorPrestado = false;
   /** `stereoIndex` por canal. 0 es el izquierdo, 1 el derecho, −1 sin enlazar. */
   private readonly enlacesEstereo = new Map<number, number>();
   /**
@@ -622,6 +634,58 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return paresEstereo(this.enlacesEstereo);
   }
 
+  /**
+   * Cada trama del analizador, ya en bandas de decibeles relativos.
+   *
+   * Suscribirse no enciende el analizador: eso lo hace `tomarAnalizador`, que
+   * es una escritura y necesita permiso. Sin fuente elegida esto no dispara
+   * nunca, porque la consola manda ceros y `hayEspectro` los descarta.
+   */
+  alEspectro(cb: (bandas: readonly number[]) => void): () => void {
+    this.oyentesEspectro.push(cb);
+    return () => { this.oyentesEspectro = this.oyentesEspectro.filter((f) => f !== cb); };
+  }
+
+  /**
+   * Apunta el analizador a una fuente. **Le cambia la pantalla al operador.**
+   *
+   * `var.rta` es una sola variable de la consola, no una por cliente: si la
+   * aplicación la toca en medio de un show, alguien va a ver su analizador
+   * saltar a otro canal sin haberlo tocado. Por eso ADR-025 exige permiso, y
+   * por eso esto no se llama solo desde ningún lado.
+   *
+   * Devuelve `false` si no se pudo, que hoy es solo cuando no hay conexión.
+   */
+  tomarAnalizador(fuente: string): boolean {
+    if (this._estadoConexion !== 'CONNECTED') return false;
+    this.transporte.enviar(`SETS^var.rta^${fuente}`);
+    this.analizadorPrestado = true;
+    return true;
+  }
+
+  /**
+   * Devuelve el analizador a la fuente que tenía cuando llegamos.
+   *
+   * **Se devuelve lo que se leyó, no una cadena vacía.** Reconstruir el valor
+   * en vez de leerlo fue exactamente el error que las sondas de medición
+   * cometieron durante días: «restaurar» a vacío parece inocente y no es lo
+   * mismo que devolver lo que había.
+   *
+   * Si nunca llegó la clave no se escribe nada: dejarlo como está es menos
+   * dañino que poner un valor que nadie leyó.
+   */
+  devolverAnalizador(): void {
+    if (!this.analizadorPrestado) return;
+    if (this.fuenteDelAnalizador === null) return;
+    this.transporte.enviar(`SETS^var.rta^${this.fuenteDelAnalizador}`);
+    this.analizadorPrestado = false;
+  }
+
+  /** Qué fuente tenía el analizador al conectar, para poder contarlo. */
+  fuenteOriginalDelAnalizador(): string | null {
+    return this.fuenteDelAnalizador;
+  }
+
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
   canales(cantidad = this.canalesDetectados || CANALES_HASTA_SABER): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
@@ -677,6 +741,12 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
       if (m.path === 'var.currentSnapshot') this.instantaneaActual = m.texto;
+      // Solo la primera: las siguientes pueden ser nuestras propias escrituras
+      // rebotando por otros clientes, y guardarlas sería devolver lo que
+      // nosotros mismos pusimos.
+      if (m.path === 'var.rta' && this.fuenteDelAnalizador === null) {
+        this.fuenteDelAnalizador = m.texto;
+      }
 
       const fuente = /^i\.(\d+)\.src$/.exec(m.path);
       if (fuente) {
@@ -710,6 +780,14 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       this.ultimaTramaRtaMs = this.ahora();
       if (this._estadoConexion === 'UNSTABLE') this.cambiarEstado('CONNECTED');
       for (const cb of this.oyentesLatido) cb();
+
+      // La carga ya no se tira. Se decodifica solo si alguien la está mirando:
+      // son 30 tramas por segundo y decodificarlas para nadie es batería de la
+      // tablet gastada en nada.
+      if (this.oyentesEspectro.length > 0) {
+        const bandas = decodificarEspectro(m.cargaBase64);
+        if (hayEspectro(bandas)) for (const cb of this.oyentesEspectro) cb(bandas);
+      }
       return;
     }
 
