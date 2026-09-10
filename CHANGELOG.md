@@ -6,6 +6,14 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **«No entró nada» y «entró muy bajo» dejaron de decir lo mismo.** Con un canal
+  sonando a −54 dB —por debajo del umbral con el que el asistente descarta
+  silencio— la pantalla decía «no hubo señal para medir». Es cierto para el
+  asistente y confuso para quien está escuchando: la fuente suena, solo que
+  bajo. Y los dos casos llevan a consejos opuestos —revisar el cable, o subir
+  la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
+  callejón sin salida. Ahora dice cuál de los dos es.
+
 - **Guardar una instantánea ya no te cambia cuál es la actual.** Se descubrió
   midiendo: al crear su punto de retorno, la aplicación hacía que la consola
   pasara a considerar «actual» la automática en vez de la tuya. Si después
