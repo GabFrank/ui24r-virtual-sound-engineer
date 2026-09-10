@@ -69,3 +69,27 @@ el area de trabajo de la aplicacion y no aparece en el volcado de estado.
 
 El usuario pidio expresamente cuidar la instantanea "Alma caninde". Esta donde
 estaba, en el show Prueba, sin tocar.
+
+--- Nota al pie, agregada el 2026-09-10 -------------------------------------
+
+LO DE ARRIBA NO SE TOCA: es lo que se midio el 2026-09-09 y era cierto ese dia.
+Pero una de sus frases dejo de serlo al dia siguiente, y quien lea esto sin la
+nota se lleva una garantia que ya no existe.
+
+Donde dice «el modulo NO SABE BORRAR: el protocolo tiene DELETESNAPSHOT y este
+modulo no lo construye», hoy hay que leer: EL MODULO SOLO SABE BORRAR LAS
+SUYAS. El 2026-09-09 se implemento la retencion de INV-003 --conservar veinte
+automaticas-- y para eso hizo falta construir el comando.
+
+La garantia cambio de forma, no desaparecio. comandoBorrar() devuelve null para
+cualquier nombre que no se pueda fechar, asi que una instantanea guardada a
+mano --incluso si estuviera en el show VSE-- no se puede borrar ni por error,
+porque el comando no llega a construirse. Y que borrar lo decide el dominio.
+
+Medido contra la consola el 2026-09-10:
+  SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt
+
+Por que hay una nota y no una correccion: un archivo de evidencia es el
+registro de lo que se midio un dia. Reescribirlo para que diga lo de hoy
+borraria el unico rastro de que la garantia cambio, que es justamente lo que
+alguien necesitaria saber.

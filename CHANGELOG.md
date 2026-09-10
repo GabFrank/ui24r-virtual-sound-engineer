@@ -33,6 +33,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **La retención de instantáneas ya está probada contra la consola.** El comando
+  de borrado se había implementado sin ejecutarse nunca contra el aparato: la
+  prueba corrió por debajo del máximo y no borró nada. Medido, funciona y deja
+  los shows del usuario intactos.
+
 - **Las capturas de la documentación ya no pueden quedar viejas en silencio.**
   Dos mostraban un paso del recorrido que se había corrido de número, y se
   veían como documentación buena. La verificación falla ahora si lo guardado no
