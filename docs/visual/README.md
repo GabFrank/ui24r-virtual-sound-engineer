@@ -29,6 +29,9 @@ describiendo pasos que ya no existen.
 | `19-actualizacion-sin-permiso.png` | Versión disponible, falta el ajuste del sistema |
 | `20-actualizacion-disponible.png` | Versión disponible, con sus novedades |
 | `21-prelanzamiento-descartado.png` | Una etiqueta `rc` no se ofrece como actualización |
+| `22-analizador-permiso.png` | Pidiendo prestado el analizador: qué se va a ver y qué se restaura al salir |
+| `23-espectro.png` | El espectro del general, con la banda que se queda colgada en naranja |
+| `24-realimentacion.png` | Aviso de realimentación: qué frecuencia, cuánto lleva y qué canales están abiertos |
 | `tel-01-consola.png` | Telemetría en teléfono: tarjetas en vez de tabla |
 | `tel-02-canales.png` | Asignación de canales en teléfono |
 | `tel-03-ganancia.png` | Asistente de ganancia en teléfono |
@@ -116,3 +119,33 @@ Y el recorrido del camino de usuario, apenas se escribió, encontró tres más:
 10. **El nombre de la aplicación se recortaba a «Virtual Sou…» en teléfono.**
     Un nombre a medias es peor que una sigla entera; en pantallas angostas dice
     «VSE».
+
+## Lo que se descubrió sacándolas de nuevo, el 2026-09-10
+
+Las tres cosas salieron de mirar las imágenes, no de correr los tests.
+
+**La barra de la banda colgada salía blanca.** La pantalla del espectro usaba
+`--c-aviso`, `--c-senal`, `--c-superficie-2` y `--r-2`: cuatro fichas de diseño
+que **no existen** —se llaman `--warn`, `--signal`, `--surface-2` y
+`--radio-md`—. `var()` con valor de reserva no falla, así que todo compilaba y
+la pantalla se dibujaba, pero el aviso decía «1 banda sostenida» y **no
+señalaba cuál**. Había otras doce fichas inventadas en cuatro archivos más.
+Ahora `npm run verificar` corre `tools/docs/validate-fichas.mjs`, que falla si
+alguna ficha usada no está declarada.
+
+**El escenario nunca había llegado al final.** Al terminar bien, el proceso se
+quedaba colgado: el simulador y el servidor web siguen vivos y mantienen el
+bucle de eventos girando. El camino de error sí salía, porque `process.exit(1)`
+no espera a nadie. O sea que **el único final roto era el de que todo saliera
+bien**, y por eso nadie lo había visto.
+
+**Tres capturas del teléfono llevaban tiempo saliendo vacías.** La página del
+teléfono comparte almacenamiento con la anterior, hereda la dirección del
+simulador y se conecta sola al cargar. Con la aplicación ya conectada, la
+tarjeta «Consola» muestra «Desconectar» en vez de «Conectar», y el guion
+clickeaba «el primer botón de la tarjeta» —o sea, desconectaba—. `tel-01`
+fotografiaba una pantalla sin datos sin quejarse.
+
+Las tres tienen la misma forma: **una espera que no distingue lo que quiere
+fotografiar no falla, saca la foto equivocada.** Por eso ahora los pasos
+esperan al estado —la rama concreta, la conexión establecida— y no a un reloj.
