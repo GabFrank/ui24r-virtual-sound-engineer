@@ -6,6 +6,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación sabe si hay otro operador tocando la consola.** Primero se
+  midió que **la consola no publica presencia**: tres ciclos de un cliente
+  entrando y saliendo dieron cero líneas difundidas, y ninguna de las claves
+  cuyo nombre lo sugería —`settings.maxconn`, `var.present`, `var.pongtime`— se
+  movió. Sabe cuántas conexiones admite y no cuenta cuántas hay.
+
+  Así que se infiere de lo único que la consola sí cuenta: **quién toca algo**.
+  Cuesta cero, porque todo estaba medido — lo que entra por la conexión
+  principal es ajeno sin excepción, y la conexión testigo escucha y nunca
+  escribe. Verificado con dos clientes contra el aparato: el volcado de seis mil
+  claves no inventa un operador, una escritura propia `APPLIED` no se ve a sí
+  misma, y una ajena se detecta.
+
+  **Y `presente: false` no dice «no hay nadie»: dice «nadie tocó nada».** El
+  operador parado frente a la consola mirando es invisible para esto, y es
+  justo el que se sorprende cuando la aplicación mueve un fader. Está escrito en
+  el tipo que se usa, no en una nota al pie, para que quien lo consuma no pueda
+  no verlo.
+
 - **Qué devuelve de verdad una recuperación de instantánea, campo por campo.**
   Era la pregunta más importante que quedaba sin contestar, porque el punto de
   retorno que la aplicación guarda antes de escribir promete «se puede

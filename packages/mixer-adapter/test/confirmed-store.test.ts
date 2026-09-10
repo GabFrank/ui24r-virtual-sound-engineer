@@ -574,3 +574,53 @@ test('agrupar NO retrasa lo que el estado confirmado sabe', () => {
   assert.equal(store.coincideConEsperado('i.4.mix', 0.30).coincide, false,
     'y por eso una escritura contra el valor viejo da conflicto en el acto');
 });
+
+// --- Presencia inferida del trafico ajeno ----------------------------------
+//
+// La consola NO publica presencia: medido el 2026-09-10, tres ciclos de un
+// cliente entrando y saliendo dieron cero lineas difundidas y ninguna clave
+// movida. Lo unico que la consola cuenta es quien TOCA algo, asi que se infiere
+// de ahi. El limite --que no ve al que solo mira-- es parte del disenio y esta
+// dicho en `PresenciaAjena`.
+
+test('sin cambios ajenos no hay de donde inferir presencia', () => {
+  const { store } = nuevoStore();
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+test('un cambio ajeno deja marca, y la marca envejece con el reloj', () => {
+  const { store, reloj } = nuevoStore();
+  store.procesarLinea(codificarSetd('i.1.mix', 0.5));
+  assert.equal(store.desdeElUltimoAjenoMs(), 0);
+
+  reloj.avanzar(12_000);
+  assert.equal(store.desdeElUltimoAjenoMs(), 12_000);
+});
+
+test('el volcado inicial no cuenta como otro operador', () => {
+  // Al conectar llegan miles de claves. Si eso contara, la aplicacion
+  // arrancaria siempre diciendo que hay alguien mas.
+  const { store } = nuevoStore();
+  store.volcadoIniciado();
+  for (let canal = 1; canal <= 20; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.4));
+  }
+  store.volcadoCompletoRecibido();
+
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+test('un recall tambien cuenta como alguien tocando', () => {
+  // Llega como SETS y no como parametro, pero es una persona operando.
+  const { store } = nuevoStore();
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  assert.equal(store.desdeElUltimoAjenoMs(), 0);
+});
+
+test('nuestra propia escritura confirmada no inventa un operador ajeno', () => {
+  // `confirmarPropia` es el camino del testigo. Si dejara marca, la aplicacion
+  // se veria a si misma cada vez que escribe.
+  const { store } = nuevoStore();
+  store.confirmarPropia('i.1.mix', 0.6);
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});

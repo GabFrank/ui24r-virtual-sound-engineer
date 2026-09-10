@@ -1,0 +1,28 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T23:00:32.484Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/presencia-dos-clientes.ts 192.168.0.78
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, ruta de prueba i.20.pan = 0.5
+
+1. Recién conectados, con el volcado de ~6700 claves ya adentro
+   presente: false   desdeHaceMs: null
+   ok: el volcado no inventa un operador
+
+2. La aplicacion escribe. No tiene que verse a si misma
+   resultado de la escritura: APPLIED
+   ¿escribio de verdad? si
+   presente: false   desdeHaceMs: null
+   ok: lo propio no cuenta
+
+3. Otro cliente escribe. Ahora si
+   presente: true   desdeHaceMs: 1467
+   ok: se detecta al otro operador
+
+restaurada por HTTP: era 0.5, quedo 0.5  ok
+
+Las tres condiciones se cumplen.
+
+
+# salida del proceso: 0

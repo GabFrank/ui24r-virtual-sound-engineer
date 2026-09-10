@@ -1,7 +1,8 @@
 import type {
   BulkExternalChange, ConnectionState, DeviceInfo, MixerDomainAPI,
-  ReadResult, WriteResult,
+  PresenciaAjena, ReadResult, WriteResult,
 } from './api.ts';
+import { VENTANA_PRESENCIA_MS } from './api.ts';
 import { ConfirmedStateStore, type EntradaEstado } from './confirmed-store.ts';
 import { actualizarPico, type Pico } from './retencion-pico.ts';
 import {
@@ -823,6 +824,14 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return () => {
       const i = this.oyentesVolcado.indexOf(cb);
       if (i >= 0) this.oyentesVolcado.splice(i, 1);
+    };
+  }
+
+  otroOperador(): PresenciaAjena {
+    const desdeHaceMs = this.store.desdeElUltimoAjenoMs();
+    return {
+      presente: desdeHaceMs !== null && desdeHaceMs <= VENTANA_PRESENCIA_MS,
+      desdeHaceMs,
     };
   }
 

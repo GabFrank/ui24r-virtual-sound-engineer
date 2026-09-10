@@ -91,6 +91,38 @@ export interface BulkExternalChange {
   readonly timestamp: string;
 }
 
+/**
+ * Si hay otro operador tocando la consola, y desde cuándo.
+ *
+ * **La consola no publica presencia**: medido el 2026-09-10, no difunde nada
+ * cuando un cliente entra o sale, y ninguna de las claves cuyo nombre lo
+ * sugería se mueve. Lo único que cuenta es quién **toca** algo, así que la
+ * presencia se infiere del tráfico ajeno.
+ *
+ * **Y por eso `presente: false` no significa «no hay nadie».** Significa «nadie
+ * tocó nada últimamente». Un operador parado frente a la consola mirando la
+ * pantalla es invisible para esto — y es exactamente el que se sorprende
+ * cuando la aplicación mueve un fader. La interfaz tiene que decirlo así, no
+ * como una afirmación sobre la sala.
+ */
+export interface PresenciaAjena {
+  /** Alguien más tocó la consola dentro de la ventana. */
+  readonly presente: boolean;
+  /** Hace cuánto fue ese último toque. `null` si no hubo ninguno. */
+  readonly desdeHaceMs: number | null;
+}
+
+/**
+ * Cuánto se considera «recién» para decir que hay otro operador.
+ *
+ * **Elegido, no medido**, y conviene que se lea así. Una persona trabajando en
+ * una consola toca algo cada pocos segundos; medio minuto cubre las pausas
+ * normales —leer una hoja, hablar con alguien— sin estirarse tanto que alguien
+ * que se fue siga figurando. Si algún día se mide cómo trabaja la gente de
+ * verdad, este número se ajusta acá.
+ */
+export const VENTANA_PRESENCIA_MS = 30_000;
+
 export interface DeviceInfo {
   readonly modelo: string;
   readonly firmware: string;
@@ -175,6 +207,12 @@ export interface MixerDomainAPI {
   releerEstado(): Promise<void>;
 
   alCambioMasivo(cb: (evento: BulkExternalChange) => void): () => void;
+
+  /**
+   * Si hay otro operador tocando la consola. Ver `PresenciaAjena`: lo que
+   * devuelve `false` es «nadie tocó nada», no «no hay nadie».
+   */
+  otroOperador(): PresenciaAjena;
   alCambiarConexion(cb: (estado: ConnectionState) => void): () => void;
 }
 

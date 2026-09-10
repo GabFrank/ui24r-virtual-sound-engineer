@@ -1,6 +1,6 @@
 # SPK-P0.9 — Concurrencia y presencia
 
-**Estado:** Parcial — **criterios 1, 2, 3, 4 y 5 cerrados contra la consola el 2026-09-10**; solo queda el 6, el mecanismo de presencia, que ya no espera datos sino una decisión · **Timebox:** 3 días · **Control:** G-A
+**Estado:** **Cerrado el 2026-09-10** — los seis criterios medidos contra la consola · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.5b
 **Montaje:** Ui24R, router, laptop con Node, navegador oficial abierto en otro equipo, teléfono con la aplicación oficial.
 
@@ -25,7 +25,7 @@
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
 | 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **10 de 10 contra la consola el 2026-09-10, con la causa correcta las diez veces.** Diez `LOADSNAPSHOT` reales, diez avisos, diez `SNAPSHOT_RECALL`; once instantáneas creadas y las once borradas; **cero claves distintas de como estaban** al terminar. Cerrarlo exigió antes arreglar el defecto que este mismo criterio destapó: el puntero llega como `SETS` y el almacén solo procesaba `SETD`. `evidence/recall-diez-veces-2026-09-10.txt` | ✅ |
 | 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
-| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Sin elegir, pero ya no por falta de datos: medido el 2026-09-10, la consola no ofrece presencia.** Tres ciclos de un cliente entrando y saliendo mientras un observador escuchaba por la principal: **cero** líneas difundidas al entrar y cero al salir, y ninguna de las seis claves cuyo nombre sugería presencia —`settings.maxconn`, `var.present`, `var.pongtime`, `var.asosec`, `var.cascade.connected`, `settings.cascade.remote`— se movió. O sea que el mecanismo hay que **construirlo**, y cuál construir es una decisión de producto con alternativas de costo muy distinto. Sigue el requisito de distinguir nuestro testigo de un segundo operador. `evidence/hay-presencia-2026-09-10.txt` | ⬜ |
+| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Elegido y verificado el 2026-09-10: se infiere del tráfico ajeno.** La consola no publica presencia —cero líneas al entrar o salir un cliente, ninguna clave movida— así que lo único que cuenta es quién **toca** algo. Prueba de dos clientes contra el aparato: con el volcado de ~6700 claves adentro **no inventa** un operador; con una escritura propia `APPLIED` **no se ve a sí misma**; con otro cliente escribiendo lo detecta a los 1467 ms. El límite está dicho en la API y no en la letra chica: **no ve al que solo mira**. `evidence/presencia-dos-clientes-2026-09-10b.txt` | ✅ |
 
 ## Los criterios 1 y 5 están en tensión, y se eligió — 2026-09-10
 
@@ -213,3 +213,43 @@ el puntero llega primero y dispara solo. No llega a la pantalla —el texto de
 `SNAPSHOT_RECALL` no lo usa, dice «cambió la instantánea activa, así que
 cualquier parámetro pudo moverse», que es lo correcto—. El caso donde el número
 estaría más equivocado es justo el que no lo muestra.
+
+
+## La presencia, elegida y verificada — 2026-09-10
+
+Medido que la consola no ofrece ninguna, el usuario eligió **inferirla del
+tráfico ajeno**: si llegó una escritura ajena hace poco, hay otro operador.
+
+Cuesta cero porque todo estaba medido: lo que entra por la conexión principal
+es ajeno **sin excepción** —la consola no le devuelve la escritura a quien la
+hizo— y nuestra conexión testigo escucha y nunca escribe. El requisito que se
+le agregó al criterio —distinguir el testigo propio de un segundo operador— se
+cumple por construcción: **no hay nada nuestro que confundir**.
+
+La ventana es de **30 segundos**, elegida y no medida. Una persona trabajando
+toca algo cada pocos segundos; medio minuto cubre las pausas normales sin que
+alguien que se fue siga figurando.
+
+### Lo que no ve, dicho donde se lee y no en una nota al pie
+
+`presente: false` significa **«nadie tocó nada últimamente»**, no «no hay
+nadie». El operador parado frente a la consola mirando la pantalla es invisible
+para esto — y es exactamente el que se sorprende cuando la aplicación mueve un
+fader. Está escrito en `PresenciaAjena`, en el tipo que se usa, para que el que
+lo consuma no pueda no verlo.
+
+### Cómo se comprobó, y el paso que casi no prueba nada
+
+Tres condiciones contra el aparato, con dos clientes: el volcado inicial no
+inventa un operador; una escritura propia no se ve a sí misma; otra ajena se
+detecta. Evidencia: `evidence/presencia-dos-clientes-2026-09-10b.txt`
+
+La primera corrida **daba las tres por buenas y una era hueca**. El paso de la
+escritura propia llamaba a `escribir` con un objeto, cuando toma tres
+argumentos posicionales, y leía `estado` cuando el campo es `status`: imprimía
+«undefined» y seguía. Lo que probaba era que **una escritura que nunca ocurrió**
+no se ve — cierto, inútil, y con la misma cara que el resultado bueno. Ahora el
+guion exige `APPLIED` antes de contar ese paso.
+
+Queda archivada, en `evidence/presencia-dos-clientes-2026-09-10.txt`: es el
+registro de un resultado que se veía bien y no lo era.

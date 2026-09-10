@@ -1,5 +1,5 @@
 import type { MixerDomainAPI, ReadResult, WriteResult, ConnectionState,
-  DeviceInfo, BulkExternalChange } from '@vse/mixer-adapter';
+  DeviceInfo, BulkExternalChange, PresenciaAjena } from '@vse/mixer-adapter';
 import type { ContextoSeguridad } from '../src/types.ts';
 
 /**
@@ -33,6 +33,16 @@ export class MezcladoraFalsa implements MixerDomainAPI {
 
   /** Instantáneas que la consola dice tener, para verificar INV-001. */
   snapshots: string[] = [];
+
+  /**
+   * Si hay otro operador tocando la consola.
+   *
+   * Configurable, y por omisión **no hay nadie**: la presencia se infiere del
+   * tráfico ajeno y en una suite sin consola no hay tráfico ajeno que inferir.
+   * Ponerlo en `true` a mano es la forma de ejercitar las ramas que dependen
+   * de que alguien más esté trabajando.
+   */
+  hayOtroOperador = false;
 
   constructor(iniciales: Record<string, number> = {}) {
     for (const [k, v] of Object.entries(iniciales)) {
@@ -140,6 +150,10 @@ export class MezcladoraFalsa implements MixerDomainAPI {
   }
 
   alCambiarExterno(): () => void { return () => {}; }
+  otroOperador(): PresenciaAjena {
+    return { presente: this.hayOtroOperador, desdeHaceMs: this.hayOtroOperador ? 0 : null };
+  }
+
   alCambioMasivo(_cb: (e: BulkExternalChange) => void): () => void { return () => {}; }
   alCambiarConexion(): () => void { return () => {}; }
 }

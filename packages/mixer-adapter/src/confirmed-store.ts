@@ -98,6 +98,22 @@ export class ConfirmedStateStore {
     desdeMs: number;
   }>();
   private oyentesRafaga: ((e: BulkExternalChange) => void)[] = [];
+  /**
+   * Cuándo llegó el último cambio ajeno. `null` mientras no llegó ninguno.
+   *
+   * **Es todo lo que hace falta para saber si hay otro operador**, y no es una
+   * casualidad feliz: la consola **no publica presencia**. Medido el
+   * 2026-09-10, tres ciclos de un cliente entrando y saliendo: cero líneas
+   * difundidas en los seis eventos, y ninguna de las claves cuyo nombre lo
+   * sugería —`settings.maxconn`, `var.present`, `var.pongtime`— se movió. Así
+   * que la presencia hay que inferirla, y lo único que la consola cuenta es
+   * quién **toca** algo.
+   *
+   * Lo que entra por acá es ajeno sin excepción: la consola no le devuelve la
+   * escritura a quien la hizo, y nuestra conexión testigo escucha y **nunca
+   * escribe**. No hay nada nuestro que confundir con otro operador.
+   */
+  private ultimoAjenoMs: number | null = null;
 
   constructor(opciones: OpcionesStore = {}) {
     this.ventanaMs = opciones.ventanaCorrelacionMs ?? 300;
@@ -312,6 +328,19 @@ export class ConfirmedStateStore {
     return () => { this.oyentesRafaga = this.oyentesRafaga.filter((f) => f !== cb); };
   }
 
+  /**
+   * Hace cuánto que alguien más tocó la consola. `null` si nadie lo hizo.
+   *
+   * **Lo que esto NO ve, dicho acá y no en la letra chica:** al operador que
+   * está mirando la consola sin tocar nada. Y ése es justamente el que se
+   * sorprende cuando la aplicación mueve un fader. Con la presencia que el
+   * protocolo ofrece —ninguna— no hay forma de verlo, y prometer lo contrario
+   * sería peor que no prometer nada.
+   */
+  desdeElUltimoAjenoMs(): number | null {
+    return this.ultimoAjenoMs === null ? null : this.ahora() - this.ultimoAjenoMs;
+  }
+
   /** Instantánea del estado, para depurar y para la vista de diferencias. */
   volcar(): ReadonlyMap<string, EntradaEstado> {
     return new Map(this.estado);
@@ -409,6 +438,9 @@ export class ConfirmedStateStore {
    * un gesto, no una avalancha. Recuperar una instantánea toca muchas rutas.
    */
   private registrarCambioReciente(path: string, t: number): void {
+    // Acá pasa todo cambio ajeno, venga de un parámetro o del puntero de
+    // instantánea, así que es el único lugar donde hay que anotarlo.
+    this.ultimoAjenoMs = t;
     this.cambiosRecientes.push({ path, enMs: t });
     this.cambiosRecientes = this.cambiosRecientes.filter((c) => t - c.enMs <= this.ventanaRafagaMs);
 
