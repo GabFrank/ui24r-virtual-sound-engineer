@@ -6,6 +6,19 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Pantalla de espectro, con aviso de realimentación.** Muestra qué
+  frecuencias están sonando en el general y avisa si alguna se queda colgada.
+  **Pide permiso antes de tocar nada** —el analizador de la consola es uno solo,
+  así que tomarlo le cambia la pantalla al operador— y lo devuelve al salir, a
+  la fuente que se leyó y no a una reconstruida (ADR-025).
+
+  **Se vigila el general y no un canal**: la realimentación es un lazo del
+  sistema, sale por los parlantes y vuelve por un micrófono, así que aparece ahí
+  venga del canal que venga. Lo que el general no dice —cuál canal la produce—
+  se acota con los medidores por canal, que ya llegan siempre: un canal en
+  silencio no puede ser la fuente. La pantalla lo presenta como pista y no como
+  veredicto, porque eso es lo que es.
+
 - **«No entró nada» y «entró muy bajo» dejaron de decir lo mismo.** Con un canal
   sonando a −54 dB —por debajo del umbral con el que el asistente descarta
   silencio— la pantalla decía «no hubo señal para medir». Es cierto para el

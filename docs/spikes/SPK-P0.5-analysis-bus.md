@@ -66,3 +66,4 @@ cita es una medición que nadie va a encontrar cuando la necesite.
 - `evidence/rta-no-es-espectro-2026-09-09.txt` — **conclusión retractada** el mismo día: decía que el `RTA` no traía espectro. Se conserva porque el error es instructivo
 - `evidence/var-rta-2026-09-09.txt` — qué hay en `var.rta` antes de tocarlo
 - `evidence/rta-general-2026-09-09.txt` — la ley de bandas mirando el general: son las mismas 122 y la misma ley, contra una nota anterior que decía 78
+- `evidence/espectro-en-la-tablet-2026-09-09.txt` — el espectro y el aviso funcionando contra la consola: detectó 1 kHz sostenida y acotó el canal, y devolvió el analizador al salir

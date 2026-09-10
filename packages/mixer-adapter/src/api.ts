@@ -127,6 +127,28 @@ export interface MixerDomainAPI {
    */
   guardarInstantanea(): Promise<string | null>;
 
+  /**
+   * Cada trama del analizador, ya en bandas de decibeles relativos.
+   *
+   * Suscribirse **no** enciende el analizador: eso es `tomarAnalizador`, que es
+   * una escritura y necesita permiso. Sin fuente elegida esto no dispara nunca.
+   */
+  alEspectro(cb: (bandas: readonly number[]) => void): () => void;
+
+  /**
+   * Apunta el analizador a una fuente. **Le cambia la pantalla al operador.**
+   *
+   * `var.rta` es una sola variable de la consola, no una por cliente. ADR-025
+   * exige permiso explícito antes de llamar a esto.
+   */
+  tomarAnalizador(fuente: string): boolean;
+
+  /** Devuelve el analizador a la fuente **leída** al conectar. */
+  devolverAnalizador(): void;
+
+  /** Qué fuente tenía el analizador al conectar, para poder contarlo. */
+  fuenteOriginalDelAnalizador(): string | null;
+
   /** Suscripción a cambios externos y a avalanchas. */
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void;
   /**

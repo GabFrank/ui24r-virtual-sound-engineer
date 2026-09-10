@@ -64,6 +64,18 @@ export class MezcladoraFalsa implements MixerDomainAPI {
    */
   puedeGuardarInstantanea = true;
 
+  /**
+   * El analizador, en la mezcladora falsa.
+   *
+   * No hace nada porque ninguna prueba del ejecutor lo usa: el analizador es de
+   * lectura y las transacciones son de escritura. Están para que el tipo cierre
+   * y para que, el día que algo del ejecutor los necesite, se vea que faltan.
+   */
+  alEspectro(): () => void { return () => {}; }
+  tomarAnalizador(): boolean { return false; }
+  devolverAnalizador(): void {}
+  fuenteOriginalDelAnalizador(): string | null { return null; }
+
   async guardarInstantanea(): Promise<string | null> {
     if (!this.puedeGuardarInstantanea) return null;
     const nombre = 'VSE_AUTO_1';
