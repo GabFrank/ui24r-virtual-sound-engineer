@@ -348,7 +348,15 @@ export function proponerGanancia(
   const recortado = Math.abs(deltaIdeal) > DELTA_MAXIMO_DB;
   const delta = recortado ? Math.sign(deltaIdeal) * DELTA_MAXIMO_DB : deltaIdeal;
 
-  if (recortado) {
+  // **Solo si el ideal es un número.** Sin señal el margen es infinito y el
+  // ideal también, y este aviso salía como «el ajuste ideal sería de Infinity
+  // dB». Es el mismo defecto que ya se había corregido en la frase principal,
+  // sobreviviendo una línea más abajo — apareció recién al probar el lazo
+  // contra la consola con el canal demasiado bajo para medir.
+  //
+  // Sin medición no hay ajuste ideal del que hablar, y la lista de razones ya
+  // dice que faltaron muestras.
+  if (recortado && Number.isFinite(deltaIdeal)) {
     avisos.push(
       `el ajuste ideal sería de ${deltaIdeal.toFixed(1)} dB, pero se propone ` +
       `${delta.toFixed(1)} y se vuelve a medir: un cambio grande de una sola vez ` +

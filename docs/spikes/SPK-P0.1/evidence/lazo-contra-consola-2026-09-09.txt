@@ -1,0 +1,65 @@
+PRIMER INTENTO DEL LAZO CONTRA LA CONSOLA — 2026-09-09
+Tablet LINK 8 (192.168.0.160), consola 192.168.0.78, tono de 1 kHz por el canal 10.
+
+RESULTADO: LA ESCRITURA FUE RECHAZADA, Y POR EL MEJOR MOTIVO POSIBLE.
+
+    INV-001: no hay instantanea previa verificada en la lista de la consola
+
+El motor de seguridad se nego a escribir porque no hay punto de retorno. Es el
+sistema funcionando: se le paso snapshotRef en null y lo rechazo antes de tocar
+nada. La ganancia de la consola quedo en 0.58 antes y despues, comprobado.
+
+=== HASTA DONDE LLEGO EL RECORRIDO ===
+Sesion Creada -> Configuracion -> Calibrando -> Configurando canales, todo
+desde la pantalla. Al entrar en configuracion de canales desaparecio el aviso
+de "la ganancia esta congelada", que es INV-006 soltando el bloqueo.
+
+Medicion 1:  pico -30,3  margen 30,3  objetivo 14  propuesta +3,0  confianza BAJA
+Medicion 2:  pico -30,7  margen 30,7  objetivo 14  propuesta +3,0  confianza ALTA
+
+LA CONFIANZA SUBE AL REPETIR, y eso hace que el boton se encienda recien en la
+segunda medicion. Es el diseno --HIGH y MEDIUM exigen repetidoEnDosCapturas--
+y conviene saberlo: la primera medicion NUNCA habilita aplicar.
+
+=== LO QUE FALTA, Y ES UNA PIEZA ENTERA ===
+Crear la instantanea de retorno. INV-001 la exige con nombre VSE_AUTO_<ms> en
+un show llamado VSE, verificada releyendo la lista.
+
+El diseno es bueno y vale anotarlo: LA APLICACION HACE SUS PROPIOS PUNTOS DE
+RETORNO EN SU PROPIO SHOW, sin tocar nunca los del usuario. La marca va en
+milisegundos porque la retencion de INV-003 lee la fecha de ahi para decidir
+que borrar.
+
+Hoy VSE_AUTO_ solo aparece en los tests del ejecutor. Ni el adaptador ni la
+aplicacion saben crear una instantanea.
+
+=== DOS COSAS QUE SALIERON DE PASO ===
+
+1. EL UMBRAL DE SILENCIO ESCONDE UNA FUENTE QUE SI SUENA.
+   Con la ganancia en 0,20 el canal media -54,3 dB. El asistente descarta como
+   silencio todo lo que este por debajo de -50, asi que las 360 muestras se
+   fueron a la basura y la pantalla dijo "no hubo senal para medir". Es cierto
+   para el asistente y confuso para quien esta escuchando el tono: la fuente
+   suena, solo que bajo. Convendria distinguir "no entro nada" de "entro pero
+   demasiado bajo para medir", que son dos consejos distintos --revisar el
+   cable contra subir la ganancia--.
+
+2. QUEDA UN Infinity EN LA LISTA DE RAZONES.
+   La frase principal se arreglo esta manana, pero la razon
+   "el ajuste ideal seria de Infinity dB, pero se propone 3.0" sigue saliendo
+   cruda cuando no hubo senal. Mismo defecto, otra linea.
+
+=== TRAMPAS DE MONTAJE, PARA EL PROXIMO ===
+- Un `afplay ... &` dentro de una llamada de herramienta MUERE al terminar la
+  llamada. Hay que lanzarlo con nohup y desprenderlo.
+- El tono de /tmp/vse-comp.wav dura 40 segundos, y el lazo entero necesita mas
+  de 45: 18 de medicion, la escritura, y otros 18 de verificacion. Se genero
+  uno de 400 s.
+
+=== ESTADO EN QUE QUEDO LA CONSOLA ===
+Comprobado por diferencia contra el volcado tomado antes de empezar:
+  m.afs.enabled, hw.9.gain, i.9.mix, i.9.mute, var.currentShow y
+  var.currentSnapshot IGUALES.
+  SIN CAMBIOS en nada relacionado con snapshots. El usuario habia pedido
+  expresamente cuidar el llamado "Alma Caninde"; no se toco ninguno, y la
+  aplicacion no manda comandos de snapshot en ningun camino.

@@ -491,3 +491,15 @@ test('sin senal la razon no trae numeros inventados', () => {
   assert.ok(!/Infinity/i.test(p.razon), `la razon no puede traer Infinity: ${p.razon}`);
   assert.match(p.razon, /No entró señal/);
 });
+
+test('sin senal NINGUNA razon trae Infinity', () => {
+  // La frase principal se corrigio antes; esta razon sobrevivio una linea mas
+  // abajo y aparecio recien probando el lazo contra la consola.
+  const a = analizarVentana([]);
+  const p = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 10, {
+    repetidoEnDosCapturas: true, snrDb: 40, calibracionValida: true, dinamica: DINAMICA_LIMPIA,
+  });
+  for (const r of [p.razon, ...p.avisos]) {
+    assert.ok(!/Infinity/i.test(r), `trae Infinity: ${r}`);
+  }
+});
