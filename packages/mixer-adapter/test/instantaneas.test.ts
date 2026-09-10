@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   SHOW_DE_LA_APLICACION, nombreDeInstantanea, esDeLaAplicacion, fechaDeInstantanea,
   comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
+  comandoDevolverEtiqueta,
 } from '../src/instantaneas.ts';
 
 test('el nombre lleva la marca en milisegundos', () => {
@@ -67,4 +68,15 @@ test('este modulo NO SABE BORRAR, y es a proposito', () => {
     assert.ok(!codigo.includes(peligroso),
       `${peligroso} aparece en el codigo de instantaneas.ts, y no deberia`);
   }
+});
+
+test('devolver la etiqueta escribe SOLO la etiqueta', () => {
+  // Guardar una instantanea cambia cual es la actual. Si el operador toca
+  // "actualizar instantanea actual" despues, escribiria sobre la automatica en
+  // vez de sobre la suya. Se devuelve la etiqueta y NO se carga: cargarla
+  // aplicaria todo su contenido y cambiaria el estado entero.
+  assert.equal(
+    comandoDevolverEtiqueta('Prueba asistente'),
+    'SETS^var.currentSnapshot^Prueba asistente',
+  );
 });

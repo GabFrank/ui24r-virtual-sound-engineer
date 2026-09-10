@@ -82,6 +82,27 @@ export function comandoGuardar(nombre: string): string {
   return `SAVESNAPSHOT^${SHOW_DE_LA_APLICACION}^${nombre.replace(/\^/g, '_')}`;
 }
 
+/**
+ * Devuelve la etiqueta de «instantánea actual» a lo que era.
+ *
+ * **Guardar una instantánea cambia cuál es la actual**, y eso no estaba
+ * previsto: se descubrió midiendo el 2026-09-09, cuando `var.currentSnapshot`
+ * pasó de «Prueba asistente» a la automática que la aplicación acababa de
+ * crear.
+ *
+ * Importa de verdad. Si el operador toca «actualizar instantánea actual» en su
+ * consola después de que la aplicación guardó una, estaría escribiendo sobre la
+ * automática en vez de sobre la suya, y perdería su trabajo sin enterarse.
+ *
+ * **Se escribe solo la etiqueta, nunca se carga la instantánea.** Cargarla
+ * aplicaría todo su contenido y cambiaría el estado entero de la consola, que
+ * es lo contrario de restaurar. Comprobado: después de devolver la etiqueta el
+ * volcado queda idéntico al inicial, clave por clave.
+ */
+export function comandoDevolverEtiqueta(nombre: string): string {
+  return `SETS^var.currentSnapshot^${nombre}`;
+}
+
 /** El comando para pedir la lista, que es con lo que se verifica. */
 export function comandoListar(): string {
   return `SNAPSHOTLIST^${SHOW_DE_LA_APLICACION}`;

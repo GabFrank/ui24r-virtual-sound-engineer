@@ -6,6 +6,14 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Guardar una instantánea ya no te cambia cuál es la actual.** Se descubrió
+  midiendo: al crear su punto de retorno, la aplicación hacía que la consola
+  pasara a considerar «actual» la automática en vez de la tuya. Si después
+  tocabas «actualizar instantánea actual» en la consola, escribías sobre la
+  automática y perdías tu trabajo sin enterarte. Ahora la aplicación devuelve la
+  etiqueta sola, escribiendo **solo la etiqueta** — cargar la instantánea
+  aplicaría todo su contenido, que es lo contrario de restaurar.
+
 - **El lazo se cerró: medir, proponer, aplicar y verificar.** Comprobado contra
   la consola real: midió 30,7 dB de margen, propuso +3, escribió la ganancia de
   30 a 33 dB, volvió a medir y dijo «mejoró, quedó en 27,7 y faltan 13,7». El

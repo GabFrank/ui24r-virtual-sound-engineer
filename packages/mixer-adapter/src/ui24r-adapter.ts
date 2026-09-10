@@ -13,6 +13,7 @@ import { rutaDeGanancia } from './fuente-de-canal.ts';
 import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
 import {
   nombreDeInstantanea, comandoCrearShow, comandoGuardar, comandoListar, instantaneasDeLaLista,
+  comandoDevolverEtiqueta,
 } from './instantaneas.ts';
 import { TestigoDeEscrituras } from './testigo.ts';
 import type { Transport } from './transport.ts';
@@ -200,6 +201,14 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly fuentesCanal = new Map<number, string>();
   /** `stereoIndex` por canal. 0 es el izquierdo, 1 el derecho, −1 sin enlazar. */
   private readonly enlacesEstereo = new Map<number, number>();
+  /**
+   * La instantánea que la consola tiene por «actual».
+   *
+   * Se sigue acá y no en el almacén confirmado porque llega como `SETS` y ese
+   * almacén solo procesa `SETD`. Hace falta para poder devolverla después de
+   * guardar: ver `comandoDevolverEtiqueta`.
+   */
+  private instantaneaActual: string | null = null;
   /**
    * Cuántos canales tiene la consola de enfrente.
    *
@@ -410,6 +419,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   async guardarInstantanea(): Promise<string | null> {
     if (this._estadoConexion !== 'CONNECTED') return null;
 
+    // Se anota ANTES de guardar: guardar es lo que la cambia.
+    const anterior = this.instantaneaActual;
+
     const nombre = nombreDeInstantanea(this.ahora());
     this.transporte.enviar(comandoCrearShow());
     this.transporte.enviar(comandoGuardar(nombre));
@@ -420,7 +432,23 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     await new Promise((r) => setTimeout(r, this.esperaGuardadoMs));
 
     const lista = await this.pedirLista();
-    return lista.includes(nombre) ? nombre : null;
+    const quedo = lista.includes(nombre);
+
+    // **Devolver la etiqueta de «instantánea actual», que guardar cambió.**
+    // Se descubrió midiendo: `var.currentSnapshot` pasa a apuntar a la que
+    // acabamos de crear. Si el operador toca «actualizar instantánea actual»
+    // en su consola después de esto, escribiría sobre la nuestra en vez de
+    // sobre la suya y perdería su trabajo sin enterarse.
+    //
+    // Se devuelve **solo la etiqueta**. Cargar la instantánea aplicaría todo su
+    // contenido y cambiaría el estado entero de la consola, que es lo contrario
+    // de restaurar.
+    if (anterior !== null && anterior !== nombre) {
+      this.transporte.enviar(comandoDevolverEtiqueta(anterior));
+      this.instantaneaActual = anterior;
+    }
+
+    return quedo ? nombre : null;
   }
 
   /** Pide `SNAPSHOTLIST` y espera la respuesta, con un tope de paciencia. */
@@ -648,6 +676,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
 
     if (m.tipo === 'SETS') {
       this.reiniciarQuietudDeVolcado();
+      if (m.path === 'var.currentSnapshot') this.instantaneaActual = m.texto;
+
       const fuente = /^i\.(\d+)\.src$/.exec(m.path);
       if (fuente) {
         // La fuente también se guarda por canal y no por índice de ruta, igual
