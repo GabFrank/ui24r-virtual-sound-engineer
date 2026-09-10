@@ -74,6 +74,23 @@ if (muteMic !== 1) {
 }
 console.log(`canal ${CANAL_MIC} en silencio: no hay lazo posible`);
 
+/**
+ * **El supresor se apaga mientras dura la medicion, y es imprescindible.**
+ *
+ * Medido el 2026-09-10: un tono sostenido es, para un supresor, indistinguible
+ * de una realimentacion. La primera tanda de tonos hizo que la consola le
+ * pusiera un notch de -18 dB A CADA UNO, y las mediciones siguientes salieron
+ * por esos notches. El instrumento se defendia de la medicion.
+ *
+ * No se borran los filtros del usuario --se probo y no se puede por protocolo--
+ * sino que se apaga el supresor entero, que ademas es reversible y no le cuesta
+ * a nadie el trabajo de afinacion.
+ */
+const afsAntes = crudo.get('m.afs.enabled') ?? 1;
+t.enviar(codificarSetd('m.afs.enabled', 0));
+await new Promise((r) => setTimeout(r, 1500));
+console.log(`supresor de realimentacion: ${afsAntes} -> 0 mientras dura la medicion`);
+
 const gananciaAntes = crudo.get(`hw.${CANAL_TONO - 1}.gain`) ?? 0;
 t.enviar(codificarSetd(`hw.${CANAL_TONO - 1}.gain`, GANANCIA_TONO));
 await new Promise((r) => setTimeout(r, 1000));
@@ -141,7 +158,13 @@ for (const hz of HZ) {
 quitar();
 app.devolverAnalizador();
 t.enviar(codificarSetd(`hw.${CANAL_TONO - 1}.gain`, gananciaAntes));
+// El supresor vuelve, y se limpian los automaticos que hubiera colocado igual.
+t.enviar(codificarSetd('m.afs.clearlive', 1));
 await new Promise((r) => setTimeout(r, 1200));
+t.enviar(codificarSetd('m.afs.clearlive', 0));
+t.enviar(codificarSetd('m.afs.enabled', afsAntes));
+await new Promise((r) => setTimeout(r, 1200));
+console.log(`supresor devuelto a ${afsAntes}, automaticos limpiados`);
 console.log('');
 console.log(`ganancia del canal ${CANAL_TONO} devuelta a ${gananciaAntes.toFixed(4)}`);
 console.log(`analizador devuelto a: ${app.fuenteOriginalDelAnalizador() ?? '(ninguna)'}`);

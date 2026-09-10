@@ -146,11 +146,39 @@ fondo y estaba plano en ~0 dB: había parado de llover, lo que confundía todav�
 más la lectura hasta separar las dos cosas.
 `evidence/espectro-microfono-2026-09-10b.txt`.
 
-### Los graves: dónde se pierden, y dónde NO — 2026-09-10
+### La medición buena: con el supresor apagado — 2026-09-10
 
-> **Todo lo que sigue está contaminado por lo de arriba y hay que rehacerlo con
-> el supresor apagado.** Se deja porque el método vale y porque la contaminación
-> misma fue el hallazgo.
+Rehecha con `m.afs.enabled = 0` mientras duraba, y devuelto a 1 al terminar.
+`evidence/tono-por-el-aire-sin-afs-2026-09-10.txt`.
+
+| Tono | Entra al canal 10 | Con supresor | **Sin supresor** |
+|---|---|---|---|
+| 1 kHz | −21,7 dB | 28,9 dB | **37,1 dB** |
+| 500 Hz | −21,7 dB | 30,7 dB | **45,4 dB** |
+| 250 Hz | −21,7 dB | 28,4 dB | **42,2 dB** |
+| 125 Hz | −21,7 dB | 5,8 dB | **18,1 dB** |
+| 63 Hz | −21,7 dB | 0,1 dB | **13,6 dB** |
+| 40 Hz | −21,3 dB | 0,0 dB | 0,0 dB |
+
+**Los 63 Hz sí llegan.** Pasaron de 0,1 a 13,6 dB con solo apagar el supresor, y
+cada tono es ahora el pico de su propio espectro en la banda que predice la ley.
+La conclusión de «los graves no llegan» era **casi toda el supresor**, no el
+equipo.
+
+**Lo que queda de verdad**, ya sin contaminación: hay una caída real por debajo
+de 250 Hz —42,2 a 18,1 a 13,6— y a 40 Hz no llega nada. Eso sí puede ser el
+límite del Rockit, el corte del B2 o la sala, y sigue sin separarse. Pero es una
+caída mucho más suave y más creíble que la que se había medido.
+
+**Y la lección de método**: la primera tabla no estaba mal medida, estaba medida
+**a través de un instrumento que reaccionaba a la medición**. Ningún cuidado en
+el arnés lo habría evitado; lo que lo destapó fue que un número se moviera cuando
+no tenía por qué —el de 1 kHz— y no darlo por ruido.
+
+### La primera medición, contaminada — se deja como registro
+
+> **Todo lo que sigue salió con el supresor puesto y está corregido arriba.** Se
+> deja porque el método vale y porque la contaminación misma fue el hallazgo.
 
 Se mandaron tonos conocidos por el aire: PC → Scarlett → canal 10 → general →
 Rockit → **aire** → B2 → canal 9 → analizador, con el canal del micrófono en
