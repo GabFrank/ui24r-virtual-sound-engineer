@@ -145,3 +145,21 @@ otras tres opciones de confirmación no tenían, y es el precio del mecanismo.
   matriz y el nombre.
 - Que dos escrituras muy seguidas sobre la misma ruta no confundan al testigo:
   el barrido fue de una por vez, con su restauración en el medio.
+
+## Cómo se llegó hasta acá, incluida la regla que se rompió
+
+Este documento tenía una **regla provisional**: «hasta que la tabla y el texto
+de INV-011 existan, ninguna historia con capacidad de escritura se implementa».
+
+**Se rompió.** El 2026-09-09 la aplicación escribió la ganancia de un previo
+contra la consola real, cerrando el lazo de medir → proponer → aplicar →
+verificar, con la política todavía incompleta. La regla ya no está arriba
+porque dejó de aplicar —la tabla y el texto existen desde el 2026-09-10— y sin
+esta nota desaparecería sin dejar rastro de que se la salteó.
+
+Se anota por dos razones. La primera es que **una regla que se borra el día que
+se incumple no era una regla.** La segunda es más útil: al cerrar la política
+hubo que ir a mirar si lo que ya estaba escrito la cumplía, y **la cumple** —la
+ganancia se confirma por testigo, con respaldo de VU y señal presente, que es
+justo la fila que la tabla le asigna—. El orden fue el equivocado y el
+resultado coincide, y las dos cosas son ciertas a la vez.
