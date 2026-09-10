@@ -4,7 +4,7 @@
 
 > **Dos cosas medidas de paso, que no eran criterios de este spike pero salieron acá.**
 >
-> `SNAPSHOTLIST` contesta en **6 ms de mediana** —máximo 277 en doce pedidos—, o sea **más rápido que el testigo**. La política de confirmación afirmaba «del orden de un segundo» sin haberlo medido nunca, y ese número inventado tapaba un defecto real: `pedirLista()` tomaba prestados los 500 ms del plazo de confirmación de escritura y, al vencer, devolvía lista vacía **en silencio** —indistinguible de un show sin instantáneas—. Ahora tiene plazo propio y devuelve `null` cuando no hubo respuesta.
+> `SNAPSHOTLIST` contesta en **6 ms de mediana** sobre 84 pedidos en tres corridas —mínimo 5, máximo 13, más un único caso de 277 ms que no se repitió en sesenta intentos seguidos—, o sea **más rápido que el testigo**. La política de confirmación afirmaba «del orden de un segundo» sin haberlo medido nunca, y ese número inventado tapaba un defecto real: `pedirLista()` tomaba prestados los 500 ms del plazo de confirmación de escritura y, al vencer, devolvía lista vacía **en silencio** —indistinguible de un show sin instantáneas—. Ahora tiene plazo propio y devuelve `null` cuando no hubo respuesta.
 >
 > Y la retención **nunca había borrado nada desde el adaptador**: todas las corridas anteriores tenían menos de veinte automáticas, o sea por debajo del máximo. Se llenó el show a propósito para comprobarlo. Ver `evidence/retencion-y-lista-2026-09-10.txt`.
 **Depende de:** SPK-P0.2a · **Bloquea a:** S-02.13

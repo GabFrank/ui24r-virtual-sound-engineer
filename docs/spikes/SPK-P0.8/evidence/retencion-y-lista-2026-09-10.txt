@@ -58,3 +58,39 @@ Ahora devuelve null cuando no hubo respuesta, tiene plazo propio de 1500 ms
 --mas de cinco veces el peor caso medido, y cuesta nada porque esto pasa una vez
 por transaccion y no una por escritura-- y sin lista NO SE MANDA NINGUN BORRADO,
 porque borrar sobre una lista que no llego seria borrar a ciegas otra vez.
+
+--- Las tres corridas de SNAPSHOTLIST, archivadas el 2026-09-10 --------------
+
+POR QUE ESTA NOTA. La documentacion afirmaba «6 ms de mediana, maximo 277 en
+doce pedidos». La mediana estaba bien; EL 277 NO ESTABA EN NINGUN ARCHIVO. Salio
+de una corrida anterior que no se guardo, y encima era el numero que justificaba
+darle plazo propio a pedirLista(): sin el, los 500 ms prestados alcanzaban de
+sobra. Es la TERCERA vez en esta sesion que una cifra se apoya en una corrida
+que solo existio en la terminal de quien la corrio.
+
+Corrida 1 --transcrita del registro de la sesion, no de un archivo, y por eso
+vale menos que las otras dos--:
+  respuestas: 12 de 12
+  tiempos (ms): 6, 6, 277, 7, 7, 5, 6, 7, 6, 7, 5, 5
+  mediana 6 ms, minimo 5, maximo 277
+
+Corrida 2 --la tabulada mas arriba--:
+  tiempos (ms): 7, 7, 6, 6, 5, 7, 6, 6, 6, 7, 6, 5
+  mediana 6 ms, minimo 5, maximo 7
+
+Corrida 3 --sesenta pedidos, para ver si el 277 se repetia--:
+  tiempos (ms): 7, 6, 5, 6, 6, 7, 8, 6, 7, 5, 5, 5, 13, 6, 5, 7, 6, 6, 7, 7, 7,
+  5, 6, 5, 6, 5, 6, 5, 9, 6, 6, 6, 7, 6, 5, 5, 6, 5, 6, 8, 6, 7, 8, 6, 6, 7, 6,
+  5, 7, 8, 6, 6, 6, 5, 7, 6, 6, 6, 6, 7
+  mediana 6 ms, minimo 5, maximo 13
+
+QUE SE PUEDE AFIRMAR CON LAS TRES. Ochenta y cuatro pedidos: mediana 6 ms,
+minimo 5. El maximo es 13 en ochenta y tres de ellos, y hubo UN SOLO caso de
+277 ms, en la primera corrida. No se repitio en sesenta intentos seguidos.
+
+Y ESO CAMBIA EL ARGUMENTO, aunque no la decision. Con un solo 277 en ochenta y
+cuatro, los 500 ms que pedirLista() tomaba prestados HABRIAN ALCANZADO --con
+menos de el doble de margen sobre el peor caso, eso si--. El plazo propio de
+1500 ms se sostiene igual, pero por otra razon: cinco veces el peor caso
+observado, y no cuesta nada porque esto pasa una vez por transaccion y no una
+por escritura. Lo que NO se sostiene es contar el 277 como si fuera lo habitual.

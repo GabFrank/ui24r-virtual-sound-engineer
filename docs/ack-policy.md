@@ -107,12 +107,18 @@ nada desde el adaptador**: todas las corridas tenían menos de veinte
 automáticas, o sea por debajo del máximo. Se llenó el show a propósito para
 comprobarlo.
 
-**Cuánto tarda la relectura: 6 ms de mediana**, medido sobre doce pedidos, con
-un caso de 277 ms. Acá decía «del orden de un segundo», que era una cifra
-inventada — la realidad es que `SNAPSHOTLIST` contesta **más rápido que el
-testigo**. Pero ese 277 se comía más de la mitad de los 500 ms que `pedirLista()`
-tomaba prestados del plazo de confirmación de escritura, así que ahora tiene
-plazo propio de 1 500 ms.
+**Cuánto tarda la relectura: 6 ms de mediana** sobre **84 pedidos en tres
+corridas**, mínimo 5 y máximo 13 —salvo **un único caso de 277 ms**, que no se
+repitió en sesenta intentos seguidos—. Acá decía «del orden de un segundo», que
+era una cifra inventada: `SNAPSHOTLIST` contesta **más rápido que el testigo**.
+
+Con un solo 277 en 84, los 500 ms que `pedirLista()` tomaba prestados del plazo
+de escritura **habrían alcanzado**, con menos del doble de margen sobre el peor
+caso. El plazo propio de 1 500 ms se sostiene igual —cinco veces el peor caso, y
+no cuesta nada porque pasa una vez por transacción y no una por escritura— pero
+por esa razón y no por la otra. **Contar ese 277 como si fuera lo habitual era
+apoyarse en una corrida que no estaba archivada**, que es el mismo error que ya
+apareció dos veces en esta sesión.
 
 **Y al vencer ya no miente.** Devolvía `[]`, o sea lo mismo que un show sin
 instantáneas: quien llamaba no podía distinguir «no hay ninguna» de «no sé». Con
@@ -259,10 +265,19 @@ regla.**
 Y hay que corregir lo que se escribió acá el mismo día. Decía: «al cerrar la
 política hubo que ir a mirar si lo ya implementado la cumplía, y **la cumple**
 —la ganancia se confirma por testigo, con respaldo de VU y señal presente—».
-**La segunda mitad era falsa y nunca se comprobó.** El respaldo por VU no está
-conectado a ningún camino de escritura. Lo que de verdad pasa es que la ganancia
-se confirma por testigo **y nada más**: sin testigo no se escribe.
+**La segunda mitad era falsa y nunca se comprobó**: el respaldo por VU no estaba
+conectado a ningún camino de escritura, así que lo que de verdad pasaba era que
+sin testigo no se escribía nada.
 
 Que la frase apareciera justo en el párrafo sobre no borrar los incumplimientos
 dice algo incómodo, y vale dejarlo escrito: **el momento de mayor riesgo de
 afirmar de más es cuando uno se está felicitando por el rigor.**
+
+> **Todo lo anterior está en pasado a propósito, y también hubo que corregirlo.**
+> El respaldo por VU se cableó y se midió el mismo 2026-09-10, unas horas después
+> de escribir esa corrección. La frase «sin testigo no se escribe» era cierta
+> cuando se escribió y dejó de serlo enseguida, y quedó ahí describiendo el
+> presente. Es el mismo error de forma que la corrección venía a señalar —una
+> afirmación que envejece sin que nadie la vuelva a mirar— y apareció al repasar
+> esta misma sección buscando otra cosa. Lo que hoy pasa está arriba, en la
+> tabla y en el texto de INV-011.
