@@ -6,6 +6,19 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La avalancha, medida contra la consola de verdad.** Estaba probada solo
+  contra el simulador — que la dispara porque nosotros se lo pedimos, así que
+  probaba que la pantalla dibuja el aviso y nada más. Ahora un segundo cliente
+  hace de otro operador y escribe dieciséis rutas de golpe: **diez de diez
+  avisos**, dieciséis de dieciséis rutas restauradas.
+
+  Y apareció algo que el simulador no podía mostrar: **el aviso dice «10
+  parámetros cambiaron» cuando cambiaron 16**. Emite el tamaño en el instante en
+  que cruza el umbral, que es diez. Para la seguridad da igual —el estado se
+  invalida igual—, pero el número está ahí para que el operador dimensione lo
+  que pasó, y le está devolviendo el valor de nuestra propia constante
+  disfrazado de medición.
+
 - **Las seis capacidades que le faltaban al primer entregable, medidas contra el
   aparato.** Alimentación fantasma en lectura, silencio de envío auxiliar, los
   dos puntos de derivación, matriz con el general como fuente y retardos de
