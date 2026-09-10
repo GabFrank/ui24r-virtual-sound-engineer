@@ -178,6 +178,24 @@ dice comprobar no comprueba.
 La presencia en todas las pantallas todavía no se verifica automáticamente: el
 recorrido solo pasa por las que están en su camino.
 
+## El estado en que quedó la consola de pruebas — 2026-09-10
+
+**Esto no es una invariante, es el registro de lo que se dejó tocado en el
+aparato del usuario.** Existe porque una nota que dice «se cruzó una invariante»
+y no dice cómo quedó la consola no cumple su función.
+
+| Qué | Cómo quedó | Por qué |
+|---|---|---|
+| `hw.8.phantom` (canal 9) | **encendido** | El Behringer B2 sin fantasma no entrega nada. Se cruzó INV-007 a mano, desde un spike y **no desde la aplicación**, con el usuario fuera de la sala y autorizándolo. Era seguro: es un condensador que lo necesita, no hay ningún micrófono de cinta, y se bajó el general antes de conmutar |
+| `i.8.mute` (canal 9) | **en silencio** | **A propósito y es lo que protege el equipo**: hay un condensador enfrentado a un monitor a 1,7 m, o sea un lazo montado. Ese silencio es lo único que hoy impide el acople |
+| Filtros automáticos del supresor | **borrados** | Los cinco que plantaron los tonos de prueba, más los que hubiera. Se limpiaron con `m.afs.clearlive` |
+| Filtros fijos del supresor | **199,98 Hz a −6 dB y 1000 Hz a −18 dB** | El usuario autorizó borrarlos y **no se pudo por protocolo** —cuatro intentos archivados—. El de 1000 Hz probablemente sea nuestro, de la sesión del 2026-09-08 |
+| Todo lo demás | restaurado | Ganancia y fader del canal 10, general, fuente del analizador, `m.afs.enabled` y los tres disparadores de borrado. **Comprobado releyendo por HTTP**, que es un camino distinto del que escribió |
+
+Evidencia: `spikes/SPK-P0.5/evidence/fantasma-canal9-2026-09-10.txt`,
+`.../limpiar-afs-2026-09-10.txt` y `.../borrar-fijos-2026-09-10.txt`.
+
+
 | ID | Invariante | Test | Desde |
 |---|---|---|---|
 | INV-001 | Ninguna transacción pasa a APPLYING sin `snapshotRef` verificado en la lista de snapshots re-leída. Nombre `VSE_AUTO_<ms desde epoch>` en show `VSE` — la marca va en milisegundos y no en formato legible porque la retención de INV-003 lee la fecha de ahí para decidir qué borrar, y un nombre que no se puede fechar es uno que no se borra nunca. `nombreSnapshotAutomatica` y `fechaDeSnapshotAutomatica` son inversas, con test. | Unit + HIL: aplicar sin snapshot → rechazado; borrar snapshot entre save y apply → abortada. | MVP4a |
@@ -186,17 +204,6 @@ recorrido solo pasa por las que están en su camino.
 | INV-004 | Delta máximo por transacción: fader ±3 dB; gain ±3 dB; EQ ±3 dB (salida) / ±4 dB (entrada), Q ≥ 0,7 en salidas; HPF ≤ 1 octava; delay ≤ 5 ms; master ±1 dB y nunca por encima del máximo previo de la sesión. **Tope acumulado por parámetro y sesión** respecto al valor inicial: fader ±6, gain ±6, EQ ±6 por banda, HPF ≤ 2 octavas, delay ≤ 10 ms. Una nueva transacción sobre el mismo parámetro solo es elegible si existe una `Measurement` posterior a la anterior. | Unit: 3 transacciones consecutivas de +3 dB sin Measurement intermedia → la tercera rechazada con `CUMULATIVE_CAP`; HIL: asserts sobre comandos. | MVP0 (recomendaciones), MVP4a (writes) |
 | INV-005 | ASSISTED ≤ 4 parámetros por transacción; CONTROLLED AUTO ≤ 1; writes secuenciales ≥ 100 ms con confirmación del anterior. **Transacciones System** (Analysis Bus, PLAYER_RESERVE, mutes de componente, calibración) están exentas del límite de 4, con pacing ≥ 20 ms y verificación por lectura del conjunto completo ≤ 1 s tras el último write. | Unit + log; SPK-P0.5 mide el tiempo real. | MVP1 |
 | INV-006 | Preamp gain solo escribible en `SessionState = CHANNEL_SETUP`; bloqueado en FULL_BAND, SHOW, ROOM_*, MIX, SOUNDCHECK_* y mientras exista un `VirtualSoundcheckTake` activo. | Unit: matriz estado × parámetro. | MVP4a |
-> **INV-007 se cruzó una vez, a mano y con autorización, el 2026-09-10.** Para
-> medir con un micrófono hacía falta encender la alimentación fantasma del canal
-> 9, y la invariante la deja en solo lectura. Se hizo desde un spike —no desde la
-> aplicación, que sigue sin poder escribirla— con el usuario fuera de la sala y
-> autorizándolo explícitamente. Era seguro por tres cosas comprobables: lo
-> enchufado es un condensador que **sin fantasma no entrega nada**, no hay ningún
-> micrófono de cinta conectado, y se bajó el general antes de conmutar para que
-> el golpe no saliera por el monitor. Queda anotado acá y no solo en el commit,
-> porque una invariante que se cruza sin dejar rastro deja de ser una invariante.
-> Ver `spikes/SPK-P0.5/evidence/fantasma-canal9-2026-09-10.txt`.
-
 | INV-007 | La app nunca escribe phantom (read-only en MixerDomainAPI). El Setup Wizard exige confirmación "Input 2 por TRS". | Estático + UX test. | MVP1 |
 | INV-008 | Únicos routings escribibles: sends hacia el Analysis Bus; mute/fader/sends de Player L/R dentro de PLAYER_RESERVE; mute de buses ∈ `PAProfile.outputBuses` durante medición por componente (transacción System con restauración). **Desde MVP4b y solo en ASSISTED:** filtros PEQ/GEQ (gain, freq, Q) y HPF de los buses de `PAProfile.outputBuses`. Fader, mute fuera de medición, delay, polaridad y limiter de esos buses, y todo AUX de monitor, matrix y mute de inputs: read-only. | Estático: paths escribibles de salida ⊆ {`m.eq.*`, `a.B.eq.*` para B ∈ PAProfile} + unit. | MVP1 |
 | INV-009 | Fader master nunca > 0 dB y nunca escrito en MVP0–MVP3. | Unit. | MVP0 |

@@ -48,6 +48,10 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   claramente. La caída que queda por debajo de 250 Hz es real pero mucho más
   suave, y puede ser del monitor, del micrófono o de la sala.
 
+- **Queda anotado en qué estado quedó la consola de pruebas**: qué se dejó tocado
+  a propósito, qué no se pudo restaurar y por qué. Una nota que dice que se cruzó
+  una regla y no dice cómo quedó el aparato no sirve de nada.
+
 - **El espectro quedó comprobado con un micrófono de verdad**, y no solo con
   tonos: 75 de las 122 bandas con energía y la forma que corresponde. En la misma
   prueba, el aviso de realimentación **no saltó ni una vez** con ruido de banda

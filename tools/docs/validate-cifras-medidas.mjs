@@ -78,15 +78,40 @@ const UNIDADES = String.raw`(?:ms|s|dB|dBFS|Hz|kHz)`;
  */
 function valoresDe(texto) {
   const valores = new Set();
-  for (const bruto of texto.match(/\d+(?:[.,]\d+)?/g) ?? []) {
-    valores.add(Number(bruto.replace(',', '.')));
+  for (const linea of texto.split('\n')) {
+    // **Las líneas de encabezado no cuentan.** `medir.mjs` escribe la fecha
+    // ISO, el comando y el código de salida en líneas que empiezan con `#`, y
+    // ahí hay números —la hora, un PID, una marca de tiempo— que no son la
+    // medición. Sin este filtro, un «17 ms» validaba contra el 17 de un
+    // `T17:36:59`: un falso negativo esperando, o sea una cifra falsa que pasa.
+    if (linea.trimStart().startsWith('#')) continue;
+    for (const bruto of linea.match(/\d+(?:[.,]\d+)?/g) ?? []) {
+      valores.add(Number(bruto.replace(',', '.')));
+    }
   }
   return valores;
 }
 
-/** Si la evidencia contiene ese valor. */
+/**
+ * Si la evidencia contiene ese valor, **aceptando el redondeo del documento**.
+ *
+ * La evidencia imprime `199.9823455811` y el documento escribe «199,98», que es
+ * la misma cifra dicha con la precisión que hace falta para leerla. Exigir la
+ * coincidencia exacta obligaría a llenar la documentación de decimales que no le
+ * sirven a nadie, y una guarda que empuja a escribir peor termina desactivada.
+ *
+ * Se compara a la precisión que el documento eligió: si dice «199,98», alcanza
+ * con que algún valor de la evidencia redondee a 199,98.
+ */
 function estaEnLaEvidencia(valores, cifra) {
-  return valores.has(Number(cifra.replace(',', '.')));
+  const buscado = Number(cifra.replace(',', '.'));
+  if (valores.has(buscado)) return true;
+  const decimales = (cifra.split(/[.,]/)[1] ?? '').length;
+  const factor = 10 ** decimales;
+  for (const v of valores) {
+    if (Math.round(v * factor) / factor === buscado) return true;
+  }
+  return false;
 }
 
 function cifrasComprobables(bloque) {

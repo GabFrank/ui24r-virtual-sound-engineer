@@ -92,9 +92,10 @@ todas las bandas a la vez, y una realimentación es una sola que no baja.
 **Es el hallazgo más importante de esta sesión de medición, y llegó destruyendo
 una conclusión propia.**
 
-`var.afsdata` publica la pila de filtros del supresor de realimentación:
-frecuencia, profundidad y nivel detectado, en **dos pilas separadas** —los
-automáticos y los fijos—. Comparando volcados de antes y después de una tanda de
+`var.afsdata` publica la pila de filtros del supresor de realimentación en **dos
+pilas separadas** —los automáticos y los fijos—. De cada registro se leyeron con
+confianza **los dos primeros campos**: frecuencia en Hz y profundidad en dB. Hay
+un campo que parece un nivel detectado, pero no se verificó. Comparando volcados de antes y después de una tanda de
 tonos:
 
 ```
@@ -108,10 +109,16 @@ un notch de −18 dB a cada uno.** Y tiene razón desde su punto de vista: un to
 sostenido es, para un supresor, indistinguible de un acople.
 
 **Qué invalida.** Toda la tabla de graves de más abajo: la consola iba notcheando
-cada tono *mientras se reproducía*. Y peor —**ya había un filtro de 1000 Hz a
-−18 dB antes de empezar**, así que la primera medición de 1 kHz salió por un
-notch. Eso explica una rareza que se vio y se dejó pasar: el pico no cayó en la
-banda 67. **Se dejó pasar una anomalía que era la punta de esto.**
+cada tono *mientras se reproducía*. En cada tanda el de 1 kHz es el **primer**
+tono, así que la primera tanda lo midió antes de que existiera su propio notch y
+la segunda ya salió por él —de ahí que ese número se moviera tanto—.
+
+> **Acá se había escrito algo más fuerte y no se sostiene.** Decía que ya había
+> un filtro de 1000 Hz «antes de empezar» y que por eso el pico no cayó en la
+> banda 67. En las **tres** corridas archivadas el pico de 1 kHz cae en la banda
+> 67, y el filtro previo no está en ningún volcado archivado: los dos datos
+> venían de corridas que no se guardaron. La explicación que sí se sostiene es la
+> de arriba, y no necesita postular nada.
 
 **Qué sobrevive.** Que de 250 Hz a 1 kHz el tono aparece en la banda que predice
 la ley medida. Eso es una comprobación de *dónde* cae la energía y no de cuánta,
@@ -128,12 +135,30 @@ ruido; y que la consola esté peleando es, en sí, información que hoy tiramos.
 Los cinco filtros agregados se borraron con `m.afs.clearlive`, que limpia la pila
 de automáticos y **no toca la de fijos**. `evidence/limpiar-afs-2026-09-10.txt`.
 
-**Y los fijos no se pudieron borrar por protocolo, aunque se pidió.** Se probó
-`clearfixed` y `clearall`, con el supresor encendido y apagado, en 1 y de vuelta
-en 0: la cuenta no se movió nunca. `evidence/limpiar-afs-todo-2026-09-10.txt`.
-Quedan los dos que ya estaban —200 Hz a −6 dB y 1000 Hz a −18— y hay que sacarlos
-desde la pantalla de la consola. Lo más plausible es que pidan una confirmación,
-que es razonable: un fijo lo colocó alguien afinando la sala.
+**Y los fijos no se pudieron borrar por protocolo, aunque el usuario autorizó
+hacerlo.** Cuatro intentos archivados —`clearfixed` y `clearall`, cada uno con el
+supresor encendido y apagado, devolviendo el disparador a 0 entre medio—: la pila
+de fijos no se movió en ninguno. `evidence/borrar-fijos-2026-09-10.txt`, que
+además relee por HTTP después de cada intento y deja constancia del estado final.
+
+> **Esto ya se había contestado antes, y la respuesta no era verificable.** La
+> primera prueba corrió en un guion de diagnóstico que después se borró, y lo que
+> quedó archivado —`evidence/limpiar-afs-todo-2026-09-10.txt`— **no distingue
+> nada**: su encabezado dice el mismo comando que el archivo anterior, así que de
+> él solo se puede leer «una pila que no cambió», no qué se le mandó. La medición
+> era real y no quedaba en ningún lado. Es el mismo error que este
+> proyecto lleva todo el día encontrando, cometido **justo después de construir
+> el mecanismo que existe para impedirlo**. Lo encontró una auditoría.
+
+**Y de quién es cada filtro fijo, que estaba mal atribuido.** El volcado
+archivado del 2026-09-08 —`SPK-P0.1/evidence/volcado-inicial.txt`— tiene en la
+pila de fijos **uno solo: 199,98 Hz a −6 dB**. El de **1000 Hz a −18 dB no estaba
+ahí**, y −18 dB es exactamente lo que la consola le planta a un tono sostenido,
+que es lo que se estuvo haciendo ese día. Lo más probable es que sea **nuestro**,
+de la primera sesión de mediciones, y no del usuario afinando la sala.
+
+O sea que llevamos plantando filtros en esta consola desde el 2026-09-08 sin
+darnos cuenta.
 
 **Cómo se destapó**, porque el camino importa: se repitió la tanda de tonos
 esperando ver mejorar los graves y **empeoró todo, incluido 1 kHz**, que no tenía
@@ -161,7 +186,8 @@ Rehecha con `m.afs.enabled = 0` mientras duraba, y devuelto a 1 al terminar.
 | 40 Hz | −21,3 dB | 0,0 dB | 0,0 dB |
 
 **Los 63 Hz sí llegan.** Pasaron de 0,1 a 13,6 dB con solo apagar el supresor, y
-cada tono es ahora el pico de su propio espectro en la banda que predice la ley.
+**cinco de los seis tonos** —de 63 Hz a 1 kHz— son ahora el pico de su propio
+espectro en la banda que predice la ley. El de 40 Hz sigue sin aparecer.
 La conclusión de «los graves no llegan» era **casi toda el supresor**, no el
 equipo.
 
@@ -240,7 +266,14 @@ la sigue —de 250 Hz a 1 kHz el tono aparece exactamente en su banda y es el pi
 del espectro— y la anomalía tiene un lugar concreto donde buscarla en vez de ser
 un misterio repartido.
 
-### La pregunta original, tal como se planteó
+### La pregunta original — RESUELTA, se deja el rastro
+
+> **Contestada el mismo día**: con el supresor apagado la cadena entrega 63 y
+> 125 Hz con claridad, así que el cero de la lluvia era de la lluvia y no de un
+> corte del camino. Lo que sigue es cómo se planteó, y las tres afirmaciones que
+> hace sobre el estado de la consola —el pasa-altos en `slope = 0`, el
+> ecualizador del canal, el del general en 0,5— **se leyeron de volcados que no
+> se archivaron**.
 
 Las bandas de 31, 63 y 125 Hz dieron **exactamente cero**, no «poco». El filtro
 pasa-altos del canal está en `slope = 0` —apagado— y el ecualizador no está

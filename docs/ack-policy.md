@@ -57,7 +57,7 @@ retorno guardado antes de escribir nada, como manda INV-001.
 
 | Familia | Rutas | Método | Respaldo | Estado |
 |---|---|---|---|---|
-| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido, las dos mitades |
+| Fader de canal | `i.N.mix` | **TESTIGO** | **VU** sobre el medidor de **salida**, con señal ≥ −50 dB | Medido **con señal**; la mitad «sin señal» se midió sobre la ganancia |
 | Fader general | `m.mix` | **TESTIGO** | — (el general no está cableado al respaldo) | Inferido |
 | Silencio de canal | `i.N.mute` | **TESTIGO** | — (ver abajo: el silencio no tiene «cuánto» esperado) | Medido |
 | Panorama | `i.N.pan` | **TESTIGO** | — | Medido |
@@ -186,13 +186,13 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    `VU`**. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
    `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
 
-   **Un límite que apareció midiendo, y que no es un defecto.** Bajar un fader
-   cuando el canal está apenas por encima del piso empuja el nivel de después
-   **por debajo de −50 dB**, y ahí el medidor ya no puede confirmar: la
-   escritura sale `UNVERIFIED` aunque se haya aplicado. Pasó con el canal a
-   −48,7 dB y una bajada de 2 dB. Es lo correcto —no se puede confirmar lo que
-   no se oye— pero conviene saber que **el respaldo se vuelve inútil justo
-   cuando el canal está callado**, que es también cuando menos importa.
+   **Un límite que se deduce de la regla, y que NO está medido.** Si bajar un
+   fader deja el nivel por debajo de −50 dB, el medidor no puede confirmar y la
+   escritura tiene que salir sin verificar aunque se haya aplicado. Se observó
+   una vez en una corrida **que no se archivó**, así que acá se anota como lo que
+   es: una consecuencia de la regla, no una medición. **Ningún archivo de
+   evidencia contiene un `UNVERIFIED`.** Cerrarlo cuesta una corrida: poner el
+   canal justo encima del piso y bajarle el fader, con `medir.mjs`.
 3. **`TIMEOUT`** — se venció el plazo. En modo asistido la escritura queda con
    aviso «no verificable» y el operador decide. **En modo automático controlado,
    un parámetro que no se pueda confirmar por testigo ni por VU es inelegible**:
@@ -221,8 +221,8 @@ otras tres opciones de confirmación no tenían, y es el precio del mecanismo.
 ## Lo que sigue sin estar medido
 
 - Las filas marcadas **Inferido**: el general, las salidas y la matriz.
-- **Cuánto tarda `SNAPSHOTLIST` en contestar**, con el defecto latente que eso
-  destapa.
+- *(Nada de `SNAPSHOTLIST`: se midió el 2026-09-10 y está más arriba. Este ítem
+  quedó de una versión anterior de la lista.)*
 - Nada del respaldo por VU: las dos mitades quedaron medidas el 2026-09-10.
 **Ya no está acá lo de «dos escrituras muy seguidas»: se midió el 2026-09-10 y
 tiene su propia sección arriba.**
