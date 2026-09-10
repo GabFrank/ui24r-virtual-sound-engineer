@@ -527,7 +527,7 @@ export class GainComponent {
         textoAplicar: 'Aplicar',
       };
     }
-    const v = this.aplicador.puedeAplicar(r.propuesta.confianza);
+    const v = this.aplicador.puedeAplicar(r.propuesta.confianza, r.indice);
     return {
       puedeAplicar: v.puede,
       motivoNoAplica: v.motivo,

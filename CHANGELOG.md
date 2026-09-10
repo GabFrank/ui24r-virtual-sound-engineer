@@ -6,6 +6,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Con una pista de soundcheck sonando, la ganancia no se aplica.** El canal
+  reproduce lo grabado, así que mover la perilla del previo no cambia nada de lo
+  que se escucha: el consejo no es impreciso, es **inaplicable**. Dejar aplicar y
+  que no se oiga ningún cambio es peor que no dejar — le enseña al usuario a
+  desconfiar de la aplicación. El botón se apaga y el motivo lo explica.
+
 - **Pantalla de espectro, con aviso de realimentación.** Muestra qué
   frecuencias están sonando en el general y avisa si alguna se queda colgada.
   **Pide permiso antes de tocar nada** —el analizador de la consola es uno solo,

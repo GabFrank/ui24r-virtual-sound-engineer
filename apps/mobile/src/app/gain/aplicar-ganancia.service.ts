@@ -80,7 +80,7 @@ export class AplicarGananciaService {
    * lo sabe este servicio. La pantalla no tiene por qué juntar ese estado para
    * preguntar si se puede.
    */
-  puedeAplicar(confianza: Confidence): { readonly puede: boolean; readonly motivo: string | null } {
+  puedeAplicar(confianza: Confidence, canal?: number): { readonly puede: boolean; readonly motivo: string | null } {
     const permiso = this.seguridad.permiteEscritura('PREAMP_GAIN');
     const v = puedeAplicarGanancia({
       confianza,
@@ -88,6 +88,10 @@ export class AplicarGananciaService {
       // Todavía no hay tomas de soundcheck en la aplicación. Va en `false` y no
       // en un valor inventado; cuando existan, entran acá.
       hayTakeDeSoundcheckActivo: false,
+      // Lo dice el adaptador, que sigue `var.mtk.soundcheck` y `i.N.scsrc`.
+      tomaPistaGrabada: canal === undefined
+        ? false
+        : this.mixer.canales().find((c) => c.indice === canal)?.tomaPistaGrabada ?? false,
       paroDeEmergencia: this.seguridad.bloqueado(),
       conexionPermiteEscribir: permiso.permitido,
     });
@@ -132,7 +136,7 @@ export class AplicarGananciaService {
    * que mostrar lo que hay, no lo que se intentó.
    */
   async aplicar(p: PropuestaAplicable, sessionId: string): Promise<ResultadoAplicacion> {
-    const control = this.puedeAplicar(p.confianza);
+    const control = this.puedeAplicar(p.confianza, p.canal);
     if (!control.puede) return { estado: 'NO_SE_PUEDE', motivo: control.motivo ?? 'no se puede aplicar' };
 
     const api = this.mixer.api();

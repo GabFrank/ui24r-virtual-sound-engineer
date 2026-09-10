@@ -24,6 +24,14 @@ const CONFIANZAS_QUE_APLICAN: readonly Confidence[] = ['HIGH', 'MEDIUM'];
 
 export interface EstadoParaAplicar {
   readonly confianza: Confidence;
+  /**
+   * Si el canal está reproduciendo una pista grabada.
+   *
+   * Con el soundcheck virtual encendido, mover la ganancia del previo **no
+   * cambia nada de lo que se escucha**. No es una restricción de seguridad como
+   * las otras: es que la acción no tendría efecto.
+   */
+  readonly tomaPistaGrabada: boolean;
   readonly sessionState: SessionState | null;
   readonly hayTakeDeSoundcheckActivo: boolean;
   readonly paroDeEmergencia: boolean;
@@ -57,6 +65,17 @@ export function puedeAplicarGanancia(e: EstadoParaAplicar): VeredictoDeAplicacio
       motivo: e.confianza === 'INSUFFICIENT_DATA'
         ? 'no hubo suficiente señal para medir: volvé a medir con el canal sonando'
         : 'la confianza de la medición es baja, así que el cambio queda a criterio tuyo',
+    };
+  }
+
+  // **Antes que nada de seguridad: si no va a hacer nada, decirlo.** Con una
+  // pista grabada sonando, la perilla del previo está desconectada de lo que se
+  // escucha. Dejar que el usuario aplique y no oiga ningún cambio es peor que
+  // no dejarlo: le enseña a desconfiar de la aplicación.
+  if (e.tomaPistaGrabada) {
+    return {
+      puede: false,
+      motivo: 'este canal está reproduciendo una pista grabada, así que la ganancia del previo no cambia lo que se escucha',
     };
   }
 

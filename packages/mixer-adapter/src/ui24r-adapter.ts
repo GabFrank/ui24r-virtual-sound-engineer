@@ -9,7 +9,7 @@ import {
 } from './protocol.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
 import { leerDinamica } from './dinamica.ts';
-import { rutaDeGanancia } from './fuente-de-canal.ts';
+import { rutaDeGanancia, tomaPistaGrabada } from './fuente-de-canal.ts';
 import { paresEstereo, type ParEstereo } from './pares-estereo.ts';
 import { decodificarEspectro, hayEspectro } from './espectro.ts';
 import {
@@ -174,6 +174,14 @@ export interface EstadoCanal {
    * separen con el tiempo.
    */
   readonly rutaGanancia: string | null;
+  /**
+   * Si el canal está reproduciendo una pista grabada en vez de su entrada.
+   *
+   * Cuando es cierto, **la ganancia del previo no afecta lo que suena**: el
+   * canal reproduce lo grabado. Un consejo de ganancia ahí no es impreciso, es
+   * inaplicable.
+   */
+  readonly tomaPistaGrabada: boolean;
 }
 
 /**
@@ -221,6 +229,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    * guardar: ver `comandoDevolverEtiqueta`.
    */
   private instantaneaActual: string | null = null;
+  /** La pista de soundcheck asignada a cada canal, por `i.N.scsrc`. */
+  private readonly pistasDeSoundcheck = new Map<number, string>();
+  /** Si el modo de soundcheck virtual está encendido. Es global. */
+  private soundcheckEncendido = false;
   /**
    * Cuántos canales tiene la consola de enfrente.
    *
@@ -709,6 +721,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         nivelSalidaDb: this.nivelesSalida.get(canal) ?? -Infinity,
         picoSalidaDb: this.picosSalida.get(canal) ?? -Infinity,
         rutaGanancia: rutaGain,
+        tomaPistaGrabada: tomaPistaGrabada(
+          this.soundcheckEncendido, this.pistasDeSoundcheck.get(canal),
+        ),
         saturacionesPrevio: this.saturacionesPrevio.get(canal) ?? 0,
         saturacionesSalida: this.saturacionesSalida.get(canal) ?? 0,
         // Cero y no `null` cuando todavía no llegó una trama: la reducción es
@@ -734,6 +749,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       // traducir la base cero, y eso se hace una sola vez acá en el borde.
       const enlace = /^i\.(\d+)\.stereoIndex$/.exec(m.path);
       if (enlace) this.enlacesEstereo.set(canalDeIndice(Number(enlace[1])), m.valor);
+      // El modo de soundcheck es global y viaja como número.
+      if (m.path === 'var.mtk.soundcheck') this.soundcheckEncendido = m.valor > 0.5;
       this.reiniciarQuietudDeVolcado();
       return;
     }
@@ -747,6 +764,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
       if (m.path === 'var.rta' && this.fuenteDelAnalizador === null) {
         this.fuenteDelAnalizador = m.texto;
       }
+
+      const pista = /^i\.(\d+)\.scsrc$/.exec(m.path);
+      if (pista) this.pistasDeSoundcheck.set(canalDeIndice(Number(pista[1])), m.texto);
 
       const fuente = /^i\.(\d+)\.src$/.exec(m.path);
       if (fuente) {

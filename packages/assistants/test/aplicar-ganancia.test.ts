@@ -9,6 +9,7 @@ const LISTO: EstadoParaAplicar = {
   hayTakeDeSoundcheckActivo: false,
   paroDeEmergencia: false,
   conexionPermiteEscribir: true,
+  tomaPistaGrabada: false,
 };
 
 test('con todo en orden se aplica', () => {
@@ -74,4 +75,18 @@ test('siempre hay un motivo, y nunca esta vacio', () => {
     assert.equal(v.puede, false);
     if (!v.puede) assert.ok(v.motivo.trim().length > 10, `motivo pobre: ${v.motivo}`);
   }
+});
+
+test('con una pista grabada sonando NO se aplica, y el motivo lo explica', () => {
+  // Con el soundcheck virtual encendido, la perilla del previo esta
+  // desconectada de lo que se escucha. Dejar aplicar y que no se oiga ningun
+  // cambio es peor que no dejar: le ensena al usuario a desconfiar.
+  const v = puedeAplicarGanancia({ ...LISTO, tomaPistaGrabada: true });
+  assert.equal(v.puede, false);
+  if (!v.puede) assert.match(v.motivo, /pista grabada/);
+});
+
+test('la pista grabada manda incluso sobre la confianza alta', () => {
+  const v = puedeAplicarGanancia({ ...LISTO, confianza: 'HIGH', tomaPistaGrabada: true });
+  assert.equal(v.puede, false);
 });
