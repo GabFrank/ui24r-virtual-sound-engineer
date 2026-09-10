@@ -26,7 +26,16 @@ hace que la consola les ponga un notch de −18 dB a cada uno, y las mediciones
 siguientes salen por esos notches. Cualquier medición acústica por este general
 necesita `m.afs.enabled = 0` mientras dura.
 
-`m.afs.clearlive` borra la pila de automáticos sin tocar la de fijos.
+**`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
+por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y
+apagado, poniéndolos en 1 y volviéndolos a 0: **la cuenta de filtros no se movió
+nunca**. `clearlive` en cambio funcionó a la primera y de forma comprobable.
+
+Que un «borrar todo» no borre todo es de las cosas que hay que medir en vez de
+creer. Lo más plausible es que los fijos se borren desde la pantalla de la
+consola, probablemente con una confirmación de por medio —que es razonable: un
+fijo lo colocó alguien afinando la sala—. Los tres disparadores quedan en 1
+después de usarse y hay que devolverlos a 0 a mano.
 Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt`.
 
 ## La consola difunde en un tic de ~34 ms

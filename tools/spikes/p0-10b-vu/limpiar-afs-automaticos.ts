@@ -54,7 +54,14 @@ console.log('');
 console.log('ANTES:');
 console.log(await pilas());
 
-t.enviar(codificarSetd('m.afs.clearlive', 1));
+// `clearall` y no `clearlive`: el usuario pidio expresamente limpiar TAMBIEN
+// los fijos --2026-09-10, «no dejes los mios tampoco, limpia todo»--. Se le
+// aviso antes de que esos dos se colocaron a proposito, seguramente afinando la
+// sala, y que borrarlos obliga a rehacer ese trabajo.
+// `clearall` NO borro los fijos --se probo el 2026-09-10 y la pila quedo igual--
+// asi que se prueba la clave especifica. Que un «borrar todo» no borre todo es
+// justo el tipo de suposicion que hay que medir en vez de creer.
+t.enviar(codificarSetd('m.afs.clearfixed', 1));
 await new Promise((r) => setTimeout(r, 2500));
 
 console.log('');

@@ -128,6 +128,13 @@ ruido; y que la consola esté peleando es, en sí, información que hoy tiramos.
 Los cinco filtros agregados se borraron con `m.afs.clearlive`, que limpia la pila
 de automáticos y **no toca la de fijos**. `evidence/limpiar-afs-2026-09-10.txt`.
 
+**Y los fijos no se pudieron borrar por protocolo, aunque se pidió.** Se probó
+`clearfixed` y `clearall`, con el supresor encendido y apagado, en 1 y de vuelta
+en 0: la cuenta no se movió nunca. `evidence/limpiar-afs-todo-2026-09-10.txt`.
+Quedan los dos que ya estaban —200 Hz a −6 dB y 1000 Hz a −18— y hay que sacarlos
+desde la pantalla de la consola. Lo más plausible es que pidan una confirmación,
+que es razonable: un fijo lo colocó alguien afinando la sala.
+
 **Cómo se destapó**, porque el camino importa: se repitió la tanda de tonos
 esperando ver mejorar los graves y **empeoró todo, incluido 1 kHz**, que no tenía
 por qué moverse. Esa asimetría fue lo que hizo mirar el supresor en vez de
