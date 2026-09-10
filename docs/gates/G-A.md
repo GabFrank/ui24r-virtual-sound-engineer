@@ -1,6 +1,6 @@
 # Acta de control G-A
 
-**Estado:** ⬜ Pendiente · **6 de 13 criterios contestados** · repasado contra la realidad el 2026-09-10
+**Estado:** ⬜ Pendiente · **7 de 13 criterios contestados** · repasado contra la realidad el 2026-09-10
 **Responsable:** desarrollador principal
 
 ## Qué desbloquea
@@ -14,7 +14,7 @@ El adaptador de la consola, la máquina de estados de conexión, y con ellos el 
 | P0.1 | Reconexión automática por cada modo de corte | bloqueante | 20 de 20 en 10 s o menos | **Un modo de tres.** Wifi cortada: 20 de 20 desde la tablet, mediana 3,7 s, máximo 5,0. Faltan router apagado y cambio de IP, que necesitan a alguien físicamente ahí | ⬜ |
 | P0.1 | Cadencia de medidores registrada y umbral de inestabilidad fijado | bloqueante | tres estadísticos | `RTA` desde la tablet: media 33 ms, p95 40 ms, mediana 33 ms, idéntico en silencio y con señal → **umbral de inestabilidad 99 ms**. Se mide sobre `RTA` y nunca sobre `VU2`, que la consola calla en silencio | ✅ |
 | P0.1 | La consola devuelve eco de las escrituras propias | informativo | sí o no | **No.** Seis segundos escuchando, cero líneas para la ruta escrita, en dos parámetros distintos. La escritura sí se aplica y sí se difunde a los demás clientes | ✅ |
-| ACK-POLICY | Tabla de confirmación por parámetro completa | bloqueante | 100 % de las filas | Sin escribir. El **mecanismo** ya está elegido y medido —segunda conexión testigo, 27 ms—, así que lo que falta es redacción y no laboratorio | ⬜ |
+| ACK-POLICY | Tabla de confirmación por parámetro completa | bloqueante | 100 % de las filas | **Cerrado el 2026-09-10, y medido en vez de redactado.** 18 rutas barridas contra la consola: **18 de 18 difundidas**, mediana 17 ms, todas restauradas. Las familias no barridas quedan marcadas *Inferido*, diciendo que lo son. Con esto queda escrito también el texto normativo de INV-011 | ✅ |
 | P0.2a | Subconjunto del primer entregable confirmado en hardware | bloqueante | 100 % de la lista | **9 de la lista al 2026-09-10.** Se sumaron instantáneas y shows —`CREATESHOW`, `SAVESNAPSHOT`, `SNAPSHOTLIST`, `DELETESNAPSHOT`, los cuatro ejecutados— y la información del dispositivo. Faltan fantasma en lectura, silencio de auxiliar, los dos puntos de derivación, matriz y retardos | ⬜ |
 | P0.2a | Especificación del protocolo versión 1 generada | bloqueante | sí | **Sí, y estaba desde el 2026-09-08 sin marcar acá.** `docs/protocol-spec.md`, 554 líneas, versión 1; `docs/capability-matrix.md`, 78 filas, versión 1 | ✅ |
 | P0.9 | Sobrescrituras de cambios ajenos | bloqueante | 0 | Sin medir contra la consola. Lo que sí está medido —2026-09-09, tres clientes— es que **el que escribe no recibe eco de lo suyo y los otros dos sí lo ven**, que es la mitad del mecanismo: falta la prueba de que ante un cambio ajeno no escribimos encima | ⬜ |

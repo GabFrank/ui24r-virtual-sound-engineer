@@ -1,6 +1,6 @@
 # SPK-ACK-POLICY — Política de confirmación de escrituras
 
-**Estado:** Mecanismo **elegido** el 2026-09-09 —**la segunda conexión testigo**, medida en 27 ms—; falta la tabla parámetro a método y el texto de INV-011, que son los dos criterios · **Timebox:** 1 día · **Control:** G-A
+**Estado:** **Cerrado el 2026-09-10.** Mecanismo elegido el 2026-09-09 —la segunda conexión testigo—, tabla medida ruta por ruta y texto de INV-011 escrito · **Timebox:** 1 día · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.9a, S-13.1
 **Montaje:** resultados de SPK-P0.1. No requiere hardware adicional.
 
@@ -20,8 +20,8 @@ El protocolo no tiene confirmación explícita, y **el eco tampoco existe: está
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Tabla parámetro a método de confirmación, completa | bloqueante | 100 % de las filas de la matriz | Sin escribir. Ya no está bloqueada: el mecanismo está elegido y medido, así que la tabla es trabajo de redacción y no de laboratorio | ⬜ |
-| 2 | Texto normativo de INV-011 redactado y aprobado | bloqueante | sí | Sin escribir | ⬜ |
+| 1 | Tabla parámetro a método de confirmación, completa | bloqueante | 100 % de las filas de la matriz | **Escrita, y medida en vez de redactada.** El 2026-09-10 se barrieron 18 rutas contra la consola —leer, escribir una delta, preguntarle al testigo, restaurar—: **18 de 18 difundidas**, mediana 17 ms, todas restauradas y comprobado con un volcado nuevo. Las familias que no se barrieron quedan marcadas **Inferido** en la tabla, con qué significa eso. `evidence/barrido-testigo-2026-09-10.txt` | ✅ |
+| 2 | Texto normativo de INV-011 redactado y aprobado | bloqueante | sí | **Escrito** en `docs/ack-policy.md`: qué se comprueba antes, el plazo de 500 ms y de dónde sale, los cuatro confirmadores en orden, por qué `ECHO` no es alcanzable, **qué es lo que una confirmación no dice**, y qué pasa si el testigo se cae en medio de una transacción | ✅ |
 
 ## Regla por defecto si no hay eco
 

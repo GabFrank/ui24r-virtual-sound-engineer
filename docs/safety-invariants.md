@@ -30,11 +30,15 @@ Pendientes de hardware, se cierran con su spike: INV-012 a INV-016 y INV-026
 (generador, dependen de SPK-P0.6' y SPK-SAFE-GEN), INV-018, INV-023, INV-027 a
 INV-033.
 
-**INV-011 ya no está pendiente de hardware.** SPK-P0.1 midió que la consola no
-devuelve eco, ADR-024 eligió la segunda conexión testigo y el código la
-implementa: `confirmedBy` alcanzable es `WITNESS`, y `ECHO` está prohibido por
-el tipo. Lo que falta es la prueba en banco de la fila —cambiar desde la web
-durante un apply— y no la decisión.
+**INV-011 tiene su texto normativo desde el 2026-09-10**, en
+[ack-policy](ack-policy.md): qué se comprueba antes de escribir, el plazo de
+500 ms y de dónde sale, los cuatro confirmadores en orden, por qué `ECHO` no es
+alcanzable, **qué es lo que una confirmación no dice**, y qué pasa si el testigo
+se cae en medio de una transacción. La tabla parámetro a método está medida: 18
+rutas barridas contra la consola, 18 de 18 difundidas.
+
+Lo que falta es la prueba en banco de la fila —cambiar desde la web durante un
+apply— y no la decisión ni el texto.
 
 Ninguna invariante se marca como cerrada por pasar contra el simulador: el
 simulador reproduce nuestras hipótesis del protocolo, no la consola.
