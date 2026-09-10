@@ -55,3 +55,10 @@ Detalle y método en `docs/protocol-spec.md` §4.3 y en `evidence/cola-vu2-2026-
 ## Acción ante fallo
 
 Sin ecualizador gráfico por red, la corrección de sala propone filtros paramétricos, lo que en realidad es mejor para corregir problemas concretos. Sin escritura verificada, la corrección de sala queda en modo sugerencia y la automatización de sala se pospone.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/buses-vu2-2026-09-09.txt` — qué es cada byte de la cola de `VU2`

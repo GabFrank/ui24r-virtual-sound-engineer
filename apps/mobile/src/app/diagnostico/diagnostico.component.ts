@@ -128,10 +128,10 @@ import { DiagnosticoService } from './diagnostico.service';
     .fila {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-      gap: var(--espacio-3);
+      gap: var(--sp-3);
     }
 
-    .acciones { display: flex; flex-wrap: wrap; gap: var(--espacio-2); margin-top: var(--espacio-3); }
+    .acciones { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
     .acciones ui-button { flex: 1 1 auto; }
 
     /* El paro flota fijo en la esquina inferior derecha y se pinta por encima
@@ -141,14 +141,14 @@ import { DiagnosticoService } from './diagnostico.service';
     @media (max-width: 599px) {
       .acciones {
         flex-direction: column;
-        padding-inline-end: calc(var(--alto-paro-telefono) + var(--espacio-3));
+        padding-inline-end: calc(var(--alto-paro-telefono) + var(--sp-3));
       }
     }
-    h2 { font-size: var(--texto-3); margin: 0 0 var(--espacio-2); }
-    .nota { color: var(--texto-suave); font-size: var(--texto-1); margin: var(--espacio-2) 0 0; }
-    .nota.aviso { color: var(--aviso); }
+    h2 { font-size: var(--txt-lg); margin: 0 0 var(--sp-2); }
+    .nota { color: var(--muted); font-size: var(--txt-sm); margin: var(--sp-2) 0 0; }
+    .nota.aviso { color: var(--warn); }
     table { width: 100%; border-collapse: collapse; text-align: center; }
-    th, td { padding: var(--espacio-2); border-bottom: 1px solid var(--borde); }
+    th, td { padding: var(--sp-2); border-bottom: 1px solid var(--line); }
     .desplaza-x { overflow-x: auto; }
   `],
 })

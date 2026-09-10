@@ -491,3 +491,46 @@ test('sin senal la razon no trae numeros inventados', () => {
   assert.ok(!/Infinity/i.test(p.razon), `la razon no puede traer Infinity: ${p.razon}`);
   assert.match(p.razon, /No entró señal/);
 });
+
+test('sin senal NINGUNA razon trae Infinity', () => {
+  // La frase principal se corrigio antes; esta razon sobrevivio una linea mas
+  // abajo y aparecio recien probando el lazo contra la consola.
+  const a = analizarVentana([]);
+  const p = proponerGanancia(a, perfilPorTipo('LEAD_VOCAL'), 10, {
+    repetidoEnDosCapturas: true, snrDb: 40, calibracionValida: true, dinamica: DINAMICA_LIMPIA,
+  });
+  for (const r of [p.razon, ...p.avisos]) {
+    assert.ok(!/Infinity/i.test(r), `trae Infinity: ${r}`);
+  }
+});
+
+/**
+ * "No entro nada" y "entro muy bajo" llevan a consejos OPUESTOS.
+ *
+ * Aparecio probando el lazo contra la consola: con la ganancia baja el canal
+ * media -54,3 dB, la fuente sonaba perfectamente, y la pantalla decia "no hubo
+ * senal para medir". El caso mas comun de un canal mal puesto terminaba en un
+ * callejon sin salida.
+ */
+test('una fuente audible pero baja NO se informa como silencio', () => {
+  // 300 muestras a -54 dB: por debajo del umbral de -50, muy por encima del
+  // piso de ruido. La fuente suena; solo hace falta subir la ganancia.
+  const bajas = Array.from({ length: 300 }, (_, i) => ({ db: -54, tMs: i * 50, reduccionDb: 0 }));
+  const a = analizarVentana(bajas);
+
+  assert.equal(a.suficiente, false, 'sigue sin alcanzar para medir');
+  assert.match(a.motivoInsuficiente ?? '', /muy baja/);
+  assert.match(a.motivoInsuficiente ?? '', /Subí la ganancia/,
+    'el consejo tiene que ser subir la ganancia, no revisar el cable');
+});
+
+test('un canal mudo de verdad sigue diciendo que no hubo senal', () => {
+  // Piso de ruido: nada conectado. Aca el consejo es otro.
+  const mudas = Array.from({ length: 300 }, (_, i) => ({ db: -67, tMs: i * 50, reduccionDb: 0 }));
+  const a = analizarVentana(mudas);
+
+  assert.equal(a.suficiente, false);
+  assert.match(a.motivoInsuficiente ?? '', /muestras con señal/);
+  assert.ok(!/Subí la ganancia/.test(a.motivoInsuficiente ?? ''),
+    'sin nada conectado, subir la ganancia no es el consejo');
+});

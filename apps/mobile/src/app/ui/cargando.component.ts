@@ -25,7 +25,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: [`
     .caja { display: grid; gap: var(--sp-3); padding: var(--sp-2) 0; }
     .barra {
-      display: block; height: 56px; border-radius: var(--radio-2);
+      display: block; height: 56px; border-radius: var(--radio-md);
       background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
       background-size: 200% 100%;
       animation: brillo 1.4s ease-in-out infinite;

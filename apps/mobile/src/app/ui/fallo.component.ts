@@ -30,7 +30,7 @@ import { IconComponent } from './icon.component';
     .caja {
       display: grid; gap: var(--sp-3); justify-items: center; text-align: center;
       padding: var(--sp-6) var(--sp-4);
-      border: 1px solid var(--danger-borde); border-radius: var(--radio-3);
+      border: 1px solid var(--danger-borde); border-radius: var(--radio-lg);
       background: var(--sobre-danger); color: var(--ink);
     }
     /* Compacta: para cuando ya hay algo en pantalla y el fallo es de una

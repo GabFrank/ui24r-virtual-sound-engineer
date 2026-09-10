@@ -1,0 +1,9 @@
+#!/bin/sh
+# Que un commit no salga con el asunto pasado de largo.
+#
+# `npm run verificar:commits` ya revisaba esto, pero corre DESPUES: el commit ya
+# existe, muchas veces ya se empujo, y arreglarlo cuesta una enmienda y un
+# force-push. Paso dos veces en la misma sesion, las dos por un caracter o dos.
+#
+# Un limite que se comprueba tarde no es un limite, es un reproche.
+npx --no-install commitlint --edit "$1"

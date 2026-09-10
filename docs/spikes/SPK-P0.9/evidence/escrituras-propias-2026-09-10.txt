@@ -1,0 +1,48 @@
+Criterio 3 de SPK-P0.9: escrituras propias etiquetadas — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, canal 17 (i.16), ruta i.16.pan
+
+EL CRITERIO ESTABA FALSADO TAL COMO SE ESCRIBIO. Pedia etiquetar por
+«correlacion de mensajes entrantes con ventana temporal», y con esta consola
+ESE MENSAJE NO LLEGA NUNCA: no hay eco al emisor --medido el 2026-09-08--. La
+ventana de 300 ms del almacen esperaba algo que no existe.
+
+El charter dejaba dos salidas y recomendaba la segunda: etiquetar contra el
+TESTIGO. Eso ya estaba implementado y NUNCA SE HABIA MEDIDO CUANTAS LO LOGRAN,
+que es lo unico que el criterio pregunta.
+
+punto de retorno: VSE_AUTO_1789054020182 · i.16.pan vale 0.5
+
+20 40 60 80 100 
+
+escrituras: 100
+  etiquetadas PROPIAS: 100 (100.0 %)
+  etiquetadas ajenas:  0
+  sin etiquetar:       0
+resultados: APPLIED/WITNESS x100
+
+CRITERIO 3 CUMPLIDO: 100.0 % >= 98 %.
+restaurada: si
+
+CIEN DE CIEN, TODAS POR TESTIGO. El umbral era 98 %.
+
+COMO FUNCIONA, Y POR QUE ES ROBUSTO. Son dos reglas y ninguna adivina:
+
+  - Todo lo que entra por la conexion PRINCIPAL es ajeno, sin excepcion.
+    deducirOrigen() devuelve EXTERNAL siempre, y eso NO es una simplificacion:
+    la consola no le devuelve el eco a quien escribe, asi que una linea que
+    llega por ahi la escribio otro. Hay un test que lo fija incluso cuando la
+    linea coincide exactamente con algo que acabamos de mandar.
+  - Lo propio entra por el otro lado: cuando la escritura se verifica, se marca
+    SELF sin deducir nada, porque quien llama ya correlaciono ruta, valor y
+    ventana.
+
+Que no haya que deducir es lo que da el 100 %: no hay ventana temporal que
+ajustar ni carrera que perder.
+
+DE PASO, UN NOMBRE QUE HABIA DEJADO DE SER CIERTO. El metodo se llamaba
+confirmarPorTestigo, y desde que se cableo el respaldo por medidor tambien lo
+llama el camino que confirma mirando el VU2, que no es el testigo. Un metodo que
+nombra un mecanismo y lo usan dos es una trampa esperando: el que lea
+«PorTestigo» va a suponer que sin testigo esto no ocurre. Se llama
+confirmarPropia. Que mecanismo confirmo si se distingue, pero donde corresponde:
+en el confirmedBy del resultado, que es lo que queda en el diario.

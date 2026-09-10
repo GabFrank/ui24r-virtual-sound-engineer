@@ -35,7 +35,12 @@ const enviar = (method, params = {}) => new Promise((r) => {
 const [orden, arg] = process.argv.slice(2);
 
 if (orden === 'eval') {
-  const r = await enviar('Runtime.evaluate', { expression: arg, returnByValue: true, awaitPromise: true });
+  // **Envuelto en una función.** El contexto de evaluación sobrevive entre
+  // llamadas, así que dos `const b` seguidos chocan con «Identifier already
+  // declared» y la segunda orden falla sin tocar la pantalla.
+  const r = await enviar('Runtime.evaluate', {
+    expression: `(() => { ${arg} })()`, returnByValue: true, awaitPromise: true,
+  });
   const v = r.result?.result;
   console.log(v?.value !== undefined ? (typeof v.value === 'string' ? v.value : JSON.stringify(v.value, null, 2)) : JSON.stringify(v));
 } else if (orden === 'captura') {

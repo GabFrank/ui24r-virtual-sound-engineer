@@ -273,6 +273,19 @@ const escenarios = {
     log(`escenario: saturación en el canal 1 ${canalSaturando ? 'activada' : 'desactivada'}`);
   },
 
+  /**
+   * El analizador encendido y una banda que se queda colgada.
+   *
+   * Sirve para dos pantallas de una vez: el espectro con datos y el aviso de
+   * realimentación. Dura veinte segundos porque una captura con su espera
+   * previa no entra en menos, y **se apaga solo**: si quedara encendido, todas
+   * las capturas siguientes mostrarían una realimentación que no viene al caso.
+   */
+  realimentacion: () => {
+    realimentacionHasta = Date.now() + 20000;
+    log('escenario: analizador encendido, banda 83 (~2,5 kHz) colgada durante veinte segundos');
+  },
+
   /** Corte de conexión. */
   drop: () => {
     log('escenario: cerrando todas las conexiones');
@@ -363,7 +376,59 @@ setInterval(() => {
 // inexistente. Hoy el cliente solo cuenta que llegó.
 const RTA_BANDAS = 122;
 const RTA_SILENCIO = Buffer.alloc(RTA_BANDAS).toString('base64');
-setInterval(() => difundir(`RTA^${RTA_SILENCIO}`), Math.round(1000 / 30));
+
+/**
+ * Un espectro con forma, para poder mirar la pantalla del espectro.
+ *
+ * **Por qué dejó de ser silencio.** El silencio alcanzaba mientras el cliente
+ * solo contaba que la trama llegaba. Desde que la aplicación *dibuja* el
+ * espectro y vigila la realimentación, un simulador en cero deja esa pantalla
+ * en blanco y el escenario de capturas no puede mostrarla: se estaría revisando
+ * una pantalla que nunca se ve con datos.
+ *
+ * La forma es una caída suave hacia los agudos con una ondulación encima, que
+ * es lo que se parece a música. **No sale de ninguna medición** y no pretende
+ * serlo: lo único que importa acá es que las bandas no sean todas iguales, para
+ * que se note si la pantalla dibuja mal el orden o la escala.
+ *
+ * **Es determinista a propósito**: sin `Math.random()`, la misma captura sale
+ * igual todos los días y una diferencia en la imagen significa un cambio de
+ * verdad y no ruido del simulador.
+ */
+function espectroBase() {
+  const b = Buffer.alloc(RTA_BANDAS);
+  for (let i = 0; i < RTA_BANDAS; i++) {
+    const caida = 150 - i * 0.55;
+    const ondulacion = 12 * Math.sin(i / 7) + 6 * Math.sin(i / 2.3);
+    b[i] = Math.max(0, Math.min(255, Math.round(caida + ondulacion)));
+  }
+  return b;
+}
+
+/**
+ * La banda que se queda colgada en el escenario de realimentación, y hasta
+ * cuándo.
+ *
+ * 2,5 kHz cae en la banda 83 con la ley medida --`67 + 12·log2(f/1000)`-- y es
+ * una frecuencia de realimentación creíble en una sala chica. El valor tiene
+ * que quedar bien por encima de sus vecinas: el vigilante pide 9 dB de exceso
+ * sobre la vecindad, y con 0,375 dB por byte eso son 24 bytes.
+ */
+const RTA_BANDA_COLGADA = 83;
+let realimentacionHasta = 0;
+
+setInterval(() => {
+  if (Date.now() >= realimentacionHasta) {
+    difundir(`RTA^${RTA_SILENCIO}`);
+    return;
+  }
+  const b = espectroBase();
+  // 210 bytes son 78,75 dB, contra ~100 bytes de las vecinas: mas de los 24
+  // bytes de exceso que pide la regla, y sostenido mientras dure el escenario,
+  // que es justamente lo que el vigilante llama «no cayo como debia».
+  b[RTA_BANDA_COLGADA] = 210;
+  difundir(`RTA^${b.toString('base64')}`);
+}, Math.round(1000 / 30));
 
 function log(msg) {
   process.stdout.write(`[sim] ${msg}\n`);

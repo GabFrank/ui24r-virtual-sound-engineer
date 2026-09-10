@@ -248,7 +248,7 @@ function aLinea(e: LogEvent, i: number): LineaDeRegistro {
     .eventos {
       list-style: none; margin: var(--sp-3) 0 0; padding: 0;
       max-height: 40vh; overflow-y: auto;
-      border: 1px solid var(--line); border-radius: var(--radio-2);
+      border: 1px solid var(--line); border-radius: var(--radio-md);
     }
     .eventos li {
       display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3);

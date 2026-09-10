@@ -210,3 +210,11 @@ Y si alguien mueve la perilla de la interfaz en medio de una corrida, la corrida
 Si el medidor resulta demasiado lento para detectar picos cortos, la probabilidad de saturación se calcula sobre el conteo de eventos y no sobre el valor de pico, y se documenta la limitación en el asistente de ganancia.
 
 **Lo medido dice que el medidor no es el cuello de botella: la cadencia sí.** La lectura llega a la meseta dentro de una sola trama, así que el límite no es la balística de la consola sino los ~44 ms entre tramas. Un pico más corto que eso puede caer entre dos tramas y no verse. Esa es la limitación real que el asistente de ganancia tiene que declarar.
+
+## Evidencia archivada
+
+Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
+cita es una medición que nadie va a encontrar cuando la necesite.
+
+- `evidence/constantes-mixer-html-2026-09-09.txt` — captura archivada
+- `evidence/techo-medidor-2026-09-09.txt` — el techo real del medidor: 255, no 239

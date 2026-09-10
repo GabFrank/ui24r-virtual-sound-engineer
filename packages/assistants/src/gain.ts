@@ -105,6 +105,20 @@ export const UMBRAL_RIESGO_DB = TECHO_DEL_MEDIDOR_DB - MARGEN_ANTES_DEL_TECHO_DB
 export const UMBRAL_SILENCIO_DB = -50;
 
 /**
+ * Por debajo de esto no hay nada: es el piso de ruido de la cadena.
+ *
+ * Sirve para separar «el canal está mudo» de «el canal suena pero muy bajo».
+ * Entre este valor y `UMBRAL_SILENCIO_DB` hay señal audible que no alcanza para
+ * medir, y ese es el caso más común de un canal mal puesto — el que el producto
+ * existe para resolver.
+ *
+ * **Elegido, no medido.** Los canales sin nada conectado de esta consola miden
+ * entre −65 y −68 dB, así que −60 deja margen para que el ruido de fondo no se
+ * confunda con una fuente.
+ */
+export const PISO_DE_RUIDO_DB = -60;
+
+/**
  * Reducción por debajo de la cual el compresor no cambia ningún consejo.
  *
  * **No es un umbral elegido a ojo: es la granularidad del control que se está
@@ -146,8 +160,27 @@ export function analizarVentana(muestras: readonly MuestraVu[]): AnalisisDeGanan
   const conSenal = muestras.filter((m) => m.db > UMBRAL_SILENCIO_DB);
 
   if (conSenal.length < MUESTRAS_MINIMAS) {
+    // **«No entró nada» y «entró muy bajo» son dos cosas distintas**, y llevan
+    // a consejos opuestos: la primera manda a revisar el cable o el canal, la
+    // segunda a subir la ganancia del previo — que es justo lo que el asistente
+    // sabe proponer.
+    //
+    // Hasta el 2026-09-09 las dos decían lo mismo. Apareció probando el lazo
+    // contra la consola: con la ganancia baja el canal medía −54,3 dB, la
+    // fuente sonaba perfectamente, y la pantalla decía «no hubo señal para
+    // medir». El caso más común de un canal mal puesto terminaba en un
+    // callejón sin salida.
+    //
+    // Se distinguen por si hubo algo audible aunque no llegara al umbral: un
+    // canal en silencio de verdad no mueve su medidor.
+    const audibles = muestras.filter((m) => Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB);
+    const motivo = audibles.length >= MUESTRAS_MINIMAS
+      ? `la señal entró pero muy baja para medir: el pico llegó a ${Math.max(...audibles.map((m) => m.db)).toFixed(1)} dB `
+        + `y hace falta pasar de ${UMBRAL_SILENCIO_DB}. Subí la ganancia del previo y volvé a medir`
+      : `solo ${conSenal.length} muestras con señal, hacen falta ${MUESTRAS_MINIMAS}`;
+
     return {
-      ...vacio(`solo ${conSenal.length} muestras con señal, hacen falta ${MUESTRAS_MINIMAS}`),
+      ...vacio(motivo),
       muestras: conSenal.length,
       duracionS,
     };
@@ -348,7 +381,15 @@ export function proponerGanancia(
   const recortado = Math.abs(deltaIdeal) > DELTA_MAXIMO_DB;
   const delta = recortado ? Math.sign(deltaIdeal) * DELTA_MAXIMO_DB : deltaIdeal;
 
-  if (recortado) {
+  // **Solo si el ideal es un número.** Sin señal el margen es infinito y el
+  // ideal también, y este aviso salía como «el ajuste ideal sería de Infinity
+  // dB». Es el mismo defecto que ya se había corregido en la frase principal,
+  // sobreviviendo una línea más abajo — apareció recién al probar el lazo
+  // contra la consola con el canal demasiado bajo para medir.
+  //
+  // Sin medición no hay ajuste ideal del que hablar, y la lista de razones ya
+  // dice que faltaron muestras.
+  if (recortado && Number.isFinite(deltaIdeal)) {
     avisos.push(
       `el ajuste ideal sería de ${deltaIdeal.toFixed(1)} dB, pero se propone ` +
       `${delta.toFixed(1)} y se vuelve a medir: un cambio grande de una sola vez ` +

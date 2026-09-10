@@ -1,0 +1,212 @@
+---
+name: vse-disciplina
+description: Cómo se trabaja en el Ui24R Virtual Sound Engineer — reglas de commit, de documentación, de medición y de trato con la consola del usuario. Usar SIEMPRE al implementar, medir o documentar en este proyecto, no solo cuando se pregunte por el proceso.
+---
+
+# Cómo se trabaja en este proyecto
+
+Cada regla de acá salió de un error real. La cicatriz va junto a la regla a propósito: una regla sin el caso que la produjo se lee, se acepta y se olvida.
+
+---
+
+## 1. Commits y empujes
+
+**Granulares y frecuentes.** Un commit por pieza terminada, empujada al terminar. No se acumula trabajo de horas en un commit gigante ni se espera al final para empujar.
+
+**El PR no se abre salvo pedido explícito.** Empujar la rama no es abrir el PR. Si la sesión se cierra y nadie lo pidió, la rama queda lista y el PR lo abre el usuario.
+
+**El asunto no pasa de 72 caracteres** y el ámbito sale del enum de `commitlint.config.js`. Se comprueba con `npm run verificar:commits` **antes** de empujar, no después: corregirlo después obliga a reescribir historia.
+
+**El cuerpo dice por qué, no qué.** El diff ya dice qué cambió. Lo que no dice es qué error se estaba cometiendo antes, cómo se descubrió, y qué se descartó en el camino.
+
+---
+
+## 2. Ningún commit sale sin su documentación
+
+**Es parte del cambio, no un paso posterior.** Si un commit cambia algo que la documentación afirma, la corrección va en el mismo commit.
+
+Dónde mirar, según qué se tocó:
+
+| Si cambiaste | Actualizá |
+|---|---|
+| Una constante medida | `protocol-spec.md` §4.6 (tabla de constantes) |
+| Una capacidad del protocolo | `capability-matrix.md` |
+| Qué puede escribir la aplicación | `autonomy-matrix.md` |
+| Una regla de seguridad | `safety-invariants.md` |
+| Cualquier cosa que el usuario vea | `CHANGELOG.md` |
+| Una decisión con alternativas descartadas | una ADR **y el índice `docs/adr/README.md`** |
+
+**Toda medición se archiva y se cita.** Un archivo en `evidence/` que nadie referencia es una medición que nadie va a encontrar. `npm run validate:docs` lo comprueba.
+
+> **Lo que pasó.** Tres ADR quedaron fuera del índice y diecisiete archivos de evidencia sin citar — el techo del medidor, la cola de `VU2` byte por byte, el recorrido en la tablet. Todo medido, todo archivado, nada alcanzable. El validador de huérfanos existe por eso.
+
+---
+
+## 3. Medir sin engañarse
+
+**Medí el instrumento, no la cadena.** Para medir algo interno de la consola, movelo con ganancia digital —el fader— y no con una fuente externa. Una fuente externa mide el iMac, la Scarlett, el previo y el medidor, todo junto.
+
+> **Lo que pasó, dos veces.** El recorrido del medidor se documentó como 84,5 dB midiendo con tonos por la interfaz; el valor real es 80. Meses después, el techo se documentó como byte 239 con el mismo método; el valor real es 255, y el 239 era donde saturaba la Scarlett. La segunda vez la lección ya estaba escrita en el mismo documento.
+
+**Comprobá que la fuente suena antes de concluir sobre el instrumento.** Una medición hecha sobre silencio parece un hallazgo y no lo es.
+
+**Mirá el estado de alrededor antes de concluir.** Las tres conclusiones falsas de una sola sesión tuvieron la misma forma: un bus silenciado, una fuente apagada, una clave que se creía inexistente. En los tres casos el dato que faltaba estaba a un `grep` de distancia.
+
+**Dos caminos que comparten un supuesto no son dos caminos.** Si el mapa por bytes y el censo del vocabulario pueden equivocarse por el mismo motivo, coincidir no confirma nada.
+
+**Buscá trabajo previo antes de decodificar a mano.** Media hora de búsqueda ahorra horas. Pero el trabajo previo da hipótesis, no verdades: `DigiMixer` recorta el medidor en 240 y está mal.
+
+---
+
+## 4. Escribir lo que se sabe y lo que no
+
+**`MEDIDO` es contra el aparato. `INFERIDO` es leído del código de la consola.** No se mezclan. La salida de un desensamblado o de un cliente ajeno es `INFERIDO` aunque suene autoritativa.
+
+**Un comentario que explica un valor equivocado es peor que el valor solo.** El valor mal se corrige; el valor mal con una justificación convincente se defiende.
+
+> **Lo que pasó.** `PEAK_HOLD_TIME` estuvo escrito como 3 en vez de 3000 con el comentario «es tan corto que el pico cae de inmediato». Esa frase le daba al lector una razón para no dudar.
+
+**Escribí la limitación con todas las letras.** Es lo que la vuelve visible. Al documentar «con 1 dB esperado y 1,5 de tolerancia, quedarse quieto también confirma» quedó claro que no era un límite tolerable sino un agujero.
+
+**Si retirás una conclusión, decilo donde estaba.** No se borra: se marca retractada y se explica qué la hizo caer. El error es la parte instructiva.
+
+---
+
+## 5. La consola es el equipo de trabajo de alguien
+
+**Antes de escribir una ruta, leé y anotá su valor anterior.** Restaurá todo, siempre, con `try/finally`. Al terminar, listá qué se tocó y a qué valor quedó.
+
+**Antes de meter tonos sostenidos, mirá `*.afs.enabled`.** El supresor de realimentación aprende de ellos y planta filtros. Nada en el protocolo avisa.
+
+**Nunca borres los snapshots guardados.** Es la única prohibición absoluta.
+
+**No uses tuberías que puedan cortar el proceso.** Un `| head` manda `SIGPIPE`, el `finally` no corre y la consola queda con la ganancia a mitad de un barrido. Escribí a archivo.
+
+**Diagnóstico rápido:** `curl -s --max-time 10 http://<consola>/raw` da el estado entero. Es un flujo que no cierra, así que sale con código 28 y hay que tolerarlo.
+
+---
+
+## 6. Los validadores comprueban contra la fuente
+
+**Una comprobación que compara el repositorio consigo mismo no detecta un error de lectura.** Con código y documento diciendo 3, el validador pasaba en verde y el error de factor mil sobrevivía.
+
+Las constantes que salen del cliente de la consola se comparan contra una transcripción literal de ese cliente, archivada con su `sha256`.
+
+**Un test que pasa con y sin la corrección no protege de nada.** Después de arreglar algo, revertí la corrección y comprobá que el test falla.
+
+---
+
+## 7. Cuándo preguntar y cuándo decidir
+
+**Preguntá de forma interactiva** cuando la respuesta cambia el trabajo y es del usuario: niveles de autonomía, umbrales que mueven el equilibrio entre avisar de más y de menos, cualquier cosa que toque su equipo de una forma nueva.
+
+**Decidí vos** lo que es cuestión de oficio: cómo estructurar un módulo, qué probar, cómo nombrar. Preguntar todo es trasladar el trabajo.
+
+**Cuando las fuentes se contradicen y no se puede medir, decidí por procedencia y escribí el razonamiento.** El byte 5 de la cabecera de `VU2` se resolvió así: el cliente del fabricante y dos implementaciones de terceros dicen cosas distintas, en una Ui24R los dos valores son iguales, y se siguió a quien probablemente tenga la documentación oficial.
+
+---
+
+## 8. Trabajar con lotes de ediciones
+
+**Un lote tiene que informar cuáles no aplicaron.** Si aborta en la primera falla, las siguientes no se ejecutan y nadie se entera.
+
+> **Lo que pasó.** Un lote de tres correcciones abortó en la primera. Se volvió a correr con dos, y la tercera —la polaridad del indicador de puerta— nunca llegó al archivo. El commit decía haberla hecho.
+
+**Después de un lote, comprobá que cada edición esté**, con `grep`, no de memoria.
+
+## El límite que se comprueba tarde no es un límite
+
+`npm run verificar:commits` revisaba la convención de los mensajes, pero corre
+**después**: el commit ya existe, muchas veces ya se empujó, y arreglarlo cuesta
+una enmienda y un `--force-with-lease`. Pasó dos veces en la misma sesión, las
+dos por uno o dos caracteres de más en el asunto. Al poner la guarda apareció
+además un ámbito inválido —`gates` cuando el válido es `gate`, en singular—.
+
+**Y acá hay que corregir lo que se escribió el mismo día.** El commit dijo que
+la comprobación tardía «se estaba leyendo por encima», y no es cierto:
+`verificar:commits` corre commitlint entero, `scope-enum` incluido, y habría
+cantado ese ámbito sin problema. La razón por la que nunca lo mostró es más
+simple y mejor para el argumento: **el commit con ese ámbito nunca llegó a
+existir**, porque el gancho lo frenó antes. Culpar a la herramienta vieja de
+algo que no hizo debilita el motivo verdadero para tener la nueva.
+
+Hay un gancho `commit-msg` en `.githooks/` y `npm install` lo engancha con
+`core.hooksPath`. Si el mensaje no cumple, **el commit no llega a existir**.
+
+La regla general, que vale para más cosas que los mensajes: **una comprobación
+que llega después del hecho es un reproche, no una guarda.** Cuando algo se
+repite, la pregunta no es «cómo me acuerdo la próxima» sino «dónde se pone para
+que no dependa de que me acuerde».
+
+## Una tarea, un commit, y recién entonces la siguiente
+
+Una tarea **no está terminada** hasta que está documentada, commiteada y
+empujada. Nada de acumular dos o tres y cerrarlas juntas.
+
+El orden es siempre el mismo:
+
+1. El trabajo.
+2. La documentación que corresponda: evidencia, especificación, matriz de
+   capacidades, acta del control, `CHANGELOG`.
+3. `npm run verificar` **en verde**. No se commitea en rojo, ni siquiera
+   «porque el arreglo va en el commit siguiente» — eso ya se hizo una vez y el
+   commit quedó afirmando una corrección que no estaba en el archivo.
+4. Commit, con el ámbito y el largo que acepta el gancho `commit-msg`.
+5. Empujar.
+6. Recién ahí, marcar la tarea y tomar la próxima.
+
+**Si aparece un hallazgo en medio de una tarea, va como tarea nueva.** No se
+mete en la que está en curso. El último commit de la sesión del 2026-09-10 juntó
+mediciones nuevas de SPK-P0.9 con diecisiete correcciones de una auditoría: las
+dos cosas eran ciertas y ninguna se puede revertir sin la otra.
+
+**Por qué importa más de lo que parece.** Un commit gordo no solo es difícil de
+revertir: es difícil de *revisar*, y en este proyecto las cosas que se
+descubrieron tarde —el techo del medidor, la retención de picos, el respaldo por
+VU que no existía— se descubrieron leyendo, no ejecutando. Lo que no se puede
+leer con atención no se revisa.
+
+## Una medición que no se archiva no se midió: se contó
+
+Pasó **tres veces en un día**, y la tercera casi cuesta caro.
+
+La rutina era: correr el spike, leer la salida en la terminal, y después correrlo
+otra vez redirigiendo a un archivo de evidencia. **Son dos corridas.** Sobre
+hardware nunca dan igual —el testigo dio mediana 17 en una y 18 en la otra;
+`SNAPSHOTLIST` dio máximo 277 en una y 7 en la otra— y el documento terminaba
+citando un número que no estaba en ningún archivo.
+
+El peor fue el 277: era **el argumento entero** para cambiar un plazo. Al medirlo
+de nuevo, sesenta veces seguidas, no volvió a aparecer. Un número inventado no
+molesta mientras nadie dependa de él; molesta el día que alguien ajusta un plazo,
+un umbral o una espera confiando en él, **con la sala llena**.
+
+**La medición se corre con `tools/spikes/medir.mjs`**, que muestra y archiva la
+misma corrida a la vez:
+
+```
+node tools/spikes/medir.mjs docs/spikes/SPK-X/evidence/lo-que-sea-2026-09-10.txt \
+  tools/spikes/.../guion.ts [args...]
+```
+
+Escribe el encabezado con la fecha y el comando exacto, no deja archivar fuera de
+una carpeta `evidence/`, y **no pisa un archivo que ya existe** —la evidencia es
+el registro de un día, y sobrescribirla borra el rastro de que la anterior
+existió—. Y los parámetros de la medición se imprimen **dentro** de la medición:
+un archivo que no dice con qué ventana se midió obliga a buscarla en el código de
+ese día, y esa búsqueda es la que nadie hace.
+
+**`validate-cifras-medidas.mjs` atrapa lo que se escape.** Toma cada bloque de
+documentación que cite un archivo de evidencia y exige que los números **con
+unidad** —ms, s, dB, Hz— de ese bloque estén en ese archivo. Solo con unidad, y
+es deliberado: comprobar todos los números reportaba once cosas de las cuales una
+era real, y una guarda con esa proporción de ruido se desactiva en una semana.
+
+Dos cosas que se aprendieron construyéndolo, y que valen para cualquier guarda:
+
+- **Probala contra el caso que la motivó.** La primera versión no atrapaba el 277
+  —la cifra estaba en una línea y la cita en la siguiente— y estaba en verde. Una
+  guarda que no cubre su propio caso motivador es decorado.
+- **Que una entrada rota no la apague.** La segunda versión sí miraba el bloque,
+  pero una cita a una ruta que no resolvía hacía `return` en silencio y desactivaba
+  la comprobación del bloque entero. Ahora una cita rota **es un error**.

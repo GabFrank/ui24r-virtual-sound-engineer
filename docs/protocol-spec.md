@@ -9,6 +9,36 @@ Este documento describe **lo que la consola hace**. Lo que la aplicación tiene 
 
 ---
 
+## La consola difunde en un tic de ~34 ms
+
+**Medido el 2026-09-10** sobre `i.16.mix`, escribiendo desde un cliente y
+mirando desde otro. La consola **no difunde cada escritura**: junta los cambios
+de una ventana y manda **el último valor** de cada ruta.
+
+| Se escribe cada | De 40, llegan | Intervalo entre llegadas |
+|---|---|---|
+| 5 ms | 5 (13 %) | mediana 34 ms |
+| 10 ms | 13–14 (33 %) | mediana 34 ms |
+| 15 ms | 20 (50 %) | mediana 34 ms |
+| 25 ms | 31 (78 %) | mediana 34 ms |
+| 40 ms | 40 (100 %) | mediana 34 ms |
+| 60 ms | 40 (100 %) | mediana 67 ms = dos tics |
+| 100 ms | 40 (100 %) | mediana 100 ms = tres tics |
+
+Las dos últimas filas son la prueba más fuerte de que el tic existe: **las
+llegadas quedan cuantizadas en múltiplos de él** aunque se escriba a otro ritmo.
+
+Es el mismo ~33 ms de la cadencia de `RTA`, así que lo más económico es suponer
+**un solo reloj de difusión** para todo lo que la consola emite.
+
+**Qué se rompe si no se sabe.** Dos escrituras a la misma ruta dentro de un tic
+producen una sola línea con el segundo valor: la primera se aplica y **nadie la
+ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
+consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
+confirmada aunque haya funcionado. Evidencia:
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` y
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+
 ## 1. Transporte
 
 ### 1.1 No es un WebSocket pelado
@@ -397,7 +427,9 @@ t=5900  rta=0   vu=0      <- el RTA tarda ~600 ms
 
 Quien suavice el espectro del lado de la aplicación estaría **apilando dos balísticas**. La detección de realimentación no lo hace: su regla —«no cayó como debía»— usa justamente esta caída como referencia.
 
-**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. **Llega en el volcado inicial** —`SETS^var.rta^`, medido el 2026-09-09—, así que el valor anterior se puede leer antes de tocarlo. Una nota anterior de este repositorio decía que la clave no existía en el volcado y estaba equivocada; sobre ella se apoyaba la costumbre de «restaurar» a cadena vacía, que es reconstruir y no devolver. Aceptan `i.N` y `m` —el general, que devuelve 78 bandas y no 122—; `a.0` no respondió. Mientras esté vacía no llega espectro, solo la trama de vida.
+**La fuente la elige `var.rta`, y es global.** No hay una por cliente: es una sola variable de la consola. **Llega en el volcado inicial** —`SETS^var.rta^`, medido el 2026-09-09—, así que el valor anterior se puede leer antes de tocarlo. Una nota anterior de este repositorio decía que la clave no existía en el volcado y estaba equivocada; sobre ella se apoyaba la costumbre de «restaurar» a cadena vacía, que es reconstruir y no devolver. Aceptan `i.N` y `m` —el general— y `a.0` no respondió.
+
+**El general devuelve las mismas 122 bandas y con la misma ley**, medido el 2026-09-09: 125 Hz → banda 31, 500 → 55, 1000 → 67, 8000 → 103, idéntico a una entrada. Una nota anterior decía «el general devuelve 78 bandas y no 122»; era una lectura equivocada de la evidencia, que dice **«78 bandas con valor»** —o sea distintas de cero, porque el general no tenía energía en el resto—. Importa porque si fueran 78 bandas la ley tendría que ser otra, y no lo es: el mismo `frecuenciaDeBanda` sirve para las dos fuentes. Mientras esté vacía no llega espectro, solo la trama de vida.
 
 Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
 

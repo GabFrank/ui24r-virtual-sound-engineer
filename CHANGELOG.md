@@ -6,6 +6,148 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Con una pista de soundcheck sonando, la ganancia no se aplica.** El canal
+  reproduce lo grabado, así que mover la perilla del previo no cambia nada de lo
+  que se escucha: el consejo no es impreciso, es **inaplicable**. Dejar aplicar y
+  que no se oiga ningún cambio es peor que no dejar — le enseña al usuario a
+  desconfiar de la aplicación. El botón se apaga y el motivo lo explica.
+
+- **Pantalla de espectro, con aviso de realimentación.** Muestra qué
+  frecuencias están sonando en el general y avisa si alguna se queda colgada.
+  **Pide permiso antes de tocar nada** —el analizador de la consola es uno solo,
+  así que tomarlo le cambia la pantalla al operador— y lo devuelve al salir, a
+  la fuente que se leyó y no a una reconstruida (ADR-025).
+
+  **Se vigila el general y no un canal**: la realimentación es un lazo del
+  sistema, sale por los parlantes y vuelve por un micrófono, así que aparece ahí
+  venga del canal que venga. Lo que el general no dice —cuál canal la produce—
+  se acota con los medidores por canal, que ya llegan siempre: un canal en
+  silencio no puede ser la fuente. La pantalla lo presenta como pista y no como
+  veredicto, porque eso es lo que es.
+
+- **«No entró nada» y «entró muy bajo» dejaron de decir lo mismo.** Con un canal
+  sonando a −54 dB —por debajo del umbral con el que el asistente descarta
+  silencio— la pantalla decía «no hubo señal para medir». Es cierto para el
+  asistente y confuso para quien está escuchando: la fuente suena, solo que
+  bajo. Y los dos casos llevan a consejos opuestos —revisar el cable, o subir
+  la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
+  callejón sin salida. Ahora dice cuál de los dos es.
+
+- **Las mediciones se archivan solas, y una cifra sin respaldo ya no pasa.** Se
+  corría la medición dos veces —una para mirarla y otra para guardarla— y la
+  documentación terminaba citando números de la corrida que no quedó. Pasó tres
+  veces; una de ellas era el único argumento para cambiar un plazo, y al medirlo
+  de nuevo sesenta veces no volvió a aparecer. Ahora se muestra y se guarda la
+  misma corrida, y la verificación falla si un número con unidad no está en la
+  evidencia que lo respalda.
+
+- **La aplicación distingue sin fallar lo que cambió ella de lo que cambió otro.**
+  Cien de cien, medido contra la consola. No lo consigue adivinando por tiempo
+  —eso era imposible, porque la consola no le devuelve nada a quien escribe— sino
+  porque no hace falta: lo que llega por la conexión de trabajo es siempre de
+  otro, y lo propio se marca al verificarse.
+
+- **Un fader movido desde otro dispositivo ya no borra el historial reciente.**
+  Un arrastre llegaba como veinte cambios separados y llenaba solo él la lista de
+  los últimos veinte, que es justo lo que se mira para entender qué pasó. Ahora
+  es un único aviso, con el valor donde el fader quedó. El costo, dicho: dos
+  cambios sobre lo mismo a menos de un cuarto de segundo se cuentan como uno.
+
+- **La limpieza de instantáneas viejas ahora se comprueba.** Se mandaba el
+  borrado y nadie miraba si había ocurrido; si algo fallaba, el show crecía igual
+  y nada avisaba. Además, la aplicación ya no confunde «la consola no contestó»
+  con «no hay ninguna instantánea», que hacía abortar una transacción con un
+  motivo que no decía la verdad.
+
+- **La aplicación ya puede confirmar un cambio mirando el medidor**, para cuando
+  la wifi no da para abrir la segunda conexión que normalmente lo verifica —o
+  sea, en pleno show—. Estaba escrito y sin conectar: sin esa conexión, antes no
+  se escribía nada. Y si el canal está en silencio sigue sin escribirse, porque
+  ahí el medidor tampoco puede confirmar y un cambio a ciegas no se distingue de
+  uno que funcionó.
+
+- **Se descubrió que la consola difunde en un tic de ~34 ms**, y no una línea por
+  escritura. Dos cambios a la misma ruta dentro de ese tic producen uno solo, con
+  el segundo valor: el primero se aplica y su confirmación no llega nunca. Las
+  escrituras normales quedan fuera del problema porque van espaciadas 100 ms, casi
+  tres tics, pero ahora está medido en vez de ser suerte.
+
+- **La aplicación no pisa un cambio hecho desde otro dispositivo**, y ya no es
+  algo probado solo contra el simulador: medido contra la consola, con un segundo
+  cliente haciendo de otro operador. 100 de 100 cambios ajenos etiquetados, cero
+  sobrescrituras.
+
+- **La política de confirmación de escrituras quedó cerrada, y medida.** La tabla
+  de qué confirma cada escritura iba a escribirse a mano diciendo «se supone que
+  sí» en casi todas las filas; se midió en cambio, ruta por ruta contra la
+  consola: 18 de 18 difundidas, mediana 17 ms. Lo que no se midió queda marcado
+  como inferido, diciendo que lo es.
+
+- **La retención de instantáneas ya está probada contra la consola.** El comando
+  de borrado se había implementado sin ejecutarse nunca contra el aparato: la
+  prueba corrió por debajo del máximo y no borró nada. Medido, funciona y deja
+  los shows del usuario intactos.
+
+- **Las capturas viejas dejan de pasar por documentación buena.** Dos mostraban
+  un paso del recorrido que se había corrido de número. La verificación falla
+  ahora si el índice no nombra todo lo guardado, y —cuando se corre junto a los
+  guiones— si lo guardado no coincide con lo recién producido. En integración
+  continua solo se revisa el índice, porque ahí nadie sacó capturas.
+
+- **El aviso de realimentación ya señala qué banda es.** La barra tenía que
+  salir en color de aviso y salía blanca como todas: la pantalla usaba cinco
+  fichas de diseño que no existen, y `var()` con valor de reserva no falla. El
+  aviso contaba la banda sostenida y no marcaba cuál. Había otras nueve, con
+  dieciséis usos, en cinco pantallas más, y ahora la verificación falla si
+  alguna ficha usada no está declarada.
+
+- **Las instantáneas automáticas dejan de acumularse.** Se conservan las 20 más
+  recientes, que es lo que INV-003 ya tenía decidido. **Solo se borran las
+  propias y solo las que se pueden fechar**: una instantánea que guardaste a
+  mano no se puede borrar ni por error, porque el comando ni siquiera se
+  construye para ella. Sin esto, con una instantánea por aplicación de ganancia,
+  una sesión de veinte canales dejaba sesenta.
+
+- **Guardar una instantánea ya no te cambia cuál es la actual.** Se descubrió
+  midiendo: al crear su punto de retorno, la aplicación hacía que la consola
+  pasara a considerar «actual» la automática en vez de la tuya. Si después
+  tocabas «actualizar instantánea actual» en la consola, escribías sobre la
+  automática y perdías tu trabajo sin enterarte. Ahora la aplicación devuelve la
+  etiqueta sola, escribiendo **solo la etiqueta** — cargar la instantánea
+  aplicaría todo su contenido, que es lo contrario de restaurar.
+
+- **El lazo se cerró: medir, proponer, aplicar y verificar.** Comprobado contra
+  la consola real: midió 30,7 dB de margen, propuso +3, escribió la ganancia de
+  30 a 33 dB, volvió a medir y dijo «mejoró, quedó en 27,7 y faltan 13,7». El
+  margen bajó exactamente los 3 dB aplicados.
+
+- **La aplicación crea su propio punto de retorno antes de escribir.** INV-001
+  lo exigía y no estaba implementado. Guarda en un show propio llamado `VSE`
+  —**nunca en los del usuario**, y no por convención sino porque el show no es
+  un parámetro del comando— y lo verifica releyendo la lista de la consola. **No
+  sabe borrar**: el protocolo tiene `DELETESNAPSHOT` y el módulo no lo
+  construye, con un test que lo fija leyendo su propio código.
+
+- **La aplicación aplica la ganancia en la consola.** Hasta ahora medía,
+  proponía y ahí se cortaba: el cambio lo hacía el usuario a mano. El
+  mecanismo estaba entero desde antes —motor de seguridad, ejecutor de
+  transacciones, tabla del diario— y **nadie lo instanciaba**. Se aplica con
+  confianza ALTA o MEDIA, un canal por vez, solo en configuración de canales, y
+  se verifica volviendo a medir: que el valor haya llegado prueba que la
+  perilla se movió, no que haya servido (ADR-026).
+
+- **El diario de transacciones se guarda en la base.** Había uno en memoria,
+  que sirve para los tests y el simulador. Pero ADR-013 pide anotar **antes**
+  de escribir para que, si la aplicación se cae a mitad de una transacción, al
+  volver se sepa qué quedó tocado — y un diario en memoria se lleva esa
+  información en la misma caída que tenía que sobrevivir.
+
+- **Sin conexión testigo, la escritura se confirma por el medidor.** Es lo que
+  INV-011 ya contemplaba para la ganancia con señal presente: si se subió 3 dB,
+  el nivel tiene que subir 3 dB. Comprueba el efecto y no el valor, así que se
+  anota como `VU` y nunca como `WITNESS`. Sin señal no hay confirmación posible
+  y no se escribe.
+
 - **Los medidores de las salidas se leen: general, subgrupos, efectos,
   auxiliares y reproductor.** La cola de `VU2` estuvo meses declarada
   indescifrable porque se la leía con el paso de las entradas y las secciones

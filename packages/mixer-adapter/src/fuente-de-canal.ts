@@ -50,11 +50,24 @@ export function rutaDeGanancia(fuente: string | undefined): string | null {
 const ES_PREVIO = /^hw\.\d+$/;
 
 /**
- * **Lo que falta y no se agregó acá.** `i.N.scsrc` más `var.mtk.soundcheck`
- * dicen si el canal está reproduciendo una pista grabada en vez de su entrada.
- * Con el soundcheck virtual encendido, la ganancia del previo **no afecta lo
- * que suena**, así que un consejo de ganancia ahí no es impreciso: es
- * inaplicable. Está medido, y entra cuando haya quién lo consuma —una función
- * exportada sin llamador es una trampa esperando al primero, que es como
- * llegaron a este repositorio las curvas inventadas del `raw-map`.
+ * Si el canal está reproduciendo una pista grabada en vez de su entrada.
+ *
+ * **Con el soundcheck virtual encendido, la ganancia del previo no afecta lo
+ * que suena.** El canal reproduce lo que se grabó, así que mover la perilla no
+ * cambia nada de lo que el operador escucha. Un consejo de ganancia ahí no es
+ * impreciso: **es inaplicable**, y decirlo de otra manera manda al usuario a
+ * mover algo que no hace nada.
+ *
+ * Hacen falta las dos cosas: el modo encendido —`var.mtk.soundcheck`, que es
+ * global— y que el canal tenga una pista asignada —`i.N.scsrc`, que apunta a
+ * `ua.N` o `ub.N`—. Con el modo apagado la pista sigue asignada y no se usa,
+ * así que mirar solo `scsrc` daría un falso positivo permanente: en esta
+ * consola los 24 canales tienen una.
  */
+export function tomaPistaGrabada(
+  soundcheckEncendido: boolean,
+  scsrc: string | undefined,
+): boolean {
+  if (!soundcheckEncendido) return false;
+  return scsrc !== undefined && scsrc !== '' && scsrc !== 'none';
+}

@@ -69,11 +69,25 @@ export interface WriteResult {
   readonly motivo: string | null;
 }
 
-/** Cambio masivo externo: recuperación de instantánea o arrastre de fader. */
+/**
+ * Cambio masivo externo: muchas **rutas distintas** moviéndose a la vez.
+ *
+ * **`GRUPO_DE_CANALES` se llamaba `FADER_DRAG` y era un nombre falso.** Se
+ * dispara cuando varios canales cambian el mismo parámetro en la misma ventana
+ * —un grupo, un VCA, un recall parcial—, no cuando alguien arrastra un fader:
+ * eso es **una sola ruta** escrita muchas veces y nunca puede entrar acá. El
+ * texto que la aplicación muestra siempre dijo la verdad; el identificador no,
+ * y por eso el criterio 5 de SPK-P0.9 parecía cubierto hasta que se midió
+ * contra la consola el 2026-09-10.
+ *
+ * El arrastre no genera un evento de estos **a propósito**: es un gesto sobre
+ * un parámetro, no una avalancha, y no invalida el estado. Se agrupa en un
+ * único aviso de cambio externo.
+ */
 export interface BulkExternalChange {
   readonly rutasAfectadas: number;
   readonly ventanaMs: number;
-  readonly probableCausa: 'SNAPSHOT_RECALL' | 'FADER_DRAG' | 'DESCONOCIDA';
+  readonly probableCausa: 'SNAPSHOT_RECALL' | 'GRUPO_DE_CANALES' | 'DESCONOCIDA';
   readonly timestamp: string;
 }
 
@@ -117,6 +131,37 @@ export interface MixerDomainAPI {
    * borrarla desde el navegador de la consola mientras tanto.
    */
   listarSnapshots(): Promise<readonly string[]>;
+
+  /**
+   * Crea el punto de retorno que INV-001 exige, y lo verifica releyendo.
+   *
+   * Devuelve el nombre si quedó en la lista de la consola, o `null`. **No
+   * recibe el show**: se guarda siempre en el de la aplicación, para que no
+   * haya forma de escribir encima del trabajo del usuario.
+   */
+  guardarInstantanea(): Promise<string | null>;
+
+  /**
+   * Cada trama del analizador, ya en bandas de decibeles relativos.
+   *
+   * Suscribirse **no** enciende el analizador: eso es `tomarAnalizador`, que es
+   * una escritura y necesita permiso. Sin fuente elegida esto no dispara nunca.
+   */
+  alEspectro(cb: (bandas: readonly number[]) => void): () => void;
+
+  /**
+   * Apunta el analizador a una fuente. **Le cambia la pantalla al operador.**
+   *
+   * `var.rta` es una sola variable de la consola, no una por cliente. ADR-025
+   * exige permiso explícito antes de llamar a esto.
+   */
+  tomarAnalizador(fuente: string): boolean;
+
+  /** Devuelve el analizador a la fuente **leída** al conectar. */
+  devolverAnalizador(): void;
+
+  /** Qué fuente tenía el analizador al conectar, para poder contarlo. */
+  fuenteOriginalDelAnalizador(): string | null;
 
   /** Suscripción a cambios externos y a avalanchas. */
   alCambiarExterno(cb: (parametro: string, valor: number) => void): () => void;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { REDUCCION_RELEVANTE_DB } from '@vse/assistants';
 import type { ChannelAssignment } from '@vse/domain';
 import { BandService } from '../core/band.service';
@@ -8,7 +8,9 @@ import {
   BadgeComponent, ButtonComponent, CardComponent, EmptyStateComponent,
   PageHeaderComponent, StatComponent, type TonoDeInsignia,
 } from '../ui';
-import { DURACION_CAPTURA_S, GainAssistantService } from './gain-assistant.service';
+import { DURACION_CAPTURA_S, GainAssistantService, type ResultadoCaptura } from './gain-assistant.service';
+import { AplicarGananciaService } from './aplicar-ganancia.service';
+import { verificarAjuste } from '@vse/assistants';
 import { VERIFICADO_CONTRA_CONSOLA } from '@vse/mixer-adapter';
 
 /** Una fila ya resuelta: la plantilla no calcula ni formatea nada. */
@@ -27,6 +29,16 @@ interface FilaDeGanancia {
   readonly confianza: string;
   readonly tonoConfianza: TonoDeInsignia;
   readonly accion: string;
+  /** Si el botón de aplicar va habilitado. Ver `puedeAplicarGanancia`. */
+  readonly puedeAplicar: boolean;
+  /**
+   * Por qué no se puede, cuando no se puede.
+   *
+   * Va como `title` del botón: una pantalla que apaga un botón sin decir por
+   * qué obliga a adivinar, y acá el motivo casi siempre es el siguiente paso.
+   */
+  readonly motivoNoAplica: string | null;
+  readonly textoAplicar: string;
   /** Si el nivel de este canal viene condicionado por proceso dinámico. */
   readonly condicionada: boolean;
   /** Qué lo condiciona, en corto, para la insignia que va junto al nivel. */
@@ -114,7 +126,11 @@ function dbLegible(db: number): string {
   template: `
     <div class="pagina">
       <ui-page-header titulo="Ganancia"
-        descripcion="Cuánto margen tiene cada canal antes de saturar. La aplicación propone; el cambio se aplica a mano en la consola." />
+        descripcion="Cuánto margen tiene cada canal antes de saturar. La aplicación mide, propone y —con confianza suficiente— aplica y vuelve a medir para comprobar que sirvió." />
+
+      @if (aviso(); as texto) {
+        <p class="aviso-aplicar">{{ texto }}</p>
+      }
 
       @if (!permiteAjustar()) {
         <p class="aviso">
@@ -185,6 +201,17 @@ function dbLegible(db: number): string {
                   <td>
                     <ui-button variante="secundario" [deshabilitado]="capturando()"
                                (pulsado)="medir(f.asignacion)">{{ f.accion }}</ui-button>
+                    @if (f.medido) {
+                      <ui-button variante="primario"
+                                 [deshabilitado]="!f.puedeAplicar || aplicando() !== null"
+                                 (pulsado)="aplicar(f)">{{ f.textoAplicar }}</ui-button>
+                      @if (!f.puedeAplicar && f.motivoNoAplica) {
+                        <!-- El motivo va VISIBLE y no en un «title»: en una
+                             tablet no hay puntero que lo revele, así que un
+                             botón apagado sin texto obliga a adivinar. -->
+                        <p class="motivo">{{ f.motivoNoAplica }}</p>
+                      }
+                    }
                   </td>
                 </tr>
               }
@@ -197,6 +224,14 @@ function dbLegible(db: number): string {
             <ui-card [titulo]="f.nombre" [subtitulo]="'Entrada ' + f.indice">
               <ui-button acciones variante="secundario" [deshabilitado]="capturando()"
                          (pulsado)="medir(f.asignacion)">{{ f.accion }}</ui-button>
+              @if (f.medido) {
+                <ui-button acciones variante="primario"
+                           [deshabilitado]="!f.puedeAplicar || aplicando() !== null"
+                           (pulsado)="aplicar(f)">{{ f.textoAplicar }}</ui-button>
+                @if (!f.puedeAplicar && f.motivoNoAplica) {
+                  <p class="motivo">{{ f.motivoNoAplica }}</p>
+                }
+              }
               @if (f.medido) {
                 <div class="numeros">
                   <ui-stat rotulo="Pico" [valor]="f.pico" unidad=" dB" />
@@ -263,6 +298,11 @@ function dbLegible(db: number): string {
   styles: [`
     @use 'tokens' as *;
 
+    /* El motivo por el que un botón está apagado, visible y sin gritar. */
+    .motivo { margin: .25rem 0 0; font-size: .8rem; line-height: 1.3; opacity: .75; max-width: 28ch; }
+    .aviso-aplicar { margin: .5rem 0 0; font-size: .9rem; line-height: 1.4; }
+
+
     .aviso {
       margin-bottom: var(--sp-4); padding: var(--sp-3);
       border-left: 2px solid var(--warn); color: var(--muted);
@@ -316,6 +356,7 @@ export class GainComponent {
   private readonly asistente = inject(GainAssistantService);
   private readonly sesion = inject(SesionService);
   private readonly mixer = inject(MixerService);
+  private readonly aplicador = inject(AplicarGananciaService);
 
   /**
    * Qué proceso tiene puesto cada canal, **en vivo**.
@@ -396,6 +437,9 @@ export class GainComponent {
           ganancia: '—', delta: '—', sube: false, baja: false,
           confianza: 'Sin datos', tonoConfianza: 'neutro' as TonoDeInsignia,
           accion: 'Medir',
+          puedeAplicar: false,
+          motivoNoAplica: 'todavía no se midió este canal',
+          textoAplicar: 'Aplicar',
           condicionada: etiqueta !== '', procesos: etiqueta,
         };
       }
@@ -430,6 +474,7 @@ export class GainComponent {
         confianza: conf.texto,
         tonoConfianza: conf.tono,
         accion: 'Repetir',
+        ...this.estadoDeAplicar(r, sinDatos, db),
         // La insignia sale del estado **de ahora**, no del de la captura: si el
         // usuario puenteó el compresor después de medir, la insignia se apaga y
         // lo que queda es la recomendación vieja diciendo que hay que repetir.
@@ -454,6 +499,120 @@ export class GainComponent {
       ? 'Preparate'
       : `Tocá o cantá la parte más fuerte que vayas a hacer en el show, durante ${DURACION_CAPTURA_S} segundos`,
   );
+
+  /** El canal que se está aplicando ahora mismo, o `null`. */
+  readonly aplicando = signal<number | null>(null);
+  /** Lo último que pasó al aplicar, para contárselo al usuario. */
+  readonly aviso = signal<string | null>(null);
+
+  /**
+   * Si la fila puede aplicarse, y con qué texto.
+   *
+   * **El texto cambia cuando la confianza es MEDIA.** ADR-026 decidió que MEDIA
+   * aplica —exigir ALTA dejaría el botón apagado casi siempre y el operador
+   * aplicaría a mano igual— pero con el aviso a la vista. «Aplicar igual» dice
+   * en dos palabras que hay algo para mirar antes.
+   */
+  private estadoDeAplicar(
+    r: ResultadoCaptura,
+    sinDatos: boolean,
+    deltaDb: number,
+  ): { puedeAplicar: boolean; motivoNoAplica: string | null; textoAplicar: string } {
+    if (sinDatos || Math.abs(deltaDb) < 0.05) {
+      return {
+        puedeAplicar: false,
+        motivoNoAplica: sinDatos
+          ? 'no hubo señal para medir: volvé a medir con el canal sonando'
+          : 'la ganancia ya está donde corresponde',
+        textoAplicar: 'Aplicar',
+      };
+    }
+    const v = this.aplicador.puedeAplicar(r.propuesta.confianza, r.indice);
+    return {
+      puedeAplicar: v.puede,
+      motivoNoAplica: v.motivo,
+      textoAplicar: r.propuesta.confianza === 'MEDIUM' ? 'Aplicar igual' : 'Aplicar',
+    };
+  }
+
+  /**
+   * Aplica la propuesta y **vuelve a medir para verificar**.
+   *
+   * La segunda medición es lo que convierte esto en un lazo. Que el testigo vea
+   * el valor nuevo prueba que la perilla se movió, no que haya servido: el caso
+   * que interesa es el otro, cuando la propuesta era razonable, el valor entró
+   * y el efecto no llegó (ADR-026).
+   */
+  async aplicar(fila: FilaDeGanancia): Promise<void> {
+    const r = this.resultados().find((x) => x.indice === fila.indice);
+    const asignacion = this.banda.asignacionDe(fila.indice);
+    if (r === undefined || asignacion === undefined) return;
+
+    const ruta = this.mixer.rutaDeGananciaDe(fila.indice);
+    const crudoActual = this.mixer.crudoDe(ruta);
+    if (ruta === null || crudoActual === null) {
+      this.aviso.set('no se sabe de qué previo viene este canal, así que no se toca nada');
+      return;
+    }
+
+    this.aplicando.set(fila.indice);
+    this.aviso.set(null);
+    try {
+      const res = await this.aplicador.aplicar({
+        canal: fila.indice,
+        rutaGanancia: ruta,
+        crudoActual,
+        gainPropuestoDb: r.propuesta.gainPropuestoDb ?? 0,
+        confianza: r.propuesta.confianza,
+      }, this.sesion.actual()?.sesion.id ?? '');
+
+      if (res.estado !== 'APLICADA') { this.aviso.set(res.motivo); return; }
+
+      this.aviso.set(
+        `Listo: la ganancia quedó en ${res.quedoEnDb.toFixed(0)} dB. ` +
+        'Seguí tocando unos segundos para comprobar que sirvió.',
+      );
+
+      // La verificación es otra ventana de medición sobre el mismo canal. Se
+      // reutiliza la captura del asistente en vez de inventar un camino
+      // paralelo: así el análisis de las dos ventanas es el mismo.
+      await this.asistente.capturar(asignacion);
+      const despues = this.resultados().find((x) => x.indice === fila.indice);
+      if (despues === undefined) return;
+
+      const v = verificarAjuste({
+        margenAntesDb: r.analisis.margenDb,
+        margenDespuesDb: despues.analisis.margenDb,
+        objetivoDb: this.banda.perfilDe(asignacion)?.margenObjetivoDb ?? 0,
+        ventanaPosteriorSuficiente: despues.analisis.suficiente,
+      });
+      this.aviso.set(this.contarVerificacion(v));
+    } finally {
+      this.aplicando.set(null);
+    }
+  }
+
+  /**
+   * El veredicto de la verificación, en castellano.
+   *
+   * **`SIN_MEDICION` no dice que el cambio haya fallado**, y el texto lo
+   * refleja: que el músico haya dejado de tocar no es información sobre el
+   * ajuste. Confundir las dos cosas llevaría a revertir cambios buenos.
+   */
+  private contarVerificacion(v: ReturnType<typeof verificarAjuste>): string {
+    switch (v.estado) {
+      case 'EN_EL_OBJETIVO':
+        return `Verificado: el canal quedó con ${v.margenDb.toFixed(1)} dB de margen, que es lo que su perfil busca.`;
+      case 'MEJORO':
+        return `Mejoró: quedó en ${v.margenDb.toFixed(1)} dB de margen y todavía faltan ${v.faltaDb.toFixed(1)}. Podés volver a medir y aplicar otro paso.`;
+      case 'NO_MEJORO':
+        return `El cambio entró pero el margen no se movió (${v.margenDb.toFixed(1)} dB). Puede que el previo esté en su tope o que haya un límite antes. Revisá antes de insistir.`;
+      case 'EMPEORO':
+        return `Quedó peor que antes: ${v.margenDb.toFixed(1)} dB de margen. Conviene volver atrás.`;
+      case 'SIN_MEDICION':
+        return 'El cambio se aplicó, pero no hubo señal para comprobar si sirvió. Volvé a medir con el canal sonando.';
+    }
+  }
 
   medir(a: ChannelAssignment): void { void this.asistente.capturar(a); }
 

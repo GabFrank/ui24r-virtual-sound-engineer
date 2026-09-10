@@ -1,0 +1,58 @@
+SPK-P0.9 contra la consola: criterios 1, 2 y 5 — 2026-09-10
+consola 192.168.0.78, firmware 3.4.8318-ui24, canal 17 (i.16)
+
+Dos conexiones al mismo aparato: la principal es la aplicacion y la segunda hace
+de OTRO OPERADOR, que es lo que de verdad es para la consola --medido el
+2026-09-09: trata dos sockets del mismo proceso como clientes distintos--.
+
+Hasta hoy estos criterios estaban probados SOLO CONTRA EL SIMULADOR, y ahi esta
+el problema: el simulador difunde porque nosotros le dijimos que difunda. Una
+captura de la aplicacion detectando algo en el simulador no distingue entre que
+el protocolo sea asi y que nuestra hipotesis este equivocada.
+
+punto de retorno: VSE_AUTO_1789047525294
+i.16.mix vale 0 y ahi tiene que volver al final
+
+criterio 1: 100 cambios desde el otro operador, espaciados 120 ms
+  etiquetados como ajenos: 100 de 100
+  el ultimo valor coincide: si
+  avalanchas disparadas por error: 0
+
+criterio 5: 40 escrituras seguidas sobre una sola ruta, cada 15 ms
+  lineas que la consola difundio y la aplicacion vio: 19 de 40, en 609 ms
+  cambios masivos detectados: 0 -> (ninguno)
+  clasificado como arrastre: no
+  AGRUPADO EN UNO SOLO: no — la aplicacion recibe 19 avisos separados
+
+criterio 2: el otro operador cambia y la aplicacion intenta escribir encima
+  resultado: {"status":"CONFLICT","confirmedBy":"NONE","actual":0.3,"motivo":"se esperaba 0.256 y hay 0.3, cambiado desde otro cliente"}
+  i.16.mix quedo en 0.3 (0.3 = respeto lo ajeno; 0.9 = lo piso)
+  piso el cambio ajeno: no
+
+restaurada: si
+
+CRITERIO 1 — CUMPLIDO. 100 de 100 cambios ajenos etiquetados, ninguna avalancha
+disparada por error.
+
+CRITERIO 2 — CUMPLIDO. La aplicacion intento escribir con un valor esperado que
+el otro operador ya habia cambiado, y devolvio CONFLICT sin escribir. La ruta
+quedo con el valor ajeno, no con el nuestro.
+
+CRITERIO 5 — NO CUMPLIDO, Y POR DOS RAZONES DISTINTAS.
+
+La primera es de la consola: de 40 escrituras cada 15 ms llegan 20. Difunde en
+un tic de ~34 ms y manda el ultimo valor de cada ventana. Ver
+cadencia-difusion-2026-09-10.txt.
+
+La segunda es nuestra y es la que importa: el arrastre NO SE AGRUPA. La
+aplicacion recibe 20 avisos de cambio externo separados. Y no es un umbral mal
+elegido, es imposible por construccion: causaProbable() en confirmed-store.ts
+clasifica FADER_DRAG con `sufijos.size === 1 && rutas.size > 1`, o sea que pide
+VARIAS RUTAS DISTINTAS con el mismo sufijo. Un arrastre de un fader es UNA SOLA
+RUTA escrita muchas veces, asi que nunca puede entrar por ahi. Lo que ese codigo
+detecta es otra cosa --varios canales moviendose juntos, como un recall de
+faders o un grupo-- que esta bien detectar y no es lo que dice la etiqueta.
+
+Y la captura 05 del escenario visual no lo tapaba: su pie dice «muchos mensajes,
+una sola ruta, SIN ALERTA», o sea que documenta que no se dispara una avalancha
+falsa --que es correcto-- y no que el arrastre se agrupe.

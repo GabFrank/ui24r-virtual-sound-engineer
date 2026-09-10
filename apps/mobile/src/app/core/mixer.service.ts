@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import {
   Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoCanal,
+  type MixerDomainAPI,
   type ConnectionState, type BulkExternalChange,
 } from '@vse/mixer-adapter';
 import { esSimulador } from '@vse/domain';
@@ -43,6 +44,41 @@ export class MixerService {
   private readonly log = inject(Logger);
   private readonly conexion = inject(ConnectionStateService);
   private adapter: Ui24rMixerAdapter | null = null;
+
+  /**
+   * El adaptador, para quien necesite hablarle a la consola de verdad.
+   *
+   * **Se expone a regañadientes y con el tipo angosto.** El resto de la
+   * aplicación toca la consola a través de las señales de este servicio, que es
+   * lo que mantiene a Angular fuera del adaptador y al adaptador fuera de
+   * Angular. Pero el ejecutor de transacciones necesita la API del dominio
+   * entera —lee, escribe y comprueba— y envolverla señal por señal sería copiar
+   * su superficie sin agregar nada.
+   *
+   * Devuelve `null` cuando no hay conexión, que es lo que obliga al llamador a
+   * decidir qué hacer en vez de recibir un objeto que va a fallar después.
+   */
+  /**
+   * La ruta de la ganancia del previo que alimenta a un canal, o `null`.
+   *
+   * Sale de `i.N.src`, no del número del canal: con el enrutamiento de fábrica
+   * coinciden, y por eso suponerlo pasa desapercibido hasta que alguien
+   * repatchea. Ver `fuente-de-canal.ts`.
+   */
+  rutaDeGananciaDe(canal: number): string | null {
+    const c = this.canales().find((x) => x.indice === canal);
+    return c?.rutaGanancia ?? null;
+  }
+
+  /** El valor crudo confirmado de una ruta, para la comprobación previa a escribir. */
+  crudoDe(ruta: string | null): number | null {
+    if (ruta === null || this.adapter === null) return null;
+    return this.adapter.leer(ruta)?.value ?? null;
+  }
+
+  api(): MixerDomainAPI | null {
+    return this.conexion.estado() === 'CONNECTED' ? this.adapter : null;
+  }
 
   readonly canales = signal<readonly EstadoCanal[]>([]);
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);

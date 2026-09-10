@@ -29,12 +29,22 @@ export class TransporteFalso implements Transport {
   /** Hace fallar la apertura de las sesiones nuevas, no la de esta. */
   fallaLaSesionNueva = false;
 
+  /**
+   * Qué hace «la consola» cuando el adaptador escribe.
+   *
+   * Existe para poder probar el respaldo por medidor, que necesita que el nivel
+   * cambie **como consecuencia** de la escritura y no antes: si el test inyecta
+   * el nivel nuevo de entrada, el adaptador lo leería como nivel de partida y
+   * la prueba pasaría sin haber probado nada.
+   */
+  alEnviar: ((linea: string) => void) | null = null;
+
   async conectar(): Promise<void> {
     if (this.debeFallar) throw new Error('no se pudo abrir la sesión');
     this.conectado = true;
   }
   async desconectar(): Promise<void> { this.conectado = false; }
-  enviar(linea: string): void { this.enviadas.push(linea); }
+  enviar(linea: string): void { this.enviadas.push(linea); this.alEnviar?.(linea); }
   alRecibir(cb: (linea: string) => void): () => void {
     this.recibir = cb;
     return () => { this.recibir = null; };

@@ -1,0 +1,47 @@
+EL ESPECTRO Y EL AVISO DE REALIMENTACION, EN LA TABLET — 2026-09-09
+Tablet LINK 8 (192.168.0.160), consola 192.168.0.78. Tono de 1 kHz en el canal 10.
+
+LO QUE PASO, EN ORDEN
+1. Al abrir la pantalla, el analizador NO se toca: aparece el pedido de
+   permiso, que dice literalmente que el operador va a ver cambiar su RTA.
+   var.rta seguia vacio.
+2. Concedido el permiso, var.rta paso a "m" --el general--.
+3. La pantalla detecto:  "1.00 kHz - sostenida 14.0 s"
+4. Y acoto el culpable:  "Canales abiertos ahora mismo: 10"
+   El 10 es exactamente donde estaba el tono.
+5. Al salir de la pantalla, var.rta volvio a "" sin que nadie hiciera nada.
+
+DOS DECISIONES QUE ESTA PRUEBA CONFIRMA
+
+SE VIGILA EL GENERAL Y NO UN CANAL. La realimentacion es un lazo del sistema
+--sale por los parlantes y vuelve por un microfono-- asi que aparece en el
+general venga del canal que venga. Vigilar un canal detecta solo ese; rotar
+entre canales detecta tarde --una realimentacion arranca en un par de
+segundos-- y ademas le hace saltar el analizador al operador justo cuando lo
+necesita quieto.
+
+LO QUE EL GENERAL NO DICE ES CUAL CANAL ES, y eso se acota con lo que ya llega
+gratis: los medidores por canal vienen en cada trama VU2, para los 24,
+siempre. Un canal en silencio no puede estar realimentando.
+
+ES UNA PISTA Y NO UN VEREDICTO, y la pantalla lo dice con esas palabras. Que
+un canal suene no prueba que sea el culpable: puede haber tres microfonos
+abiertos y realimentar uno solo. Lo concluyente es la NEGATIVA --un canal mudo
+queda descartado-- y eso ya reduce veinticuatro candidatos a los pocos que
+estan abiertos.
+
+EL PRESTAMO DURA LO QUE DURA LA PANTALLA
+Permiso una vez por sesion, cambio de fuente libre mientras este abierta, y al
+salir se devuelve. Devolver no es opcional: si la pantalla se cerrara sin
+hacerlo, el operador abrio el espectro una vez y su analizador queda apuntando
+al general el resto del dia. Va en ngOnDestroy.
+
+UN DETALLE DEL DIBUJO
+El alto de las barras se calcula sobre el maximo de la trama y no sobre un tope
+fijo, porque EL CERO ABSOLUTO DEL ANALIZADOR NO ESTA MEDIDO. Un eje en
+decibeles absolutos seria inventado. Lo que si es cierto y util es la forma.
+
+ESTADO EN QUE QUEDO LA CONSOLA
+Volcado completo comparado contra el del principio de la sesion: SIN UNA SOLA
+CLAVE DISTINTA. var.rta volvio a vacio solo, el supresor del general quedo
+encendido como estaba, y la ganancia del canal 10 en su valor original.
