@@ -137,3 +137,31 @@ La regla general, que vale para más cosas que los mensajes: **una comprobación
 que llega después del hecho es un reproche, no una guarda.** Cuando algo se
 repite, la pregunta no es «cómo me acuerdo la próxima» sino «dónde se pone para
 que no dependa de que me acuerde».
+
+## Una tarea, un commit, y recién entonces la siguiente
+
+Una tarea **no está terminada** hasta que está documentada, commiteada y
+empujada. Nada de acumular dos o tres y cerrarlas juntas.
+
+El orden es siempre el mismo:
+
+1. El trabajo.
+2. La documentación que corresponda: evidencia, especificación, matriz de
+   capacidades, acta del control, `CHANGELOG`.
+3. `npm run verificar` **en verde**. No se commitea en rojo, ni siquiera
+   «porque el arreglo va en el commit siguiente» — eso ya se hizo una vez y el
+   commit quedó afirmando una corrección que no estaba en el archivo.
+4. Commit, con el ámbito y el largo que acepta el gancho `commit-msg`.
+5. Empujar.
+6. Recién ahí, marcar la tarea y tomar la próxima.
+
+**Si aparece un hallazgo en medio de una tarea, va como tarea nueva.** No se
+mete en la que está en curso. El último commit de la sesión del 2026-09-10 juntó
+mediciones nuevas de SPK-P0.9 con diecisiete correcciones de una auditoría: las
+dos cosas eran ciertas y ninguna se puede revertir sin la otra.
+
+**Por qué importa más de lo que parece.** Un commit gordo no solo es difícil de
+revertir: es difícil de *revisar*, y en este proyecto las cosas que se
+descubrieron tarde —el techo del medidor, la retención de picos, el respaldo por
+VU que no existía— se descubrieron leyendo, no ejecutando. Lo que no se puede
+leer con atención no se revisa.
