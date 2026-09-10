@@ -1,0 +1,36 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T19:11:14.338Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-rta-por-frecuencia.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789067480616
+supresor 1 -> 0 · general a 0 · ganancia del canal 10 a 0,70
+el analizador mira el CANAL, no el general: no hay acustica en el medio
+
+   Hz | banda | nivel electrico | el analizador lee | pico
+------+-------+-----------------+-------------------+------
+    63 |    19 |        -21.7 dB |   58.0 dB ###############| banda 19 (63 Hz)
+   125 |    31 |        -21.7 dB |   60.2 dB ###############| banda 31 (125 Hz)
+   250 |    43 |        -21.7 dB |   60.3 dB ###############| banda 43 (250 Hz)
+   500 |    55 |        -21.7 dB |   60.4 dB ###############| banda 55 (500 Hz)
+  1000 |    67 |        -21.3 dB |   60.4 dB ###############| banda 67 (1000 Hz)
+  2000 |    79 |        -21.7 dB |   60.4 dB ###############| banda 79 (2000 Hz)
+  4000 |    91 |        -21.7 dB |   60.1 dB ###############| banda 91 (4000 Hz)
+  8000 |   103 |        -22.0 dB |   59.5 dB ###############| banda 103 (8000 Hz)
+
+diferencia contra 1 kHz, con el nivel electrico igual en todas:
+     63 Hz: electrico -0.3 dB · analizador -2.4 dB
+    125 Hz: electrico -0.3 dB · analizador -0.1 dB
+    250 Hz: electrico -0.3 dB · analizador -0.1 dB
+    500 Hz: electrico -0.3 dB · analizador +0.0 dB
+   1000 Hz: electrico +0.0 dB · analizador +0.0 dB
+   2000 Hz: electrico -0.3 dB · analizador +0.0 dB
+   4000 Hz: electrico -0.3 dB · analizador -0.3 dB
+   8000 Hz: electrico -0.7 dB · analizador -0.9 dB
+
+El analizador pesa PAREJO: el desvio mayor contra 1 kHz es -2.0 dB.
+supresor devuelto a 1, general a 0.7643020595, ganancia a 0.2508445026
+
+
+# salida del proceso: 0

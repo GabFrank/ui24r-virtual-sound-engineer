@@ -43,6 +43,10 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
   que predice la ley medida, y es el pico del espectro.
 
+- **El aviso de realimentación mide lo mismo en graves que en agudos**, y ahora
+  está comprobado: la escala del analizador se había establecido solo a 1 kHz.
+  Entre 125 Hz y 8 kHz no se desvía más de 0,3 dB.
+
 - **La confirmación por medidor ya no supone que el canal 10 use el previo 10.**
   Con un enrutamiento distinto del de fábrica miraba el medidor de otro canal y
   podía dar por buena una escritura mirando una señal ajena. Ahora saca el canal

@@ -87,6 +87,46 @@ entre 250 Hz y 8 kHz.
 falsos positivos que nunca se había hecho con una fuente real: el ruido sube
 todas las bandas a la vez, y una realimentación es una sola que no baja.
 
+### La ley del analizador es la misma en todas las bandas — 2026-09-10
+
+**El agujero que cierra.** `RTA_DB_POR_BYTE = 0,375` se estableció con tonos a
+1 kHz y **nunca se comprobó en otra frecuencia**. Todo el detector de
+realimentación supone que un byte vale lo mismo abajo que arriba: compara una
+banda contra sus vecinas y contra su propio pasado, así que si el analizador
+pesara distinto los graves, el umbral de 9 dB sobre la vecindad significaría una
+cosa a 200 Hz y otra a 5 kHz.
+
+**Por qué esto se puede contestar y la medición acústica no.** Un tono por el
+aire pasa por el parlante, la sala y el micrófono, y ninguno de los tres es
+plano: la caída no se puede repartir. Pero el analizador se puede apuntar a un
+**canal**, y ahí no hay acústica en el medio. El tono entra por la Scarlett
+siempre al mismo nivel eléctrico, así que **cualquier diferencia entre bandas es
+del analizador**. Con el supresor apagado, claro.
+
+| Tono | Nivel eléctrico | El analizador lee | Desvío neto contra 1 kHz |
+|---|---|---|---|
+| 63 Hz | −21,7 dB | 58,0 dB | **−2,1 dB** |
+| 125 Hz | −21,7 dB | 60,2 dB | +0,2 dB |
+| 250 Hz | −21,7 dB | 60,3 dB | +0,2 dB |
+| 500 Hz | −21,7 dB | 60,4 dB | +0,3 dB |
+| 1 kHz | −21,3 dB | 60,4 dB | — |
+| 2 kHz | −21,7 dB | 60,4 dB | +0,3 dB |
+| 4 kHz | −21,7 dB | 60,1 dB | +0,0 dB |
+| 8 kHz | −22,0 dB | 59,5 dB | −0,2 dB |
+
+**Pesa parejo.** De 125 Hz a 8 kHz el desvío neto —descontando lo que ya venía
+distinto en el nivel eléctrico— no pasa de 0,3 dB. Solo a **63 Hz** hay unos
+−2 dB, que es poco y en el extremo del recorrido.
+
+**Qué habilita.** Que los umbrales del detector de realimentación signifiquen lo
+mismo en todo el espectro, que es lo que se venía suponiendo sin comprobar.
+
+**Y qué descarta, retroactivamente.** La caída de graves de la medición acústica
+**no era del analizador**: acá el mismo tono de 63 Hz por vía eléctrica se lee
+2 dB abajo, no veinte. Lo que se pierda por el aire se pierde en el aire.
+
+`evidence/ley-rta-por-frecuencia-2026-09-10.txt`.
+
 ### El supresor de la consola nos estaba midiendo a nosotros — 2026-09-10
 
 **Es el hallazgo más importante de esta sesión de medición, y llegó destruyendo

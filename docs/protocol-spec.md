@@ -441,6 +441,11 @@ Por qué se tardó en verlo: `parseVUAdata` y `parseRTAdata` hacen las dos un `s
 | Ley de bandas | `banda = 67 + 12·log2(f/1000)` |
 | Alcance | ~20,9 Hz a ~22,6 kHz |
 | Escala | **0,375 dB por byte** — no es la del medidor |
+
+**Y la ley es la misma en las 122 bandas**, comprobado el 2026-09-10 con tonos
+de 63 a 8000 Hz entrando al mismo nivel eléctrico y el analizador apuntado al
+canal —o sea sin acústica en el medio—: el desvío contra 1 kHz no pasa de 0,3 dB
+salvo a 63 Hz, donde son unos 2. `spikes/SPK-P0.5/evidence/ley-rta-por-frecuencia-2026-09-10.txt`.
 | Cadencia | ~30 tramas por segundo |
 | Balística | sube dentro de una trama —≤ 33 ms, no se resuelve más fino— y **cae con su propia rampa lineal**, ~5,2 bytes por trama, unos 59 dB/s. De 90 % a 10 % tarda ~536 ms |
 
