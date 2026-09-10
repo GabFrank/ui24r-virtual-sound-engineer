@@ -33,6 +33,17 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **El analizador quedó comprobado contra frecuencias conocidas por el aire**: de
+  250 Hz a 1 kHz, un tono emitido por el monitor aparece exactamente en la banda
+  que predice la ley medida, y es el pico del espectro.
+
+- **De 125 Hz para abajo el sonido no llega al micrófono, y todavía no se sabe
+  por qué.** No es la consola, que está plana, ni el camino eléctrico, que
+  entrega el mismo nivel en todas las frecuencias. Quedan el filtro de graves del
+  propio micrófono y el ajuste del monitor —y la caída es más brusca de lo que
+  cualquiera de los dos explica solo—. Hasta aclararlo, no confiar en mediciones
+  de graves con este equipo.
+
 - **El espectro quedó comprobado con un micrófono de verdad**, y no solo con
   tonos: 75 de las 122 bandas con energía y la forma que corresponde. En la misma
   prueba, el aviso de realimentación **no saltó ni una vez** con ruido de banda

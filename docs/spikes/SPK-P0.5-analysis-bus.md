@@ -87,7 +87,69 @@ entre 250 Hz y 8 kHz.
 falsos positivos que nunca se había hecho con una fuente real: el ruido sube
 todas las bandas a la vez, y una realimentación es una sola que no baja.
 
-### Una pregunta que queda abierta
+### Los graves: dónde se pierden, y dónde NO — 2026-09-10
+
+Se mandaron tonos conocidos por el aire: PC → Scarlett → canal 10 → general →
+Rockit → **aire** → B2 → canal 9 → analizador, con el canal del micrófono en
+silencio para que no hubiera lazo. Y se midió a la vez el nivel **eléctrico** que
+entraba al canal del tono, que es lo que parte la pregunta en dos.
+`evidence/tono-por-el-aire-2026-09-10.txt`.
+
+| Tono | Entra al canal 10 | Lo ve el micrófono |
+|---|---|---|
+| 1 kHz | −21,7 dB | **28,9 dB** y es el pico |
+| 500 Hz | −21,7 dB | **30,7 dB** y es el pico |
+| 250 Hz | −21,7 dB | **28,4 dB** y es el pico |
+| 125 Hz | −21,7 dB | 5,8 dB |
+| 63 Hz | −21,7 dB | 0,1 dB |
+| 40 Hz | −21,7 dB | 0,0 dB |
+
+**El nivel eléctrico es idéntico en las seis, incluidos 40 Hz.** O sea que el
+tono llega a la consola igual de fuerte siempre: no es la Scarlett, ni el cable,
+ni el archivo. **La pérdida es enteramente acústica**, y es brutal: 23 dB entre
+250 y 125 Hz, y nada por debajo.
+
+Y no es de la consola: el ecualizador del general está **plano** —todas sus
+bandas en 0,5— y sin puentear.
+
+**Dónde sí, y acá hay que ser honesto con lo que se sabe y lo que no.** Con la
+consola y el camino eléctrico descartados quedaba «del monitor para adelante», y
+se llegó a escribir que era el Rockit. **Esa conclusión no se sostiene**, porque
+la eliminación tenía un agujero: **el micrófono también es un aparato con filtro
+propio**. El Behringer B-2 trae un conmutador de corte de graves en su cuerpo, y
+si está puesto explica parte de esto. Lo señaló el usuario.
+
+Quedan entonces dos candidatos, y **no se van a suponer**:
+
+- El **corte de graves del propio B2**. Se distingue por el símbolo: línea
+  horizontal recta es respuesta plana; línea que sube hacia la derecha es el
+  filtro puesto.
+- El **ajuste de graves del Rockit**, que esos monitores traen en el panel
+  trasero junto con modos de sala.
+
+**Y ninguno de los dos explica la magnitud por sí solo**, que es la parte que
+todavía no cierra: los cortes de graves de micrófono suelen ser de 6 dB por
+octava, y acá hay **unos 23 dB en una sola octava**. Cuatro veces más
+pronunciado. Así que o hay dos filtros sumándose, o hay un tercer factor que no
+se identificó —el propio `RTA` podría pesar distinto las bandas graves, y eso
+nunca se midió: la ley de 0,375 dB por byte se estableció a 1 kHz—.
+
+La forma de cerrarlo es barata y no necesita razonar: **se mueve el conmutador
+del micrófono y se vuelve a correr esta misma tabla**. La comparación
+antes/después dice cuánto era el micrófono y cuánto queda por explicar.
+
+> **La lección no es sobre graves.** El razonamiento fue «no es A, no es B,
+> entonces es C», y estaba mal porque la cadena tenía un eslabón más que el
+> razonamiento. Una eliminación solo vale si la lista está completa, y la lista
+> de una cadena de audio incluye **cada aparato que la toca**, no solo los que
+> uno estaba mirando.
+
+**Lo que sí queda establecido**: la cadena acústica completa funciona y el `RTA`
+la sigue —de 250 Hz a 1 kHz el tono aparece exactamente en su banda y es el pico
+del espectro— y la anomalía tiene un lugar concreto donde buscarla en vez de ser
+un misterio repartido.
+
+### La pregunta original, tal como se planteó
 
 Las bandas de 31, 63 y 125 Hz dieron **exactamente cero**, no «poco». El filtro
 pasa-altos del canal está en `slope = 0` —apagado— y el ecualizador no está
