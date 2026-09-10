@@ -25,36 +25,48 @@
  */
 
 /**
- * El show donde la aplicación guarda lo suyo.
+ * El show y el nombrado **salen del dominio**, no se redefinen acá.
  *
- * Separado de los del usuario a propósito. Si algún día alguien mira la consola
- * y ve un show llamado `VSE` lleno de instantáneas con fecha, va a saber
- * exactamente qué son y de dónde salieron.
+ * Este archivo llegó a tener su propia copia de `VSE`, del prefijo y de la
+ * lectura de la fecha, escrita sin buscar antes. Los valores coincidían de
+ * casualidad, y dos copias de la misma regla es exactamente lo que hizo que la
+ * ley del fader del simulador derivara ocho decibeles de la del adaptador.
+ *
+ * El dominio manda porque ahí vive la **política de retención** (INV-003), que
+ * lee la fecha del nombre para decidir qué borrar: si el nombrado se separa, la
+ * retención empieza a no reconocer lo que la aplicación crea.
  */
-export const SHOW_DE_LA_APLICACION = 'VSE';
+export {
+  SHOW_RESERVADO as SHOW_DE_LA_APLICACION,
+  nombreSnapshotAutomatica,
+  fechaDeSnapshotAutomatica as fechaDeInstantanea,
+} from '@vse/domain';
 
-const PREFIJO = 'VSE_AUTO_';
+import {
+  SHOW_RESERVADO, nombreSnapshotAutomatica, fechaDeSnapshotAutomatica,
+} from '@vse/domain';
 
 /**
- * El nombre de una instantánea automática.
+ * El nombre de una instantánea automática, a partir de milisegundos.
  *
- * **La marca va en milisegundos y no en una fecha legible**, y eso es
- * deliberado: la retención de INV-003 lee la fecha de acá para decidir qué
- * borrar, y un nombre que no se puede fechar es uno que no se borra nunca.
+ * Envuelve al del dominio, que toma una fecha. La marca va en milisegundos y no
+ * en algo legible a propósito: la retención lee la fecha de ahí, y un nombre que
+ * no se puede fechar es uno que no se borra nunca.
  */
 export function nombreDeInstantanea(ahoraMs: number): string {
-  return `${PREFIJO}${Math.trunc(ahoraMs)}`;
+  return nombreSnapshotAutomatica(new Date(Math.trunc(ahoraMs)));
 }
 
-/** Si un nombre de la lista es una instantánea nuestra. */
+/**
+ * Si un nombre de la lista es una **automática** nuestra.
+ *
+ * Más estrecho que `esSnapshotDeLaApp` del dominio, que acepta cualquier `VSE_`.
+ * Acá interesa distinguir las que la aplicación creó sola —fechables, y por lo
+ * tanto sujetas a retención— de una que el usuario haya guardado a mano en el
+ * mismo show.
+ */
 export function esDeLaAplicacion(nombre: string): boolean {
-  return /^VSE_AUTO_\d+$/.test(nombre);
-}
-
-/** Cuándo se creó, leído del nombre. `null` si el nombre no es de los nuestros. */
-export function fechaDeInstantanea(nombre: string): Date | null {
-  if (!esDeLaAplicacion(nombre)) return null;
-  return new Date(Number(nombre.slice(PREFIJO.length)));
+  return fechaDeSnapshotAutomatica(nombre) !== null;
 }
 
 /**
@@ -64,7 +76,7 @@ export function fechaDeInstantanea(nombre: string): Date | null {
  * preguntar primero costaría otra vuelta de red para el mismo resultado.
  */
 export function comandoCrearShow(): string {
-  return `CREATESHOW^${SHOW_DE_LA_APLICACION}`;
+  return `CREATESHOW^${SHOW_RESERVADO}`;
 }
 
 /**
@@ -79,7 +91,7 @@ export function comandoCrearShow(): string {
  * mensaje en dos.
  */
 export function comandoGuardar(nombre: string): string {
-  return `SAVESNAPSHOT^${SHOW_DE_LA_APLICACION}^${nombre.replace(/\^/g, '_')}`;
+  return `SAVESNAPSHOT^${SHOW_RESERVADO}^${nombre.replace(/\^/g, '_')}`;
 }
 
 /**
@@ -105,7 +117,7 @@ export function comandoDevolverEtiqueta(nombre: string): string {
 
 /** El comando para pedir la lista, que es con lo que se verifica. */
 export function comandoListar(): string {
-  return `SNAPSHOTLIST^${SHOW_DE_LA_APLICACION}`;
+  return `SNAPSHOTLIST^${SHOW_RESERVADO}`;
 }
 
 /**
