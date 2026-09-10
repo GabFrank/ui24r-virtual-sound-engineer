@@ -124,6 +124,39 @@ espera, comprobar el ruteo con el medidor del bus **antes** de preguntarle al
 analizador, y no bajar el control para proteger el monitor —para eso está bajar
 el auxiliar, no el general—.
 
+### La respuesta de la cadena entera, con ruido rosa — 2026-09-10
+
+**La primera curva completa**, y la materia prima de cualquier calibración. Se
+generó ruido rosa por Voss-McCartney, se reprodujo por el monitor y se midió el
+espectro en **las dos puntas**: el canal donde entra —sin acústica en el medio— y
+el micrófono después del aire. `evidence/ruido-rosa-por-el-aire-2026-09-10.txt`.
+
+| | Resultado |
+|---|---|
+| El ruido **tal como entra** | plano dentro de 6 dB: de 25 a 31 dB en todo el recorrido. El generador sirve |
+| Por el aire, **hasta 125 Hz** | **cero absoluto** |
+| De 177 a 354 Hz | sube de golpe: 2,6 → 9,3 → 15,2 |
+| De 354 Hz a 5,7 kHz | parejo entre 13 y 21 dB |
+| Pico en 8 kHz | 22,7 dB |
+| Arriba de 11 kHz | cae: 17,7 → 8,7 → 2,6 |
+
+**Un Rokit 8 llega a unos 35 Hz**, así que ese corte alrededor de 150 Hz **no es
+el límite del monitor**: es un pasa-altos, y el candidato sigue siendo el
+conmutador de corte de graves del propio B2.
+
+**Por qué esto no contradice la medición con tonos**, donde 63 Hz sí aparecía a
+13,6 dB: un tono concentra toda su energía en **una banda**, y el ruido rosa la
+reparte entre las 122. En los graves, donde además la cadena atenúa, la energía
+por banda del ruido cae por debajo del piso del analizador. Las dos mediciones
+dicen lo mismo con distinta sensibilidad, y la del tono es la que llega más abajo.
+
+**Y qué es esta curva, exactamente.** Es la respuesta de **toda la cadena**
+—Scarlett, canal, general, Rockit, sala, B2, previo— y **no la del micrófono**.
+Sin una referencia plana en algún punto no se pueden separar. Sirve para
+repetibilidad y para comparar micrófonos entre sí; no para verdad absoluta. Esa
+distinción tiene que sobrevivir a cualquier función de calibración que se
+construya encima.
+
 ### La ley del analizador es la misma en todas las bandas — 2026-09-10
 
 **El agujero que cierra.** `RTA_DB_POR_BYTE = 0,375` se estableció con tonos a

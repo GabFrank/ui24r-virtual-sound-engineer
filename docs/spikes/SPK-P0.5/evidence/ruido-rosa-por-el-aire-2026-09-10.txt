@@ -1,0 +1,41 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T19:48:39.065Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ruido-rosa-por-el-aire.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789069725296
+canal 9 en silencio: no hay lazo posible
+supresor 1 -> 0 · ganancia del canal 10 a 0,70
+ruido rosa de 30 s a -14 dBFS de pico, generado por Voss-McCartney
+
+1. el ruido rosa tal como ENTRA, mirando el canal del tono (sin acustica)
+2. el mismo ruido DESPUES del aire, mirando el microfono
+
+    Hz | entra | sale | diferencia (la cadena: parlante + sala + microfono)
+-------+-------+------+----------------------------------------------------
+    31 |  25.2 |  0.0 | -25.2 -------------
+    44 |  25.5 |  0.0 | -25.5 -------------
+    63 |  26.9 |  0.0 | -26.9 -------------
+    88 |  26.8 |  0.0 | -26.8 -------------
+   125 |  27.7 |  0.0 | -27.7 --------------
+   177 |  28.6 |  2.6 | -25.9 -------------
+   250 |  29.4 |  9.3 | -20.1 ----------
+   354 |  29.6 | 15.2 | -14.4 -------
+   500 |  30.3 | 13.4 | -16.8 --------
+   707 |  30.1 | 14.6 | -15.5 --------
+  1.0k |  31.3 | 15.6 | -15.7 --------
+  1.4k |  30.9 | 17.5 | -13.4 -------
+  2.0k |  31.6 | 19.0 | -12.6 ------
+  2.8k |  31.2 | 19.3 | -11.8 ------
+  4.0k |  31.7 | 21.0 | -10.7 -----
+  5.7k |  31.1 | 21.0 | -10.1 -----
+  8.0k |  31.0 | 22.7 |  -8.3 ----
+ 11.3k |  29.3 | 17.7 | -11.6 ------
+ 16.0k |  28.9 |  8.7 | -20.2 ----------
+ 22.6k |  23.8 |  2.6 | -21.2 -----------
+
+supresor devuelto a 1, ganancia a 0.2508
+
+
+# salida del proceso: 0
