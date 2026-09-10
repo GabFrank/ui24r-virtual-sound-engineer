@@ -67,3 +67,34 @@ cita es una medición que nadie va a encontrar cuando la necesite.
 - `evidence/var-rta-2026-09-09.txt` — qué hay en `var.rta` antes de tocarlo
 - `evidence/rta-general-2026-09-09.txt` — la ley de bandas mirando el general: son las mismas 122 y la misma ley, contra una nota anterior que decía 78
 - `evidence/espectro-en-la-tablet-2026-09-09.txt` — el espectro y el aviso funcionando contra la consola: detectó 1 kHz sostenida y acotó el canal, y devolvió el analizador al salir
+
+## El analizador sobre un micrófono real — 2026-09-10
+
+Hasta hoy el `RTA` solo se había mirado con **tonos por línea**: señales de una
+sola frecuencia, generadas y entradas por la Scarlett. Con un Behringer B2 en el
+canal 9 y lluvia afuera —ruido de banda ancha, estacionario y gratis— se pudo
+mirar con una fuente acústica de verdad, y sin armar ningún lazo: el canal está
+en silencio, y tanto su medidor de entrada como el analizador son anteriores.
+
+Evidencia: `evidence/espectro-microfono-2026-09-10.txt`, y el encendido del
+fantasma en `evidence/fantasma-canal9-2026-09-10.txt`.
+
+746 tramas, todas con contenido. **75 de las 122 bandas con energía**, pico en
+2 kHz a 21 dB, con la forma que uno esperaría de lluvia: nada abajo, el grueso
+entre 250 Hz y 8 kHz.
+
+**Y el vigilante de realimentación no dio un solo aviso.** Es la prueba contra
+falsos positivos que nunca se había hecho con una fuente real: el ruido sube
+todas las bandas a la vez, y una realimentación es una sola que no baja.
+
+### Una pregunta que queda abierta
+
+Las bandas de 31, 63 y 125 Hz dieron **exactamente cero**, no «poco». El filtro
+pasa-altos del canal está en `slope = 0` —apagado— y el ecualizador no está
+puenteado pero tampoco corta ahí, así que no lo explica el canal.
+
+Quedan dos candidatas sin separar: que la lluvia realmente no tenga energía
+medible ahí a esta distancia, o que algo del camino la quite. **Separarlas
+necesita una fuente de banda ancha con graves conocidos**, que es justo lo que
+daría el ruido rosa desde el reproductor de la consola. No se resuelve con lo
+que hay hoy y no se va a suponer.

@@ -1,0 +1,21 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T16:48:57.455Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/encender-fantasma.ts
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+(node:74317) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/encender-fantasma.ts is not specified and it doesn't parse as CommonJS.
+punto de retorno: VSE_AUTO_1789058943685
+general antes: 0.7643020595 · i.8.mute antes: 0
+
+1. general abajo y canal 9 en silencio (hay un lazo armado en la sala)
+2. fantasma encendido
+3. esperando a que cargue el capsulo (8 s)
+
+nivel de entrada del canal 9: -46.7 dB
+
+4. el general vuelve donde estaba; el canal 9 queda EN SILENCIO a proposito
+   el silencio del canal se levanta cuando se decida provocar el lazo, no antes
+
+
+# salida del proceso: 0

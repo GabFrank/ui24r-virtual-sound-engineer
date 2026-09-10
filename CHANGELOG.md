@@ -33,6 +33,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la ganancia—, así que el caso más común de un canal mal puesto terminaba en un
   callejón sin salida. Ahora dice cuál de los dos es.
 
+- **El espectro quedó comprobado con un micrófono de verdad**, y no solo con
+  tonos: 75 de las 122 bandas con energía y la forma que corresponde. En la misma
+  prueba, el aviso de realimentación **no saltó ni una vez** con ruido de banda
+  ancha, que es exactamente lo que tiene que hacer.
+
 - **Las mediciones se archivan solas, y una cifra sin respaldo ya no pasa.** Se
   corría la medición dos veces —una para mirarla y otra para guardarla— y la
   documentación terminaba citando números de la corrida que no quedó. Pasó tres

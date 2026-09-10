@@ -186,6 +186,17 @@ recorrido solo pasa por las que están en su camino.
 | INV-004 | Delta máximo por transacción: fader ±3 dB; gain ±3 dB; EQ ±3 dB (salida) / ±4 dB (entrada), Q ≥ 0,7 en salidas; HPF ≤ 1 octava; delay ≤ 5 ms; master ±1 dB y nunca por encima del máximo previo de la sesión. **Tope acumulado por parámetro y sesión** respecto al valor inicial: fader ±6, gain ±6, EQ ±6 por banda, HPF ≤ 2 octavas, delay ≤ 10 ms. Una nueva transacción sobre el mismo parámetro solo es elegible si existe una `Measurement` posterior a la anterior. | Unit: 3 transacciones consecutivas de +3 dB sin Measurement intermedia → la tercera rechazada con `CUMULATIVE_CAP`; HIL: asserts sobre comandos. | MVP0 (recomendaciones), MVP4a (writes) |
 | INV-005 | ASSISTED ≤ 4 parámetros por transacción; CONTROLLED AUTO ≤ 1; writes secuenciales ≥ 100 ms con confirmación del anterior. **Transacciones System** (Analysis Bus, PLAYER_RESERVE, mutes de componente, calibración) están exentas del límite de 4, con pacing ≥ 20 ms y verificación por lectura del conjunto completo ≤ 1 s tras el último write. | Unit + log; SPK-P0.5 mide el tiempo real. | MVP1 |
 | INV-006 | Preamp gain solo escribible en `SessionState = CHANNEL_SETUP`; bloqueado en FULL_BAND, SHOW, ROOM_*, MIX, SOUNDCHECK_* y mientras exista un `VirtualSoundcheckTake` activo. | Unit: matriz estado × parámetro. | MVP4a |
+> **INV-007 se cruzó una vez, a mano y con autorización, el 2026-09-10.** Para
+> medir con un micrófono hacía falta encender la alimentación fantasma del canal
+> 9, y la invariante la deja en solo lectura. Se hizo desde un spike —no desde la
+> aplicación, que sigue sin poder escribirla— con el usuario fuera de la sala y
+> autorizándolo explícitamente. Era seguro por tres cosas comprobables: lo
+> enchufado es un condensador que **sin fantasma no entrega nada**, no hay ningún
+> micrófono de cinta conectado, y se bajó el general antes de conmutar para que
+> el golpe no saliera por el monitor. Queda anotado acá y no solo en el commit,
+> porque una invariante que se cruza sin dejar rastro deja de ser una invariante.
+> Ver `spikes/SPK-P0.5/evidence/fantasma-canal9-2026-09-10.txt`.
+
 | INV-007 | La app nunca escribe phantom (read-only en MixerDomainAPI). El Setup Wizard exige confirmación "Input 2 por TRS". | Estático + UX test. | MVP1 |
 | INV-008 | Únicos routings escribibles: sends hacia el Analysis Bus; mute/fader/sends de Player L/R dentro de PLAYER_RESERVE; mute de buses ∈ `PAProfile.outputBuses` durante medición por componente (transacción System con restauración). **Desde MVP4b y solo en ASSISTED:** filtros PEQ/GEQ (gain, freq, Q) y HPF de los buses de `PAProfile.outputBuses`. Fader, mute fuera de medición, delay, polaridad y limiter de esos buses, y todo AUX de monitor, matrix y mute de inputs: read-only. | Estático: paths escribibles de salida ⊆ {`m.eq.*`, `a.B.eq.*` para B ∈ PAProfile} + unit. | MVP1 |
 | INV-009 | Fader master nunca > 0 dB y nunca escrito en MVP0–MVP3. | Unit. | MVP0 |
