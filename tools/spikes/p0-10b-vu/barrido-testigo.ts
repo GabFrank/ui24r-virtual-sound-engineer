@@ -107,6 +107,83 @@ if (!testigo.listoParaAtestiguar) {
   process.exit(1);
 }
 
+/**
+ * El estado entero de la consola por HTTP, que es un camino distinto del que
+ * escribe.
+ *
+ * **Existe porque la comprobacion se hacia y no se archivaba.** El 2026-09-11
+ * se afirmo en un commit que las dieciocho rutas habian quedado identicas y que
+ * no se habia movido ninguna otra clave, y esa comparacion vivia en la terminal
+ * de quien la corrio: exactamente lo que este proyecto llama transcripcion. Lo
+ * marco una auditoria, y tenia razon. Ahora la hace la medicion y queda en su
+ * archivo.
+ */
+async function estadoPorHttp(): Promise<Map<string, string>> {
+  // **`/raw` NO TERMINA NUNCA**: la consola manda el estado entero y despues se
+  // queda difundiendo por el mismo flujo. Un `await r.text()` no resuelve
+  // jamas, y con un plazo encima aborta y devuelve vacio -- que es lo que pasa
+  // la primera vez que se escribio esto. Hay que leer de a trozos y cortar
+  // cuando el volcado inicial ya paso, que se nota porque deja de llegar nada
+  // durante un momento.
+  const r = await fetch(`http://${maquina}/raw`).catch(() => null);
+  if (r === null || r.body === null) return new Map();
+  const lector = r.body.getReader();
+  const dec = new TextDecoder();
+  let cuerpo = '';
+  const hasta = Date.now() + 8000;
+  for (;;) {
+    const paso = await Promise.race([
+      lector.read(),
+      new Promise<{ done: true; value: undefined }>(
+        (res) => setTimeout(() => res({ done: true, value: undefined }), 900),
+      ),
+    ]).catch(() => ({ done: true as const, value: undefined }));
+    if (paso.done || Date.now() > hasta) break;
+    cuerpo += dec.decode(paso.value, { stream: true });
+  }
+  await lector.cancel().catch(() => {});
+  const m = new Map<string, string>();
+  for (const linea of cuerpo.split('\n')) {
+    const c = /^SET[DS]\^([^^]+)\^(.*)$/.exec(linea.trim());
+    if (c !== null) m.set(c[1]!, c[2]!);
+  }
+  return m;
+}
+
+const antesHttp = await estadoPorHttp();
+if (antesHttp.size === 0) {
+  console.log('no se pudo leer /raw: sin punto de comparacion independiente, no se escribe');
+  await testigo.cerrar();
+  await a.desconectar();
+  process.exit(1);
+}
+
+// **El canal se elige enumerando, no confiando en el silencio.** Un canal
+// silenciado con envios abiertos a auxiliares o a efectos PUEDE estar sonando en
+// los monitores mientras el general no lo muestra. Se comprueba antes de
+// escribir y se deja escrito en la evidencia.
+const num = (k: string): number => Number(antesHttp.get(k) ?? '0');
+const auxAbiertos = [...Array(10).keys()].filter(
+  (k) => num(`i.${N}.aux.${k}.value`) > 0.001 && num(`i.${N}.aux.${k}.mute`) === 0,
+);
+const fxAbiertos = [...Array(4).keys()].filter(
+  (k) => num(`i.${N}.fx.${k}.value`) > 0.001 && num(`i.${N}.fx.${k}.mute`) === 0,
+);
+console.log('');
+console.log(`el canal i.${N}, enumerado por HTTP antes de escribir:`);
+console.log(`  silenciado: ${num(`i.${N}.mute`) === 1 ? 'si' : 'NO'}`
+  + ` · fader: ${num(`i.${N}.mix`).toFixed(4)}`
+  + ` · nombre: ${JSON.stringify(antesHttp.get(`i.${N}.name`) ?? '')}`);
+console.log(`  envios abiertos: ${auxAbiertos.length} a auxiliares, ${fxAbiertos.length} a efectos`);
+const vivo = num(`i.${N}.mute`) !== 1 || num(`i.${N}.mix`) > 0.001
+  || auxAbiertos.length > 0 || fxAbiertos.length > 0;
+if (vivo) {
+  console.log('  ESTE CANAL NO ESTA MUERTO. No se escribe nada.');
+  await testigo.cerrar();
+  await a.desconectar();
+  process.exit(1);
+}
+
 console.log('');
 // Los parametros de la medicion van EN la medicion. Un archivo de evidencia que
 // no dice con que ventana se midio obliga a buscarla en el codigo del dia, y esa
@@ -164,7 +241,29 @@ console.log(`difundidas y vistas por el testigo: ${vistas.length} de ${utiles.le
 if (tiempos.length > 0) {
   console.log(`latencia del testigo: mediana ${tiempos[Math.floor(tiempos.length / 2)]} ms, minimo ${tiempos[0]}, maximo ${tiempos[tiempos.length - 1]}`);
 }
-console.log(`sin restaurar: ${sinRestaurar.length === 0 ? 'ninguna' : sinRestaurar.map((f) => f.path).join(', ')}`);
+console.log(`sin restaurar, segun la relectura del arnes: ${sinRestaurar.length === 0 ? 'ninguna' : sinRestaurar.map((f) => f.path).join(', ')}`);
+
+// **La comprobacion independiente, y va al archivo.** El arnes relee por el
+// mismo socket que escribio; esto lee por HTTP, que es otro camino. Y no mira
+// solo las rutas tocadas: compara la consola ENTERA contra como estaba, porque
+// una medicion que solo revisa lo que sabe que toco no puede ver lo que toco
+// sin saber.
+console.log('');
+const despuesHttp = await estadoPorHttp();
+if (despuesHttp.size === 0) {
+  console.log('COMPROBACION POR HTTP: no se pudo releer. La restauracion queda sin verificar por fuera.');
+} else {
+  const tocadas = new Set(filas.filter((f) => f.antes !== null).map((f) => f.path));
+  const distintas: string[] = [];
+  for (const k of new Set([...antesHttp.keys(), ...despuesHttp.keys()])) {
+    if (antesHttp.get(k) !== despuesHttp.get(k)) distintas.push(k);
+  }
+  const deLasTocadas = distintas.filter((k) => tocadas.has(k));
+  const otras = distintas.filter((k) => !tocadas.has(k));
+  console.log(`comprobacion por HTTP, contra el estado previo (${antesHttp.size} claves leidas):`);
+  console.log(`  rutas tocadas que NO volvieron a su valor: ${deLasTocadas.length === 0 ? 'ninguna' : deLasTocadas.join(', ')}`);
+  console.log(`  otras claves que cambiaron: ${otras.length === 0 ? 'ninguna' : otras.join(', ')}`);
+}
 
 await testigo.cerrar();
 await a.desconectar();

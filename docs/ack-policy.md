@@ -52,18 +52,31 @@ las tres está transcrita al pie de la primera, porque antes solo vivía en la
 terminal de quien la corrió.
 
 **Remedido con `medir.mjs` el 2026-09-11**, porque aquella primera era una
-transcripción y la herramienta ya existía cuando se escribió:
-`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`. **18 de 18**
-otra vez, y las 18 restauradas — esta vez comprobadas **las dieciocho** desde
-fuera, con un volcado HTTP nuevo contra el estado previo, y con cero claves más
-movidas en toda la consola.
+transcripción: `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`.
+**18 de 18** otra vez.
 
-**Y la latencia no reprodujo, que es justo lo que hay que decir.** Aquellas tres
-corridas dieron medianas de 17, 18 y 17 ms; ésta dio **mediana 0, con máximo 1**.
-La conclusión que sostiene el criterio —el testigo ve todo lo que la consola
-difunde— aguanta y es la misma. El número no: depende de la red de esa noche, y
-citarlo como una propiedad del aparato sería el error de siempre con otro
-disfraz.
+**Aquí se afirmó algo sin archivo, y hubo que arreglarlo.** Se dijo que las
+dieciocho habían quedado comprobadas desde fuera «con cero claves más movidas en
+toda la consola», y esa comparación vivía en la terminal de quien la corrió —
+exactamente lo que este documento llama transcripción, en el párrafo de al lado.
+Lo marcó una auditoría. Ahora **la comprobación la hace la propia medición y
+queda en su archivo**: `evidence/barrido-testigo-2026-09-11b.txt` lee las **6732
+claves** por HTTP antes y después, y dice *«rutas tocadas que NO volvieron a su
+valor: ninguna; otras claves que cambiaron: ninguna»*. En ese mismo archivo queda
+la enumeración del canal antes de escribir: silenciado, fader en 0,0000, sin
+nombre, **cero envíos abiertos a auxiliares y cero a efectos**.
+
+**Y la latencia no reprodujo.** Aquellas tres corridas dieron medianas de 17, 18
+y 17 ms; las dos del 2026-09-11 dieron **mediana 0, con máximo 1**. La conclusión
+que sostiene el criterio —el testigo ve todo lo que la consola difunde— aguanta.
+El número no, y **la explicación que se publicó tampoco**: se dijo que era «la
+red de esa noche», y una auditoría señaló que el guion no cambió, el canal es el
+mismo y las rutas son las mismas, y que una mediana de cero milisegundos para
+escribir por la red y que otro socket vea la difusión no describe una red rápida.
+**Por qué cambió no está medido**, y dejarlo dicho así es más honesto que la
+explicación cómoda.
+
+Aquella primera corrida, la transcrita:
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`.
 
 El barrido usó el canal 17 —sin nombre, silenciado, fader abajo— con un punto de

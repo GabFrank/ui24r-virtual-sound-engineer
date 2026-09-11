@@ -64,48 +64,45 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   lo llama todavía**: está medido, expuesto en la interfaz, y ninguna pantalla lo
   muestra. El verde es del mecanismo, no del producto.
 
-- **Nueve evidencias se archivaron a mano el mismo día en que llegó la
-  herramienta que existe para impedirlo.** `medir.mjs` tee la salida a la
-  pantalla y al archivo a la vez, con su encabezado, para que no se pueda mirar
-  una corrida y archivar otra. Nueve mediciones de ese día y los siguientes se
-  transcribieron, y varias sostienen criterios en verde. El remate: una de ellas
-  cierra diciendo *«una medición que no se archiva no se midió, se contó»*.
+- **Cinco mediciones que sostienen criterios en verde son transcripciones — y
+  la primera versión de esta nota acusaba en falso.** Decía que se habían
+  archivado a mano «el mismo día en que entró la herramienta que existe para
+  impedirlo». Contado: la herramienta entró a las **12:55** del 2026-09-10 y las
+  nueve evidencias señaladas entraron entre las **00:56 y las 12:30** de ese
+  mismo día. **Ninguna pudo usarla.** La frase era cierta en cuanto al día y
+  falsa en cuanto a lo único que importaba. Lo marcó una auditoría y el reproche
+  se retira.
 
-  **Cuatro se remidieron contra la consola**, sobre un canal verificado muerto
-  antes de escribir —silenciado, fader al fondo y **sin envíos abiertos a
-  auxiliares ni a efectos**, que es lo que la declaración de huecos acaba de
-  enseñar a mirar— y con la restauración comprobada después por HTTP, un camino
-  distinto del que escribió: las dieciocho rutas idénticas y cero claves más
-  movidas en toda la consola.
+  Lo que queda en pie: que nadie tuviera con qué medirlas explica cómo pasó, y
+  no las convierte en mediciones. **Cuatro se remidieron** contra la consola,
+  sobre un canal verificado muerto —silenciado, fader al fondo y **sin envíos
+  abiertos a auxiliares ni a efectos**— y con la restauración comprobada por
+  HTTP. Los tres criterios de concurrencia y el tic de ~34 ms reproducen; el
+  barrido del testigo vuelve a dar 18 de 18.
 
-  Los tres criterios de concurrencia reproducen, el tic de ~34 ms reproduce
-  exacto, y el barrido del testigo vuelve a dar 18 de 18. **Lo que no reprodujo
-  es la latencia**: aquellas corridas dieron medianas de 17 y 18 ms y ésta dio
-  cero. La conclusión aguanta; el número era de la red de esa noche, y citarlo
-  como propiedad del aparato habría sido el mismo error con otro disfraz.
+  **Y tres diferencias entre las corridas que esta nota no mencionaba.** El
+  criterio del arrastre no reprodujo: **había quedado sin cumplir** aquella
+  noche y ahora se cumple, o sea que lo que se ve es el arreglo posterior
+  funcionando, no una repetición. El criterio de etiquetado se remidió con otro
+  espaciado. Y la latencia del testigo pasó de 17 ms a cero: **la explicación
+  publicada —«la red de esa noche»— no se sostiene**, porque el guion, el canal
+  y las rutas son los mismos, y una mediana de cero milisegundos no describe una
+  red rápida. **Por qué cambió no está medido**, y queda dicho así.
 
-  Las cinco que no se pudieron remedir —sus guiones ya no están en el árbol—
-  quedan **marcadas como transcripción en todos los documentos que las citan**.
-  Y hay una regla nueva que lo sostiene: toda evidencia posterior al día en que
-  nació la herramienta tiene que llevar su encabezado, o estar declarada y
-  avisada donde se cita. El límite no es una fecha elegida a ojo: es la del
-  commit que creó la herramienta.
+  Las cinco que no se pudieron remedir quedan marcadas como transcripción **en
+  el párrafo donde se las cita**, no en cualquier parte del documento. Y hay una
+  regla nueva: toda evidencia posterior al instante del commit que creó la
+  herramienta tiene que traer su encabezado completo —rótulo, fecha en formato
+  ISO y comando—, no una mención suelta de su nombre.
 
-- **«Sin integrant»: la columna «Quién» de Canales cortaba su propio texto.**
-  Visto en la tablet. No rompía nada, y ése era el problema — le dice al usuario
-  que nadie miró, justo antes de que la aplicación le pida confiar en números que
-  él no puede comprobar.
-
-  La causa no era el texto: era que **el ancho estaba elegido y el texto
-  también, cada uno por su lado**. El desplegable mide 130 px porque son tres en
-  la misma fila y sin ese recorte la tabla obliga a desplazarse de lado en una
-  tablet entera; de ahí salen unos 84 px para el texto, que a 15 px son unas
-  once letras. «Sin integrante» son catorce. Ahora dice **«Nadie»**, que bajo el
-  rótulo «Quién» es además la respuesta natural.
-
-  Y el límite dejó de ser invisible: está escrito en el CSS con la cuenta que lo
-  produce, y hay un test que lo comprueba sobre la plantilla — con su control
-  positivo, que verifica que el texto viejo no pasaría.
+- **Y se publicaron cuatro afirmaciones medidas sin archivo, en el mismo cambio
+  que prohíbe eso.** «Las dieciocho rutas idénticas y cero claves más movidas en
+  toda la consola» se comprobó de verdad, en la terminal de quien lo corrió, y
+  no quedó en ningún lado — que es exactamente lo que este proyecto llama
+  transcripción. Ahora **la comprobación la hace la propia medición**: lee las
+  6732 claves por HTTP antes y después, compara la consola entera, y deja en su
+  archivo tanto el resultado como la enumeración del canal antes de escribir. Si
+  no puede leer ese estado previo, **no escribe nada**.
 
 - **El aviso de cambio masivo mostraba nuestra constante, no el tamaño de la
   avalancha.** Medido contra la consola: se escribieron dieciséis rutas y la
