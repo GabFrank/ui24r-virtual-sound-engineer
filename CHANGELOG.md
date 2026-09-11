@@ -6,6 +6,31 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Cuatro invariantes tenían el texto y el código diciendo cosas distintas.**
+  Los encontró una auditoría rastreando los treinta y cuatro uno por uno, y en
+  los cuatro casos el texto era el que estaba mal: el código hacía lo correcto y
+  la norma describía otra cosa. Eso es peor que un número viejo, porque la norma
+  es lo que alguien lee para decidir si algo se puede hacer.
+
+  **INV-017** decía que la inestabilidad se mide sobre `VU2` con un umbral
+  derivado. Se mide sobre **`RTA` con 300 ms fijos**, y tiene que ser así:
+  **`VU2` se calla en silencio** —una trama cada 30 s sin señal— así que un
+  umbral sobre él declararía inestable cualquier pausa entre canciones. La
+  cláusula del percentil 95 **no la calcula nadie**, y vaciar la cola y
+  suspender transacciones **tampoco está implementado**.
+
+  **INV-011** decía «fader/mute/gain» y «−60 dB». Son **fader y ganancia** —el
+  silencio queda afuera a propósito, porque no mueve el medidor de forma
+  proporcional a lo pedido— y el piso es **−50 dB**.
+
+  **INV-021** figuraba como cubierta por test sin el calificativo que sí llevan
+  otras: lo que hay es la invalidación y el aviso; abortar transacciones e
+  invalidar las mediciones «antes» no cerradas no lo hace nadie.
+
+  **INV-001** ahora dice su excepción: el punto de retorno devuelve 44 de 45
+  campos, y el que no devuelve es el supresor de realimentación. La promesa de
+  «se puede deshacer» no lo cubre, y nada en el código lo sabe.
+
 - **El clasificador de rutas no reconocía ninguna ruta real del supresor de
   realimentación.** Buscaba `afs2.*`, que es el nombre comercial de Soundcraft;
   la consola publica `m.afs.*`, `a.B.afs.*` y `var.afsdata`. La categoría era
