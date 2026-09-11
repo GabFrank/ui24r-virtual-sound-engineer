@@ -1,0 +1,29 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T09:24:37.012Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/concurrencia-real.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789118683261
+i.16.mix vale 0 y ahi tiene que volver al final
+
+criterio 1: 100 cambios desde el otro operador, espaciados 400 ms
+  etiquetados como ajenos: 100 de 100
+  el ultimo valor coincide: si
+  avalanchas disparadas por error: 0
+
+criterio 5: 40 escrituras seguidas sobre una sola ruta, cada 15 ms
+  lineas que la consola difundio y la aplicacion vio: 1 de 40, en 0 ms
+  cambios masivos detectados: 0 -> (ninguno)
+  clasificado como grupo de canales: no (tiene que ser no: es una sola ruta)
+  AGRUPADO EN UNO SOLO: si
+
+criterio 2: el otro operador cambia y la aplicacion intenta escribir encima
+  resultado: {"status":"CONFLICT","confirmedBy":"NONE","actual":0.3,"motivo":"se esperaba 0.256 y hay 0.3, cambiado desde otro cliente"}
+  i.16.mix quedo en 0.3 (0.3 = respeto lo ajeno; 0.9 = lo piso)
+  piso el cambio ajeno: no
+
+restaurada: si
+
+
+# salida del proceso: 0

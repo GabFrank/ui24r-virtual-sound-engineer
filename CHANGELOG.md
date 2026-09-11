@@ -6,6 +6,33 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Nueve evidencias se archivaron a mano el mismo día en que llegó la
+  herramienta que existe para impedirlo.** `medir.mjs` tee la salida a la
+  pantalla y al archivo a la vez, con su encabezado, para que no se pueda mirar
+  una corrida y archivar otra. Nueve mediciones de ese día y los siguientes se
+  transcribieron, y varias sostienen criterios en verde. El remate: una de ellas
+  cierra diciendo *«una medición que no se archiva no se midió, se contó»*.
+
+  **Cuatro se remidieron contra la consola**, sobre un canal verificado muerto
+  antes de escribir —silenciado, fader al fondo y **sin envíos abiertos a
+  auxiliares ni a efectos**, que es lo que la declaración de huecos acaba de
+  enseñar a mirar— y con la restauración comprobada después por HTTP, un camino
+  distinto del que escribió: las dieciocho rutas idénticas y cero claves más
+  movidas en toda la consola.
+
+  Los tres criterios de concurrencia reproducen, el tic de ~34 ms reproduce
+  exacto, y el barrido del testigo vuelve a dar 18 de 18. **Lo que no reprodujo
+  es la latencia**: aquellas corridas dieron medianas de 17 y 18 ms y ésta dio
+  cero. La conclusión aguanta; el número era de la red de esa noche, y citarlo
+  como propiedad del aparato habría sido el mismo error con otro disfraz.
+
+  Las cinco que no se pudieron remedir —sus guiones ya no están en el árbol—
+  quedan **marcadas como transcripción en todos los documentos que las citan**.
+  Y hay una regla nueva que lo sostiene: toda evidencia posterior al día en que
+  nació la herramienta tiene que llevar su encabezado, o estar declarada y
+  avisada donde se cita. El límite no es una fecha elegida a ojo: es la del
+  commit que creó la herramienta.
+
 - **«Sin integrant»: la columna «Quién» de Canales cortaba su propio texto.**
   Visto en la tablet. No rompía nada, y ése era el problema — le dice al usuario
   que nadie miró, justo antes de que la aplicación le pida confiar en números que

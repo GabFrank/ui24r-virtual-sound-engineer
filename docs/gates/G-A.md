@@ -65,7 +65,7 @@ máximo de veinte**, así que no borró nada: el comando quedó probado contra u
 transporte falso y jamás ejecutado contra el aparato. Un borrado que no
 funciona falla hacia el lado silencioso —el show crece igual y nada avisa—; uno
 que funciona distinto de lo que creemos falla hacia el peor. Se midió el
-2026-09-10 y funciona: `SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt`.
+2026-09-10 y funciona: `SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt` — **transcripción sin archivar**, no pasó por `medir.mjs`.
 
 **Un archivo de evidencia afirmaba algo que había dejado de ser cierto.**
 `SPK-P0.1/evidence/lazo-cerrado-2026-09-09.txt` dice que el módulo «no sabe

@@ -1,0 +1,21 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T09:23:11.284Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/escrituras-propias.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789118597529 · i.16.pan vale 0.5
+
+20 40 60 80 100 
+
+escrituras: 100
+  etiquetadas PROPIAS: 100 (100.0 %)
+  etiquetadas ajenas:  0
+  sin etiquetar:       0
+resultados: APPLIED/WITNESS x100
+
+CRITERIO 3 CUMPLIDO: 100.0 % >= 98 %.
+restaurada: si
+
+
+# salida del proceso: 0

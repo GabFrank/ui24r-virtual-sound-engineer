@@ -15,7 +15,7 @@
     "test": "npm run test --workspaces --if-present",
     "pretest:dsp": "node tools/spikes/p0-10a-dsp/src/generate-signals.mjs",
     "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
-    "validate:docs": "node tools/docs/validate-ids.mjs && node tools/docs/validate-numeros.mjs && node tools/docs/validate-huerfanos.mjs && node tools/docs/validate-fichas.mjs && node tools/docs/validate-capturas.mjs && node tools/docs/validate-cifras-medidas.mjs",
+    "validate:docs": "node tools/docs/validate-ids.mjs && node tools/docs/validate-numeros.mjs && node tools/docs/validate-huerfanos.mjs && node tools/docs/validate-fichas.mjs && node tools/docs/validate-capturas.mjs && node tools/docs/validate-cifras-medidas.mjs && node tools/docs/validate-evidencia-archivada.mjs",
     "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
     "validate:limites": "node tools/docs/validate-limites.mjs",
     "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test && npm run test:dsp",

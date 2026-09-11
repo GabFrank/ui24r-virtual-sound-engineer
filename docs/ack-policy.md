@@ -50,6 +50,20 @@ comprobadas desde fuera con un volcado HTTP nuevo.
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10b.txt`; la primera de
 las tres está transcrita al pie de la primera, porque antes solo vivía en la
 terminal de quien la corrió.
+
+**Remedido con `medir.mjs` el 2026-09-11**, porque aquella primera era una
+transcripción y la herramienta ya existía cuando se escribió:
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`. **18 de 18**
+otra vez, y las 18 restauradas — esta vez comprobadas **las dieciocho** desde
+fuera, con un volcado HTTP nuevo contra el estado previo, y con cero claves más
+movidas en toda la consola.
+
+**Y la latencia no reprodujo, que es justo lo que hay que decir.** Aquellas tres
+corridas dieron medianas de 17, 18 y 17 ms; ésta dio **mediana 0, con máximo 1**.
+La conclusión que sostiene el criterio —el testigo ve todo lo que la consola
+difunde— aguanta y es la misma. El número no: depende de la red de esa noche, y
+citarlo como una propiedad del aparato sería el error de siempre con otro
+disfraz.
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`.
 
 El barrido usó el canal 17 —sin nombre, silenciado, fader abajo— con un punto de
@@ -202,7 +216,8 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    único que se ejercitaba era la segunda guarda. Con 3 dB, un fader quieto queda
    a 3 dB y la primera lo rechaza sola. La afirmación anterior era cierta y medía
    menos de lo que parecía; lo marcó una auditoría.
-   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt`
+   --**transcripción sin archivar**, no pasó por `medir.mjs`-- y
    `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
 
    **Un límite que se deduce de la regla, y que NO está medido.** Si bajar un
@@ -261,7 +276,7 @@ misma ruta dentro de un tic producen **una sola línea, con el segundo valor**:
 la primera se aplica y su confirmación no llega nunca. Con las dos pegadas, 0 de
 5 confirmaciones para la primera; entre 5 y 25 ms sale a suertes según dónde
 caiga el borde del tic —2, 1 y 3 de 5—; **a partir de un tic completo, 5 de 5
-siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` — **transcripción sin archivar**, no pasó por `medir.mjs`.
 
 **Qué protege hoy a la aplicación.** INV-005 pauta las escrituras secuenciales
 cada **≥ 100 ms**, casi tres tics. Las escrituras normales quedan fuera del
