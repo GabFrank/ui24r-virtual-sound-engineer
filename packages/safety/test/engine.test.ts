@@ -356,3 +356,38 @@ test('una transaccion sin cambios no se aprueba', () => {
   });
   assert.equal(v.permitido, false);
 });
+
+test('sin perfil de sala el rechazo lo DICE, no culpa al bus', () => {
+  // **«No hay perfil» y «el bus está mal» decían lo mismo.** Hoy la aplicación
+  // construye el conjunto vacío siempre --el puente desde PAProfile.outputBuses
+  // no existe-- así que toda ecualización de sala se rechaza. Correcto, pero el
+  // mensaje mandaba a revisar el bus cuando falta el perfil entero.
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0 }],
+    contexto({ busesDeSalidaPermitidos: new Set() }),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) {
+    assert.equal(v.rechazos.some((r) => r.codigo === 'SIN_PERFIL_DE_SALA'), true);
+    assert.equal(v.rechazos.some((r) => r.codigo === 'BUS_NO_PERMITIDO'), false,
+      'no se culpa al bus cuando no hay perfil');
+  }
+});
+
+test('con perfil, un bus ajeno SI se rechaza por el bus', () => {
+  // La contraprueba: el mensaje viejo tiene que seguir apareciendo cuando de
+  // verdad corresponde.
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0 }],
+    contexto({ busesDeSalidaPermitidos: new Set(['m']) }),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, false);
+  if (!v.permitido) {
+    assert.equal(v.rechazos.some((r) => r.codigo === 'BUS_NO_PERMITIDO'), true);
+    assert.equal(v.rechazos.some((r) => r.codigo === 'SIN_PERFIL_DE_SALA'), false);
+  }
+});

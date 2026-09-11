@@ -59,6 +59,38 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Tres cosas más que la auditoría encontró de lo que se entregó anoche.**
+
+  **El puente del perfil de sala no existe, y un commit dijo que sí.** La
+  traducción de buses a prefijos está escrita y probada; lo que no está es quien
+  la llame: la sesión guarda su estado, no la entidad, así que el servicio no
+  tiene de dónde sacar el perfil. Ahora el rechazo lo dice —`SIN_PERFIL_DE_SALA`
+  en vez de culpar al bus— porque **«no hay perfil» y «el bus está mal» no son
+  lo mismo y decían lo mismo**. Cuando alguien escriba ecualización de salida,
+  el rechazo va a decir con todas las letras qué falta cablear.
+
+  **Un umbral inventado que no separaba nada.** Decía `FADER_CERRADO = 0.001`,
+  «por debajo de esto no aporta nada audible», sin cita ni medición. Pasado por
+  la ley del fader medida contra la consola, **a los dos lados de ese número hay
+  −90 dB**. Y 0,001 es el corte de *pantalla* de la consola, contra el que otro
+  archivo del mismo paquete ya advertía por escrito. Se quitó, y ahora se expone
+  el fader **en decibeles**: quien necesite un piso lo pone con un número que
+  alguien haya medido.
+
+  **Y la enumeración de fuentes ahora declara lo que no ve.** Los VCA se
+  descartaban en silencio y el enrutamiento no se miraba: un canal que llega al
+  general por un subgrupo se cuenta dos veces y sin relación. Los huecos salen
+  **en la salida, no en un comentario** — una lista que no declara sus huecos
+  invita a creer que no los tiene, que es el error que ese módulo vino a
+  corregir.
+
+- **Y la cobertura del clasificador dejó de ser una foto.** El 79,2 % salía de
+  un script que se corre a mano y no entra en la verificación: podía volver al
+  50 % con todo en verde. Ahora hay un test con **piso** —subir es bienvenido,
+  bajar duele— que además comprueba por separado que **las puertas por donde
+  entra audio al general** estén cubiertas, porque un porcentaje puede subir
+  dejando afuera lo que importa.
+
 - **Clasificar no es autorizar, y se habían confundido las dos cosas.** El
   commit anterior amplió el clasificador para que la aplicación pudiera
   **nombrar** las entradas de línea. Como las clasificó reutilizando las

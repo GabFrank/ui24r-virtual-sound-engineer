@@ -117,6 +117,18 @@ export class AplicarGananciaService {
       rutasConMedicionPosterior: new Set(),
       rutasYaTocadas: new Set(),
       hayTakeDeSoundcheckActivo: false,
+      // **Vacío, y hay que decir por qué en vez de dejarlo pasar por obvio.**
+      // La traducción de `PAProfile.outputBuses` a prefijos existe
+      // (`prefijosPermitidos`, con sus tests) y **el puente hasta acá no**: la
+      // sesión guarda su estado, no la entidad, así que este servicio no tiene
+      // de dónde sacar el perfil del lugar. Un commit del 2026-09-11 dijo que
+      // el perfil «ahora declara buses» como si estuviera hecho; no lo estaba.
+      //
+      // Mientras esté vacío, el motor rechaza toda ecualización de sala con
+      // `SIN_PERFIL_DE_SALA`, que es la verdad. Hoy no se pierde nada porque
+      // este servicio solo escribe la ganancia del previo. Cuando alguien
+      // escriba ecualización de salida, **esto es lo primero que hay que
+      // cablear**, y el rechazo lo va a decir con todas las letras.
       busesDeSalidaPermitidos: new Set(),
       confianza: confianza === 'HIGH' ? 'HIGH' : confianza === 'MEDIUM' ? 'MEDIUM'
         : confianza === 'LOW' ? 'LOW' : 'INSUFFICIENT_DATA',

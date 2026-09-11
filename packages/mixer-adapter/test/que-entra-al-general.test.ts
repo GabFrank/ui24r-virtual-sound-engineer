@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual } from 'node:assert/strict';
-import { fuentesDelGeneral, fuentesAbiertas, rutasSinNombre } from '../src/que-entra-al-general.ts';
+import { fuentesDelGeneral, fuentesAbiertas, rutasSinNombre, loQueNoSeVe } from '../src/que-entra-al-general.ts';
 
 /**
  * El caso que le da sentido a este modulo es real y costo dos dias: un receptor
@@ -70,6 +70,7 @@ test('el silencio y el fader en cero se informan por separado', () => {
   const reproductor = f.find((x) => x.ruta === 'p.0')!;
   strictEqual(reproductor.silenciada, false, 'no esta silenciado');
   strictEqual(reproductor.fader, 0);
+  strictEqual(reproductor.faderDb, -Infinity, 'el fondo absoluto');
   strictEqual(reproductor.abierta, false);
 });
 
@@ -90,4 +91,30 @@ test('el nombre sale de la consola cuando lo hay, y null cuando no', () => {
 test('dice que rutas no sabe nombrar, en vez de dar a entender que las entiende todas', () => {
   const sin = rutasSinNombre(['i.0.mix', 'l.0.mix', 'hwoutaux.6.src', 'inventada.0.cosa']);
   deepStrictEqual(sin, ['hwoutaux.6.src', 'inventada.0.cosa']);
+});
+
+
+test('el fader se informa en decibeles, sin umbral inventado', () => {
+  // **Aca habia un `FADER_CERRADO = 0.001` sin cita ni medicion**, y una
+  // auditoria mostro que a los dos lados de ese numero hay -90 dB: 0,0009 daba
+  // «cerrada» y 0,002 «abierta», aportando lo mismo. Ademas 0,001 es el corte de
+  // PANTALLA de la consola, contra el que `conversiones.ts` ya advertia.
+  const num = new Map([['i.0.mix', 0.002], ['i.0.mute', 0], ['i.1.mix', 0], ['i.1.mute', 0]]);
+  const f = fuentesDelGeneral([...num.keys()], (r) => num.get(r) ?? null, () => null);
+  const casi = f.find((x) => x.ruta === 'i.0')!;
+  const cero = f.find((x) => x.ruta === 'i.1')!;
+  strictEqual(Math.round(casi.faderDb), -90, 'un fader de 0,002 esta en -90 dB');
+  strictEqual(cero.faderDb, -Infinity, 'el cero exacto es el fondo');
+  strictEqual(casi.abierta, true, 'puede entrar algo, aunque sea a -90');
+  strictEqual(cero.abierta, false);
+});
+
+test('declara lo que NO puede ver, en la salida y no en un comentario', () => {
+  // Una lista que no declara sus huecos invita a creer que no los tiene, que es
+  // el error que este modulo vino a corregir.
+  const h = loQueNoSeVe();
+  strictEqual(h.sinMirar.includes('v.N.mix'), true, 'los VCA');
+  strictEqual(h.sinMirar.includes('i.N.subgroup'), true, 'el enrutamiento');
+  strictEqual(h.sinMirar.includes('i.N.mgmask'), true, 'los grupos de silencio');
+  strictEqual(h.porQue.length >= 4, true, 'cada hueco con su consecuencia');
 });

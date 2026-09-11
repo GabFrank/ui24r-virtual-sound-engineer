@@ -1,4 +1,5 @@
 import { clasificarRuta } from './clasificar-ruta.ts';
+import { faderADb } from './conversiones.ts';
 
 /**
  * Qué fuentes están alimentando el general ahora mismo.
@@ -35,14 +36,50 @@ export interface FuenteDelGeneral {
   /** Posición cruda del fader, tal como la publica la consola. */
   readonly fader: number;
   /**
-   * Si puede llegar al general: no está silenciada **y** su fader no está abajo
-   * del todo.
+   * El fader en decibeles, con la ley medida contra la consola.
    *
-   * Un fader en cero es silencio efectivo, pero **no es lo mismo que un
-   * silencio**: se sube sin tocar un botón. Se informan los dos por separado
-   * para que quien lea decida.
+   * **Existe porque acá había un umbral inventado.** Decía
+   * `FADER_CERRADO = 0.001`, «el fader por debajo del cual una fuente no aporta
+   * nada audible», sin cita ni medición. Pasado por `faderADb` --que vive en
+   * este mismo paquete y sale del cliente de la consola-- **a los dos lados de
+   * ese umbral hay −90 dB**: 0,0009 daba «cerrada» y 0,002 daba «abierta», y las
+   * dos aportan exactamente lo mismo. No separaba nada.
+   *
+   * Peor: 0,001 es el corte de pantalla de la consola, y `conversiones.ts`
+   * --tres días antes, mismo paquete-- advierte por escrito contra usarlo.
+   *
+   * Se quitó el umbral y se expone el número. **Quien necesite un piso lo pone
+   * con un valor que alguien haya medido**, en decibeles, que es la unidad en la
+   * que se puede discutir.
+   */
+  readonly faderDb: number;
+  /**
+   * Si **puede** entrar algo por acá: no está silenciada y su fader no está en
+   * el fondo absoluto.
+   *
+   * **No dice que esté entrando**, y la diferencia importa: esto mira
+   * enrutamiento y faders del estado confirmado, no nivel de audio. Una fuente
+   * abierta y en silencio absoluto figura igual, que es lo correcto — lo que
+   * informa es por dónde puede entrar algo.
+   *
+   * Un fader en el fondo es silencio efectivo pero **no es un silencio**: se
+   * sube sin tocar un botón. Los dos se informan por separado.
    */
   readonly abierta: boolean;
+}
+
+/**
+ * Lo que este módulo **no** puede ver, dicho en la salida y no en un comentario.
+ *
+ * Una auditoría encontró que los VCA se descartaban en silencio y que el
+ * enrutamiento no se miraba en absoluto. Devolver una lista de fuentes sin decir
+ * esto invita a creer que la lista es completa — que es el error original, con
+ * la confianza subida.
+ */
+export interface LoQueNoSeVe {
+  /** Rutas de enrutamiento que existen en la consola y este módulo no lee. */
+  readonly sinMirar: readonly string[];
+  readonly porQue: readonly string[];
 }
 
 const CLASES: readonly { re: RegExp; clase: FuenteDelGeneral['clase'] }[] = [
@@ -55,8 +92,6 @@ const CLASES: readonly { re: RegExp; clase: FuenteDelGeneral['clase'] }[] = [
   { re: /^f\.\d+$/, clase: 'EFECTO' },
 ];
 
-/** El fader por debajo del cual una fuente no aporta nada audible. */
-const FADER_CERRADO = 0.001;
 
 /**
  * Enumera las fuentes del general a partir del estado confirmado.
@@ -92,7 +127,12 @@ export function fuentesDelGeneral(
       nombre: leerTexto(`${p}.name`),
       silenciada,
       fader,
-      abierta: !silenciada && fader > FADER_CERRADO,
+      faderDb: faderADb(fader),
+      // **El fondo absoluto y nada más.** No hay umbral inventado: `faderADb`
+      // devuelve `-Infinity` sólo en el cero exacto, y ahí no puede entrar nada.
+      // Cualquier piso por encima de eso es una decisión, y se toma con
+      // `faderDb` a la vista.
+      abierta: !silenciada && Number.isFinite(faderADb(fader)),
     });
   }
   return salida;
@@ -121,4 +161,36 @@ export function rutasSinNombre(rutas: Iterable<string>): readonly string[] {
   const sin: string[] = [];
   for (const r of rutas) if (clasificarRuta(r) === null) sin.push(r);
   return sin;
+}
+
+
+/**
+ * Lo que esta enumeración no puede ver, para que nadie la lea como completa.
+ *
+ * Se devuelve junto con las fuentes y no se esconde en un comentario: una lista
+ * que no declara sus huecos invita a creer que no los tiene, que es el error que
+ * este módulo vino a corregir.
+ */
+export function loQueNoSeVe(): LoQueNoSeVe {
+  return {
+    sinMirar: [
+      'i.N.subgroup', 'l.N.subgroup', 'i.N.vca', 'l.N.vca',
+      'a.N.link2master', 'a.N.matrix',
+      'v.N.mix', 'v.N.mute',
+      'i.N.solo', 'settings.soloMode', 'settings.solotype',
+      'i.N.mgmask', 'mgmask', 'i.N.forceunmute',
+    ],
+    porQue: [
+      'El enrutamiento no se mira: un canal que va al general POR UN SUBGRUPO se '
+      + 'cuenta dos veces y sin relación, y uno ruteado fuera del general se '
+      + 'informa igual como fuente suya.',
+      'Los VCA gobiernan si una fuente llega al general y acá no aparecen. Se '
+      + 'descartaban en silencio.',
+      'El solo cambia lo que llega al general y no se lee.',
+      'Los grupos de silencio y `forceunmute` pueden dejar un canal silenciado '
+      + 'con `i.N.mute` en cero. Si eso es así, esta enumeración diría '
+      + '«no silenciada» sobre algo silenciado — un falso negativo, que es la '
+      + 'dirección peligrosa. **No está medido contra el aparato.**',
+    ],
+  };
 }

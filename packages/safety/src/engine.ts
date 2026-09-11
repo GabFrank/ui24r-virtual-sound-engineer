@@ -251,7 +251,21 @@ export class SafetyEngine {
       // El perfil del sistema de amplificación declara **buses**, que es lo que
       // un técnico sabe decir; `prefijosPermitidos` traduce, y esa traducción
       // está contrastada contra las 6732 claves del inventario.
-      if (!ecualizacionPermitida(c.path, ctx.busesDeSalidaPermitidos)) {
+      if (ctx.busesDeSalidaPermitidos.size === 0) {
+        // **«No hay perfil» y «el bus está mal» no son lo mismo, y decían lo
+        // mismo.** Hoy la aplicación construye este conjunto vacío siempre --el
+        // puente desde `PAProfile.outputBuses` no existe-- así que toda
+        // ecualización de sala se rechaza. Eso es correcto, pero el mensaje
+        // mandaba a revisar el bus cuando lo que falta es el perfil entero.
+        salida.push({
+          codigo: 'SIN_PERFIL_DE_SALA',
+          invariante: 'INV-008',
+          mensaje:
+            'no hay ningún bus de salida declarado: sin perfil del sistema de '
+            + 'amplificación no se ecualiza la sala',
+          path: c.path,
+        });
+      } else if (!ecualizacionPermitida(c.path, ctx.busesDeSalidaPermitidos)) {
         salida.push({
           codigo: 'BUS_NO_PERMITIDO',
           invariante: 'INV-008',

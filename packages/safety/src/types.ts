@@ -54,6 +54,7 @@ export interface ContextoSeguridad {
 }
 
 export type CodigoRechazo =
+  | 'SIN_PERFIL_DE_SALA'
   | 'RUTA_INCONSISTENTE'
   | 'RUTA_DESCONOCIDA'
   | 'Q_DEMASIADO_ESTRECHO'
