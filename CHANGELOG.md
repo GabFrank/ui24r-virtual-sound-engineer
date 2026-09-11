@@ -6,6 +6,42 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Seis cosas que las auditorías habían dejado señaladas, y dos son de las que
+  corrompen tests.**
+
+  El ayudante que fabrica niveles de medidor en las pruebas **inflaba todo un
+  6,27 %** por convertir dos veces. Pedir −20 dB entregaba −16,24; pedir −6
+  entregaba −1,36; y pedir 0 dB entregaba **+5,02, por encima del fondo de
+  escala**. El error crece hacia arriba, que es justo donde viven los umbrales
+  de saturación. Ninguna prueba cambió de color al corregirlo —hay que decirlo—
+  pero todas medían un mundo deformado. Ahora hay un control que compara el
+  atajo contra la función de verdad, que es lo que convierte dos fórmulas
+  independientes en una comprobación en vez de en un punto ciego.
+
+  Y el fabricante de tramas de medidor ponía **el mismo valor** en «entrada» y
+  «salida», y cero en los dos campos del dinámico. Un lector que los confundiera
+  seguía en verde: dos bytes iguales no delatan a nadie, y un byte que siempre
+  vale cero tampoco. **Es el mismo defecto que tenía el doble de transporte**, y
+  la misma lección. Ahora los seis bytes pueden ir distintos, y hay una prueba
+  que los hace distintos y comprueba dónde aterriza cada uno — con su control
+  positivo, que confirma que sin eso entrada y salida eran indistinguibles.
+
+  Tres documentos decían más de lo que habían medido. El criterio de la tabla de
+  confirmación pedía «100 % de las filas» y se leía como cumplido: la matriz
+  tiene **21 filas** y el barrido recorrió **18 rutas**, así que el 100 % es la
+  meta y no el resultado. El acta atribuía a la tablet una mediana que había
+  salido de la corrida por cable — dos estadísticos de una medición y el tercero
+  de otra, cosidos en una línea.
+
+  Y había **dos reglas contradictorias sobre la misma clave**: la especificación
+  del protocolo decía que la aplicación no escribe `var.rta` «en ningún nivel de
+  autonomía» mientras la decisión del usuario la autoriza con permiso y el código
+  la escribe. La regla muerta era la prohibición.
+
+  Por último, el mecanismo de presencia figuraba en verde sin decir que **nadie
+  lo llama todavía**: está medido, expuesto en la interfaz, y ninguna pantalla lo
+  muestra. El verde es del mecanismo, no del producto.
+
 - **Nueve evidencias se archivaron a mano el mismo día en que llegó la
   herramienta que existe para impedirlo.** `medir.mjs` tee la salida a la
   pantalla y al archivo a la vez, con su encabezado, para que no se pueda mirar

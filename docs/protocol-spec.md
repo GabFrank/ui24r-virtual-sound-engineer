@@ -465,7 +465,7 @@ Quien suavice el espectro del lado de la aplicación estaría **apilando dos bal
 
 **El general devuelve las mismas 122 bandas y con la misma ley**, medido el 2026-09-09: 125 Hz → banda 31, 500 → 55, 1000 → 67, 8000 → 103, idéntico a una entrada. Una nota anterior decía «el general devuelve 78 bandas y no 122»; era una lectura equivocada de la evidencia, que dice **«78 bandas con valor»** —o sea distintas de cero, porque el general no tenía energía en el resto—. Importa porque si fueran 78 bandas la ley tendría que ser otra, y no lo es: el mismo `frecuenciaDeBanda` sirve para las dos fuentes. Mientras esté vacía no llega espectro, solo la trama de vida.
 
-Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
+Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos. **Acá decía «no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía», y era falso desde hacía días**: ADR-025 —la decisión del usuario, del 2026-09-09— autoriza tomarlo prestado con permiso una vez por sesión, y `analizador.service.ts` lo hace. Dos reglas contradictorias sobre la misma clave, y la que estaba muerta era ésta. Lo marcó una auditoría. Lo que rige: **se escribe sólo con permiso explícito, y se devuelve la fuente al valor leído del volcado**, nunca a una cadena vacía.
 
 ### 4.5.1 `i.N.stereoIndex`: qué canales van enlazados
 

@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Ui24rMixerAdapter } from '../src/ui24r-adapter.ts';
-import { codificarSetd, codificarVu, VU_ESCALA } from '../src/protocol.ts';
+import {
+  codificarSetd, codificarVu, MEDIDOR_RANGO_DB, VU_ESCALA, dbDeMedidor,
+} from '../src/protocol.ts';
 import { gananciaADb, faderADb } from '../src/conversiones.ts';
 import { TransporteFalso } from './transporte-falso.ts';
 
@@ -44,11 +46,26 @@ function nivel(t: TransporteFalso, posicion: number, canales = 24): void {
   t.entra(`VU2^${codificarVu(new Array(canales).fill(posicion))}`);
 }
 
-/** La posicion cruda que da aproximadamente ese nivel en dB. */
+/**
+ * La posicion normalizada que da ese nivel en dB.
+ *
+ * **Tenia un factor de mas y todos los niveles de este archivo salian inflados
+ * un 6,27 %.** `codificarVu` recibe posiciones NORMALIZADAS --0 a 1-- y
+ * `(db + 80) / 80` ya es esa posicion: es el despeje exacto de
+ * `dB = 80 * posicion - 80`. Multiplicar ademas por `255 * MEDIDOR_RANGO_DB`, que vale
+ * 1,0627, era convertir dos veces.
+ *
+ * Lo que costaba, medido: pedir −20 dB entregaba −16,24; pedir −6 entregaba
+ * −1,36; y pedir 0 entregaba **+5,02 dB, por encima del fondo de escala**. El
+ * error crece hacia arriba, que es justo donde viven los umbrales de
+ * saturacion. Lo encontro una auditoria.
+ *
+ * **Se sigue sin llamar a `dbDeMedidor`**, y es deliberado: un test que usa la
+ * funcion que deberia poder falsar no falsa nada. Lo que faltaba era comprobar
+ * que las dos formulas coinciden, y eso lo hace el test de mas abajo.
+ */
 function posicionDe(db: number): number {
-  // dbDeMedidor invierte esto; se usa la escala directa para no depender de
-  // una funcion que este test tambien deberia poder falsar.
-  return ((db + 80) / 80) * 255 * VU_ESCALA;
+  return (db + MEDIDOR_RANGO_DB) / MEDIDOR_RANGO_DB;
 }
 
 test('sin testigo y con senal, la ganancia se confirma por el medidor', async () => {
@@ -176,4 +193,54 @@ test('sin el enrutamiento del previo, la ganancia NO se escribe', async () => {
     assert.deepEqual(t.enviadasSinLatido, []);
     assert.match(r.motivo ?? '', /no se puede confirmar por medidor/);
   });
+});
+
+/**
+ * **El control que faltaba: que el atajo y la funcion de verdad coincidan.**
+ *
+ * `posicionDe` no llama a `dbDeMedidor` a proposito --un test que usa la
+ * funcion que deberia poder falsar no falsa nada-- pero eso deja dos formulas
+ * independientes y nadie comprobando que digan lo mismo. Durante meses NO lo
+ * decian: el atajo tenia un factor de mas de 1,0627 y todos los niveles de este
+ * archivo salian inflados un 6,27 %.
+ *
+ * Esto es lo que convierte la independencia en una comprobacion en vez de en un
+ * punto ciego: si alguna de las dos se mueve, se rompe.
+ */
+test('el atajo de posiciones y dbDeMedidor dicen lo mismo', () => {
+  // El fondo exacto queda fuera de la vuelta y no es un descuido: ver abajo.
+  for (const db of [-79, -70, -50, -30, -20, -12, -6, -3, 0]) {
+    const vuelta = dbDeMedidor(posicionDe(db));
+    assert.ok(
+      Math.abs(vuelta - db) < 1e-9,
+      `pedir ${db} dB entrega ${vuelta.toFixed(2)}: las dos formulas no coinciden`,
+    );
+  }
+  // Y el fondo de escala es el fondo: pedir 0 dB no puede dar una posicion que
+  // se pase de 1. El atajo viejo daba 1,0627, o sea +5,02 dB.
+  assert.equal(posicionDe(0), 1, 'cero decibeles es la punta de la escala');
+  assert.equal(posicionDe(-MEDIDOR_RANGO_DB), 0, 'el fondo del recorrido es cero');
+
+  // **El unico punto donde las dos formulas NO coinciden, y esta bien que no.**
+  // Lo encontro este mismo test al escribirlo. La recta del medidor daria
+  // exactamente -80 en la posicion cero, pero `dbDeMedidor` devuelve -Infinity
+  // ahi a proposito: el cero de la consola es «no hay nada», no «hay algo a
+  // ochenta decibeles bajo la punta». La distincion importa para el respaldo
+  // por medidor, que tiene que separar «no entro nada» de «entro muy bajo».
+  assert.equal(dbDeMedidor(posicionDe(-MEDIDOR_RANGO_DB)), -Infinity,
+    'el fondo del medidor es silencio, no el ultimo escalon');
+});
+
+/**
+ * **Control positivo.** El test de arriba afirma que dos formulas coinciden, y
+ * una asercion asi pasa sola si ninguna de las dos hace nada. Aca se comprueba
+ * que el atajo VIEJO no pasaria.
+ */
+test('control positivo: el atajo viejo no coincidia con dbDeMedidor', () => {
+  const viejo = (db: number): number => ((db + 80) / 80) * 255 * VU_ESCALA;
+  assert.ok(
+    Math.abs(dbDeMedidor(viejo(-20)) - (-20)) > 3,
+    'el atajo viejo erraba mas de tres decibeles a -20; si no, el test no separa nada',
+  );
+  assert.ok(dbDeMedidor(viejo(0)) > 0, 'y a 0 dB se pasaba del fondo de escala');
 });

@@ -517,19 +517,48 @@ export function dbDeMedidor(posicion: number): number {
  * por defecto iguala a `posiciones`: sirve para armar una trama donde el nivel
  * anterior al dinámico y el posterior **no** coincidan, que es lo que pasa en
  * cuanto el compresor aprieta.
+ *
+ * **Los seis bytes del canal se pueden hacer distintos, y antes no.** Esta
+ * función ponía el MISMO valor en `entrada` y en `salida`, y cero en los dos
+ * dinámicos. Con eso, un lector que confundiera esos campos entre sí seguía en
+ * verde: los dos primeros son indistinguibles cuando valen lo mismo, y un campo
+ * que siempre vale cero no puede delatar a nadie. Es el mismo defecto que tenía
+ * el doble de transporte —**un fabricante que se aparta del real en un borde
+ * crea puntos ciegos con forma de test en verde**— y lo encontró una auditoría.
+ *
+ * Los valores por omisión no cambian, para que los tests que solo quieren «un
+ * nivel» sigan escribiéndose en una línea. Lo que cambia es que ahora **se
+ * puede** armar una trama donde los seis bytes difieran, y hay un test que lo
+ * hace y comprueba que cada uno aterrice donde corresponde.
  */
+export interface CamposDeCanalVu {
+  /** `salida`, el byte +2. Por defecto iguala a la entrada. */
+  readonly posicionesSalida?: readonly number[];
+  /** `dinamicoEntrada`, el byte +3. */
+  readonly posicionesDinamicoEntrada?: readonly number[];
+  /** `dinamicoSalida`, el byte +4. */
+  readonly posicionesDinamicoSalida?: readonly number[];
+}
+
 export function codificarVu(
   posiciones: readonly number[],
   reduccionesDb: readonly number[] = [],
   posicionesPreProceso: readonly number[] = [],
+  campos: CamposDeCanalVu = {},
 ): string {
+  const byteDe = (p: number): number =>
+    Math.max(0, Math.min(255, Math.round(Math.max(0, p) / VU_ESCALA)));
   const bytes: number[] = [posiciones.length, 0, 0, 0, 0, 0, 0, 0];
   for (let i = 0; i < posiciones.length; i++) {
     const p = posiciones[i]!;
-    const byte = Math.max(0, Math.min(255, Math.round(Math.max(0, p) / VU_ESCALA)));
-    const pPre = posicionesPreProceso[i] ?? p;
-    const bytePre = Math.max(0, Math.min(255, Math.round(Math.max(0, pPre) / VU_ESCALA)));
-    bytes.push(bytePre, byte, byte, 0, 0, byteDeReduccion(reduccionesDb[i] ?? 0));
+    bytes.push(
+      byteDe(posicionesPreProceso[i] ?? p),
+      byteDe(p),
+      byteDe(campos.posicionesSalida?.[i] ?? p),
+      byteDe(campos.posicionesDinamicoEntrada?.[i] ?? 0),
+      byteDe(campos.posicionesDinamicoSalida?.[i] ?? 0),
+      byteDeReduccion(reduccionesDb[i] ?? 0),
+    );
   }
   return bytesABase64(bytes);
 }
