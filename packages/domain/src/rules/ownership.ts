@@ -25,7 +25,8 @@ export type ParameterKind =
   | 'ANALYSIS_BUS_SEND' | 'PLAYER_MUTE' | 'PLAYER_FADER' | 'PLAYER_SEND'
   | 'PA_BUS_MUTE' | 'SNAPSHOT'
   | 'MONITOR_AUX_SEND' | 'MASTER_FADER' | 'MASTER_MUTE' | 'CHANNEL_MUTE'
-  | 'PHANTOM' | 'OUTPUT_LIMITER' | 'FX' | 'SUBGROUP' | 'VCA' | 'AFS2';
+  | 'PHANTOM' | 'OUTPUT_LIMITER' | 'FX' | 'SUBGROUP' | 'VCA' | 'AFS2'
+  | 'MATRIX_SEND';
 
 export interface OwnershipEntry {
   readonly kind: ParameterKind;
@@ -90,6 +91,11 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
   { kind: 'OUTPUT_LIMITER', owner: 'USER_ONLY', escribible: false,
     nota: 'Protege el sistema de amplificación: no se automatiza' },
   { kind: 'FX', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
+  // **El envío a la matriz es del usuario y no se escribe.** La matriz sale a
+  // conectores que la aplicación no puede ver: un envío de retorno, una zona,
+  // una grabación. Tocarla a ciegas es mandar señal a un sitio desconocido.
+  { kind: 'MATRIX_SEND', owner: 'USER_ONLY', escribible: false,
+    nota: 'La matriz sale a destinos que la aplicación no puede ver' },
   { kind: 'SUBGROUP', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'VCA', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'AFS2', owner: 'USER_ONLY', escribible: false,

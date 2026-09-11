@@ -32,18 +32,53 @@ interface Patron {
  * entrada, porque es justamente el que no se escribe nunca.
  */
 const PATRONES: readonly Patron[] = [
+
+  // --- Envíos a la matriz, ARRIBA de las familias ---
+  //
+  // **El orden importa y costó un test.** `s.2.mtx.0.pan` lo agarraba
+  // `/^s\.\d+\./` y salía `SUBGROUP`: el patrón de familia es más ancho y
+  // estaba primero. Lo más específico va arriba.
+  //
+  // `<fuente>.mtx.<destino>.*`, medido el 2026-09-10: la alcanzan 19 fuentes
+  // --los diez auxiliares, los seis subgrupos, el general y **sólo dos de los
+  // veinticuatro canales**, `i.9` e `i.19`--. Son 400 claves que caían en «ruta
+  // desconocida».
+  //
+  // **La matriz no es `hwoutaux.N.src`**, que es el jack físico y sigue sin
+  // clasificar a propósito: mover eso manda señal a un conector que uno no ve.
+  { re: /^[a-z]+\.?\d*\.mtx\.\d+\./, kind: 'MATRIX_SEND' },
   // --- Entradas: envíos a auxiliares. Nunca se escriben (INV-010). ---
-  { re: /^i\.\d+\.aux\.\d+\.value$/, kind: 'MONITOR_AUX_SEND' },
+  // **Un envío a monitor es más que su nivel.** Sólo `.value` estaba
+  // clasificado; `.mute`, `.pan`, `.post` y `.postproc` --960 claves-- caían en
+  // «ruta desconocida». Las cuatro están medidas contra el aparato: `.post` es
+  // antes o después del fader y `.postproc` antes o después del procesamiento,
+  // los dos puntos de derivación que cerró el criterio 1 de SPK-P0.2a.
+  //
+  // Todas van al mismo kind, y eso es deliberado: el envío al monitor de un
+  // músico es del músico, y ninguna de las cuatro se escribe. La excepción del
+  // bus de análisis sigue mirando **sólo `.value`**, que es la única que INV-008
+  // admite.
+  { re: /^[il]\.\d+\.aux\.\d+\.(value|mute|pan|post|postproc)$/, kind: 'MONITOR_AUX_SEND' },
 
   // --- Entradas: cadena de canal ---
-  { re: /^i\.\d+\.eq\.hpf\./, kind: 'HPF' },
-  { re: /^i\.\d+\.eq\./, kind: 'CHANNEL_EQ' },
-  { re: /^i\.\d+\.dyn\./, kind: 'COMPRESSOR' },
-  { re: /^i\.\d+\.gate\./, kind: 'GATE' },
-  { re: /^i\.\d+\.deesser\./, kind: 'DEESSER' },
-  { re: /^i\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
-  { re: /^i\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
-  { re: /^i\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
+  // **`l.N` es un canal, con otra fuente.** Las dos entradas de línea --las RCA
+  // de esta consola-- tienen exactamente la misma cadena que `i.N`: fader,
+  // silencio, panorama, ecualizador, dinámica, puerta, envíos. Lo que cambia es
+  // de dónde viene la señal.
+  //
+  // **Estuvieron sin clasificar desde siempre, 246 claves**, y eso dejó de ser
+  // una deuda abstracta el 2026-09-11: un receptor Bluetooth enchufado a esas
+  // entradas, abiertas a 0 dB, metió un tono en el general durante dos días de
+  // mediciones. Ni la aplicación ni yo podíamos nombrar esa puerta. Lo encontró
+  // el oído del usuario.
+  { re: /^[il]\.\d+\.eq\.hpf\./, kind: 'HPF' },
+  { re: /^[il]\.\d+\.eq\./, kind: 'CHANNEL_EQ' },
+  { re: /^[il]\.\d+\.dyn\./, kind: 'COMPRESSOR' },
+  { re: /^[il]\.\d+\.gate\./, kind: 'GATE' },
+  { re: /^[il]\.\d+\.deesser\./, kind: 'DEESSER' },
+  { re: /^[il]\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
+  { re: /^[il]\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
+  { re: /^[il]\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
   // **Las dos rutas de fantasma, y no son la misma cosa.** La que manda es
   // `hw.N.phantom`, la del previo: medido el 2026-09-10, con el condensador
   // alimentado valía 1 mientras `i.N.phantom` valía 0 en el mismo instante.
@@ -55,12 +90,13 @@ const PATRONES: readonly Patron[] = [
   // no por RUTA_DESCONOCIDA (INV-008), que manda a buscar el problema al lugar
   // equivocado. Las dos son del usuario y ninguna se escribe.
   { re: /^hw\.\d+\.phantom$/, kind: 'PHANTOM' },
-  { re: /^i\.\d+\.phantom$/, kind: 'PHANTOM' },
+  { re: /^[il]\.\d+\.phantom$/, kind: 'PHANTOM' },
   { re: /^hw\.\d+\.gain$/, kind: 'PREAMP_GAIN' },
 
   // --- Reproductor: solo dentro de la reserva ---
   { re: /^p\.\d+\.mute$/, kind: 'PLAYER_MUTE' },
   { re: /^p\.\d+\.mix$/, kind: 'PLAYER_FADER' },
+  { re: /^p\.\d+\.pan$/, kind: 'PLAYER_FADER' },
   { re: /^p\.\d+\.aux\.\d+\.value$/, kind: 'PLAYER_SEND' },
 
   // --- General ---
@@ -95,6 +131,9 @@ const PATRONES: readonly Patron[] = [
 
   // --- Efectos y sistema ---
   { re: /^f\.\d+\./, kind: 'FX' },
+  // El envío de un canal a un efecto. 288 claves sin clasificar hasta ahora.
+  { re: /^[il]\.\d+\.fx\.\d+\./, kind: 'FX' },
+
   // `var.mtk.*` es el espacio de soundcheck y multipista, no un envío de bus:
   // lo decía la matriz de capacidades y acá estaba clasificado como el **único
   // routing escribible** que admite INV-008. No hay categoría para soundcheck

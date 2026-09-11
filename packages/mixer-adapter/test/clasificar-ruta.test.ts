@@ -196,6 +196,7 @@ test('toda clase del registro de propiedad la puede producir el clasificador', (
     FX: 'f.1.fxtype',
     SNAPSHOT: 'var.currentSnapshot',
     AFS2: 'm.afs.enabled',
+    MATRIX_SEND: 'a.0.mtx.1.value',
   };
 
   // **`ANALYSIS_BUS_SEND` va aparte a proposito.** Es la unica clase que no
@@ -215,4 +216,47 @@ test('toda clase del registro de propiedad la puede producir el clasificador', (
     .filter(([kind, ruta]) => clasificarRuta(ruta) !== kind)
     .map(([kind, ruta]) => `${kind} (${ruta} -> ${clasificarRuta(ruta)})`);
   deepStrictEqual(inalcanzables, [], 'clases declaradas que el clasificador no produce');
+});
+
+test('las entradas de linea son canales, con otra fuente', () => {
+  // **246 claves sin clasificar desde siempre**, y dejó de ser una deuda
+  // abstracta el 2026-09-11: un receptor Bluetooth enchufado a esas entradas,
+  // abiertas a 0 dB, metió un tono en el general durante dos días de mediciones.
+  // Ni la aplicación ni nadie podía nombrar esa puerta.
+  strictEqual(clasificarRuta('l.0.mix'), 'CHANNEL_FADER');
+  strictEqual(clasificarRuta('l.1.mute'), 'CHANNEL_MUTE');
+  strictEqual(clasificarRuta('l.0.pan'), 'CHANNEL_PAN');
+  strictEqual(clasificarRuta('l.0.eq.b1.gain'), 'CHANNEL_EQ');
+  strictEqual(clasificarRuta('l.0.eq.hpf.freq'), 'HPF');
+  strictEqual(clasificarRuta('l.1.gate.thresh'), 'GATE');
+  strictEqual(clasificarRuta('l.0.aux.1.value'), 'MONITOR_AUX_SEND');
+});
+
+test('un envio a monitor es mas que su nivel', () => {
+  // Sólo `.value` estaba clasificado; las otras cuatro --960 claves-- caían en
+  // «ruta desconocida». `.post` y `.postproc` son los dos puntos de derivación
+  // que cerró el criterio 1 de SPK-P0.2a, medidos contra el aparato.
+  for (const sufijo of ['value', 'mute', 'pan', 'post', 'postproc']) {
+    strictEqual(clasificarRuta(`i.3.aux.2.${sufijo}`), 'MONITOR_AUX_SEND', sufijo);
+  }
+});
+
+test('el bus de analisis sigue siendo la excepcion de SOLO .value', () => {
+  // INV-008 admite un único routing escribible: el envío hacia el bus de
+  // análisis. Ampliar el envío a monitor no puede haber ampliado esa excepción.
+  const con = { busDeAnalisis: 2 };
+  strictEqual(clasificarRuta('i.3.aux.2.value', con), 'ANALYSIS_BUS_SEND');
+  strictEqual(clasificarRuta('i.3.aux.2.mute', con), 'MONITOR_AUX_SEND', 'el silencio NO');
+  strictEqual(clasificarRuta('i.3.aux.2.post', con), 'MONITOR_AUX_SEND', 'la derivacion NO');
+});
+
+test('los envios a efectos y a la matriz dejan de ser desconocidos', () => {
+  strictEqual(clasificarRuta('i.3.fx.1.value'), 'FX');
+  strictEqual(clasificarRuta('i.3.fx.1.mute'), 'FX');
+  strictEqual(clasificarRuta('a.0.mtx.1.value'), 'MATRIX_SEND');
+  strictEqual(clasificarRuta('m.mtx.3.mute'), 'MATRIX_SEND');
+  strictEqual(clasificarRuta('s.2.mtx.0.pan'), 'MATRIX_SEND');
+  // El jack fisico sigue sin clasificar A PROPOSITO: mover eso manda señal a un
+  // conector que uno no ve.
+  strictEqual(clasificarRuta('hwoutaux.6.src'), null);
 });

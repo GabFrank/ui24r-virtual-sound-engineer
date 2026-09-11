@@ -6,6 +6,32 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación ya puede decir qué está entrando al general.** Era lo que
+  faltaba cuando un receptor Bluetooth enchufado a las entradas de línea,
+  abiertas a 0 dB, metió un tono continuo durante dos días de mediciones del
+  espectro. Quien mide el general estaba midiendo **la suma de cosas que no
+  podía enumerar**.
+
+  Ahora las enumera: canales, entradas de línea, reproductor, subgrupos y
+  efectos, cada uno con su nombre, su fader y si está silenciado. El general y
+  los auxiliares se descartan a propósito —tienen fader y **no son fuentes, son
+  salidas**— y el silencio se informa aparte del fader en cero, porque un fader
+  en cero se sube sin tocar un botón.
+
+  También sabe decir **qué rutas no sabe nombrar**, en vez de dar a entender que
+  las entiende todas.
+
+- **Y el vocabulario que la aplicación reconoce pasó de la mitad al 79 %.**
+  Contrastado contra las 6732 claves capturadas de la consola real, no contra una
+  lista escrita de memoria. Entraron: las **entradas de línea**, que son canales
+  con otra fuente y llevaban 246 claves sin clasificar; los envíos a monitor
+  completos —`.mute`, `.pan`, `.post` y `.postproc`, 960 claves, con los dos
+  puntos de derivación que ya estaban medidos—; los envíos a efectos; y los
+  envíos a la matriz, que necesitaron una categoría nueva.
+
+  La excepción del bus de análisis sigue mirando **sólo `.value`**, que es la
+  única que INV-008 admite, y hay un test que lo fija.
+
 - **La primera realimentación de verdad, medida.** Los tres umbrales del
   detector estaban marcados como «elegidos, no medidos» y «sin validar contra
   una realimentación real» desde el primer día. Ahora hay una, provocada a
