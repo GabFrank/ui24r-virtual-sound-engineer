@@ -189,7 +189,11 @@ export class SafetyEngine {
     if (duenio.owner === 'USER_ONLY') {
       salida.push({
         codigo: 'PARAMETRO_DEL_USUARIO',
-        invariante: 'INV-008',
+        // La específica si la hay; si no, la de propiedad. Estaba fija en
+        // INV-008 y un arreglo del 2026-09-10 afirmó en cuatro lugares --commit,
+        // comentario del código, comentario del test y CHANGELOG-- que la
+        // alimentación fantasma ya se rechazaba citando INV-007. No era cierto.
+        invariante: duenio.invariante ?? 'INV-008',
         mensaje: `${c.kind} pertenece al usuario y la aplicación nunca lo escribe. ${duenio.nota}`,
         path: c.path,
       });

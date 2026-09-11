@@ -33,6 +33,16 @@ export interface OwnershipEntry {
   /** Si la aplicación puede escribirlo alguna vez, en alguna versión. */
   readonly escribible: boolean;
   readonly nota: string;
+  /**
+   * La invariante que hay que citar al rechazar, cuando hay una más específica
+   * que INV-008.
+   *
+   * INV-008 habla de propiedad en general y sirve de omisión. Pero la
+   * alimentación fantasma tiene la suya, INV-007, y el identificador que viaja
+   * al registro es lo que alguien lee después de un show para entender qué pasó:
+   * mandarlo a la regla genérica es mandarlo a buscar al lugar equivocado.
+   */
+  readonly invariante?: string;
 }
 
 export const OWNERSHIP: readonly OwnershipEntry[] = [
@@ -69,7 +79,13 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
   { kind: 'MASTER_FADER', owner: 'USER_ONLY', escribible: false, nota: '' },
   { kind: 'MASTER_MUTE', owner: 'USER_ONLY', escribible: false, nota: '' },
   { kind: 'CHANNEL_MUTE', owner: 'USER_ONLY', escribible: false, nota: '' },
-  { kind: 'PHANTOM', owner: 'USER_ONLY', escribible: false,
+  // **La invariante específica, para que el registro no mande a buscar al lugar
+  // equivocado.** Todo lo que es `USER_ONLY` se rechaza por INV-008, que habla
+  // de propiedad en general; la alimentación fantasma tiene la suya —INV-007—
+  // y es la que hay que leer después de un show. Un arreglo del 2026-09-10
+  // afirmó en cuatro lugares que ya se citaba INV-007 y **no era cierto**: el
+  // identificador estaba cableado en el motor. Lo encontró una auditoría.
+  { kind: 'PHANTOM', owner: 'USER_ONLY', escribible: false, invariante: 'INV-007',
     nota: 'La aplicación solo lee. Además es un botón físico en la interfaz de audio' },
   { kind: 'OUTPUT_LIMITER', owner: 'USER_ONLY', escribible: false,
     nota: 'Protege el sistema de amplificación: no se automatiza' },

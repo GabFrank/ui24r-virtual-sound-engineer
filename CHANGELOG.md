@@ -6,6 +6,38 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Una auditoría revisó los arreglos del día anterior y encontró que uno
+  afirmaba algo falso en cuatro lugares a la vez.** El commit, el comentario del
+  código, el del test y el CHANGELOG decían que clasificar la alimentación
+  fantasma hacía que se rechazara citando INV-007, «la invariante verdadera».
+  **No era cierto**: el identificador estaba cableado en el motor y seguía
+  siendo INV-008 antes y después. Es el mismo error que ese commit denunciaba —
+  un comentario que describe un arreglo que no se hizo.
+
+  Ahora sí: el registro de propiedad lleva la invariante específica y el motor
+  la usa cuando la hay.
+
+- **Y el clasificador tenía cuatro categorías muertas, no una.** Además de la
+  del supresor, `OUTPUT_POLARITY` buscaba `m.polarity` —el general invierte por
+  lado, `m.l.invert`—, `MASTER_MUTE` buscaba `m.mute` —el general no tiene
+  silencio, tiene `m.dim`— y **`SUBGROUP` no tenía patrón ninguno**, con 612
+  claves `s.N.*` cayendo en «ruta desconocida». Faltaban también dos familias
+  del supresor, `afs.enabled` y `settings.afsonboot`, que solo aparecen mirando
+  los volcados.
+
+  Lo que faltaba era un test que mirara **en la otra dirección**: había uno que
+  comprueba que toda categoría producida existe en el registro, y ninguno que
+  comprobara que toda categoría declarada es alcanzable. Esa es la dirección que
+  dejó cuatro categorías muertas durante meses, y ahora existe. Encontró dos más
+  mientras se escribía.
+
+- **Un test escrito para denunciar aserciones vacías era él mismo vacío.**
+  Comparaba un contador contra un valor capturado antes; con el defecto puesto,
+  el valor era `undefined` y la comparación era `undefined` con `undefined`.
+  Por eso la afirmación «tres de los cuatro fallan al revertir» era falsa cuando
+  se escribió: fallaban **dos**. Ahora compara contra un número concreto, y
+  fallan tres.
+
 - **Cuatro invariantes tenían el texto y el código diciendo cosas distintas.**
   Los encontró una auditoría rastreando los treinta y cuatro uno por uno, y en
   los cuatro casos el texto era el que estaba mal: el código hacía lo correcto y

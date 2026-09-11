@@ -82,11 +82,23 @@ test('el adaptador NO queda mudo despues de pedir la lista', async () => {
 });
 
 test('guardar no deja ni de mas ni de menos oyentes', async () => {
+  // **Este test pasaba por vacio y lo encontro una auditoria.** Decia
+  // `const antes = t.oyentes` y comparaba contra eso: con el doble viejo, que no
+  // tiene el getter, `antes` era `undefined` y la asercion comparaba `undefined`
+  // con `undefined`. Verde con el defecto puesto.
+  //
+  // Es exactamente lo que el archivo de al lado denuncia --una asercion que no
+  // distingue «lo hizo bien» de «no llego a ejecutarse»-- cometido en el test
+  // escrito para denunciarlo. Ahora se compara contra un numero CONCRETO: el
+  // adaptador se suscribe una vez al conectar.
   await conAdaptador({ esperaGuardadoMs: 5, esperaBorradoMs: 5 }, async (t, a) => {
-    const antes = t.oyentes;
+    assert.equal(t.oyentes, 1, 'el adaptador se suscribe una sola vez al conectar');
     listaQueContesta(t, []);
     await a.guardarInstantanea();
-    assert.equal(t.oyentes, antes, 'la suscripcion de la lista se quita, la del adaptador queda');
+    assert.equal(
+      t.oyentes, 1,
+      'la suscripcion de la lista se quita y la del adaptador queda',
+    );
   });
 });
 
@@ -100,12 +112,15 @@ test('el eco del puntero durante el guardado no invalida el estado', async () =>
     await new Promise((r) => setTimeout(r, 60));
     assert.equal(a.leer('i.0.mix').storeState, 'VALID', 'el volcado deja el estado valido');
 
-    // **El eco llega DENTRO de la ventana de `pedirLista`, que es el caso que
-    // el doble viejo no podia representar.** Con el eco cayendo antes de que
-    // `pedirLista` se suscriba, este test pasaba igual con el oyente unico: lo
-    // comprobe revirtiendo, y por eso el cronometraje esta elegido y no es
-    // casual. La consola tardo 172 ms medidos en devolver el puntero, mas que
-    // la espera del guardado, asi que esta es ademas la version realista.
+    // **El eco llega DENTRO de la ventana de `pedirLista`**, que es la version
+    // realista: la consola tardo 172 ms medidos en devolver el puntero, mas que
+    // la espera del guardado.
+    //
+    // **Este test pasa igual con el doble viejo, y hay que decirlo.** Afirma que
+    // el estado queda VALIDO, y con el doble viejo el adaptador esta mudo, asi
+    // que tambien queda valido. Una asercion de que algo NO pasa no distingue
+    // «lo ignoro bien» de «nunca llego». Lo que lo salva es su gemelo de abajo,
+    // que afirma lo contrario y si falla.
     let guardada: string | null = null;
     const original = t.enviar.bind(t);
     t.enviar = (linea: string) => {

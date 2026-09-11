@@ -66,18 +66,32 @@ const PATRONES: readonly Patron[] = [
   // --- General ---
   { re: /^m\.eq\./, kind: 'OUTPUT_EQ' },
   { re: /^m\.delay/, kind: 'OUTPUT_DELAY' },
-  { re: /^m\.polarity/, kind: 'OUTPUT_POLARITY' },
+  // **`m.polarity` no existe en la consola.** El general invierte por lado:
+  // `m.l.invert` y `m.r.invert`. Con el patrón viejo, `OUTPUT_POLARITY` era
+  // inalcanzable para el general — el mismo defecto que tenía el supresor,
+  // encontrado por la misma auditoría el mismo día.
+  { re: /^m\.[lr]\.invert$/, kind: 'OUTPUT_POLARITY' },
   { re: /^m\.dyn\./, kind: 'OUTPUT_LIMITER' },
   { re: /^m\.mix$/, kind: 'MASTER_FADER' },
-  { re: /^m\.mute$/, kind: 'MASTER_MUTE' },
+  // **`m.mute` tampoco existe.** El general no tiene silencio: tiene `m.dim`,
+  // que baja el nivel sin cortarlo. Otro kind que era inalcanzable.
+  { re: /^m\.dim$/, kind: 'MASTER_MUTE' },
 
   // --- Auxiliares y matrices como buses de salida ---
   { re: /^a\.\d+\.eq\./, kind: 'OUTPUT_EQ' },
   { re: /^a\.\d+\.delay/, kind: 'OUTPUT_DELAY' },
-  { re: /^a\.\d+\.polarity/, kind: 'OUTPUT_POLARITY' },
+  { re: /^a\.\d+\.invert$/, kind: 'OUTPUT_POLARITY' },
   { re: /^a\.\d+\.mute$/, kind: 'PA_BUS_MUTE' },
   { re: /^a\.\d+\.mix$/, kind: 'MONITOR_AUX_SEND' },
   { re: /^v\.\d+\./, kind: 'VCA' },
+
+  // --- Subgrupos ---
+  //
+  // **`SUBGROUP` estaba declarado en el registro de propiedad y el clasificador
+  // no podía producirlo jamás: no tenía patrón.** La consola publica 612 claves
+  // `s.N.*` y todas caían en RUTA_DESCONOCIDA. Se rechazaban igual —el lado
+  // seguro— pero citando que la ruta no se conoce, cuando sí se conoce.
+  { re: /^s\.\d+\./, kind: 'SUBGROUP' },
 
   // --- Efectos y sistema ---
   { re: /^f\.\d+\./, kind: 'FX' },
@@ -104,9 +118,16 @@ const PATRONES: readonly Patron[] = [
   // Y no es un parámetro cualquiera: el supresor le mete filtros de −18 dB al
   // audio por su cuenta, y `m.afs.enabled` es **el único de 45 campos que una
   // recuperación de instantánea no devuelve**. Lo encontró una auditoría.
+  // **Cinco familias, no tres.** El arreglo del 2026-09-10 agregó las tres
+  // primeras buscando «afs» en la documentación narrativa; las dos últimas solo
+  // aparecen si uno mira los volcados, que es la fuente que ese mismo arreglo
+  // decía estar usando. Las dos están en la consola ahora mismo:
+  // `SETD^afs.enabled^1` y `SETD^settings.afsonboot^0`.
   { re: /^m\.afs\./, kind: 'AFS2' },
   { re: /^a\.\d+\.afs\./, kind: 'AFS2' },
   { re: /^var\.afsdata$/, kind: 'AFS2' },
+  { re: /^afs\.enabled$/, kind: 'AFS2' },
+  { re: /^settings\.afsonboot$/, kind: 'AFS2' },
 ];
 
 export interface OpcionesDeClasificacion {
