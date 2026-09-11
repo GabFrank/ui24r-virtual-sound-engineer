@@ -294,8 +294,19 @@ por HTTP, que es un camino distinto del que escribió:
 - `evidence/concurrencia-2026-09-11.txt` — criterios 1, 2 y 5, los tres reproducen.
 - `evidence/cadencia-difusion-2026-09-11.txt` — el tic de ~34 ms reproduce exacto.
 
+**El del tic, remedido el 2026-09-11 con un guion nuevo y con control.** La
+primera corrida —`evidence/testigo-en-el-tic-2026-09-11.txt`— dio lo mismo que la
+transcripción: pegadas, el testigo ve la segunda escritura **10 de 10** veces y
+la primera **0 de 10**.
+
+**Y ese resultado, solo, no valía.** Es un nulo, y un nulo sin control no
+distingue «la consola no la difunde» de «el instrumento no sabe verla»: podrían
+estorbarse las dos esperas, fallar el emparejamiento de valores, redondearse el
+crudo. La segunda corrida lo cierra —`evidence/testigo-en-el-tic-2026-09-11b.txt`—
+repitiendo las mismas escrituras **separadas por más que el tic**: ahí el testigo
+ve **las dos, 10 de 10**. El instrumento puede ver la primera; el cero es de la
+consola, que aplica las dos y difunde una.
+
 **Todavía transcripción sin archivar**, y por eso queda dicho acá en vez de
-escondido: `evidence/agrupacion-arrastre-2026-09-10.txt` y
-`evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, remedido en `evidence/testigo-en-el-tic-2026-09-11.txt`: diez vueltas, la segunda escritura vista 10 de 10 y la primera 0 de 10. Sus guiones no están en el árbol, así
-que remedirlas es escribirlos de nuevo. Hasta entonces, lo que sostienen se lee
-con esa advertencia puesta.
+escondido: `evidence/agrupacion-arrastre-2026-09-10.txt`. Su guion no está en el
+árbol, así que remedirla es escribirlo de nuevo.

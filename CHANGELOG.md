@@ -11,11 +11,17 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   herramienta, y sus guiones no habían quedado en el árbol: remedirlas era
   escribirlos de nuevo.
 
-  **El tic que se traga una escritura, confirmado diez veces.** Si se escriben
-  dos valores sobre la misma ruta dentro del tic de la consola, ésta aplica los
-  dos y difunde uno solo: el testigo vio la segunda **10 de 10** veces y la
-  primera **0 de 10**. Una escritura que funcionó puede salir sin verificar, y
-  eso no es un fallo del testigo sino la forma del aparato.
+  **El tic que se traga una escritura, confirmado diez veces — y con el control
+  que la primera versión no tenía.** Si se escriben dos valores sobre la misma
+  ruta dentro del tic de la consola, ésta aplica los dos y difunde uno solo: el
+  testigo vio la segunda **10 de 10** veces y la primera **0 de 10**.
+
+  Ese resultado, solo, **no valía**: es un nulo, y un nulo sin control no
+  distingue «la consola no la difunde» de «el instrumento no sabe verla».
+  Repitiendo las mismas escrituras **separadas por más que el tic**, el testigo
+  ve **las dos, 10 de 10**. El instrumento puede ver la primera; el cero es de la
+  consola. Una escritura que funcionó puede salir sin verificar, y eso no es un
+  fallo del testigo sino la forma del aparato.
 
   **Y la retención trajo su propio control, por accidente.** La primera corrida
   arrancó con las veinte del tope: la lista se clavó en veinte y borró la más

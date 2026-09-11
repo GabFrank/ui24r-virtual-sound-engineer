@@ -66,7 +66,7 @@ ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
 consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
 confirmada aunque haya funcionado. Evidencia:
 `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` —remedido en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`, donde el tic reproduce exacto— y
-`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`. **Diez vueltas, y las diez iguales: el testigo vio la segunda escritura 10 de 10 veces y la primera 0 de 10.**
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`, y **con control positivo** en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11b.txt`. Pegadas, el testigo vio la segunda **10 de 10** y la primera **0 de 10**; separadas por más que el tic, vio **las dos 10 de 10**. Ese control es lo que descarta que el cero sea del arnés.
 
 ## 1. Transporte
 
