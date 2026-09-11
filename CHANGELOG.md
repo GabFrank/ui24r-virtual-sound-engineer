@@ -6,6 +6,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La última transcripción que se podía remedir sin la sala, y salió mejor que
+  la original.** La agrupación de un arrastre ajeno se había medido a un solo
+  espaciado; ahora se barren seis, a los dos lados de la ventana, y **la tensión
+  entre dos criterios del spike deja de ser una nota al pie y pasa a ser una
+  tabla**: por debajo de la ventana, doce escrituras dan **un** aviso; por
+  encima, dan **doce**.
+
+  Los dos criterios piden cosas opuestas sobre la misma ruta —uno que cada
+  cambio se cuente, otro que un arrastre se cuente como uno— y **lo que decide
+  cuál se cumple es el espaciado, no la consola**. Por eso el primero se midió
+  a 120 ms, dio 1 de 100, y se subió a 400 a propósito. Un «100 de 100» sin
+  decir a qué espaciado se midió no informa nada.
+
+  **Y la fila del medio es la que más enseña**: justo en la ventana no da ni uno
+  ni doce, da **siete**. El límite no es nítido, así que medir exactamente ahí
+  produce un número que depende del temblor de la red y no del diseño.
+
+  Los espaciados grandes son además el control de la corrida: sin ellos, «doce
+  escrituras dan un aviso» no distingue agrupar de no avisar nada.
+
 - **Tres de las cinco transcripciones que quedaban, remedidas con guiones
   nuevos.** Las originales se archivaron a mano antes de que existiera la
   herramienta, y sus guiones no habían quedado en el árbol: remedirlas era
