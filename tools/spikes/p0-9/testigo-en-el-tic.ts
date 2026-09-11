@@ -36,6 +36,7 @@
  */
 import {
   Ui24rTransport, Ui24rMixerAdapter, TestigoDeEscrituras, codificarSetd, decodificar,
+  comandoBorrar,
 } from '@vse/mixer-adapter';
 import { estadoPorHttp, exigirCanalesMuertos } from '../canal-muerto.ts';
 
@@ -51,6 +52,20 @@ const principal = new Ui24rTransport();
 const a = new Ui24rMixerAdapter(principal);
 
 const crudo = new Map<string, number>();
+/**
+ * Cuantas lineas difunde la consola para la ruta, por vuelta.
+ *
+ * **Es el dato que prueba que la PRIMERA escritura se aplico**, y la primera
+ * version de este guion lo dejo afuera. Que el testigo no vea A admite dos
+ * lecturas --la consola colapso la difusion, o la consola nunca aplico A-- y
+ * solo se separan contando lineas: si de dos escrituras sale UNA linea con el
+ * valor de B, hubo colapso; si sale una linea y el valor final es el de A, la
+ * segunda no se aplico.
+ *
+ * La transcripcion vieja traia esta columna y la remedicion la perdio: era
+ * estrictamente mas pobre que lo que reemplazaba. Lo marco una auditoria.
+ */
+let difundidas: { valor: number; enMs: number }[] = [];
 principal.alRecibir((linea) => {
   const m = decodificar(linea);
   if (m.tipo === 'SETD') crudo.set(m.path, m.valor);
@@ -85,6 +100,20 @@ console.log(`punto de retorno: ${punto ?? 'NO SE PUDO — se aborta'}`);
 if (punto === null) { await a.desconectar(); process.exit(1); }
 
 const t2 = new Ui24rTransport();
+// **Se cuenta en el socket DEL TESTIGO, no en el de la principal.**
+//
+// Primer intento: se contaba en la principal, y dio «(ninguna)» las diez
+// vueltas. Es correcto y esta medido desde el 2026-09-08: LA CONSOLA NO LE
+// DEVUELVE LA ESCRITURA A QUIEN LA HIZO. La principal es la que escribe, asi
+// que no ve nada; el unico que ve la difusion es el segundo socket.
+//
+// El guion no concluyo de mas cuando eso paso: su veredicto dijo «OJO: no todas
+// las vueltas dieron una sola linea». Un guion que solo sabe decir «confirmado»
+// habria publicado una conclusion sobre una columna vacia.
+t2.alRecibir((linea) => {
+  const m = decodificar(linea);
+  if (m.tipo === 'SETD' && m.path === RUTA) difundidas.push({ valor: m.valor, enMs: Date.now() });
+});
 const testigo = new TestigoDeEscrituras(t2);
 await testigo.conectar(maquina);
 if (!testigo.listoParaAtestiguar) {
@@ -97,10 +126,10 @@ console.log('');
 console.log(`canal ${N + 1} (i.${N}) · ruta ${RUTA} · ventana del testigo: ${VENTANA_MS} ms`);
 console.log(`valor de partida: ${original}`);
 console.log('');
-console.log('vuelta | A      | B      | testigo vio A | testigo vio B');
-console.log('-------+--------+--------+---------------+--------------');
+console.log('vuelta | A      | B      | vio A | vio B | lineas | valores difundidos');
+console.log('-------+--------+--------+-------+-------+--------+-------------------');
 
-const filas: { vioA: boolean; vioB: boolean }[] = [];
+const filas: { vioA: boolean; vioB: boolean; lineas: number }[] = [];
 for (let i = 0; i < VUELTAS; i++) {
   // Dos valores distintos entre si y del original, y los dos lejos del fondo
   // para que no se confundan con el silencio.
@@ -113,6 +142,7 @@ for (let i = 0; i < VUELTAS; i++) {
   const esperaA = testigo.esperar(RUTA, A, VENTANA_MS);
   const esperaB = testigo.esperar(RUTA, B, VENTANA_MS);
 
+  difundidas = [];
   // A y B **sin esperar nada en el medio**: lo que se quiere es que caigan en el
   // mismo tic de ~34 ms.
   principal.enviar(codificarSetd(RUTA, A));
@@ -120,10 +150,12 @@ for (let i = 0; i < VUELTAS; i++) {
 
   const vioA = await esperaA.visto;
   const vioB = await esperaB.visto;
-  filas.push({ vioA, vioB });
+  const vistas = difundidas.map((d) => d.valor);
+  filas.push({ vioA, vioB, lineas: vistas.length });
   console.log(
     `${String(i + 1).padStart(6)} | ${A.toFixed(4)} | ${B.toFixed(4)} | `
-    + `${(vioA ? 'SI' : 'no').padEnd(13)} | ${vioB ? 'SI' : 'no'}`,
+    + `${(vioA ? 'SI' : 'no').padEnd(5)} | ${(vioB ? 'SI' : 'no').padEnd(5)} | `
+    + `${String(vistas.length).padStart(6)} | ${vistas.map((v) => v.toFixed(4)).join(' > ') || '(ninguna)'}`,
   );
 
   // Se devuelve al original entre vueltas, para que cada una arranque igual.
@@ -133,9 +165,11 @@ for (let i = 0; i < VUELTAS; i++) {
 
 const vioA = filas.filter((f) => f.vioA).length;
 const vioB = filas.filter((f) => f.vioB).length;
+const unaLinea = filas.filter((f) => f.lineas === 1).length;
 console.log('');
 console.log(`el testigo vio A: ${vioA} de ${VUELTAS}`);
 console.log(`el testigo vio B: ${vioB} de ${VUELTAS}`);
+console.log(`vueltas donde la consola difundio UNA sola linea: ${unaLinea} de ${VUELTAS}`);
 
 // ---------------------------------------------- control positivo: con pausa
 console.log('');
@@ -182,9 +216,20 @@ if (ctrlA === 0) {
   console.log('y el experimento no mide lo que dice medir.');
 } else if (vioA === 0 && vioB === VUELTAS && ctrlA === VUELTAS) {
   console.log('CONFIRMADO, y con control: pegadas, el testigo solo ve la segunda; separadas');
-  console.log('por mas que el tic, ve las dos. O sea que el cero NO es del arnes: la consola');
-  console.log('aplica las dos y difunde una. Una escritura aplicada puede salir SIN');
-  console.log('VERIFICAR, y no es un fallo del testigo.');
+  console.log('por mas que el tic, ve las dos. O sea que el cero NO es del arnes.');
+  console.log('');
+  if (unaLinea === VUELTAS) {
+    console.log(`Y la consola difundio UNA sola linea las ${VUELTAS} vueltas, con el valor de B.`);
+    console.log('O sea COLAPSO, no descarte: recibio las dos y difundio la ultima.');
+  } else {
+    console.log('OJO: no todas las vueltas dieron una sola linea. Mirar la columna antes de');
+    console.log('decir «colapso»: con dos lineas no hubo colapso y el testigo fallo por otra cosa.');
+  }
+  console.log('');
+  console.log('LO QUE ESTO NO MIDE, y hay que decirlo: si la consola APLICO A antes de');
+  console.log('sobrescribirlo. Difundir una sola linea es compatible con las dos historias.');
+  console.log('Para separarlas hace falta leer el estado entre las dos escrituras, y eso');
+  console.log('no se puede hacer sin meter una espera que rompa el mismo tic que se mide.');
 } else if (vioA === VUELTAS) {
   console.log('LAS DOS SE VEN PEGADAS: el tic no colapsa escrituras, o no cayeron en el mismo tic.');
 } else {
@@ -205,6 +250,21 @@ if (despuesHttp.size === 0) {
   }
   console.log(`comprobacion por HTTP, contra el estado previo (${antesHttp.size} claves leidas):`);
   console.log(`  claves que cambiaron: ${distintas.length === 0 ? 'ninguna' : distintas.join(', ')}`);
+}
+
+// **El punto de retorno se borra, y la primera version no lo hacia.**
+//
+// Cada corrida dejaba una automatica en el show de la aplicacion, consumiendo
+// una plaza del tope de veinte. La comprobacion por HTTP no puede verlo porque
+// `/raw` no lista instantaneas: hay que pedir SNAPSHOTLIST. Una corrida que se
+// limpia «salvo por una cosa que su propia comprobacion no mira» no se limpia.
+const orden = comandoBorrar(punto);
+if (orden === null) {
+  console.log(`  el punto ${punto} no se pudo construir para borrar: queda en la consola`);
+} else {
+  principal.enviar(orden);
+  await new Promise((r) => setTimeout(r, 800));
+  console.log(`  punto de retorno borrado: ${punto}`);
 }
 
 await testigo.cerrar();

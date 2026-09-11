@@ -287,11 +287,21 @@ cadencia de `RTA`: hay un solo reloj de difusión.
 `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt`, remedido con la herramienta en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`: el tic de ~34 ms reproduce exacto.
 
 **La consecuencia sobre INV-011, medida y no deducida.** Dos escrituras a la
-misma ruta dentro de un tic producen **una sola línea, con el segundo valor**:
-la primera se aplica y su confirmación no llega nunca. Con las dos pegadas, 0 de
+misma ruta dentro de un tic producen **una sola línea, con el segundo valor**, y
+la confirmación de la primera no llega nunca. Acá decía «la primera **se
+aplica**», y eso **no está medido**: una sola línea difundida es compatible con
+que se haya aplicado y con que no. Lo que la política necesita es lo otro, que sí
+está medido — que **no se puede confirmar**. Con las dos pegadas, 0 de
 5 confirmaciones para la primera; entre 5 y 25 ms sale a suertes según dónde
 caiga el borde del tic —2, 1 y 3 de 5—; **a partir de un tic completo, 5 de 5
-siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, **remedido en** `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt` y, con control positivo, en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11b.txt`: pegadas, la segunda vista 10 de 10 y la primera 0 de 10; separadas por más que el tic, las dos 10 de 10.
+siempre**.
+
+> **Esas cifras siguen sin remedir, y además el archivo se contradice a sí
+> mismo.** La corrida del 2026-09-11 midió dos separaciones —pegadas y 150 ms—,
+> no las seis de la transcripción, así que «2, 1 y 3 de 5» no lo respalda nada
+> nuevo. Y en el archivo viejo esa frase está en la **prosa**: su propia tabla
+> dice **0, 2 y 2**. Hasta que alguien barra las seis separaciones, esta línea se
+> lee como lo que es — una transcripción que no coincide con su tabla. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, **remedido en** `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt` y, con control positivo y la cuenta de líneas difundidas, en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11d.txt`: pegadas, la segunda vista 10 de 10, la primera 0 de 10, y **una sola línea difundida las diez veces con el valor de la segunda**; separadas por más que el tic, las dos 10 de 10. Es **colapso**. Si la consola *aplicó* la primera **no está medido**.
 
 **Qué protege hoy a la aplicación.** INV-005 pauta las escrituras secuenciales
 cada **≥ 100 ms**, casi tres tics. Las escrituras normales quedan fuera del

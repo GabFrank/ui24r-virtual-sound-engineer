@@ -48,7 +48,11 @@ const t = new Ui24rTransport();
 const a = new Ui24rMixerAdapter(t);
 
 const listas: string[] = [];
-t.alRecibir((l) => { if (l.startsWith('SNAPSHOTLIST^')) listas.push(l); });
+const shows: string[] = [];
+t.alRecibir((l) => {
+  if (l.startsWith('SNAPSHOTLIST^')) listas.push(l);
+  if (l.startsWith('SHOWLIST^')) shows.push(l);
+});
 
 await a.conectar(maquina);
 await new Promise((r) => setTimeout(r, 6000));
@@ -161,6 +165,27 @@ const laRetencion = faltan.length > 0
 console.log(`  de las que habia al empezar, faltan: ${faltan.length === 0 ? 'ninguna' : faltan.join(', ')}`);
 if (faltan.length > 0) {
   console.log(`  ¿son las mas viejas, o sea la retencion haciendo lo suyo? ${laRetencion ? 'SI' : 'NO — MIRAR ESTO'}`);
+}
+
+// **Los shows del usuario, listados y archivados.**
+//
+// Se afirmo en un commit que «Alma caninde y Prueba asistente quedaron
+// intactas» y esa comprobacion vivia en la terminal de quien la corrio: `/raw`
+// NO LISTA INSTANTANEAS, asi que la comparacion de las 6732 claves no puede
+// verlas. Hay que pedir SHOWLIST y SNAPSHOTLIST, y dejarlo en el archivo.
+console.log('');
+console.log('== 4. Los shows de la consola, incluidos los del usuario ==');
+shows.length = 0;
+t.enviar('SHOWLIST');
+await new Promise((r) => setTimeout(r, 1500));
+const nombresDeShows = (shows[0] ?? '').split('^').slice(1).filter(Boolean);
+for (const s of nombresDeShows) {
+  listas.length = 0;
+  t.enviar(`SNAPSHOTLIST^${s}`);
+  await new Promise((r) => setTimeout(r, 1200));
+  const dentro = (listas[0] ?? '').split('^').slice(2).filter(Boolean);
+  const mio = s === SHOW_DE_LA_APLICACION;
+  console.log(`  ${s}${mio ? ' (el de la aplicacion)' : ''}: ${dentro.length} -> ${dentro.join(', ') || '(vacio)'}`);
 }
 
 console.log('');

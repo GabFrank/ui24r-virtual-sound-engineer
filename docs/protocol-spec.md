@@ -66,7 +66,9 @@ ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
 consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
 confirmada aunque haya funcionado. Evidencia:
 `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` —remedido en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`, donde el tic reproduce exacto— y
-`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`, y **con control positivo** en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11b.txt`. Pegadas, el testigo vio la segunda **10 de 10** y la primera **0 de 10**; separadas por más que el tic, vio **las dos 10 de 10**. Ese control es lo que descarta que el cero sea del arnés.
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`, y **con control positivo y la cuenta de líneas difundidas** en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11d.txt`. Pegadas, el testigo vio la segunda **10 de 10** y la primera **0 de 10**, y la consola difundió **una sola línea las diez veces, con el valor de la segunda**; separadas por más que el tic, vio **las dos 10 de 10**. O sea **colapso, no descarte**.
+
+**Lo que esto NO mide, y conviene que esté escrito acá:** si la consola *aplicó* la primera antes de sobrescribirla. Una sola línea difundida es compatible con las dos historias. Se afirmó que «la consola aplica las dos» y esa parte **no está medida**: para separarlas haría falta leer el estado entre las dos escrituras, y eso mete una espera que rompe el mismo tic que se quiere medir.
 
 ## 1. Transporte
 

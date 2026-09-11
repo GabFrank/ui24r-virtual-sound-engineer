@@ -1,19 +1,22 @@
 # Medición archivada por tools/spikes/medir.mjs
-# fecha: 2026-09-11T11:27:29.475Z
+# fecha: 2026-09-11T12:06:29.811Z
 # comando: node --experimental-strip-types tools/spikes/p0-8/retencion-y-borrado.ts 192.168.0.78
+# guion: tools/spikes/p0-8/retencion-y-borrado.ts sha256:4ea6ac8fd51ce821
 #
 # Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
 
 
 show de la aplicacion: VSE
-automaticas al empezar: 20
-SNAPSHOTLIST tardo: 51 ms
+automaticas al empezar: 18
+SNAPSHOTLIST tardo: 50 ms
 
 == 1. Borrar una automatica nuestra, y comprobar que se fue ==
-  guardada: VSE_AUTO_1789126061668
+  guardada: VSE_AUTO_1789128402066
   esta en la lista: SI
   despues de DELETESNAPSHOT: SE FUE
-  la lista quedo en 19
+  la lista quedo en 18
 
 == 2. La retencion al llegar al maximo ==
   Se guarda una detras de otra hasta pasar el tope, y se mira si la
@@ -22,21 +25,27 @@ SNAPSHOTLIST tardo: 51 ms
 
   guardada                          | cuantas quedan | la mas vieja se fue
   ----------------------------------+----------------+--------------------
-  VSE_AUTO_1789126064485            |             20 | no
-  VSE_AUTO_1789126065344            |             20 | SI
-  VSE_AUTO_1789126066610            |             20 | SI
-  VSE_AUTO_1789126067875            |             20 | SI
+  VSE_AUTO_1789128404483            |             19 | no
+  VSE_AUTO_1789128405342            |             20 | no
+  VSE_AUTO_1789128406203            |             20 | SI
+  VSE_AUTO_1789128407469            |             20 | SI
 
 RETENCION CONFIRMADA: la lista se clava en 20 y borra la mas vieja.
 
 == 3. Dejar el show como estaba ==
   automaticas creadas por esta corrida y borradas: 4
-  automaticas al terminar: 16 (al empezar habia 20)
-  de las que habia al empezar, faltan: VSE_AUTO_1789061761150, VSE_AUTO_1789062209432, VSE_AUTO_1789062521053, VSE_AUTO_1789062547907
+  automaticas al terminar: 16 (al empezar habia 18)
+  de las que habia al empezar, faltan: VSE_AUTO_1789063456371, VSE_AUTO_1789064760700
+  ¿son las mas viejas, o sea la retencion haciendo lo suyo? SI
+
+== 4. Los shows de la consola, incluidos los del usuario ==
+  Default: 1 -> * Init *
+  Prueba: 2 -> Alma caninde, Prueba asistente
+  VSE (el de la aplicacion): 16 -> VSE_AUTO_1789066151118, VSE_AUTO_1789066684743, VSE_AUTO_1789067480616, VSE_AUTO_1789068005467, VSE_AUTO_1789068111690, VSE_AUTO_1789069725296, VSE_AUTO_1789118597529, VSE_AUTO_1789118646266, VSE_AUTO_1789118683261, VSE_AUTO_1789118751307, VSE_AUTO_1789120806850, VSE_AUTO_1789120870933, VSE_AUTO_1789123352350, VSE_AUTO_1789125949526, VSE_AUTO_1789127010260, VSE_AUTO_1789127821285
 
 comprobacion por HTTP, contra el estado previo (6732 claves leidas):
   claves que cambiaron: ninguna
   (var.currentSnapshot puede figurar: guardar lo mueve, y es lo esperado)
 
 
-# salida del proceso: 1
+# salida del proceso: 0

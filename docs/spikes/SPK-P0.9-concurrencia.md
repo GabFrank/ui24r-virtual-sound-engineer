@@ -305,7 +305,28 @@ estorbarse las dos esperas, fallar el emparejamiento de valores, redondearse el
 crudo. La segunda corrida lo cierra —`evidence/testigo-en-el-tic-2026-09-11b.txt`—
 repitiendo las mismas escrituras **separadas por más que el tic**: ahí el testigo
 ve **las dos, 10 de 10**. El instrumento puede ver la primera; el cero es de la
-consola, que aplica las dos y difunde una.
+consola.
+
+**Y la tercera corrida trajo la columna que faltaba**, que la transcripción vieja
+tenía y la primera remedición había perdido:
+`evidence/testigo-en-el-tic-2026-09-11d.txt` cuenta **cuántas líneas difunde la
+consola** por vuelta. Una sola, las diez veces, con el valor de la segunda: eso
+es **colapso** y no descarte.
+
+> **Lo que sigue sin medirse.** Que la consola *aplique* la primera antes de
+> sobrescribirla. Una sola línea difundida es compatible con las dos historias, y
+> se llegó a afirmar que «aplica las dos» sin medirlo. Separarlas exige leer el
+> estado entre las dos escrituras, y esa lectura mete una espera que rompe el
+> mismo tic que se quiere medir.
+
+> **De paso, un error del instrumento que el propio instrumento delató**, y
+> queda archivado en `evidence/testigo-en-el-tic-2026-09-11c.txt`. La primera
+> versión de esa columna contaba en el socket de la conexión principal y dio
+> «(ninguna)» las diez vueltas — correcto, porque **la consola no le devuelve
+> la escritura a quien la hizo**, cosa medida desde el 2026-09-08. El veredicto
+> no dijo «confirmado»: dijo *«OJO: no todas las vueltas dieron una sola
+> línea»*. Un guion que sólo sabe celebrar habría publicado una conclusión sobre
+> una columna vacía.
 
 **La agrupación del arrastre, remedida el 2026-09-11 barriendo el espaciado.**
 `evidence/agrupacion-arrastre-2026-09-11.txt`. Doce escrituras sobre una ruta,

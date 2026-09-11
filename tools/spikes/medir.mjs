@@ -33,7 +33,8 @@
  * aparato.
  */
 import { spawn } from 'node:child_process';
-import { createWriteStream, mkdirSync, existsSync } from 'node:fs';
+import { createWriteStream, mkdirSync, existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 const [destino, guion, ...args] = process.argv.slice(2);
@@ -61,12 +62,35 @@ const salida = createWriteStream(destino);
 
 const cuando = new Date().toISOString();
 const comando = ['node', '--experimental-strip-types', guion, ...args].join(' ');
+/**
+ * La huella del guion que corrió, y hace falta.
+ *
+ * **El encabezado decía qué comando se usó y no qué guion.** Una auditoría lo
+ * midió el 2026-09-11: se archivó una corrida, después se editó el guion para
+ * agregarle una rama, y el commit presentó esa rama como el aporte — mientras el
+ * archivo, que seguía diciendo «node … retencion-y-borrado.ts», era salida de la
+ * versión anterior. La rama que se celebraba **nunca se había ejecutado**.
+ *
+ * Es exactamente lo que esta herramienta existe para impedir, entrando por otra
+ * puerta: no «mirar una corrida y archivar otra», sino **archivar una corrida y
+ * después cambiar el guion debajo**. Con la huella, cualquiera puede comprobar
+ * si el archivo corresponde al guion de hoy:
+ *
+ *     shasum -a 256 tools/spikes/…/guion.ts
+ */
+const huella = existsSync(guion)
+  ? createHash('sha256').update(readFileSync(guion)).digest('hex').slice(0, 16)
+  : 'no se pudo leer el guion';
+
 const encabezado = [
   `# Medición archivada por tools/spikes/medir.mjs`,
   `# fecha: ${cuando}`,
   `# comando: ${comando}`,
+  `# guion: ${guion} sha256:${huella}`,
   `#`,
   `# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.`,
+  `# La huella es del guion tal como estaba al correr: si hoy no coincide, el`,
+  `# archivo es de otra version y lo que diga de si mismo no vale.`,
   ``,
   ``,
 ].join('\n');

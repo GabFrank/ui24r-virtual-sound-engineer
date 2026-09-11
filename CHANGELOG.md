@@ -6,6 +6,42 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Un archivo de evidencia que no era salida del guion que decía haberlo
+  producido.** Se archivó una corrida, después se editó el guion para agregarle
+  una rama, y el cambio presentó esa rama como su aporte — mientras el archivo
+  seguía diciendo el nombre del guion. **La rama que se celebraba nunca se había
+  ejecutado.** Es lo que la herramienta de archivado existe para impedir,
+  entrando por otra puerta: no «mirar una corrida y archivar otra», sino
+  archivar una y **cambiar el guion debajo**.
+
+  El arreglo es del mecanismo: el encabezado ahora lleva **la huella del guion
+  que corrió**. Si hoy no coincide, el archivo es de otra versión y lo que diga
+  de sí mismo no vale.
+
+- **Y la remedición del tic era más pobre que la transcripción que reemplazaba.**
+  La vieja contaba **cuántas líneas difunde la consola** y la nueva había perdido
+  esa columna — que es justo la que separa «colapsó la difusión» de «nunca
+  ocurrió». Restaurada: una sola línea por vuelta, las diez veces, con el valor
+  de la segunda escritura. **Colapso, no descarte.**
+
+  Con ella cae una afirmación que se venía repitiendo en tres documentos: que la
+  consola «aplica las dos». **Eso no está medido** — una sola línea difundida es
+  compatible con las dos historias. Lo que la política necesita es lo otro, que
+  sí está medido: que la primera **no se puede confirmar**.
+
+  De paso, un error del instrumento que el propio instrumento delató: la primera
+  versión de esa columna contaba en el socket equivocado —el de quien escribe, al
+  que la consola no le devuelve nada— y el veredicto **no dijo «confirmado»**,
+  dijo «ojo, mirá la columna». Queda archivado, porque un guion que sólo sabe
+  celebrar habría publicado una conclusión sobre una columna vacía.
+
+- **Y la comprobación de que las instantáneas del usuario siguen ahí, por fin
+  archivada.** Se venía afirmando sin dejar rastro, y la comparación de las 6732
+  claves **no puede verlas**: ese volcado no lista instantáneas. Ahora la
+  medición pide la lista de shows y la deja en su archivo. De paso, el guion del
+  tic **borra su propio punto de retorno**, que antes quedaba consumiendo una
+  plaza del tope.
+
 - **La última transcripción que se podía remedir sin la sala, y salió mejor que
   la original.** La agrupación de un arrastre ajeno se había medido a un solo
   espaciado; ahora se barren seis, a los dos lados de la ventana, y **la tensión
