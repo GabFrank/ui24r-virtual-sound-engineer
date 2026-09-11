@@ -76,6 +76,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La guarda de rutas fabricadas atrapaba 3 de 10 formas, medido.** Barría sólo
+  `packages/` —el bug de `m.mute` vivía en `apps/`—, miraba sólo comillas
+  simples, **salteaba los prefijos de fuente** —que es la clase exacta del bug
+  que decía haber cerrado— y eximía cualquier patrón escrito con `N`, que es
+  justamente de lo que está hecho entero el módulo que declara los huecos.
+
+  Ahora barre **código y tests en todo el repositorio**, mira las tres formas de
+  literal, y **valida los índices contra los rangos reales del inventario** en
+  vez de saltearlos. Medido de nuevo: **atrapa siete de ocho**.
+
+  Dos decisiones que costaron entender el problema. **La guarda lee el código
+  sin sus comentarios**: una ruta en un comentario es documentación —así es como
+  este proyecto cuenta su historia, nombrando las rutas que resultaron falsas— y
+  una ruta en el código es una afirmación. Y **la que se le escapa está
+  declarada con su precio**: separar «ruta del general con tramo inventado» de
+  «propiedad de una variable llamada `m`» exige entender plantillas de Angular,
+  y hoy no vale ese precio. **Una guarda que declara su punto ciego vale más que
+  una que aparenta no tenerlo.**
+
 - **Una ruta que la consola no manda estaba viva en producción.** El panel de
   telemetría traducía `m.mute` a «el silencio general», y **el general no tiene
   silencio: tiene `m.dim`**. Esa rama era inalcanzable y `m.dim` caía al último
