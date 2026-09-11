@@ -8,6 +8,7 @@ export * from './testigo.ts';
 export * from './ui24r-adapter.ts';
 export * from './clasificar-ruta.ts';
 export * from './que-entra-al-general.ts';
+export * from './que-no-devuelve-el-punto-de-retorno.ts';
 export * from './dinamica.ts';
 export * from './fuente-de-canal.ts';
 export * from './pares-estereo.ts';

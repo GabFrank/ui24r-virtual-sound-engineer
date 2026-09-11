@@ -33,6 +33,19 @@ interface Patron {
  */
 const PATRONES: readonly Patron[] = [
 
+  // --- Los «safe», arriba de todo ---
+  //
+  // **Arriba de las familias a propósito**: `l.0.safe` es un safe antes que una
+  // entrada de línea, e `i.3.safe` antes que un canal. El patrón de familia es
+  // más ancho y lo agarraría primero — el mismo tropiezo que costó un fallo con
+  // `s.2.mtx.0.pan`.
+  //
+  // Cincuenta claves en esta consola: 24 canales, 10 auxiliares, 6 subgrupos,
+  // 4 efectos, 2 del reproductor, 2 de línea, el general, y
+  // `var.unsaved.chsafes`.
+  { re: /^[a-z]+\.?\d*\.safe$/, kind: 'SAFE' },
+  { re: /^var\.unsaved\./, kind: 'SAFE' },
+
   // --- Envíos a la matriz, ARRIBA de las familias ---
   //
   // **El orden importa y costó un test.** `s.2.mtx.0.pan` lo agarraba

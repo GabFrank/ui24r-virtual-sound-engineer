@@ -26,7 +26,7 @@ export type ParameterKind =
   | 'PA_BUS_MUTE' | 'SNAPSHOT'
   | 'MONITOR_AUX_SEND' | 'MASTER_FADER' | 'MASTER_MUTE' | 'CHANNEL_MUTE'
   | 'PHANTOM' | 'OUTPUT_LIMITER' | 'FX' | 'SUBGROUP' | 'VCA' | 'AFS2'
-  | 'MATRIX_SEND' | 'LINE_INPUT';
+  | 'MATRIX_SEND' | 'LINE_INPUT' | 'SAFE';
 
 export interface OwnershipEntry {
   readonly kind: ParameterKind;
@@ -112,6 +112,17 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
   // decisión de producto que nadie tomó.
   { kind: 'LINE_INPUT', owner: 'USER_ONLY', escribible: false,
     nota: 'Lo que entra por las RCA lo decide el usuario: la aplicación solo lo lee' },
+  // **El «safe» decide qué NO toca una recuperación de instantánea.**
+  //
+  // Es una decisión del operador sobre su propia red de seguridad: marcar un
+  // canal como protegido significa «pase lo que pase, esto no me lo muevan».
+  // Que la aplicación lo escribiera sería desarmarle el paracaídas sin avisar.
+  //
+  // Y es lo contrario de lo que necesita el punto de retorno de INV-001: cuanto
+  // más haya marcado, **menos devuelve** una recuperación. Se lee para poder
+  // decirlo; no se escribe nunca.
+  { kind: 'SAFE', owner: 'USER_ONLY', escribible: false,
+    nota: 'La red de seguridad del operador: la aplicación la lee y no la toca' },
   { kind: 'SUBGROUP', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'VCA', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'AFS2', owner: 'USER_ONLY', escribible: false,

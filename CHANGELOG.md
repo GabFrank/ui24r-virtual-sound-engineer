@@ -6,6 +6,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El punto de retorno ahora dice su letra chica.** INV-001 promete que se
+  puede deshacer, y hay **dos clases de cosas que una recuperación no trae**.
+  Una ya se conocía: `m.afs.enabled`, el único de 45 campos que un
+  `LOADSNAPSHOT` no devolvió. La otra son los **«safe»**, cincuenta claves con
+  las que el operador le dice a la consola «esto no me lo muevan».
+
+  La aplicación ahora los lee y los enumera, con su nombre. Y mantiene una
+  distinción que este proyecto viene aprendiendo a los golpes: que la supresión
+  de realimentación no vuelva **está medido**; que un safe impida la
+  restauración **no lo está** — el manual técnico del firmware dice que su
+  alcance exacto «necesita ensayos sobre una copia de show». **Se informa qué
+  está marcado, no qué va a pasar.**
+
+  Los safes tienen además categoría propia y **no se escriben**: marcar algo
+  como protegido es la red de seguridad del operador, y que la aplicación la
+  desarmara sería quitarle el paracaídas sin avisar.
+
 - **La aplicación ya puede decir qué está entrando al general.** Era lo que
   faltaba cuando un receptor Bluetooth enchufado a las entradas de línea,
   abiertas a 0 dB, metió un tono continuo durante dos días de mediciones del

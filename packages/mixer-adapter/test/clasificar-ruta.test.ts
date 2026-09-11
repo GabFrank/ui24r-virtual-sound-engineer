@@ -198,6 +198,7 @@ test('toda clase del registro de propiedad la puede producir el clasificador', (
     AFS2: 'm.afs.enabled',
     MATRIX_SEND: 'a.0.mtx.1.value',
     LINE_INPUT: 'l.0.mix',
+    SAFE: 'i.0.safe',
   };
 
   // **`ANALYSIS_BUS_SEND` va aparte a proposito.** Es la unica clase que no
