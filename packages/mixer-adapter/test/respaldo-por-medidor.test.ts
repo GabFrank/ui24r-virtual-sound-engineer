@@ -84,7 +84,7 @@ test('sin testigo y en silencio NO SE ESCRIBE NADA', async () => {
     t.enviadas.length = 0;
     const r = await a.escribir('hw.9.gain', 0.35, 0.25);
     assert.equal(r.status, 'REJECTED');
-    assert.deepEqual(t.enviadas, [],
+    assert.deepEqual(t.enviadasSinLatido, [],
       'escribir a ciegas y marcarlo «no verificado» deja al operador sin poder '
       + 'distinguir eso de un cambio que si funciono');
     assert.match(r.motivo ?? '', /silencio|dB/);
@@ -100,7 +100,7 @@ test('sin testigo, un parametro sin efecto conocido sobre el nivel no se escribe
     t.enviadas.length = 0;
     const r = await a.escribir('i.9.eq.b1.gain', 0.6, 0.5);
     assert.equal(r.status, 'REJECTED');
-    assert.deepEqual(t.enviadas, []);
+    assert.deepEqual(t.enviadasSinLatido, []);
     assert.match(r.motivo ?? '', /no se puede confirmar por medidor/);
   });
 });
@@ -158,7 +158,7 @@ test('un conflicto se detecta ANTES de mirar ningun medidor', async () => {
     t.enviadas.length = 0;
     const r = await a.escribir('hw.9.gain', 0.35, 0.25);
     assert.equal(r.status, 'CONFLICT');
-    assert.deepEqual(t.enviadas, [], 'INV-011 manda: sin coincidencia no se escribe');
+    assert.deepEqual(t.enviadasSinLatido, [], 'INV-011 manda: sin coincidencia no se escribe');
   });
 });
 
@@ -173,7 +173,7 @@ test('sin el enrutamiento del previo, la ganancia NO se escribe', async () => {
     t.enviadas.length = 0;
     const r = await a.escribir('hw.9.gain', 0.35, 0.25);
     assert.equal(r.status, 'REJECTED');
-    assert.deepEqual(t.enviadas, []);
+    assert.deepEqual(t.enviadasSinLatido, []);
     assert.match(r.motivo ?? '', /no se puede confirmar por medidor/);
   });
 });

@@ -45,7 +45,7 @@ test('si nunca llego la clave, no se escribe nada al devolver', async () => {
     a.tomarAnalizador('i.9');
     t.enviadas.length = 0;
     a.devolverAnalizador();
-    assert.deepEqual(t.enviadas, [],
+    assert.deepEqual(t.enviadasSinLatido, [],
       'dejarlo como esta es menos danino que poner un valor que nadie leyo');
   });
 });
@@ -55,7 +55,7 @@ test('devolver sin haberlo tomado no hace nada', async () => {
     t.entra('SETS^var.rta^i.3');
     t.enviadas.length = 0;
     a.devolverAnalizador();
-    assert.deepEqual(t.enviadas, []);
+    assert.deepEqual(t.enviadasSinLatido, []);
   });
 });
 

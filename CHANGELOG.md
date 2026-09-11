@@ -4,6 +4,34 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Corregido
+
+- **Una escritura con el socket muerto tiraba una excepción en vez de devolver
+  un resultado.** `escribir()` promete un `WriteResult` con su motivo, y el
+  transporte real **lanza** si se lo llama con el socket cerrado. El adaptador
+  lo llamaba en nueve lugares sin una sola protección.
+
+  El escenario no es raro: es el más probable de una noche de show. La wifi se
+  carga, el socket muere, el aviso de cierre todavía no llegó y la aplicación se
+  cree conectada; o alguien toca «Desconectar» con una escritura en vuelo. Ahora
+  cada camino decide qué significa que la orden no salga — una escritura devuelve
+  rechazo **afirmando que no se aplicó nada**, que es más de lo que se puede
+  decir de un vencimiento; un guardado devuelve que no hubo punto de retorno;
+  devolver el analizador simplemente no ocurre, y no tumba el cierre.
+
+  **No lo encontró un test: lo encontró comparar el doble de pruebas con el
+  transporte real, línea por línea.** El doble aceptaba cualquier envío en
+  cualquier momento, así que la suite entera vivía en un mundo donde esto no
+  pasa. Y lo disfrazaba del peor modo de fallo: con el doble viejo la escritura
+  «sale», el testigo no ve nada y el resultado queda en «pudo aplicarse o no»,
+  que deja la transacción en suspenso en vez de decir la verdad.
+
+  El doble ahora lanza igual que el real, avisa a los suscriptores al abrir,
+  sabe latir —contra la consola el socket **nunca** está mudo, así que las siete
+  aserciones de «no mandó nada» ahora miran lo enviado **sin los latidos**, que
+  significa lo mismo en los dos mundos— y puede entregar una trama cruda, que es
+  como llegan de verdad: varias líneas juntas, o ninguna.
+
 ### Agregado
 
 - **El punto de retorno ahora dice su letra chica.** INV-001 promete que se

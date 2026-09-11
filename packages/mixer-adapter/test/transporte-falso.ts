@@ -1,4 +1,5 @@
 import type { Transport } from '../src/transport.ts';
+import { despojarSocketIo, MENSAJE_ALIVE } from '../src/protocol.ts';
 
 /**
  * Un transporte que no habla con nadie: las líneas las inyecta el test.
@@ -61,12 +62,59 @@ export class TransporteFalso implements Transport {
    */
   alEnviar: ((linea: string) => void) | null = null;
 
+  /**
+   * Abre, y **avisa a quien se haya suscrito a la apertura**, igual que el real.
+   *
+   * `WebSocketTransport.conectar()` llama a los callbacks de `alAbrir` en su
+   * `onopen`. El doble los guardaba y no los llamaba nunca: `abre()` era el
+   * único camino y no lo usaba nadie, así que `alAbrir` era código muerto **de
+   * los dos lados** y nadie podía notarlo.
+   */
   async conectar(): Promise<void> {
     if (this.debeFallar) throw new Error('no se pudo abrir la sesión');
     this.conectado = true;
+    for (const cb of [...this.abrir]) cb();
   }
   async desconectar(): Promise<void> { this.conectado = false; }
-  enviar(linea: string): void { this.enviadas.push(linea); this.alEnviar?.(linea); }
+
+  /**
+   * Envía, y **lanza con el socket cerrado, igual que el real.**
+   *
+   * `WebSocketTransport.enviar()` arranca con
+   * `if (!this.conectado) throw new Error('transporte no conectado')`. El doble
+   * aceptaba cualquier cosa en cualquier momento, así que el escenario más
+   * probable de una noche de show --el socket a medio morir con la wifi
+   * cargada, que la aplicación todavía cree CONECTADO-- era **irrepresentable**:
+   * contra la consola `escribir()` tiraba una excepción en vez de devolver un
+   * `WriteResult`, y ningún test podía verlo.
+   */
+  enviar(linea: string): void {
+    if (!this.conectado) throw new Error('transporte no conectado');
+    this.enviadas.push(linea);
+    this.alEnviar?.(linea);
+  }
+
+  /**
+   * Un latido, como el que el real manda solo cada segundo.
+   *
+   * **El doble no lo manda solo a propósito.** Un temporizador de verdad metería
+   * el reloj en cada test de esta carpeta y los volvería dependientes de cuánto
+   * tardan. Lo que sí hace falta es que el latido **se pueda meter**, porque
+   * sin eso siete aserciones de la suite decían `enviadas` vacío --algo que
+   * contra la consola no es cierto ni un segundo-- y nadie podía comprobar que
+   * siguieran significando lo mismo con los latidos puestos.
+   */
+  latir(): void { this.enviar(MENSAJE_ALIVE); }
+
+  /**
+   * Lo enviado **sin los latidos**, que es lo que casi todos los tests quieren.
+   *
+   * «No mandó nada» casi siempre significa «no mandó ninguna orden», no «el
+   * socket estuvo mudo»: contra la consola el socket nunca está mudo.
+   */
+  get enviadasSinLatido(): readonly string[] {
+    return this.enviadas.filter((l) => l !== MENSAJE_ALIVE);
+  }
   alRecibir(cb: (linea: string) => void): () => void {
     this.recibir.push(cb);
     return () => { this.recibir = this.recibir.filter((f) => f !== cb); };
@@ -90,7 +138,11 @@ export class TransporteFalso implements Transport {
   }
 
   /**
-   * Mete una línea como si viniera de la consola.
+   * Mete una línea **ya pelada**, como si el envoltorio ya se hubiera quitado.
+   *
+   * Es la forma cómoda y la usan casi todos los tests. Lo que no puede probar
+   * está en `llega()`: acá una llamada es siempre una línea, y contra la consola
+   * eso no es cierto.
    *
    * Se copia la lista antes de recorrerla: un oyente que se desuscribe mientras
    * se le avisa no tiene por qué saltearle el turno al siguiente.
@@ -99,10 +151,26 @@ export class TransporteFalso implements Transport {
     for (const cb of [...this.recibir]) cb(linea);
   }
 
+  /**
+   * Mete una **trama cruda de socket.io**, como la que llega por el cable.
+   *
+   * El real recibe `3:::SETD^i.0.mix^0.5` y pasa por `despojarSocketIo`, que
+   * puede devolver **varias líneas de una sola trama** --van separadas por
+   * `\n`-- o **ninguna**: el latido `2::` y la confirmación de conexión `1::`
+   * no son protocolo y no tienen que llegarle a nadie.
+   *
+   * `entra()` no podía representar ni una cosa ni la otra, así que el reparto
+   * de una trama múltiple --que es lo que hace la consola en cada volcado--
+   * nunca se ejercitó desde acá.
+   */
+  llega(trama: string): void {
+    for (const linea of despojarSocketIo(trama).lineas) this.entra(linea);
+  }
+
   /** Cuántos oyentes hay ahora. Para poder probar que nadie quedó mudo. */
   get oyentes(): number { return this.recibir.length; }
 
-  /** Abre la conexión como si el socket hubiera conectado. */
+  /** Abre la conexión como si el socket hubiera conectado solo, sin `conectar()`. */
   abre(): void {
     this.conectado = true;
     for (const cb of [...this.abrir]) cb();

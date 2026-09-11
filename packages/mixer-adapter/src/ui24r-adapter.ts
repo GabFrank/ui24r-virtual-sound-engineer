@@ -528,8 +528,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // tomaría nuestro propio guardado por un recall ajeno, y como se guarda
     // antes de cada escritura, la aplicación se invalidaría sola siempre.
     this.store.registrarPunteroPropio(nombre);
-    this.transporte.enviar(comandoCrearShow());
-    this.transporte.enviar(comandoGuardar(nombre));
+    // Sin punto de retorno no hay transacción (INV-001). Si la orden no sale,
+    // se devuelve `null` --que es lo que el llamador ya sabe interpretar-- en
+    // vez de tirar una excepción desde adentro de la red de seguridad.
+    if (!this.enviarSeguro(comandoCrearShow()).salio) return null;
+    if (!this.enviarSeguro(comandoGuardar(nombre)).salio) return null;
 
     // La consola no acusa recibo de estas órdenes, así que se le da tiempo a
     // que escriba en su disco antes de preguntar. Es el mismo criterio que el
@@ -555,8 +558,12 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     if (anterior !== null && anterior !== nombre) {
       // La devolución de la etiqueta también vuelve, y también es nuestra.
       this.store.registrarPunteroPropio(anterior);
-      this.transporte.enviar(comandoDevolverEtiqueta(anterior));
-      this.instantaneaActual = anterior;
+      // Si no sale, el puntero de la consola queda en nuestra automática. Es
+      // molesto y no es peligroso: no se pierde el trabajo de nadie, y el
+      // guardado --que es lo que INV-001 pide-- ya ocurrió.
+      if (this.enviarSeguro(comandoDevolverEtiqueta(anterior)).salio) {
+        this.instantaneaActual = anterior;
+      }
     }
 
     // **La retención, después de guardar y nunca antes.** Si se borrara primero
@@ -591,7 +598,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     const pedidas: string[] = [];
     for (const vieja of snapshotsABorrar(lista)) {
       const orden = comandoBorrar(vieja);
-      if (orden !== null) { this.transporte.enviar(orden); pedidas.push(vieja); }
+      // Lo que no salió no se cuenta como pedido: contarlo haría que la
+      // comprobación de abajo denunciara un borrado que nunca se intentó.
+      if (orden !== null && this.enviarSeguro(orden).salio) pedidas.push(vieja);
     }
     if (pedidas.length === 0) return;
 
@@ -632,8 +641,43 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         quitar();
         resolver(instantaneasDeLaLista(linea));
       });
-      this.transporte.enviar(comandoListar());
+      if (!this.enviarSeguro(comandoListar()).salio) {
+        // `null` ya significa «la consola no contestó», que es exactamente lo
+        // que pasa cuando la pregunta no llegó a salir.
+        clearTimeout(vencimiento);
+        quitar();
+        resolver(null);
+      }
     });
+  }
+
+  /**
+   * Manda una línea y **devuelve si salió**, en vez de dejar volar la excepción.
+   *
+   * **`Transport.enviar()` lanza con el socket cerrado**, y el adaptador lo
+   * llamaba en nueve lugares sin una sola protección. Contra la consola eso
+   * significa que `escribir()` —que promete un `WriteResult`— tira una excepción
+   * y el llamador se queda sin resultado, sin motivo y sin diario. El escenario
+   * no es raro: es el más probable de una noche de show. La wifi se carga, el
+   * socket muere, `onclose` todavía no llegó y la aplicación se cree conectada;
+   * o alguien toca «Desconectar» mientras una escritura está en vuelo, que deja
+   * el transporte sin socket **antes** de que el cierre se propague.
+   *
+   * **Era irrepresentable en los tests**: el doble aceptaba cualquier envío en
+   * cualquier momento, así que la suite entera vivía en un mundo donde esto no
+   * pasa. Lo encontró una auditoría comparando el doble con el real, no un test.
+   *
+   * Cada llamador decide qué hacer con el `false`, porque la respuesta correcta
+   * es distinta en cada uno: una escritura devuelve `REJECTED`, un guardado
+   * devuelve `null`, y devolver el analizador simplemente no ocurre.
+   */
+  private enviarSeguro(linea: string): { salio: boolean; motivo: string | null } {
+    try {
+      this.transporte.enviar(linea);
+      return { salio: true, motivo: null };
+    } catch (e) {
+      return { salio: false, motivo: e instanceof Error ? e.message : String(e) };
+    }
   }
 
   leer(parametro: string): ReadResult {
@@ -710,7 +754,17 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // La suscripción va **antes** del envío: a 27 ms medidos, suscribirse
     // después es una carrera que se pierde.
     const confirmacion = testigo.esperar(parametro, valor, this.timeoutMs);
-    this.transporte.enviar(codificarSetd(parametro, valor));
+    const envio = this.enviarSeguro(codificarSetd(parametro, valor));
+    if (!envio.salio) {
+      // **Nada salió al cable**: el transporte se niega antes de tocar el
+      // socket. Se puede afirmar que no se aplicó, que es más de lo que se
+      // puede decir de un vencimiento. La escritura anotada en el almacén
+      // caduca sola por ventana de tiempo y nunca llega a confirmarse.
+      return {
+        status: 'REJECTED', confirmedBy: 'NONE', actual: previa.actual,
+        motivo: `no se pudo enviar: ${envio.motivo}. No se aplicó nada`,
+      };
+    }
 
     if (await confirmacion) {
       // El valor entra al estado confirmado por acá y no por otro lado: la
@@ -779,7 +833,13 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     }
 
     this.store.registrarEscrituraPropia(parametro, valor);
-    this.transporte.enviar(codificarSetd(parametro, valor));
+    const envio = this.enviarSeguro(codificarSetd(parametro, valor));
+    if (!envio.salio) {
+      return {
+        status: 'REJECTED', confirmedBy: 'NONE', actual: actualPrevio,
+        motivo: `no se pudo enviar: ${envio.motivo}. No se aplicó nada`,
+      };
+    }
     await new Promise((r) => setTimeout(r, this.esperaMedidorMs));
     const despuesDb = this.nivelDelPunto(como.canal, como.punto);
 
@@ -931,7 +991,10 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
    */
   tomarAnalizador(fuente: string): boolean {
     if (this._estadoConexion !== 'CONNECTED') return false;
-    this.transporte.enviar(`SETS^var.rta^${fuente}`);
+    // **`analizadorPrestado` solo se marca si la orden salió.** Marcarlo igual
+    // haría que `devolverAnalizador()` intentara devolver algo que nunca se
+    // tomó, y el registro diría que le cambiamos la pantalla a alguien.
+    if (!this.enviarSeguro(`SETS^var.rta^${fuente}`).salio) return false;
     this.analizadorPrestado = true;
     return true;
   }
@@ -950,7 +1013,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   devolverAnalizador(): void {
     if (!this.analizadorPrestado) return;
     if (this.fuenteDelAnalizador === null) return;
-    this.transporte.enviar(`SETS^var.rta^${this.fuenteDelAnalizador}`);
+    // Esto corre también desde `desconectar()`, que es justo cuando el socket
+    // puede estar muriéndose. Que no salga no puede tumbar el cierre.
+    if (!this.enviarSeguro(`SETS^var.rta^${this.fuenteDelAnalizador}`).salio) return;
     this.analizadorPrestado = false;
   }
 

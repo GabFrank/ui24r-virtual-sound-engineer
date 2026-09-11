@@ -156,7 +156,7 @@ test('sin testigo no se escribe: se rechaza y no sale nada por el socket', async
   const r = await a.escribir(RUTA, 0.75, 0.5);
   assert.equal(r.status, 'REJECTED');
   assert.equal(r.confirmedBy, 'NONE');
-  assert.deepEqual(t.enviadas, [], 'no se manda a ciegas lo que no se va a poder confirmar');
+  assert.deepEqual(t.enviadasSinLatido, [], 'no se manda a ciegas lo que no se va a poder confirmar');
   await a.desconectar();
 });
 

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Ui24rMixerAdapter } from '../src/ui24r-adapter.ts';
-import { codificarSetd, codificarSets } from '../src/protocol.ts';
+import { codificarSetd, codificarSets, MENSAJE_ALIVE } from '../src/protocol.ts';
 import { SHOW_DE_LA_APLICACION } from '../src/instantaneas.ts';
 import { RUTA_INSTANTANEA_ACTIVA } from '../src/confirmed-store.ts';
 import { TransporteFalso } from './transporte-falso.ts';
@@ -178,5 +178,150 @@ test('un recall ajeno durante el guardado SI invalida', async () => {
       a.leer('i.0.mix').storeState, 'INVALID',
       'un nombre que no es el nuestro es un recall ajeno',
     );
+  });
+});
+
+// --- Los cuatro puntos en que el doble seguia apartandose del real -----------
+//
+// Los encontro una auditoria el 2026-09-11 comparando `TransporteFalso` con
+// `WebSocketTransport` linea por linea, no un test. Cada apartamiento es un
+// escenario que la suite entera no podia representar: no fallaba, faltaba.
+
+/**
+ * **1. El real LANZA con el socket cerrado; el doble aceptaba todo.**
+ *
+ * `WebSocketTransport.enviar()` arranca con
+ * `if (!this.conectado) throw new Error('transporte no conectado')`. El
+ * adaptador lo llamaba en nueve lugares sin proteccion, asi que contra la
+ * consola `escribir()` --que promete un `WriteResult`-- tiraba una excepcion.
+ *
+ * El escenario no es raro: es el mas probable de una noche de show. La wifi se
+ * carga, el socket muere, `onclose` todavia no llego y la aplicacion se cree
+ * conectada. O alguien toca «Desconectar» con una escritura en vuelo, que deja
+ * el transporte sin socket antes de que el cierre se propague.
+ */
+test('escribir con el socket muerto devuelve un resultado, no una excepcion', async () => {
+  await conAdaptador({}, async (t, a) => {
+    t.entra(codificarSetd('i.0.mix', 0.5));
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(a.estadoConexion, 'CONNECTED', 'la aplicacion se cree conectada');
+
+    // El socket murio y nadie aviso todavia: ni `cae()` ni `desconectar()`.
+    t.conectado = false;
+
+    const r = await a.escribir('i.0.mix', 0.7, 0.5);
+    assert.equal(r.status, 'REJECTED', 'no se aplico, y se puede afirmar');
+    assert.equal(r.confirmedBy, 'NONE');
+    assert.match(r.motivo ?? '', /no se pudo enviar/);
+    assert.equal(a.leer('i.0.mix').value, 0.5, 'el valor viejo sigue siendo el valor');
+  });
+});
+
+/**
+ * **Control positivo del punto 1.** Sin esto, el test de arriba no distingue
+ * «el adaptador lo maneja» de «el doble nunca lo provoco»: con el doble
+ * permisivo la escritura sale como si nada, que es exactamente el punto ciego
+ * que habia. Un doble complaciente da un test en verde sobre un mundo que no
+ * existe.
+ */
+test('control positivo: un doble que acepta todo NO ve el escenario', async () => {
+  const t = new TransporteFalso();
+  // El doble de antes: enviar() sin comprobar si hay socket.
+  t.enviar = (linea: string) => { (t.enviadas as string[]).push(linea); };
+  const a = new Ui24rMixerAdapter(t, { quietudVolcadoMs: 30, esperaGuardadoMs: 5, esperaBorradoMs: 5 });
+  await a.conectar('ws://prueba');
+  try {
+    t.entra(codificarSetd('i.0.mix', 0.5));
+    await new Promise((r) => setTimeout(r, 60));
+    t.conectado = false;
+    const r = await a.escribir('i.0.mix', 0.7, 0.5);
+    // **Sale como si nada y se queda esperando al testigo**, que nunca va a ver
+    // nada porque nada se mando. O sea que el doble permisivo no solo escondia
+    // el fallo: lo disfrazaba del OTRO modo de fallo, el que dice «pudo
+    // aplicarse o no». El peor de los dos, porque deja la transaccion en
+    // suspenso en vez de decir la verdad, que es que no se aplico nada.
+    assert.equal(
+      r.status, 'UNVERIFIED',
+      'con el doble permisivo la escritura sale igual: el fallo es INVISIBLE',
+    );
+  } finally { await a.desconectar(); }
+});
+
+/**
+ * **2. `conectar()` del real dispara los callbacks de apertura.**
+ *
+ * `WebSocketTransport` los llama en su `onopen`. El doble los guardaba y no los
+ * llamaba nunca: el unico camino era `abre()`, que no usaba nadie. O sea que
+ * `alAbrir` era codigo muerto **de los dos lados**, y por eso nadie lo noto.
+ */
+test('conectar avisa a quien se suscribio a la apertura', async () => {
+  const t = new TransporteFalso();
+  let abierto = 0;
+  const quitar = t.alAbrir(() => { abierto++; });
+  await t.conectar();
+  assert.equal(abierto, 1, 'el real llama a estos callbacks en onopen');
+  quitar();
+  await t.conectar();
+  assert.equal(abierto, 1, 'y el desuscriptor tiene que funcionar');
+});
+
+/**
+ * **3. El real manda `ALIVE` cada segundo; el doble no manda nada nunca.**
+ *
+ * Y no es opcional: medido el 2026-09-08, sin `ALIVE` la consola deja de
+ * emitir. Siete aserciones de la suite decian `enviadas` vacio, que contra la
+ * consola **no es cierto ni un segundo**.
+ *
+ * El doble no late solo a proposito --meteria el reloj en cada test-- pero
+ * ahora se le puede meter un latido, y lo que esas siete aserciones miran es
+ * `enviadasSinLatido`, que sigue significando lo mismo en los dos mundos.
+ */
+test('el latido no puede romper las aserciones de «no mando nada»', () => {
+  const t = new TransporteFalso();
+  t.conectado = true;
+  t.latir();
+  t.latir();
+
+  assert.deepEqual(t.enviadas, [MENSAJE_ALIVE, MENSAJE_ALIVE],
+    'contra la consola el socket NUNCA esta mudo');
+  assert.deepEqual(t.enviadasSinLatido, [],
+    'y «no mando ninguna orden» sigue siendo cierto');
+
+  t.enviar('SETD^i.0.mix^0.5');
+  assert.deepEqual(t.enviadasSinLatido, ['SETD^i.0.mix^0.5'], 'las ordenes si se ven');
+});
+
+/**
+ * **4. El real pasa por `despojarSocketIo` y entrega de a varias lineas.**
+ *
+ * `entra()` toma una linea ya pelada: una llamada, una linea. Contra la consola
+ * una sola trama puede traer **varias** --separadas por salto de linea, que es
+ * lo que hace en cada volcado-- o **ninguna**: el latido `2::` y la
+ * confirmacion `1::` no son protocolo y no tienen que llegarle a nadie.
+ */
+test('una trama cruda puede traer varias lineas, o ninguna', () => {
+  const t = new TransporteFalso();
+  const vistas: string[] = [];
+  t.alRecibir((l) => vistas.push(l));
+
+  t.llega(`3:::${codificarSetd('i.0.mix', 0.5)}\n${codificarSetd('i.1.mix', 0.25)}`);
+  assert.deepEqual(vistas, [codificarSetd('i.0.mix', 0.5), codificarSetd('i.1.mix', 0.25)],
+    'una trama, dos lineas');
+
+  t.llega('2::');
+  t.llega('1::');
+  assert.equal(vistas.length, 2, 'el latido y la conexion no son protocolo');
+});
+
+/**
+ * El volcado entero por el camino de verdad, para que el reparto de tramas
+ * multiples no quede solo probado sobre el transporte suelto.
+ */
+test('el adaptador procesa un volcado que llega en una sola trama', async () => {
+  await conAdaptador({}, async (t, a) => {
+    t.llega(`3:::${codificarSetd('i.0.mix', 0.5)}\n${codificarSetd('i.1.mix', 0.25)}`);
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(a.leer('i.0.mix').value, 0.5);
+    assert.equal(a.leer('i.1.mix').value, 0.25);
   });
 });
