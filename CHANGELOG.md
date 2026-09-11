@@ -6,6 +6,29 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Un mecanismo que presenté como la pieza central de un arreglo, y era
+  inerte.** Marcaba cada cambio como «ya contado» en vez de borrarlo, y una
+  auditoría midió que las dos cosas dan **salida idéntica**: quien detecta ya
+  filtra por «no anunciado» y la poda por tiempo se lleva lo viejo igual.
+
+  Se saca, en vez de inventarle un test alrededor. Los cinco escenarios dan
+  exactamente lo mismo con y sin él — que es la prueba de que no hacía nada. Lo
+  que de verdad arregló el recuento repetido fue el otro cambio del mismo
+  trabajo: detectar y contar sobre lo que todavía no se anunció.
+
+  **Y de los cinco arreglos declarados, dos no tenían un test que los
+  distinguiera de su ausencia** — con cifras publicadas que no eran las medidas.
+  Uno era éste, que se retira. El otro sí tiene consecuencia y ahora tiene su
+  prueba: cerrar la ráfaga **antes** de anotar la línea que dispara el cierre,
+  porque si no, esa línea queda dentro de la ráfaga que se cierra y la siguiente
+  la cuenta otra vez.
+
+  Se corrige además una afirmación incompatible consigo misma: se dijo que un
+  solo cambio de criterio arreglaba **dos** casos opuestos. No puede — detectar
+  sobre lo no anunciado es exactamente lo que deja el segundo caso sin aviso.
+  Se eligió un lado, y ahora está dicho cuál y qué cuesta: se pierde un segundo
+  cartel, no la protección, porque el estado ya quedó inválido.
+
 - **Un archivo de evidencia que no era salida del guion que decía haberlo
   producido.** Se archivó una corrida, después se editó el guion para agregarle
   una rama, y el cambio presentó esa rama como su aporte — mientras el archivo
@@ -116,17 +139,19 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   orden perfectamente posible— el cierre decía doce y el cambio siguiente, **uno
   solo**, se anunciaba como trece y con causa «grupo de canales».
 
-  Y vaciar la lista de cambios recientes al cerrar **tapaba una avalancha real
-  posterior**: esa lista contesta dos preguntas —si hay avalancha y de qué
-  tamaño— y vaciarla quitaba las dos de un saque. Medido: doce rutas antes de un
-  cierre y nueve después son diecinueve distintas en menos de un segundo, y no se
-  avisaba ni una vez.
+  El arreglo es un cambio de criterio: **se detecta y se cuenta sobre lo que
+  todavía no se anunció.** Con eso, un cambio suelto después de una ráfaga ya no
+  abre nada, y once rutas nuevas sí.
 
-  Las dos se arreglan con un solo cambio de criterio: **se detecta y se cuenta
-  sobre lo que todavía no se anunció**, marcando cada cambio como contado en vez
-  de borrarlo. Marcar y no comparar por reloj, porque dos cosas en el mismo
-  milisegundo no se pueden ordenar. Con eso, un cambio suelto después de una
-  ráfaga ya no abre nada, y once rutas nuevas sí.
+  > **Y acá esta nota decía algo que no es cierto**, corregido después por una
+  > auditoría. Afirmaba que el mismo cambio arreglaba también el caso de doce
+  > rutas antes de un cierre y nueve después — diecinueve distintas en menos de
+  > un segundo sin un solo aviso. **No lo arregla, y no puede**: detectar sobre
+  > lo no anunciado es exactamente lo que deja a esas nueve por debajo del
+  > umbral. Los dos objetivos son incompatibles y se eligió uno. Lo que sí
+  > ocurre en ese caso, y es lo que importa, es que **el estado sigue
+  > inválido** desde la primera avalancha: el operador ya tiene su aviso y el
+  > cartel puesto.
 
   El aviso de cambio externo pendiente también sobrevivía a la relectura y
   hablaba trescientos milisegundos después de un estado que el usuario ya había

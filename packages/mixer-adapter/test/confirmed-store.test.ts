@@ -1201,3 +1201,29 @@ test('releer deja la causa en null, aunque hoy nadie la lea antes de recalcularl
   reloj.avanzar(2000);
   assert.deepEqual(rafagas, [], 'una rafaga olvidada no habla despues, con causa o sin ella');
 });
+
+/**
+ * **Cerrar al principio del metodo, y no al final: el test que faltaba.**
+ *
+ * Una auditoria midio que revertir esta linea NO hacia fallar ningun test, y el
+ * commit que la introdujo declaraba dos. Tiene consecuencia observable y nadie
+ * la cubria: si el cierre se hace DESPUES de anotar la linea nueva, esa linea
+ * queda dentro de la rafaga que se cierra, y la rafaga siguiente la cuenta otra
+ * vez. Medido: 10 contra 11.
+ */
+test('la rafaga nueva no recuenta la linea que disparo el cierre', () => {
+  const r = relojManual();
+  const { store, ev } = storeManual(r);
+  for (let i = 0; i < 10; i++) store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+
+  // Justo en el vencimiento, sin correr el temporizador: diez rutas NUEVAS.
+  r.poner(1000);
+  for (let i = 0; i < 10; i++) store.procesarLinea(codificarSetd(`a.${i}.mix`, 0.7));
+
+  const aperturas = ev.filter((e) => !e.definitivo);
+  assert.equal(aperturas.length, 2, 'la primera y la segunda avalancha');
+  assert.equal(
+    aperturas[1]!.rutasAfectadas, 10,
+    'diez rutas nuevas son diez: con el cierre al final, la que lo disparo se cuenta dos veces',
+  );
+});

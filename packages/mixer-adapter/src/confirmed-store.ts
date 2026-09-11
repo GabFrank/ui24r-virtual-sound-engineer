@@ -78,15 +78,8 @@ export const RUTA_INSTANTANEA_ACTIVA = 'var.currentSnapshot';
 export class ConfirmedStateStore {
   private readonly estado = new Map<string, EntradaEstado>();
   private pendientes: EscrituraPendiente[] = [];
-  /**
-   * Cada cambio ajeno reciente, con su marca y si **ya lo contó** una ráfaga.
-   *
-   * `contada` no es un detalle de implementación: es lo que separa las dos
-   * preguntas que esta lista contesta. Para **detectar** hace falta la ventana
-   * entera —cuántas rutas distintas se movieron últimamente—; para **contar** la
-   * ráfaga nueva hace falta sólo lo que todavía nadie anunció.
-   */
-  private cambiosRecientes: { path: string; enMs: number; contada?: boolean }[] = [];
+  /** Cada cambio ajeno reciente, para detectar la avalancha y medirla. */
+  private cambiosRecientes: { path: string; enMs: number }[] = [];
   private _storeState: StoreState = 'INVALID';
   private enRafagaHastaMs = 0;
   private causaAvisada: BulkExternalChange['probableCausa'] | null = null;
@@ -232,6 +225,12 @@ export class ConfirmedStateStore {
     this.rutasDeLaRafaga = new Set();
     this.enRafagaHastaMs = 0;
     this.causaAvisada = null;
+    // **Y sus cambios.** Abandonar una ráfaga sin soltar las rutas que la
+    // formaron las dejaba listas para contarse otra vez en la siguiente: doce
+    // rutas, olvidar, y un solo cambio ajeno abría una alerta de trece. Hoy el
+    // único llamador es cerrar la conexión, y al reconectar el volcado vacía
+    // esto igual, así que era latente — pero el método es público.
+    this.cambiosRecientes = [];
     // **Y los avisos de cambio externo que estaban esperando su gesto.** Este
     // método se escribió para el aviso de ráfaga y dejó afuera al aviso por
     // ruta, que usa su propio temporizador: un cambio agrupado sobrevivía a la
@@ -617,9 +616,16 @@ export class ConfirmedStateStore {
     //
     // Si lo nuevo no alcanza el umbral por su cuenta, es la misma avalancha
     // continuando: ya se aviso, y el estado ya esta invalido.
-    const rutas = new Set(
-      this.cambiosRecientes.filter((c) => c.contada !== true).map((c) => c.path),
-    );
+    //
+    // **Y esto TIENE un precio, elegido y no ignorado.** Doce rutas antes de un
+    // cierre y nueve despues son diecinueve distintas en menos de un segundo, y
+    // no abren un aviso nuevo. Se llego a escribir que este mismo cambio lo
+    // arreglaba: es falso, y son objetivos incompatibles -- detectar sobre lo no
+    // anunciado es justo lo que deja a esas nueve por debajo del umbral. Lo
+    // marco una auditoria. Se elige este lado porque el operador YA TIENE su
+    // aviso y el estado YA ESTA invalido: lo que se pierde es un segundo cartel,
+    // no la proteccion.
+    const rutas = new Set(this.cambiosRecientes.map((c) => c.path));
     // INV-021 dice «cambio masivo **o** cambio de currentSnapshot», y solo
     // estaba la primera mitad. Un recall desde el navegador de la consola
     // cambia la instantánea activa y después los parámetros que difieran: si
@@ -712,20 +718,18 @@ export class ConfirmedStateStore {
       this.avisarRafaga(this.rutasDeLaRafaga.size, this.causaAvisada ?? 'DESCONOCIDA', t, true);
     }
     this.rutasDeLaRafaga = new Set();
-    // **Se marcan como contadas en vez de borrarlas.**
+    // **La ráfaga consume sus cambios al cerrar.**
     //
-    // Antes acá se hacía `cambiosRecientes = []`, y eso quitaba de un saque las
-    // dos cosas que esa lista hace. Medido: doce rutas antes de un cierre y
-    // nueve después son diecinueve distintas en menos de un segundo, y con el
-    // vaciado **no se avisaba ni una vez** — las nueve nuevas nunca llegaban al
-    // umbral por su cuenta, porque las doce ya no estaban.
+    // Acá vivió un rato un mecanismo de marcado —cada ocurrencia con una
+    // bandera `contada`, en vez de borrarse— presentado como la pieza central
+    // de un arreglo. **Era inerte**, y lo midió una auditoría: marcar y vaciar
+    // dan salida **idéntica** en todos los escenarios, porque quien detecta ya
+    // filtra por «no anunciado» y la poda por ventana se lleva lo viejo igual.
     //
-    // Y tampoco sirve compararlas por reloj: una línea que llega en el MISMO
-    // milisegundo del cierre no se puede ordenar contra él. Se marca cada
-    // ocurrencia, que es exacto y no depende de la resolución del reloj. Una
-    // ruta que vuelve a cambiar después del cierre entra otra vez, porque entra
-    // como ocurrencia nueva.
-    for (const c of this.cambiosRecientes) c.contada = true;
+    // Se saca en vez de dejarlo con un test inventado alrededor. Lo que de
+    // verdad arregló el recuento repetido fue el otro cambio: **detectar y
+    // contar sobre lo que todavía no se anunció**, unas líneas más arriba.
+    this.cambiosRecientes = [];
     this.causaAvisada = null;
   }
 
