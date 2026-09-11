@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   fuentesDelGeneral, fuentesAbiertas, rutasSinNombre, loQueNoSeVe,
-  SUFIJOS_LEIDOS, SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO,
+  SUFIJOS_LEIDOS, SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO, GRUPOS_QUE_NO_AFECTAN_EL_CAMINO,
 } from '../src/que-entra-al-general.ts';
 
 const INVENTARIO = join(
@@ -129,15 +129,51 @@ test('el fader se informa en decibeles, sin umbral inventado', () => {
   strictEqual(cero.abierta, false);
 });
 
+/** Un patron declarado, normalizado a la forma del inventario. */
+function comoInventario(p: string): string {
+  return p.replace(/\b[NM]\b/g, '{n}');
+}
+
 test('declara lo que NO puede ver, en la salida y no en un comentario', () => {
-  // Una lista que no declara sus huecos invita a creer que no los tiene, que es
-  // el error que este modulo vino a corregir.
   const h = loQueNoSeVe();
   strictEqual(h.sinMirar.includes('v.N.mix'), true, 'los VCA');
   strictEqual(h.sinMirar.includes('i.N.subgroup'), true, 'el enrutamiento');
   strictEqual(h.sinMirar.includes('i.N.mgmask'), true, 'los grupos de silencio');
-  strictEqual(h.porQue.length >= 4, true, 'cada hueco con su consecuencia');
-  strictEqual(h.huecos.length, h.sinMirar.length, 'la lista plana es la misma lista');
+  // **146, contado.** Un centinela de cantidad, porque una auditoria midio que
+  // 17 de los 18 huecos sueltos se podian BORRAR con la suite en verde: eran
+  // justo los que el commit presumia de haber agregado, y ninguna asercion los
+  // sujetaba. Si este numero cambia, que sea a proposito.
+  strictEqual(h.huecos.length, 146, 'la cuenta de huecos declarados');
+});
+
+/**
+ * **Ningun hueco declarado puede desaparecer en silencio.**
+ *
+ * Esta es la asercion que faltaba: la lista de huecos sueltos no la sujetaba
+ * nada, asi que se podia vaciar entera sin que ningun test se enterara. Cada
+ * testigo de aca es una clase distinta de hueco que la primera version no
+ * tenia, y borrar cualquiera rompe esto.
+ */
+test('los huecos sueltos y de grupo estan sujetos uno por uno', () => {
+  const dice = new Set(loQueNoSeVe().sinMirar);
+  for (const p of [
+    // El envio a efectos: la segunda puerta al general, la que faltaba.
+    'i.N.fx.M.value', 'i.N.fx.M.post', 's.N.fx.M.mute',
+    // El envio a auxiliares: estaba declarada la salida y no la entrada.
+    'i.N.aux.M.value', 'i.N.aux.M.post', 'f.N.aux.M.postproc',
+    'a.N.mtx.*',
+    // Lo que se mueve solo.
+    'i.N.gate.*', 'i.N.dyn.*', 'a.N.afs.*', 'automix.a.on', 'automix.time',
+    // Lo suelto, que es lo que no sujetaba nada.
+    'settings.soloMode', 'settings.solotype', 'settings.multiplesolo', 'settings.solovol',
+    'settings.auxsendpoint', 'settings.auxmutelink', 'settings.mtxsendpoint',
+    'hwoutm.N.src', 'hwoutaux.N.src', 'mgmask', 'mg.N.name', 'vg.N', 'vg.N.name',
+    'v.N.mute', 'v.N.name', 'casc.N.src', 'settings.cascade.enabled',
+    'var.cascade.connected', 'usbdaw.N.src', 'iso.ch', 'm.dim', 'm.safe',
+    'var.unsaved.mutegroups', 'var.unsaved.chsafes',
+  ]) {
+    strictEqual(dice.has(p), true, `${p}: declarado y sin nadie que lo sujete`);
+  }
 });
 
 /**
@@ -150,124 +186,191 @@ test('declara lo que NO puede ver, en la salida y no en un comentario', () => {
 test('los huecos de la entrada de linea, que son el caso testigo', () => {
   const dice = new Set(loQueNoSeVe().sinMirar);
   for (const p of ['l.N.mgmask', 'l.N.forceunmute', 'l.N.solo', 'l.N.vca',
-    'l.N.subgroup', 'l.N.src', 'l.N.scsrc']) {
+    'l.N.subgroup', 'l.N.src', 'l.N.scsrc', 'l.N.stereoIndex',
+    'l.N.fx.M.value', 'l.N.aux.M.post']) {
     strictEqual(dice.has(p), true, `${p}: la puerta por la que entro el Bluetooth`);
   }
 });
 
-/**
- * **Ni un patron inventado, ni una familia olvidada.**
- *
- * Las dos direcciones, porque la lista vieja fallaba en una sola: sus catorce
- * patrones existian todos --pasaba la comprobacion facil-- y le faltaban las
- * cuatro quintas partes de las familias.
- */
-test('cada hueco declarado existe, y ninguna familia que lo tenga queda afuera', () => {
+test('ni un patron inventado: todo lo declarado existe en la consola', () => {
   const K = claves();
   const patrones = new Set(K.map((k) => k.replace(/\b\d+\b/g, '{n}')));
-  const dice = loQueNoSeVe().sinMirar;
-
-  const inventados = dice.filter((p) => !patrones.has(p.replace(/\bN\b/g, '{n}')));
+  const inventados = loQueNoSeVe().sinMirar.filter((p) => {
+    // Un grupo entero --`i.N.gate.*`-- existe si la consola manda algo debajo.
+    if (p.endsWith('.*')) {
+      const pre = p.slice(0, -1).replace(/\bN\b/g, '{n}');
+      return ![...patrones].some((q) => q.startsWith(pre));
+    }
+    return !patrones.has(comoInventario(p));
+  });
   deepStrictEqual(inventados, [], 'patrones que la consola no manda');
-
-  // Para cada sufijo declarado, TODA familia de fuente que lo tenga en la
-  // consola tiene que estar declarada. Esta es la asercion que la version
-  // vieja no habria pasado.
-  const declarado = new Set(dice);
-  const faltantes: string[] = [];
-  // **`mix`, `mute` y `name` quedan fuera de esta regla, y hay que decir por
-  // que.** Aparecen declarados --como `v.N.mix`-- porque los VCA son una
-  // familia ENTERA que la enumeracion descarta, no porque sean un concepto que
-  // se lee en unas familias y no en otras. Sin esta salvedad, el test exigiria
-  // declarar `i.N.mix` como hueco: justo el fader que el modulo si lee.
-  const sufijos = new Set(dice.flatMap((p) => {
-    const m = /^[a-z]+\.N\.([a-z0-9]+)$/.exec(p);
-    return m === null || SUFIJOS_LEIDOS.includes(m[1]!) ? [] : [m[1]!];
-  }));
-  for (const k of K) {
-    const m = /^([a-z]+)\.\d+\.([a-z0-9]+)$/.exec(k);
-    if (m === null || !FUENTE.includes(m[1]!) || !sufijos.has(m[2]!)) continue;
-    const p = `${m[1]}.N.${m[2]}`;
-    if (!declarado.has(p)) faltantes.push(p);
-  }
-  deepStrictEqual([...new Set(faltantes)].sort(), [], 'familias con el hueco y sin declararlo');
 });
 
 /**
- * **La cuenta cierra, o no es una declaracion de huecos.**
- *
- * Decir «estos son mis puntos ciegos» solo significa algo si lo demas esta
- * contado. Cada sufijo de una familia de fuente cae en exactamente una de tres
- * listas: los que el modulo lee, los que declara como huecos, y los que declara
- * que no cambian el camino. Un firmware que agregue uno nuevo rompe esto en vez
- * de pasar desapercibido.
- *
- * Lo que el test NO puede comprobar, y hay que decirlo: **que la clasificacion
- * sea la correcta.** Que `pan` no cambie si una fuente llega al general es un
- * juicio. Lo que se comprueba es que ningun sufijo se quede sin juicio.
+ * **Ninguna familia que tenga el hueco queda afuera.** Las dos direcciones,
+ * porque la lista vieja fallaba en una sola: sus catorce patrones existian
+ * todos --pasaba la comprobacion facil-- y le faltaban las cuatro quintas
+ * partes de las familias.
  */
-test('los 42 sufijos de familia fuente estan todos repartidos', () => {
+test('ninguna familia que tenga un hueco declarado queda sin declarar', () => {
   const K = claves();
-  const enLaConsola = new Set<string>();
+  const dice = loQueNoSeVe().sinMirar;
+  const declarado = new Set(dice);
+  // `mix`, `mute` y `name` quedan fuera de esta regla: aparecen declarados
+  // --como `v.N.mix`-- porque los VCA son una familia ENTERA que la enumeracion
+  // descarta, no porque sean un concepto que se lee en unas familias y no en
+  // otras. Sin la salvedad, el test exigiria declarar `i.N.mix` como hueco.
+  const sufijos = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([A-Za-z0-9]+)$/.exec(p);
+    return m === null || SUFIJOS_LEIDOS.includes(m[1]!) ? [] : [m[1]!];
+  }));
+  const grupos = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([a-z]+)\.(M\.|\*)/.exec(p);
+    return m === null ? [] : [m[1]!];
+  }));
+
+  const faltantes = new Set<string>();
   for (const k of K) {
-    const m = /^([a-z]+)\.\d+\.([a-z0-9]+)$/.exec(k);
-    if (m !== null && FUENTE.includes(m[1]!)) enLaConsola.add(m[2]!);
+    const m = /^([a-z]+)\.\d+\.(.+)$/.exec(k);
+    if (m === null || !FUENTE.includes(m[1]!)) continue;
+    const fam = m[1]!, resto = m[2]!;
+    if (!resto.includes('.')) {
+      if (sufijos.has(resto) && !declarado.has(`${fam}.N.${resto}`)) faltantes.add(`${fam}.N.${resto}`);
+      continue;
+    }
+    const g = resto.split('.')[0]!;
+    if (!grupos.has(g)) continue;
+    const hoja = `${fam}.N.${g}.${resto.slice(g.length + 1).replace(/\b\d+\b/g, 'M')}`;
+    if (!declarado.has(hoja) && !declarado.has(`${fam}.N.${g}.*`)) faltantes.add(hoja);
   }
-  strictEqual(enLaConsola.size, 42, 'el numero que se conto contra el inventario');
+  deepStrictEqual([...faltantes].sort(), [], 'familias u hojas con el hueco y sin declararlo');
+});
 
-  const repartidos = new Set([
-    ...SUFIJOS_LEIDOS,
-    ...loQueNoSeVe().sinMirar.flatMap((p) => {
-      const m = /^[a-z]+\.N\.([a-z0-9]+)$/.exec(p);
-      return m === null ? [] : [m[1]!];
-    }),
-    ...SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO.map((s) => s.sufijo),
-  ]);
+/**
+ * **La cuenta cierra por los DOS ejes, o no es una declaracion de huecos.**
+ *
+ * La primera version contaba solo el primero --los sufijos de un tramo-- y por
+ * eso se le escapo el envio a efectos, que es la segunda puerta al general y
+ * tiene la misma forma que el subgrupo, que si estaba declarado.
+ *
+ * Y contaba 42 sufijos donde hay 43: el numero no salia de la consola, salia de
+ * un `[a-z0-9]+` que no admite mayusculas, y `stereoIndex` --que este proyecto
+ * YA MIDIO-- se colaba por ahi. Un firmware que agregue un sufijo camelCase
+ * tenia que romper el test y no lo rompia.
+ */
+test('los dos ejes cierran: 43 sufijos y 9 grupos, todos con juicio', () => {
+  const K = claves();
+  const sufijos = new Set<string>();
+  const grupos = new Set<string>();
+  for (const k of K) {
+    const m = /^([a-z]+)\.\d+\.(.+)$/.exec(k);
+    if (m === null || !FUENTE.includes(m[1]!)) continue;
+    const resto = m[2]!;
+    if (resto.includes('.')) grupos.add(resto.split('.')[0]!);
+    // **`[A-Za-z0-9]+`, con mayusculas.** Con `[a-z0-9]+` daban 42 y el 43.o
+    // quedaba invisible para la contabilidad ENTERA, no solo para el conteo.
+    else if (/^[A-Za-z0-9]+$/.test(resto)) sufijos.add(resto);
+  }
+  strictEqual(sufijos.size, 43, 'sufijos de un tramo en las familias de fuente');
+  // **9, contado.** Escribi 10 de memoria y el test lo atrapo: es la tercera
+  // vez en la misma jornada que un numero sale de la cabeza en vez de del
+  // inventario. Que lo atrape el test es exactamente para lo que esta.
+  strictEqual(grupos.size, 9, 'segundos tramos en las familias de fuente');
 
-  const sinJuicio = [...enLaConsola].filter((s) => !repartidos.has(s)).sort();
-  deepStrictEqual(sinJuicio, [], 'sufijos de la consola que nadie clasifico');
+  const dice = loQueNoSeVe().sinMirar;
+  const ciegosSimples = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([A-Za-z0-9]+)$/.exec(p);
+    return m === null ? [] : [m[1]!];
+  }));
+  const ciegosGrupo = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([a-z]+)\.(M\.|\*)/.exec(p);
+    return m === null ? [] : [m[1]!];
+  }));
+  const noAfectan = new Set(SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO.map((s) => s.sufijo));
+  const noAfectanGrupo = new Set(GRUPOS_QUE_NO_AFECTAN_EL_CAMINO.map((g) => g.grupo));
 
-  const deMas = [...repartidos].filter((s) => !enLaConsola.has(s)).sort();
-  deepStrictEqual(deMas, [], 'sufijos clasificados que la consola no tiene');
+  const repartidos = new Set([...SUFIJOS_LEIDOS, ...ciegosSimples, ...noAfectan]);
+  deepStrictEqual(
+    [...sufijos].filter((s) => !repartidos.has(s)).sort(), [],
+    'sufijos de la consola que nadie clasifico',
+  );
+  deepStrictEqual(
+    [...repartidos].filter((s) => !sufijos.has(s)).sort(), [],
+    'sufijos clasificados que la consola no tiene',
+  );
+  deepStrictEqual(
+    [...grupos].filter((g) => !ciegosGrupo.has(g) && !noAfectanGrupo.has(g)).sort(), [],
+    'segundos tramos que nadie clasifico',
+  );
 
   for (const s of SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO) {
     strictEqual(s.porQue.length > 0, true, `${s.sufijo} sin motivo escrito`);
   }
+  for (const g of GRUPOS_QUE_NO_AFECTAN_EL_CAMINO) {
+    strictEqual(g.porQue.length > 0, true, `${g.grupo} sin motivo escrito`);
+  }
 });
 
 /**
- * **Control positivo.** Sin esto, los tres tests de arriba pasarian igual si
- * `loQueNoSeVe()` devolviera la lista vieja de catorce: hay que comprobar que
- * las aserciones muerden.
+ * **La disyuncion, que es la mitad que faltaba.**
+ *
+ * El test de arriba hace UNION de conjuntos, asi que una clasificacion que se
+ * contradice a si misma pasaba: poner `pan` en los conceptos DEJANDOLO en «no
+ * afecta el camino» daba verde. «Cada uno en exactamente una de las listas» no
+ * estaba comprobado; lo midio una auditoria.
  */
-test('control positivo: la lista vieja de catorce NO pasa las comprobaciones', () => {
-  const K = claves();
-  const vieja = ['i.N.subgroup', 'l.N.subgroup', 'i.N.vca', 'l.N.vca',
-    'a.N.link2master', 'a.N.matrix', 'v.N.mix', 'v.N.mute',
-    'i.N.solo', 'settings.soloMode', 'settings.solotype',
-    'i.N.mgmask', 'mgmask', 'i.N.forceunmute'];
-
-  const declarado = new Set(vieja);
-  const sufijos = new Set(vieja.flatMap((p) => {
-    const m = /^[a-z]+\.N\.([a-z0-9]+)$/.exec(p);
-    return m === null || SUFIJOS_LEIDOS.includes(m[1]!) ? [] : [m[1]!];
+test('nada esta en dos listas a la vez', () => {
+  const dice = loQueNoSeVe().sinMirar;
+  const ciegos = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([A-Za-z0-9]+)$/.exec(p);
+    return m === null ? [] : [m[1]!];
   }));
-  const faltantes = new Set<string>();
-  for (const k of K) {
-    const m = /^([a-z]+)\.\d+\.([a-z0-9]+)$/.exec(k);
-    if (m === null || !FUENTE.includes(m[1]!) || !sufijos.has(m[2]!)) continue;
-    const p = `${m[1]}.N.${m[2]}`;
-    if (!declarado.has(p)) faltantes.add(p);
+  const noAfectan = SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO.map((s) => s.sufijo);
+  deepStrictEqual(
+    noAfectan.filter((s) => ciegos.has(s) && !SUFIJOS_LEIDOS.includes(s)), [],
+    'un sufijo declarado hueco Y declarado inocuo: la clasificacion se contradice',
+  );
+  deepStrictEqual(
+    SUFIJOS_LEIDOS.filter((s) => noAfectan.includes(s)), [],
+    'un sufijo que se lee no puede estar ademas en «no afecta el camino»',
+  );
+  const ciegosGrupo = new Set(dice.flatMap((p) => {
+    const m = /^[a-z]+\.N\.([a-z]+)\.(M\.|\*)/.exec(p);
+    return m === null ? [] : [m[1]!];
+  }));
+  deepStrictEqual(
+    GRUPOS_QUE_NO_AFECTAN_EL_CAMINO.map((g) => g.grupo).filter((g) => ciegosGrupo.has(g)), [],
+    'un grupo declarado hueco Y declarado inocuo',
+  );
+  deepStrictEqual(
+    [...new Set(dice)].length, dice.length, 'y ningun patron declarado dos veces',
+  );
+});
+
+/**
+ * **Una clase de hueco no puede desaparecer sin que se note.**
+ *
+ * Antes esto era `porQue.length >= 4`, calibrado justo para no morder: borrar
+ * el automix entero --dos conceptos y tres claves sueltas-- dejaba la suite en
+ * verde, porque el quinto parrafo se empuja siempre. Ahora cada clase presente
+ * tiene que tener su parrafo, con su palabra dentro.
+ */
+test('cada clase de hueco presente trae su parrafo, y se le nota', () => {
+  const h = loQueNoSeVe();
+  const clases = new Set(h.huecos.map((x) => x.clase));
+  deepStrictEqual(
+    [...clases].sort(), ['AUTOMATICO', 'CAMINO', 'DESCONOCIDO', 'SILENCIO'],
+    'las cuatro clases tienen que estar representadas',
+  );
+  const texto = h.porQue.join(' ').toLowerCase();
+  for (const [clase, palabra] of [
+    ['CAMINO', 'enrutamiento'], ['SILENCIO', 'silencio'],
+    ['AUTOMATICO', 'automix'], ['DESCONOCIDO', 'nombre no es una medición'],
+  ] as const) {
+    strictEqual(
+      texto.includes(palabra.toLowerCase()), true,
+      `la clase ${clase} esta declarada y su motivo no se menciona`,
+    );
   }
-  // **23, contado a mano y comprobado aca.** Las dos primeras versiones de este
-  // test decian 38 y 35: numeros escritos de memoria, que es exactamente el
-  // vicio que la tarea vino a corregir, cometido en el test que la comprueba.
-  //
-  // La cuenta: `subgroup` esta en f i l p y la lista vieja declaraba i y l (2
-  // sin declarar); `vca` en a f i l p, declaraba i y l (3); `solo`, `mgmask` y
-  // `forceunmute` estan en las SIETE familias y declaraba solo la de canales
-  // (6 cada uno); `link2master` y `matrix` son de auxiliares y estaban bien
-  // (0). Dos mas tres mas dieciocho.
-  strictEqual(faltantes.size, 23, 'la lista vieja deja 23 familias sin declarar');
-  strictEqual(faltantes.has('l.N.mgmask'), true, 'incluida la del caso testigo');
+  strictEqual(h.porQue.length, 5, 'una frase por clase, mas la de la contabilidad');
 });

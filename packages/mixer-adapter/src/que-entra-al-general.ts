@@ -139,6 +139,11 @@ const CONCEPTOS: readonly { sufijo: string; familias: readonly string[]; clase: 
   { sufijo: 'matrix', familias: ['a'], clase: 'CAMINO' },
   // Qué entrada física alimenta cada tira. **Por acá entró el Bluetooth.**
   { sufijo: 'src', familias: ['i', 'l'], clase: 'CAMINO' },
+  // **`stereoIndex` este proyecto ya lo midió**: vale 0 en el primero del par,
+  // 1 en el segundo y −1 sin enlazar. La enumeración informa `l.0` y `l.1` como
+  // dos fuentes independientes, y son casi con seguridad **un par enlazado**:
+  // el mismo doble conteo que el subgrupo, sobre el caso testigo del módulo.
+  { sufijo: 'stereoIndex', familias: ['a', 'i', 'l', 'p'], clase: 'CAMINO' },
   { sufijo: 'mgmask', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
   { sufijo: 'forceunmute', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
   { sufijo: 'solo', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
@@ -152,6 +157,67 @@ const CONCEPTOS: readonly { sufijo: string; familias: readonly string[]; clase: 
   { sufijo: 'bypass', familias: ['f'], clase: 'DESCONOCIDO' },
   { sufijo: 'smix', familias: ['f'], clase: 'DESCONOCIDO' },
   { sufijo: 'span', familias: ['f'], clase: 'DESCONOCIDO' },
+  // **Estos dos estaban del otro lado, y era la misma regla aplicada a medias.**
+  // A seis sufijos se les aplicó «lo que no se pudo descartar se declara» y a
+  // éstos no, con exactamente el mismo respaldo: el nombre. Lo midió una
+  // auditoría el 2026-09-11.
+  //
+  // De `safe` lo único medido es que acepta escritura con testigo, **no qué
+  // hace**: protege el canal del recall, y un canal sin proteger cambia
+  // silencio y fader en la próxima recuperación. Qué enumera este módulo
+  // después de eso, no está medido. De `mtkrec` sólo se conoce el nombre.
+  { sufijo: 'safe', familias: ['a', 'f', 'i', 'l', 'p', 's'], clase: 'DESCONOCIDO' },
+  { sufijo: 'mtkrec', familias: ['i', 'l'], clase: 'DESCONOCIDO' },
+];
+
+/**
+ * El **segundo eje**: lo que cuelga de un segundo tramo, y no de un sufijo.
+ *
+ * **La contabilidad de la primera versión sólo miraba el primero**, y por eso
+ * no vio el hueco de camino más parecido al que sí había declarado: el envío a
+ * efectos. Un canal va al bus de efectos, el efecto vuelve por `f.N` --que este
+ * módulo **enumera como fuente del general**-- y ahí está el mismo doble camino
+ * que el subgrupo, contado dos veces y sin relación entre las dos.
+ *
+ * **Y con el envío en pre-fader es peor**: un canal silenciado o con el fader en
+ * el fondo sigue llegando al general por el retorno. Ésa es la dirección
+ * peligrosa que el módulo define en su propia prosa.
+ *
+ * Los grupos con hojas nombradas las nombran; los que se declaran enteros
+ * llevan `*`, porque enumerar las 482 claves de la dinámica no le dice nada a
+ * nadie y la afirmación es la misma: de acá no se lee nada.
+ */
+const GRUPOS: readonly {
+  grupo: string; familias: readonly string[]; hojas: readonly string[]; clase: ClaseDeHueco;
+}[] = [
+  // El envío a efectos: la segunda puerta al general, y la que faltaba.
+  { grupo: 'fx', familias: ['i', 'l', 'p', 's'],
+    hojas: ['value', 'mute', 'post'], clase: 'CAMINO' },
+  // El envío a auxiliares. `a.N.link2master` estaba declarado --o sea que el
+  // módulo sabía que un auxiliar puede ir al general-- y la ENTRADA de esa
+  // misma ruta no.
+  { grupo: 'aux', familias: ['f', 'i', 'l', 'p'],
+    hojas: ['value', 'mute', 'post', 'postproc', 'pan'], clase: 'CAMINO' },
+  // Entero, y no por hojas: `postproc` existe en `a` y `s` y no en `i`, así que
+  // una lista de hojas por grupo fabricaría `i.N.mtx.M.postproc`, que no existe.
+  { grupo: 'mtx', familias: ['a', 'i', 's'], hojas: ['*'], clase: 'CAMINO' },
+  // La compuerta abre y cierra sola: es literalmente la definición de
+  // AUTOMATICO que este módulo escribió para el automix.
+  { grupo: 'gate', familias: ['a', 'f', 'i', 'l', 'p', 's'], hojas: ['*'], clase: 'AUTOMATICO' },
+  { grupo: 'dyn', familias: ['a', 'f', 'i', 'l', 'p', 's'], hojas: ['*'], clase: 'AUTOMATICO' },
+  { grupo: 'deesser', familias: ['i'], hojas: ['*'], clase: 'AUTOMATICO' },
+  // El supresor de realimentación mete filtros de −18 dB por su cuenta, y es el
+  // único campo que un `LOADSNAPSHOT` medido NO devolvió.
+  { grupo: 'afs', familias: ['a'], hojas: ['*'], clase: 'AUTOMATICO' },
+  { grupo: 'digitech', familias: ['i'], hojas: ['*'], clase: 'DESCONOCIDO' },
+];
+
+/**
+ * Segundos tramos que **no** cambian el camino, con su motivo. Segundo eje de
+ * `SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO`, y cierra la cuenta igual que aquélla.
+ */
+export const GRUPOS_QUE_NO_AFECTAN_EL_CAMINO: readonly { grupo: string; porQue: string }[] = [
+  { grupo: 'eq', porQue: 'cambia el timbre de lo que pasa, no si pasa' },
 ];
 
 /**
@@ -179,6 +245,34 @@ const HUECOS_SUELTOS: readonly { patron: string; clase: ClaseDeHueco }[] = [
   { patron: 'automix.a.on', clase: 'AUTOMATICO' },
   { patron: 'automix.b.on', clase: 'AUTOMATICO' },
   { patron: 'automix.time', clase: 'AUTOMATICO' },
+  // **La cascada es una segunda consola entera.** Misma forma que
+  // `hwoutm.N.src`, que sí se había declarado.
+  { patron: 'casc.N.src', clase: 'CAMINO' },
+  { patron: 'settings.cascade.enabled', clase: 'CAMINO' },
+  { patron: 'settings.cascade.master', clase: 'CAMINO' },
+  { patron: 'settings.cascade.remote', clase: 'CAMINO' },
+  { patron: 'settings.cascade.vcasync', clase: 'CAMINO' },
+  { patron: 'settings.cascade.mgsync', clase: 'SILENCIO' },
+  { patron: 'settings.cascade.snapsync', clase: 'CAMINO' },
+  { patron: 'var.cascade.connected', clase: 'CAMINO' },
+  { patron: 'usbdaw.N.src', clase: 'CAMINO' },
+  // Dónde se derivan los envíos --antes o después del fader-- y si el silencio
+  // del canal se lleva los suyos. Lo segundo es SILENCIO puro.
+  { patron: 'settings.auxsendpoint', clase: 'CAMINO' },
+  { patron: 'settings.mtxsendpoint', clase: 'CAMINO' },
+  { patron: 'settings.auxmutelink', clase: 'SILENCIO' },
+  // El aislamiento: qué familias quedan fuera de lo que la consola aplica.
+  { patron: 'iso.bus', clase: 'CAMINO' },
+  { patron: 'iso.ch', clase: 'CAMINO' },
+  { patron: 'iso.fx', clase: 'CAMINO' },
+  { patron: 'iso.gr', clase: 'CAMINO' },
+  { patron: 'iso.m', clase: 'CAMINO' },
+  { patron: 'iso.mtx', clase: 'CAMINO' },
+  // El general: atenuación de emergencia y su propio safe.
+  { patron: 'm.dim', clase: 'SILENCIO' },
+  { patron: 'm.safe', clase: 'DESCONOCIDO' },
+  { patron: 'var.unsaved.mutegroups', clase: 'SILENCIO' },
+  { patron: 'var.unsaved.chsafes', clase: 'DESCONOCIDO' },
 ];
 
 /** Los tres sufijos que este módulo sí lee de cada fuente. */
@@ -205,8 +299,6 @@ export const SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO: readonly { sufijo: string; porQue
   { sufijo: 'delay', porQue: 'cambia cuándo suena, no si llega' },
   { sufijo: 'invert', porQue: 'cambia la fase, no el camino' },
   { sufijo: 'pan', porQue: 'reparte entre izquierda y derecha; al extremo sigue llegando' },
-  { sufijo: 'mtkrec', porQue: 'va a la grabación multipista, no al general' },
-  { sufijo: 'safe', porQue: 'es del punto de retorno, no del camino: ver que-no-devuelve-el-punto-de-retorno.ts' },
   { sufijo: 'color', porQue: 'cosmético' },
   { sufijo: 'instrument', porQue: 'etiqueta' },
   { sufijo: 'iosyscmd', porQue: 'etiqueta del sistema de entrada/salida' },
@@ -321,6 +413,11 @@ export function loQueNoSeVe(): LoQueNoSeVe {
   for (const c of CONCEPTOS) {
     for (const f of c.familias) huecos.push({ patron: `${f}.N.${c.sufijo}`, clase: c.clase });
   }
+  for (const g of GRUPOS) {
+    for (const f of g.familias) {
+      for (const h of g.hojas) huecos.push({ patron: `${f}.N.${g.grupo}.${h === '*' ? '*' : `M.${h}`}`, clase: g.clase });
+    }
+  }
   for (const h of HUECOS_SUELTOS) huecos.push({ patron: h.patron, clase: h.clase });
   huecos.sort((a, b) => a.patron.localeCompare(b.patron));
 
@@ -358,10 +455,14 @@ export function loQueNoSeVe(): LoQueNoSeVe {
     );
   }
   porQue.push(
-    'La cuenta cierra: los 42 sufijos de las familias de fuente están repartidos '
-    + 'entre los tres que se leen, éstos y `SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO`. Lo '
-    + 'que este módulo no puede prometer es que los conceptos sean los correctos: '
-    + 'que un sufijo no cambie el camino es un juicio, no una medición.',
+    'La cuenta cierra por los dos ejes: cada sufijo de una familia de fuente y '
+    + 'cada segundo tramo están repartidos entre lo que se lee, estos huecos y las '
+    + 'dos listas de «no cambia el camino», cada entrada con su motivo. **La '
+    + 'primera versión de esta declaración sólo contaba el primer eje**, y por eso '
+    + 'se le escapó el envío a efectos: la segunda puerta al general, con la misma '
+    + 'forma que el subgrupo, que sí estaba declarado. Lo que este módulo no puede '
+    + 'prometer es que los juicios sean los correctos: que la ecualización no '
+    + 'cambie si una fuente llega es un juicio, no una medición.',
   );
 
   return { huecos, sinMirar: huecos.map((h) => h.patron), porQue };

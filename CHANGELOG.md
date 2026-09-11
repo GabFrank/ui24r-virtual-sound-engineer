@@ -125,7 +125,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   También sabe decir **qué rutas no sabe nombrar**, en vez de dar a entender que
   las entiende todas.
 
-  **Y declara sus puntos ciegos — que es donde la primera versión falló.** La
+  **Y declara sus puntos ciegos — que es donde falló dos veces seguidas.** La
   lista de «lo que no miro» tenía exactamente el defecto que venía a corregir:
   sus catorce patrones existían todos en la consola, pero estaban escritos para
   la familia de canales mientras el módulo enumera cinco clases. Declaraba el
@@ -138,13 +138,31 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   puede callar algo con su silencio diciendo lo contrario, mueve ganancias solo,
   o **existe y no se sabe qué hace**. Lo que no se pudo descartar se declara.
 
-  Lo que lo vuelve difícil de repetir es que **la cuenta cierra**: los 42
-  sufijos que las familias de fuente tienen en la consola están repartidos entre
-  los tres que el módulo lee, los que declara como huecos y los que declara que
-  no cambian el camino. Un firmware que agregue uno nuevo rompe el test en vez
-  de pasar desapercibido. Lo que el test no puede comprobar, y está dicho: que
-  la clasificación sea **la correcta**. Que la panoramización no cambie si una
-  fuente llega al general es un juicio, no una medición.
+  **La segunda vez falló contando.** La cuenta decía «cierra exacta sobre 42
+  sufijos», y son 43: el número no salía de la consola, salía de una expresión
+  que no admitía mayúsculas, y por ahí se colaba `stereoIndex` — **que este
+  proyecto ya había medido**, y que dice que dos entradas de línea pueden ser un
+  par enlazado y no dos fuentes. Contadas como dos, que es el mismo doble conteo
+  que el módulo denuncia del subgrupo, sobre su propio caso testigo.
+
+  Peor: la cuenta miraba **un solo eje**. Sólo los parámetros que cuelgan
+  directo de una tira, no los que cuelgan de un segundo tramo. Por ahí faltaba
+  **el envío a efectos**: un canal va al bus de efectos, el efecto vuelve por su
+  retorno, y el módulo enumera ese retorno como fuente del general. Es la segunda
+  puerta, con exactamente la misma forma que el subgrupo — que sí estaba
+  declarado, con esas mismas palabras. Y con el envío antes del fader, **un canal
+  silenciado sigue llegando al general**: el falso negativo que el módulo define
+  como la dirección peligrosa.
+
+  Ahora la cuenta cierra por los dos ejes —43 sufijos y 9 segundos tramos, cada
+  uno con su juicio escrito— se comprueba que **nada esté en dos listas a la
+  vez**, y cada hueco declarado tiene quien lo sujete: se midió que 17 de los 18
+  sueltos se podían borrar con la suite en verde, y eran justo los que la
+  entrega anterior presumía de haber agregado. Son 146 huecos, de 62, de 14.
+
+  Lo que el test sigue sin poder comprobar, y está dicho: que la clasificación
+  sea **la correcta**. Que la ecualización no cambie si una fuente llega al
+  general es un juicio, no una medición.
 
 - **Y el vocabulario que la aplicación reconoce pasó de la mitad al 79 %.**
   Contrastado contra las 6732 claves capturadas de la consola real, no contra una
