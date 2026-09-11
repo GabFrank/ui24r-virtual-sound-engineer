@@ -15,6 +15,7 @@
 |---|---|---|
 | [safety-invariants.md](safety-invariants.md) | Las 34 invariantes con su test |
 | [design-system.md](design-system.md) | Fichas, primitivas y puntos de corte de la interfaz |
+| [alcance-mvp.md](alcance-mvp.md) | **Qué entra y qué no en la primera entrega.** Decidido el 2026-09-11 |
 | [flujo-de-usuario.md](flujo-de-usuario.md) | Qué se puede hacer hoy con la aplicación, de punta a punta |
 | [actualizacion-en-app.md](actualizacion-en-app.md) | Actualización desde GitHub y ceremonia del almacén de claves |
 | [visual/](visual/) | Capturas contra el simulador y qué encontró cada tanda | Solo por ADR |

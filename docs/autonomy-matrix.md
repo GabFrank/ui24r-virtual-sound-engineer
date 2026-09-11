@@ -11,6 +11,15 @@ Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ow
 | **ASSISTED** | El usuario aprueba cada cambio con una acción explícita, y la aplicación lo escribe, lo verifica y puede revertirlo. |
 | **AUTO** | La aplicación aplica, vuelve a medir y conserva o revierte. Solo con confianza alta y un parámetro por transacción. |
 
+> **La escalera MVP0–MVP4b de la última columna quedó superada el 2026-09-11.**
+> Estaba ordenada suponiendo que la aplicación acompañaba un show, así que ponía
+> escribir ecualización en el último escalón. La primera entrega **no tiene show**
+> y su verbo central **es** ecualizar: ver [alcance-mvp.md](alcance-mvp.md).
+>
+> Los niveles de abajo siguen siendo la referencia de **qué significa** cada
+> grado de autonomía y de **quién es dueño** de cada parámetro. Lo que cambia es
+> cuándo se llega a cada uno, y eso lo fija el alcance del MVP.
+
 ## Propiedad
 
 | Parámetro | Dueño | Nivel máximo por versión |
