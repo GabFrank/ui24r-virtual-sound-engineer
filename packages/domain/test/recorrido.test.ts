@@ -265,3 +265,125 @@ test('cada etapa declara si su ley está medida, y hoy sólo lo está la gananci
   const sinMedir = ETAPAS_EN_ORDEN.filter((e: EtapaDeInstrumento) => !LEY_MEDIDA[e]);
   strictEqual(sinMedir.length, 5, `al 2026-09-11 faltan cinco y quedan ${sinMedir.join(', ')}`);
 });
+
+// --- El recorrido completo, y lo que un auditor pidió comprobar ------------
+
+import { moverPaso, normalizarBanda, recorridoDeLaBanda } from '../src/index.ts';
+
+const CATALOGO: Record<string, Instrumento | null> = {
+  Bombo: como('BOMBO'), Bajo: como('BAJO'), Guitarra: como('GUITARRA'),
+  Voz: como('VOZ'), Maraca: como('MARACA'), Shaker: como('SHAKER'),
+  Talkback: null,
+};
+const clasificar = (a: ChannelAssignment): Instrumento | null => CATALOGO[a.instrumento] ?? null;
+
+test('el recorrido sale del dominio, no de una copia en la pantalla', () => {
+  // **El caso que un auditor construyó antes de que esto existiera.** Una
+  // reimplementación con `sort` --que es estable-- empataría por el orden de
+  // entrada; `ordenPropuesto` empata por número de CANAL. Maraca y shaker
+  // comparten el puesto 30, así que con la maraca primera en la lista y en un
+  // canal más alto, las dos versiones difieren.
+  //
+  // El defecto se escondería solo, porque la lista de asignaciones ya suele
+  // venir ordenada por canal: hay que forzarlo a mano.
+  const r = recorridoDeLaBanda([canal(9, 'Maraca'), canal(2, 'Shaker')], clasificar, null, []);
+  deepStrictEqual(r.pasos.map((p) => p.etiqueta), ['Shaker', 'Maraca'],
+    'empata el canal, no el orden de entrada');
+});
+
+test('un canal sacado del recorrido no desaparece: queda para traerlo de vuelta', () => {
+  const asignaciones = [canal(1, 'Voz'), canal(2, 'Bombo'), canal(3, 'Talkback')];
+  const r = recorridoDeLaBanda(asignaciones, clasificar, null, ['ch_3'] as ChannelAssignmentId[]);
+  deepStrictEqual(r.pasos.map((p) => p.etiqueta), ['Bombo', 'Voz']);
+  deepStrictEqual(r.fuera.map((p) => p.etiqueta), ['Talkback'], 'sacado, no perdido');
+  // Control positivo: sin sacar nada, el talkback se recorre.
+  strictEqual(recorridoDeLaBanda(asignaciones, clasificar, null, []).pasos.length, 3);
+});
+
+test('lo sacado conserva su puesto propuesto, por si vuelve', () => {
+  // Si al traerlo de vuelta apareciera al final por haber estado afuera, sacar
+  // y volver a traer perdería el orden en silencio.
+  const asignaciones = [canal(1, 'Voz'), canal(2, 'Bombo'), canal(3, 'Bajo')];
+  const fuera = ['ch_2', 'ch_3'] as ChannelAssignmentId[];
+  const r = recorridoDeLaBanda(asignaciones, clasificar, null, fuera);
+  deepStrictEqual(r.fuera.map((p) => p.etiqueta), ['Bombo', 'Bajo'], 'en el orden propuesto');
+});
+
+test('sin orden guardado manda la propuesta, y se dice cuál de las dos es', () => {
+  const asignaciones = [canal(1, 'Voz'), canal(2, 'Bombo')];
+  strictEqual(recorridoDeLaBanda(asignaciones, clasificar, null, []).ordenPropio, false);
+  const propio = recorridoDeLaBanda(
+    asignaciones, clasificar, ['ch_1', 'ch_2'] as ChannelAssignmentId[], []);
+  strictEqual(propio.ordenPropio, true);
+  deepStrictEqual(propio.pasos.map((p) => p.etiqueta), ['Voz', 'Bombo']);
+});
+
+test('restaurar olvida el orden y la propuesta vuelve a acompañar', () => {
+  // Es la diferencia entre olvidar y congelar, que el usuario decidió: con
+  // `null`, una clasificación corregida después mueve el orden. Si restaurar
+  // hubiera copiado la propuesta de hoy, quedaría congelada para siempre.
+  const asignaciones = [canal(1, 'Voz'), canal(2, 'Talkback')];
+  const conOrdenPropio = ['ch_1', 'ch_2'] as ChannelAssignmentId[];
+  deepStrictEqual(
+    recorridoDeLaBanda(asignaciones, clasificar, conOrdenPropio, []).pasos.map((p) => p.etiqueta),
+    ['Voz', 'Talkback']);
+  // El catálogo aprende a clasificar el canal 2 como bombo. Con orden propio,
+  // el orden NO se mueve; después de restaurar, sí.
+  const aprendido = (a: ChannelAssignment): Instrumento | null =>
+    (a.instrumento === 'Talkback' ? como('BOMBO') : clasificar(a));
+  deepStrictEqual(
+    recorridoDeLaBanda(asignaciones, aprendido, conOrdenPropio, []).pasos.map((p) => p.etiqueta),
+    ['Voz', 'Talkback'], 'con orden propio, el orden guardado gana');
+  deepStrictEqual(
+    recorridoDeLaBanda(asignaciones, aprendido, null, []).pasos.map((p) => p.etiqueta),
+    ['Talkback', 'Voz'], 'restaurado, la propuesta vuelve a mandar');
+});
+
+// --- Mover una fila ---------------------------------------------------------
+
+const PASOS = (...etiquetas: string[]) =>
+  etiquetas.map((e, i) => ({
+    asignacionId: `ch_${i + 1}` as ChannelAssignmentId, canal: i + 1,
+    etiqueta: e, puestoPropuesto: 0,
+  }));
+
+test('mover una fila devuelve el orden nuevo, con identificadores', () => {
+  const r = moverPaso(PASOS('a', 'b', 'c', 'd'), 0, 2);
+  deepStrictEqual(r, ['ch_2', 'ch_3', 'ch_1', 'ch_4']);
+  // Y hacia arriba.
+  deepStrictEqual(moverPaso(PASOS('a', 'b', 'c'), 2, 0), ['ch_3', 'ch_1', 'ch_2']);
+});
+
+test('un arrastre que vuelve al mismo lugar NO es un cambio', () => {
+  // Levantar una fila, pasearla y soltarla donde estaba tiene que producir cero
+  // escrituras: es el mismo criterio que el resto de la aplicación aplica a los
+  // formularios --escribir una letra y borrarla no es un cambio--. Lo pidió un
+  // auditor de expectativas como caso reservado, antes de que existiera esto.
+  strictEqual(moverPaso(PASOS('a', 'b', 'c'), 1, 1), null);
+});
+
+test('soltar más allá del final es soltar al final, no un error', () => {
+  deepStrictEqual(moverPaso(PASOS('a', 'b', 'c'), 0, 99), ['ch_2', 'ch_3', 'ch_1']);
+  deepStrictEqual(moverPaso(PASOS('a', 'b', 'c'), 2, -5), ['ch_3', 'ch_1', 'ch_2']);
+  // Pero si el recorte lo devuelve a su propio lugar, tampoco es un cambio.
+  strictEqual(moverPaso(PASOS('a', 'b', 'c'), 2, 99), null);
+  strictEqual(moverPaso(PASOS('a', 'b', 'c'), 0, -5), null);
+});
+
+test('mover una fila que no existe no inventa un orden', () => {
+  strictEqual(moverPaso(PASOS('a', 'b'), 5, 0), null);
+  strictEqual(moverPaso([], 0, 0), null);
+});
+
+test('una banda sin los campos nuevos se lee sin romperse', () => {
+  // Los documentos guardados antes de este cambio no tienen las claves. Se
+  // completan al leer, sin migración: el documento entero vive en una columna
+  // JSON y `normalizarBanda` ya es el punto por donde pasa toda lectura.
+  const vieja = { id: 'b1', nombre: 'Vieja', integrantes: [], asignaciones: [], mixSignature: null };
+  const leida = normalizarBanda(vieja as never);
+  strictEqual(leida.ordenDelRecorrido, null, 'null es «nunca reordenó»');
+  deepStrictEqual(leida.fueraDelRecorrido, []);
+  // Y una que ya los tiene no se toca.
+  const nueva = { ...vieja, ordenDelRecorrido: ['x'], fueraDelRecorrido: ['y'] };
+  strictEqual(normalizarBanda(nueva as never), nueva as never, 'devuelve el mismo objeto');
+});

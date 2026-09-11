@@ -204,3 +204,83 @@ export function aplicarOrdenGuardado(
     return pa - pb;
   });
 }
+
+// --- Lo que la pantalla necesita, en una sola llamada -----------------------
+
+/** El recorrido tal como se muestra: lo que se recorre y lo que quedó afuera. */
+export interface RecorridoDeLaBanda {
+  /** En el orden en que se recorren. */
+  readonly pasos: readonly PasoDelRecorrido[];
+  /**
+   * Asignaciones que el usuario sacó, en el orden propuesto entre ellas.
+   *
+   * **No desaparecen.** Se muestran aparte para poder traerlas de vuelta: un
+   * canal que se saca y no se ve más es un canal que se pierde.
+   */
+  readonly fuera: readonly PasoDelRecorrido[];
+  /** Si el usuario tiene un orden propio guardado. */
+  readonly ordenPropio: boolean;
+}
+
+/**
+ * Arma el recorrido completo a partir del perfil de la banda.
+ *
+ * **Existe para que la pantalla no reordene por su cuenta.** Un auditor de
+ * expectativas señaló, antes de que esto existiera, que una reimplementación en
+ * el componente pasaría cualquier inspección a ojo y se desincronizaría en
+ * silencio: `Array.prototype.sort` es estable, así que una copia empataría por
+ * el orden de entrada mientras {@link ordenPropuesto} empata por número de
+ * canal. Y el defecto se escondería, porque la lista de asignaciones ya suele
+ * venir ordenada por canal.
+ *
+ * Con esta función, la pantalla llama y muestra. No hay dónde desincronizarse.
+ */
+export function recorridoDeLaBanda(
+  asignaciones: readonly ChannelAssignment[],
+  instrumentoDe: (a: ChannelAssignment) => Instrumento | null,
+  ordenGuardado: readonly ChannelAssignmentId[] | null,
+  fueraDelRecorrido: readonly ChannelAssignmentId[],
+): RecorridoDeLaBanda {
+  const propuesto = ordenPropuesto(asignaciones, instrumentoDe);
+  const afuera = new Set(fueraDelRecorrido);
+  const adentro = propuesto.filter((p) => !afuera.has(p.asignacionId));
+  return {
+    pasos: ordenGuardado === null ? adentro : aplicarOrdenGuardado(adentro, ordenGuardado),
+    // Lo sacado conserva el orden propuesto entre sí: si el usuario lo trae de
+    // vuelta, aparece donde le toca y no al final por haber estado afuera.
+    fuera: propuesto.filter((p) => afuera.has(p.asignacionId)),
+    ordenPropio: ordenGuardado !== null,
+  };
+}
+
+/**
+ * El orden que hay que guardar después de mover una fila.
+ *
+ * Devuelve `null` cuando **la fila volvió a donde estaba**: un arrastre de
+ * desplazamiento neto cero no es un cambio, y escribirlo dejaría una escritura
+ * por cada vez que alguien levanta una fila y la suelta. Es el mismo criterio
+ * que el resto de la aplicación aplica a los formularios —escribir una letra y
+ * borrarla no es un cambio—, traído al gesto.
+ */
+export function moverPaso(
+  pasos: readonly PasoDelRecorrido[],
+  desde: number,
+  hasta: number,
+): readonly ChannelAssignmentId[] | null {
+  if (desde < 0 || desde >= pasos.length) return null;
+  // Se recorta en vez de rechazar: soltar más allá del final es soltar al
+  // final, que es lo que el dedo quiso decir.
+  const destino = Math.min(Math.max(hasta, 0), pasos.length - 1);
+  // **Una sola comprobación para dos casos**, y es a propósito. Cubre el
+  // arrastre nulo --soltar donde se levantó-- y también el que el recorte
+  // devuelve a su propio lugar, que es soltar la última fila más abajo del
+  // final. Había una guarda aparte para el primero y un barrido de mutaciones
+  // mostró que era inerte: con el rango ya validado arriba, `destino` no puede
+  // diferir de `desde` cuando `hasta` vale `desde`. Se comprobó antes de
+  // sacarla, que es lo que el protocolo pide.
+  if (destino === desde) return null;
+  const ids = pasos.map((p) => p.asignacionId);
+  const [movido] = ids.splice(desde, 1);
+  ids.splice(destino, 0, movido!);
+  return ids;
+}

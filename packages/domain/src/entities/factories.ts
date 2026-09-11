@@ -38,6 +38,10 @@ export function crearBanda(nombre: string, integrantes: readonly BandMember[] = 
     // Vacío, no un objeto con ceros: la firma de mezcla se aprende midiendo, y
     // un objeto lleno de ceros se leería como «ya aprendida, y todo plano».
     mixSignature: null,
+    // Sin orden propio: manda la propuesta, y la sigue acompañando si el
+    // catálogo mejora. Y sin nada fuera del recorrido.
+    ordenDelRecorrido: null,
+    fueraDelRecorrido: [],
   };
 }
 

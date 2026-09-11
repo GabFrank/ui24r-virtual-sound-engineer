@@ -30,6 +30,11 @@ persista**, aunque un docblock de `1a0f703` decía que quedaba guardado.
 | C7 | La etapa de ganancia navega a `sesion/ganancia`, que ya existe | Que duplique esa pantalla, o que lleve a una pantalla congelada por estado | **Decisión propia** (navegar en vez de duplicar), con la dependencia de C2 |
 | C8 | **La pantalla no presenta el orden como prescrito por el oficio**: dice que es una propuesta y que seis de sus trece puestos son decisión del proyecto | Cualquier texto que atribuya el orden a una autoridad externa sin la salvedad | **Pedido del usuario** (que la propuesta no sea al azar), y el error ya cometido en `94e9c5b` |
 | C9 | El recorrido **no llama a la consola**: navega y registra | Cualquier escritura originada en esta pantalla | **Obligación, no decisión**: `CONTRIBUTING.md` «Reglas que no se negocian» punto 4, verificada por `npm run validate:limites` |
+| C11 | Se puede **sacar un canal del recorrido** y volver a traerlo; lo sacado se guarda junto con el orden | Que no se pueda sacar, o que al reabrir vuelva a estar adentro | **Decisión del usuario**, `docs/pedidos/2026-09-11-recorrido.md` |
+| C12 | El orden se guarda **al soltar la fila**, y un arrastre que vuelve al mismo lugar **no escribe nada** | Salir sin guardar y perder el orden; o que un arrastre nulo deje la pantalla sucia | **Decisión del usuario**, mismo archivo |
+| C13 | Se arrastra **desde un asidero**, y la fila entera sigue sirviendo para desplazar la lista | Que arrastrar la fila 3 desplace la página, o que no se llegue a la fila 20 de 24 | **Decisión del usuario**, mismo archivo |
+| C14 | «Restaurar el orden propuesto» **olvida** el orden guardado, no lo congela | Que después de restaurar, corregir la clasificación de un canal no mueva el orden | **Decisión del usuario**, mismo archivo |
+| C15 | **Hay un solo camino de escritura** a `BandProfile`, y guardar el orden no puede perderse cuando después se asigna un canal | Guardar un orden, ir a canales sin reiniciar, cambiar algo, volver, y que el orden no esté | **Derivación de un defecto verificado**: `band.service.ts:126` hace spread sobre su propia señal cacheada |
 | C10 | El paso nuevo entra en el camino de usuario verificado (`tools/visual/flujo.mjs`, hoy 25 pasos) y en el registro estructurado de `docs/logging.md` | Que el flujo visual no lo recorra, o que no quede registro de qué se recorrió | **Obligación**: `CONTRIBUTING.md`, definición de terminado |
 
 ## De dónde sale el orden, y qué es decisión
@@ -55,6 +60,10 @@ declarado, no un olvido.
 desactualizada: el editor del escenario existe desde `9916425`.)*
 
 ## Decisiones pendientes del usuario
+
+**Resuelta por el usuario**: entra todo lo asignado y se puede sacar a mano
+(C11). Lo que sigue queda como registro de por qué la pregunta estaba mal
+planteada.
 
 **`isLive` y qué canales entran al recorrido.** El campo existe y el recorrido lo
 ignora. **La justificación con la que planteé esta duda en la primera versión era

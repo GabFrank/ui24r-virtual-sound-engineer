@@ -161,5 +161,27 @@ export function normalizarIntegrante(m: BandMember): BandMember {
  */
 export function normalizarBanda(b: BandProfile): BandProfile {
   const integrantes = b.integrantes.map(normalizarIntegrante);
-  return integrantes.every((m, i) => m === b.integrantes[i]) ? b : { ...b, integrantes };
+  // **Los campos del recorrido se completan al leer, sin migración.**
+  //
+  // El documento de banda entero vive en una columna JSON, y esta función ya es
+  // el punto por donde pasa toda lectura de banda. Una migración que reescribiera
+  // todos los documentos para inyectar `ordenDelRecorrido: null` estaría tocando
+  // datos del usuario por un campo que un valor por defecto resuelve, y las
+  // migraciones de este repositorio existen para lo contrario: cambiar la forma
+  // cuando el código no puede arreglárselas solo. Lo señaló un auditor de
+  // expectativas antes de que se implementara nada.
+  //
+  // `null` y `[]` significan cosas distintas y por eso se distinguen: `null` es
+  // «el usuario nunca reordenó», `[]` sería «reordenó y dejó la lista vacía»,
+  // que no puede pasar.
+  const faltaOrden = b.ordenDelRecorrido === undefined;
+  const faltaFuera = b.fueraDelRecorrido === undefined;
+  const igual = integrantes.every((m, i) => m === b.integrantes[i]);
+  if (igual && !faltaOrden && !faltaFuera) return b;
+  return {
+    ...b,
+    integrantes: igual ? b.integrantes : integrantes,
+    ordenDelRecorrido: faltaOrden ? null : b.ordenDelRecorrido,
+    fueraDelRecorrido: faltaFuera ? [] : b.fueraDelRecorrido,
+  };
 }

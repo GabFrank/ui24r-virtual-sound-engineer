@@ -130,6 +130,30 @@ export interface BandProfile {
   readonly asignaciones: readonly ChannelAssignment[];
   /** Relaciones aprendidas entre fuentes. Vacío hasta la fase de aprendizaje. */
   readonly mixSignature: Readonly<Record<string, number>> | null;
+  /**
+   * El orden en que el usuario quiere recorrer los instrumentos, si lo cambió.
+   *
+   * **`null` no es una lista vacía**: significa que el usuario nunca reordenó, y
+   * entonces manda la propuesta. Esa diferencia es la que hace que «restaurar el
+   * orden propuesto» pueda **olvidar** en vez de congelar: volviendo a `null`,
+   * el recorrido sigue acompañando a la propuesta, y si mañana el catálogo
+   * aprende a clasificar los toms el orden mejora solo. Decisión del usuario,
+   * `docs/pedidos/2026-09-11-recorrido.md`.
+   *
+   * Se guardan identificadores de asignación y **no números de canal**: si se
+   * repatchea un instrumento a otra entrada, el orden tiene que seguir al
+   * instrumento y no al zócalo.
+   */
+  readonly ordenDelRecorrido: readonly ChannelAssignmentId[] | null;
+  /**
+   * Canales asignados que el usuario sacó del recorrido.
+   *
+   * Un talkback, un canal de repuesto o una pista grabada están asignados y no
+   * se recorren. **La aplicación no adivina cuál sobra**: no hay ningún dato que
+   * lo diga con certeza —`isLive` es una marca de seguridad del modo soundcheck
+   * (INV-029) y su valor normal es `false`—, así que lo saca el usuario.
+   */
+  readonly fueraDelRecorrido: readonly ChannelAssignmentId[];
 }
 
 /**
