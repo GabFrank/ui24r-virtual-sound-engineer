@@ -59,6 +59,40 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Clasificar no es autorizar, y se habían confundido las dos cosas.** El
+  commit anterior amplió el clasificador para que la aplicación pudiera
+  **nombrar** las entradas de línea. Como las clasificó reutilizando las
+  categorías de canal, además las **abrió**: una auditoría midió que **44 rutas
+  de `l.*` pasaron a estar permitidas por el motor de seguridad**, incluida
+  `l.0.mix` — el fader exacto que estuvo a 0 dB metiendo un tono del Bluetooth
+  en el general durante dos días. El commit que arreglaba «la aplicación no sabe
+  qué entra al general» habilitó a la aplicación a moverlo. Ninguno de los dos
+  mensajes mencionaba la palabra «escribible».
+
+  Ahora las entradas de línea tienen categoría propia y no se escriben. Se
+  conserva lo que se buscaba —que el registro diga «entrada de línea» en vez de
+  «ruta desconocida»— sin conceder permiso. Que la aplicación deba poder mezclar
+  una entrada de línea es una decisión de producto que nadie tomó.
+
+- **Y la lista blanca del ecualizador autorizaba cuatro cosas que no son
+  filtros.** `path.startsWith('<bus>.eq.')` dejaba pasar `m.eq.bypass` —que
+  **anula la corrección de sala entera en una escritura**, con un delta de 0 a 1
+  que pasa por debajo del tope de realce—, `m.eq.linked`, y el recall de preset
+  `prmod`/`prname`, que **reemplaza las 62 bandas de golpe** con un valor que es
+  un índice y no decibeles. Lo irónico es que el docstring del módulo las
+  enumera: se miró el inventario para contar, no para acotar.
+
+- **Hay una guarda nueva, y es la que faltaba**: un test que evalúa el motor
+  sobre las **6732 claves reales** y cuenta cuántas permite. Si el número sube,
+  algo que se rechazaba ahora se escribe — y eso es una decisión de producto, no
+  un detalle de mantenimiento.
+
+  Su primera versión dio **642** y estaba mal: fabricaba el contexto a mano con
+  un `sessionState` que no existe y lo forzaba con `as`. El cast tapó el error de
+  tipos y suprimió 24 rutas de ganancia del previo, que sí son trabajo de la
+  aplicación. El número honesto es **666**, y ahora el test usa el arnés que ya
+  existía en vez de fabricar el suyo.
+
 - **La lista blanca de INV-008 comparaba contra una ruta que no existe, y era el
   único camino por el que el motor aprobaba una escritura de sala.** Declaraba
   `busesDeSalidaPermitidos: new Set(['m.eq.b1.gain'])` —un solo elemento— con

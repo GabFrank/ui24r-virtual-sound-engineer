@@ -197,6 +197,7 @@ test('toda clase del registro de propiedad la puede producir el clasificador', (
     SNAPSHOT: 'var.currentSnapshot',
     AFS2: 'm.afs.enabled',
     MATRIX_SEND: 'a.0.mtx.1.value',
+    LINE_INPUT: 'l.0.mix',
   };
 
   // **`ANALYSIS_BUS_SEND` va aparte a proposito.** Es la unica clase que no
@@ -218,19 +219,26 @@ test('toda clase del registro de propiedad la puede producir el clasificador', (
   deepStrictEqual(inalcanzables, [], 'clases declaradas que el clasificador no produce');
 });
 
-test('las entradas de linea son canales, con otra fuente', () => {
-  // **246 claves sin clasificar desde siempre**, y dejó de ser una deuda
-  // abstracta el 2026-09-11: un receptor Bluetooth enchufado a esas entradas,
-  // abiertas a 0 dB, metió un tono en el general durante dos días de mediciones.
-  // Ni la aplicación ni nadie podía nombrar esa puerta.
-  strictEqual(clasificarRuta('l.0.mix'), 'CHANNEL_FADER');
-  strictEqual(clasificarRuta('l.1.mute'), 'CHANNEL_MUTE');
-  strictEqual(clasificarRuta('l.0.pan'), 'CHANNEL_PAN');
-  strictEqual(clasificarRuta('l.0.eq.b1.gain'), 'CHANNEL_EQ');
-  strictEqual(clasificarRuta('l.0.eq.hpf.freq'), 'HPF');
-  strictEqual(clasificarRuta('l.1.gate.thresh'), 'GATE');
-  strictEqual(clasificarRuta('l.0.aux.1.value'), 'MONITOR_AUX_SEND');
+test('las entradas de linea tienen tipo propio: nombrarlas no es autorizarlas', () => {
+  // **Se clasificaron como canales y eso las ABRIO.** Una auditoria midio que 44
+  // rutas de `l.*` pasaron a estar permitidas por el motor, incluida `l.0.mix`
+  // -- el fader exacto que estuvo a 0 dB metiendo un tono del Bluetooth en el
+  // general durante dos dias. El commit que arreglaba «la aplicacion no sabe que
+  // entra al general» habilito a la aplicacion a moverlo.
+  //
+  // Clasificar no es autorizar. Con tipo propio el registro dice «entrada de
+  // linea» en vez de «ruta desconocida», que es lo que se buscaba, y no se
+  // concede ningun permiso.
+  strictEqual(clasificarRuta('l.0.mix'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.1.mute'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.eq.b1.gain'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.eq.hpf.freq'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.aux.1.value'), 'LINE_INPUT');
+  // Y la de canal sigue siendo de canal.
+  strictEqual(clasificarRuta('i.0.mix'), 'CHANNEL_FADER');
 });
+
+
 
 test('un envio a monitor es mas que su nivel', () => {
   // Sólo `.value` estaba clasificado; las otras cuatro --960 claves-- caían en

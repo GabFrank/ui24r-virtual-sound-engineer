@@ -58,7 +58,7 @@ const PATRONES: readonly Patron[] = [
   // músico es del músico, y ninguna de las cuatro se escribe. La excepción del
   // bus de análisis sigue mirando **sólo `.value`**, que es la única que INV-008
   // admite.
-  { re: /^[il]\.\d+\.aux\.\d+\.(value|mute|pan|post|postproc)$/, kind: 'MONITOR_AUX_SEND' },
+  { re: /^i\.\d+\.aux\.\d+\.(value|mute|pan|post|postproc)$/, kind: 'MONITOR_AUX_SEND' },
 
   // --- Entradas: cadena de canal ---
   // **`l.N` es un canal, con otra fuente.** Las dos entradas de línea --las RCA
@@ -71,14 +71,14 @@ const PATRONES: readonly Patron[] = [
   // entradas, abiertas a 0 dB, metió un tono en el general durante dos días de
   // mediciones. Ni la aplicación ni yo podíamos nombrar esa puerta. Lo encontró
   // el oído del usuario.
-  { re: /^[il]\.\d+\.eq\.hpf\./, kind: 'HPF' },
-  { re: /^[il]\.\d+\.eq\./, kind: 'CHANNEL_EQ' },
-  { re: /^[il]\.\d+\.dyn\./, kind: 'COMPRESSOR' },
-  { re: /^[il]\.\d+\.gate\./, kind: 'GATE' },
-  { re: /^[il]\.\d+\.deesser\./, kind: 'DEESSER' },
-  { re: /^[il]\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
-  { re: /^[il]\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
-  { re: /^[il]\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
+  { re: /^i\.\d+\.eq\.hpf\./, kind: 'HPF' },
+  { re: /^i\.\d+\.eq\./, kind: 'CHANNEL_EQ' },
+  { re: /^i\.\d+\.dyn\./, kind: 'COMPRESSOR' },
+  { re: /^i\.\d+\.gate\./, kind: 'GATE' },
+  { re: /^i\.\d+\.deesser\./, kind: 'DEESSER' },
+  { re: /^i\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
+  { re: /^i\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
+  { re: /^i\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
   // **Las dos rutas de fantasma, y no son la misma cosa.** La que manda es
   // `hw.N.phantom`, la del previo: medido el 2026-09-10, con el condensador
   // alimentado valía 1 mientras `i.N.phantom` valía 0 en el mismo instante.
@@ -90,7 +90,7 @@ const PATRONES: readonly Patron[] = [
   // no por RUTA_DESCONOCIDA (INV-008), que manda a buscar el problema al lugar
   // equivocado. Las dos son del usuario y ninguna se escribe.
   { re: /^hw\.\d+\.phantom$/, kind: 'PHANTOM' },
-  { re: /^[il]\.\d+\.phantom$/, kind: 'PHANTOM' },
+  { re: /^i\.\d+\.phantom$/, kind: 'PHANTOM' },
   { re: /^hw\.\d+\.gain$/, kind: 'PREAMP_GAIN' },
 
   // --- Reproductor: solo dentro de la reserva ---
@@ -129,10 +129,22 @@ const PATRONES: readonly Patron[] = [
   // seguro— pero citando que la ruta no se conoce, cuando sí se conoce.
   { re: /^s\.\d+\./, kind: 'SUBGROUP' },
 
+  // --- Entradas de línea ---
+  //
+  // **Toda la tira, en una sola categoría, y a propósito.** Se habían
+  // clasificado reutilizando las de canal porque el strip es idéntico, y eso las
+  // nombró **y las abrió**: 44 rutas pasaron a estar permitidas, incluida
+  // `l.0.mix`, el fader que estuvo a 0 dB metiendo el tono del Bluetooth en el
+  // general. **Clasificar no es autorizar.**
+  //
+  // Con categoría propia el registro dice «entrada de línea» en vez de «ruta
+  // desconocida» --que era lo que se buscaba-- y no se concede ningún permiso.
+  { re: /^l\.\d+\./, kind: 'LINE_INPUT' },
+
   // --- Efectos y sistema ---
   { re: /^f\.\d+\./, kind: 'FX' },
   // El envío de un canal a un efecto. 288 claves sin clasificar hasta ahora.
-  { re: /^[il]\.\d+\.fx\.\d+\./, kind: 'FX' },
+  { re: /^i\.\d+\.fx\.\d+\./, kind: 'FX' },
 
   // `var.mtk.*` es el espacio de soundcheck y multipista, no un envío de bus:
   // lo decía la matriz de capacidades y acá estaba clasificado como el **único

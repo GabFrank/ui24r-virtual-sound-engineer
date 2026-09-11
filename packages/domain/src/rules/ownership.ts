@@ -26,7 +26,7 @@ export type ParameterKind =
   | 'PA_BUS_MUTE' | 'SNAPSHOT'
   | 'MONITOR_AUX_SEND' | 'MASTER_FADER' | 'MASTER_MUTE' | 'CHANNEL_MUTE'
   | 'PHANTOM' | 'OUTPUT_LIMITER' | 'FX' | 'SUBGROUP' | 'VCA' | 'AFS2'
-  | 'MATRIX_SEND';
+  | 'MATRIX_SEND' | 'LINE_INPUT';
 
 export interface OwnershipEntry {
   readonly kind: ParameterKind;
@@ -96,6 +96,22 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
   // una grabación. Tocarla a ciegas es mandar señal a un sitio desconocido.
   { kind: 'MATRIX_SEND', owner: 'USER_ONLY', escribible: false,
     nota: 'La matriz sale a destinos que la aplicación no puede ver' },
+  // **Una entrada de línea es un canal, y aun así no se escribe.**
+  //
+  // El 2026-09-11 se clasificaron reutilizando las categorías de canal, porque
+  // el strip es idéntico. Eso las nombró **y las abrió**: una auditoría midió
+  // que 44 rutas de `l.*` pasaron a estar permitidas, incluida `l.0.mix` — el
+  // fader exacto que estuvo a 0 dB metiendo un tono del Bluetooth en el general
+  // durante dos días. El commit que arreglaba «la aplicación no sabe qué entra
+  // al general» habilitó a la aplicación a moverlo.
+  //
+  // **Clasificar no es autorizar**, y se habían confundido las dos cosas. Con
+  // categoría propia se conserva lo que se buscaba —que el registro diga
+  // «entrada de línea del usuario» en vez de «ruta desconocida»— sin conceder
+  // permiso. Que la aplicación deba poder mezclar una entrada de línea es una
+  // decisión de producto que nadie tomó.
+  { kind: 'LINE_INPUT', owner: 'USER_ONLY', escribible: false,
+    nota: 'Lo que entra por las RCA lo decide el usuario: la aplicación solo lo lee' },
   { kind: 'SUBGROUP', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'VCA', owner: 'USER_ONLY', escribible: false, nota: 'Fuera de alcance' },
   { kind: 'AFS2', owner: 'USER_ONLY', escribible: false,

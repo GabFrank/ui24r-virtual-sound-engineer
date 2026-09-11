@@ -56,3 +56,26 @@ test('solo el ecualizador parametrico admite factor de calidad', () => {
   strictEqual(admiteFactorDeCalidad('a.3.eq.peak.12'), false);
   strictEqual(admiteFactorDeCalidad('m.eq.hpf.l'), false);
 });
+
+test('el prefijo autoriza FILTROS, no todo lo que vive bajo .eq.', () => {
+  // **Lo encontro una auditoria.** `path.startsWith('<bus>.eq.')` autorizaba
+  // cuatro cosas que no son filtros, y el docstring del modulo las ENUMERA:
+  //
+  // - `bypass` anula la correccion de sala entera en una escritura, y su delta
+  //   de 0 a 1 pasa por debajo del tope de realce sin que nadie lo vea;
+  // - `linked` ata los dos lados del estereo;
+  // - `prmod`/`prname` recuperan un preset: reemplazan las 62 bandas de golpe,
+  //   y el tope por banda no ve nada porque el valor es un indice, no dB.
+  //
+  // INV-008 admite «filtros PEQ/GEQ (gain, freq, Q) y HPF». Nada mas.
+  const p = prefijosPermitidos([{ tipo: 'MASTER' }]);
+  strictEqual(ecualizacionPermitida('m.eq.peak.l.12', p), true, 'una banda del grafico');
+  strictEqual(ecualizacionPermitida('m.eq.hpf.l', p), true, 'el pasa-altos');
+  strictEqual(ecualizacionPermitida('m.eq.lpf.r', p), true, 'el pasa-bajos');
+
+  strictEqual(ecualizacionPermitida('m.eq.bypass', p), false, 'anula la correccion entera');
+  strictEqual(ecualizacionPermitida('m.eq.linked', p), false);
+  strictEqual(ecualizacionPermitida('m.eq.prmod', p), false, 'recall de preset');
+  strictEqual(ecualizacionPermitida('m.eq.prname', p), false);
+  strictEqual(ecualizacionPermitida('m.eq.easy', p), false);
+});

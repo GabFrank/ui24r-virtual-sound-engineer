@@ -70,8 +70,34 @@ export function ecualizacionPermitida(
   path: string,
   prefijos: ReadonlySet<string>,
 ): boolean {
+  if (!esUnFiltro(path)) return false;
   for (const p of prefijos) if (path.startsWith(`${p}.eq.`)) return true;
   return false;
+}
+
+/**
+ * Si esta ruta es **un filtro**, y no otra cosa que vive en la misma familia.
+ *
+ * **El prefijo `<bus>.eq.` autorizaba de más, y lo encontró una auditoría.**
+ * INV-008 admite «filtros PEQ/GEQ (gain, freq, Q) y HPF». Bajo `m.eq.` viven
+ * además cuatro cosas que no son filtros y que pasaban:
+ *
+ * - `m.eq.bypass` — **anula la corrección de sala entera en una escritura**, y
+ *   su delta de 0 a 1 pasa por debajo del tope de realce sin que nadie lo vea.
+ * - `m.eq.linked` — ata los dos lados del estéreo.
+ * - `m.eq.prmod` y `m.eq.prname` — recuperan un preset: **reemplazan las 62
+ *   bandas de golpe**, y el tope por banda no ve nada porque el valor que cambia
+ *   es un índice, no decibeles.
+ *
+ * Lo irónico es que el comentario de arriba las **enumera** —«más `m.eq.hpf.l/r`,
+ * `m.eq.lpf.l/r`, `m.eq.bypass` y `m.eq.linked`»— y aun así las autorizaba. Se
+ * miró el inventario para contar, no para acotar.
+ */
+function esUnFiltro(path: string): boolean {
+  // Gráfico: una banda. Paramétrico: una banda. Cortes: pasa-altos y pasa-bajos.
+  return /\.eq\.peak\./.test(path)
+    || /\.eq\.b\d+\./.test(path)
+    || /\.eq\.(hpf|lpf)\b/.test(path);
 }
 
 /**
