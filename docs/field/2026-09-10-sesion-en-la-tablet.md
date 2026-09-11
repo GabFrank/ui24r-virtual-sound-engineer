@@ -48,11 +48,32 @@ Se midió en vez de discutirse. Con el micrófono oyendo de verdad —medidor de
 
 ### Por qué no se apaga
 
-La banda de 105 Hz tiene **media 12,7 dB** y oscila entre **3,8 y 18,8**. El piso útil
-del detector —`PISO_UTIL_DB`, por debajo del cual ni mira— es **12 dB**.
+La banda de 105 Hz tiene **media 12,7 dB** y oscila entre **5,6 y 18,8**, o sea que vive
+alrededor del piso útil del detector.
 
-Esa banda vive **justo encima del umbral**. Cada vez que asoma, la regla de «no cayó como
-debía» la cuenta de nuevo, el contador sigue corriendo y el cartel no se apaga más.
+> **Dos correcciones del 2026-09-10, las dos de una auditoría.**
+>
+> **El recorrido decía «3,8 y 18,8», y ese par no existe en ninguna corrida.** El 18,8 es
+> de la corrida buena; el 3,8 salía de una que este mismo documento declara inválida.
+> Mínimo de una, máximo de otra. El recorrido real es **5,6 a 18,8**, y con él la excursión
+> por debajo del piso es 1,8 dB más chica de lo que decía el párrafo que sostenía todo el
+> argumento.
+>
+> **Y el mecanismo que se daba como causa es lo contrario de lo que hace el código.** Caer
+> por debajo del piso **borra** el seguimiento —`realimentacion.ts` hace
+> `this.seguidas.delete(b)`— y un pico nuevo también reinicia la cuenta. Cruzar el umbral
+> **apaga** el contador, no lo alimenta. Con la banda por debajo de 12 dB en buena parte de
+> las muestras, el «63,2 s sin reiniciarse» que se vio en la pantalla **no se explica por el
+> piso**, y subir `PISO_UTIL_DB` —el arreglo que este informe discutía— apunta a la
+> constante equivocada.
+>
+> Queda una pista mejor y sin verificar: `CAIDA_ESPERADA_DB_POR_S` vale 66,7, así que la
+> caída esperada se hunde en décimas de segundo y el exceso se cumple para casi cualquier
+> banda que no caiga en picada. Y la condición de sobresalir de las vecinas **no se midió en
+> ninguna corrida**.
+>
+> **El hecho observado sigue en pie** —el cartel no se apagó en más de un minuto— y **la
+> explicación queda retirada.**
 
 Los tres umbrales estaban marcados en la matriz de capacidades como *«elegidos, no
 medidos»* y *«sin validar contra una realimentación real»*. Es la primera vez que el
@@ -87,15 +108,20 @@ horas.
 Vale anotarlo porque es el patrón del día. `bandaDeFrecuencia(105)` devuelve **27,98** y
 usarlo como índice de un arreglo da `undefined`: la primera corrida juntó **cero**
 muestras útiles. Lo salvó que el guion exigía diez muestras para hablar, así que dijo «no
-alcanza» en vez de inventar una correlación de ruido. La segunda descartaba −∞, que es
-justo la mitad callada de la prueba. Y la tercera volvía a multiplicar por
-`RTA_DB_POR_BYTE` sobre una función que **ya devuelve decibeles**: con eso la banda
-parecía estar en 4,8 dB, por debajo del piso de 12, y la conclusión habría sido «el
-detector dispara por debajo de su propio piso» — un error que no existe.
+alcanza» en vez de inventar una correlación de ruido. La segunda volvía a multiplicar por
+`RTA_DB_POR_BYTE` sobre una función que **ya devuelve decibeles**: con eso la banda parecía
+estar en 4,8 dB y la conclusión habría sido «el detector dispara por debajo de su propio
+piso», un error que no existe. La tercera ya tenía la escala bien pero todavía no barría las
+122 bandas.
+
+Del defecto que este párrafo le atribuía a una de ellas —«descartaba −∞»— **no queda rastro
+en ninguna corrida**: las tres completas tienen 179 muestras y mínimo −74,0 dB. Se saca en
+vez de dejarlo: una lista de trampas con una trampa inventada adentro sirve menos que una
+lista corta.
 
 Las cuatro corridas quedan archivadas, cada una con el error que la invalidó:
 
 - `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10.txt` — índice decimal: **cero** muestras útiles
-- `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10b.txt` — descartaba el silencio, que es media prueba
-- `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10c.txt` — doble conversión a decibeles: la banda parecía estar bajo el piso
+- `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10b.txt` — **la de la doble conversión**: media 4,8 dB, que es 12,7 × 0,375. Las etiquetas de ésta y la siguiente estaban cruzadas acá hasta que una auditoría las desempató
+- `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10c.txt` — escala ya correcta, pero **sin el barrido de las 122 bandas**: no podía contestar la pregunta
 - `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10d.txt` — **la buena**, con el barrido de las 122 bandas

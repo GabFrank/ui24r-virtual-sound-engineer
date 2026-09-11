@@ -45,6 +45,8 @@ export interface OpcionesStore {
    * o el arrastre se parte en pedazos.
    */
   readonly ventanaAgrupacionMs?: number;
+  /** Cuánto se espera el eco de un puntero de instantánea que provocamos. */
+  readonly ventanaPunteroPropioMs?: number;
   /** Reloj inyectable, para poder testear el tiempo sin esperarlo. */
   readonly ahora?: () => number;
   /**
@@ -87,6 +89,7 @@ export class ConfirmedStateStore {
   private readonly umbralRutas: number;
   private readonly ventanaRafagaMs: number;
   private readonly ventanaAgrupacionMs: number;
+  private readonly ventanaPunteroPropioMs: number;
   private readonly ahora: () => number;
   private readonly programar: (fn: () => void, ms: number) => { cancelar: () => void };
 
@@ -114,6 +117,25 @@ export class ConfirmedStateStore {
    * escribe**. No hay nada nuestro que confundir con otro operador.
    */
   private ultimoAjenoMs: number | null = null;
+  /**
+   * Nombres de instantánea que **nosotros** provocamos, esperando su eco.
+   *
+   * **La consola SÍ le devuelve el puntero a quien lo movió.** Medido el
+   * 2026-09-10, una sola conexión: `SAVESNAPSHOT` y a los 172 ms vuelve
+   * `SETS^var.currentSnapshot^<nombre>` por esa misma conexión.
+   *
+   * Eso no contradice lo medido el 2026-09-08 —que la consola no devuelve un
+   * `SETD` de parámetro a su autor—: son dos cosas distintas y nadie había
+   * probado ésta. Es el **efecto colateral de un comando**, no una escritura.
+   *
+   * Sin esta memoria, el arreglo de INV-021 se vuelve en contra: la aplicación
+   * guarda una instantánea **antes de cada escritura** por INV-001, así que se
+   * invalidaría sola en cada una, el cartel culparía a un operador que no
+   * existe y toda escritura posterior saldría en conflicto.
+   */
+  private punterosPropios: { nombre: string; enMs: number }[] = [];
+  /** El último valor conocido del puntero, para no invalidar por un valor repetido. */
+  private punteroConocido: string | null = null;
 
   constructor(opciones: OpcionesStore = {}) {
     this.ventanaMs = opciones.ventanaCorrelacionMs ?? 300;
@@ -121,6 +143,10 @@ export class ConfirmedStateStore {
     this.umbralRutas = opciones.umbralRafagaRutas ?? 10;
     this.ventanaRafagaMs = opciones.ventanaRafagaMs ?? 1000;
     this.ventanaAgrupacionMs = opciones.ventanaAgrupacionMs ?? 250;
+    // Holgado sobre los 172 ms medidos: el eco puede demorar más con la red
+    // cargada, y errar por exceso acá solo pierde un aviso; errar por defecto
+    // bloquea la aplicación entera.
+    this.ventanaPunteroPropioMs = opciones.ventanaPunteroPropioMs ?? 5000;
     this.ahora = opciones.ahora ?? (() => Date.now());
     this.programar = opciones.programar ?? ((fn, ms) => {
       const id = setTimeout(fn, ms);
@@ -162,6 +188,24 @@ export class ConfirmedStateStore {
    */
   invalidar(): void {
     this._storeState = 'INVALID';
+  }
+
+  /**
+   * El volcado que se había pedido no llegó nunca.
+   *
+   * **Existe porque «releer» declaraba válido el silencio.** `releerEstado()`
+   * ponía la bandera de volcado en curso y armaba en el acto el temporizador de
+   * quietud; a los 250 ms vencía sin que hubiera llegado una sola línea y el
+   * estado se daba por bueno. El usuario veía una avalancha, tocaba «Releer»,
+   * la consola no contestaba —con la wifi cargada, que es justo cuando pasa— y
+   * el cartel desaparecía solo. **Peor que no tener el botón: el botón mentía
+   * hacia el lado tranquilizador.**
+   *
+   * Acá el estado se queda inválido, que es la verdad: nadie releyó nada.
+   */
+  volcadoAbortado(): void {
+    this.cargandoVolcado = false;
+    this.invalidar();
   }
 
   volcadoCompletoRecibido(): void {
@@ -246,7 +290,7 @@ export class ConfirmedStateStore {
     // un error de lectura de la fuente. Lo destapó ejecutar un `LOADSNAPSHOT`
     // real el 2026-09-10 y ver que la causa salía `DESCONOCIDA`.
     if (m.tipo === 'SETS' && m.path === RUTA_INSTANTANEA_ACTIVA) {
-      this.notarInstantaneaActiva();
+      this.notarInstantaneaActiva(m.texto);
       return;
     }
     if (m.tipo !== 'SETD') return;
@@ -262,10 +306,42 @@ export class ConfirmedStateStore {
    * el aparato, así que uno chico son unos pocos mensajes y no llega al umbral
    * de avalancha por su cuenta.
    */
-  private notarInstantaneaActiva(): void {
-    if (this.cargandoVolcado) return;
-    if (this.deducirOrigen() !== 'EXTERNAL') return;
-    this.registrarCambioReciente(RUTA_INSTANTANEA_ACTIVA, this.ahora());
+  private notarInstantaneaActiva(nombre: string): void {
+    const t = this.ahora();
+    this.punterosPropios = this.punterosPropios.filter(
+      (p) => t - p.enMs <= this.ventanaPunteroPropioMs,
+    );
+
+    if (this.cargandoVolcado) {
+      this.punteroConocido = nombre;
+      return;
+    }
+
+    // Nuestro propio guardado, volviendo. No es otro operador ni un recall.
+    const i = this.punterosPropios.findIndex((p) => p.nombre === nombre);
+    if (i >= 0) {
+      this.punterosPropios.splice(i, 1);
+      this.punteroConocido = nombre;
+      return;
+    }
+
+    // **Un valor repetido no es un cambio.** La consola puede redifundir el
+    // mismo puntero; invalidar por eso sería abrir un cartel por nada.
+    if (nombre === this.punteroConocido) return;
+
+    this.punteroConocido = nombre;
+    this.registrarCambioReciente(RUTA_INSTANTANEA_ACTIVA, t);
+  }
+
+  /**
+   * Avisa que vamos a provocar un cambio de instantánea activa.
+   *
+   * Se llama **antes** de mandar el comando, no después: la consola contestó en
+   * 172 ms cuando se midió, y una espera nuestra podría llegar más tarde que su
+   * respuesta.
+   */
+  registrarPunteroPropio(nombre: string): void {
+    this.punterosPropios.push({ nombre, enMs: this.ahora() });
   }
 
   aplicar(path: string, valor: number): void {

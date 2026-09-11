@@ -353,7 +353,13 @@ test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
   assert.equal(rafagas.length, 1);
 
   reloj.avanzar(2000);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 4));
+  // **Esta linea se habia quedado en `codificarSetd` cuando se corrigieron las
+  // otras tres.** Entraba por el camino generico `aplicar()` --guardando una
+  // entrada numerica para una clave de texto-- en vez de por la rama de la
+  // instantanea. La unica asercion que prueba que la ventana de silencio de
+  // INV-021 se reabre lo hacia por el camino equivocado. Lo encontro una
+  // auditoria, no yo.
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Otra distinta'));
   assert.equal(rafagas.length, 2, 'pasada la ventana, un recall nuevo sí avisa');
 });
 
@@ -623,4 +629,99 @@ test('nuestra propia escritura confirmada no inventa un operador ajeno', () => {
   const { store } = nuevoStore();
   store.confirmarPropia('i.1.mix', 0.6);
   assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+// --- El eco del puntero de instantanea, que es NUESTRO --------------------
+//
+// Medido el 2026-09-10 con una sola conexion: `SAVESNAPSHOT` y a los 172 ms la
+// consola devuelve `SETS^var.currentSnapshot^<nombre>` POR ESA MISMA CONEXION.
+// No contradice lo del 2026-09-08 --que no devuelve un SETD de parametro a su
+// autor--: es el efecto colateral de un comando, y nadie lo habia probado.
+//
+// Importa porque la aplicacion guarda una instantanea ANTES DE CADA ESCRITURA
+// por INV-001. Sin esto, el arreglo de INV-021 la invalidaria en cada una.
+
+test('el eco de nuestro propio guardado no invalida ni inventa un operador', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+
+  assert.equal(rafagas.length, 0, 'guardar nosotros no es una avalancha');
+  assert.equal(store.storeState, 'VALID');
+  assert.equal(store.desdeElUltimoAjenoMs(), null, 'ni un operador ajeno inventado');
+});
+
+test('un recall ajeno sigue invalidando aunque hayamos guardado antes', () => {
+  // El caso que importa: que el arreglo no se coma tambien lo que si es ajeno.
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+
+  assert.equal(rafagas.length, 1);
+  assert.equal(rafagas[0]?.probableCausa, 'SNAPSHOT_RECALL');
+  assert.equal(store.storeState, 'INVALID');
+});
+
+test('el eco propio se consume una sola vez', () => {
+  // Si no se consumiera, un recall ajeno al MISMO nombre pasaria inadvertido
+  // para siempre.
+  const { store, reloj } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  //
+  // **La primera version contaba alertas y fallaba con razon**: la segunda caia
+  // dentro de la ventana de silencio de la avalancha, que existe para no abrir
+  // un cartel por cada trama del mismo recall. Contar carteles mide el
+  // antirrebote, no el consumo. Lo que hay que mirar es la invalidacion, que va
+  // siempre.
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  assert.equal(store.storeState, 'VALID', 'el eco propio no invalida');
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Otra'));
+  assert.equal(store.storeState, 'INVALID');
+
+  reloj.avanzar(2000);
+  store.volcadoIniciado();
+  store.volcadoCompletoRecibido();
+  assert.equal(store.storeState, 'VALID', 'releido');
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  assert.equal(store.storeState, 'INVALID', 'el segundo VSE_AUTO_123 ya no es nuestro');
+});
+
+test('el mismo puntero repetido no invalida: no es un cambio', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+
+  assert.equal(rafagas.length, 1, 'el segundo es el mismo valor');
+});
+
+test('si el eco tarda mas que la ventana, se lo trata como ajeno', () => {
+  // Errar por exceso acá pierde un aviso; errar por defecto bloquea la
+  // aplicacion entera. La ventana es holgada a proposito, pero no infinita.
+  const reloj = relojFalso();
+  const store = new ConfirmedStateStore({
+    ahora: reloj.ahora, programar: reloj.programar, ventanaPunteroPropioMs: 1000,
+  });
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  reloj.avanzar(2000);
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+
+  assert.equal(rafagas.length, 1);
 });

@@ -1,6 +1,6 @@
 # SPK-P0.9 — Concurrencia y presencia
 
-**Estado:** **Cerrado el 2026-09-10** — los seis criterios medidos contra la consola · **Timebox:** 3 días · **Control:** G-A
+**Estado:** Parcial — cinco criterios cerrados el 2026-09-10; **el 4 volvió a ⬜ el mismo día**, cuando una auditoría mostró que su celda celebraba las diez causas correctas y callaba las dos mitades del umbral que no se cumplen · **Timebox:** 3 días · **Control:** G-A
 **Depende de:** SPK-P0.1 · **Bloquea a:** S-02.5b
 **Montaje:** Ui24R, router, laptop con Node, navegador oficial abierto en otro equipo, teléfono con la aplicación oficial.
 
@@ -23,7 +23,7 @@
 | 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt`; la corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt` | ✅ |
 | 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
 | 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
-| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **10 de 10 contra la consola el 2026-09-10, con la causa correcta las diez veces.** Diez `LOADSNAPSHOT` reales, diez avisos, diez `SNAPSHOT_RECALL`; once instantáneas creadas y las once borradas; **cero claves distintas de como estaban** al terminar. Cerrarlo exigió antes arreglar el defecto que este mismo criterio destapó: el puntero llega como `SETS` y el almacén solo procesaba `SETD`. `evidence/recall-diez-veces-2026-09-10.txt` | ✅ |
+| 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **Detectada 10 de 10 con causa `SNAPSHOT_RECALL` las diez veces** (`evidence/recall-diez-veces-2026-09-10.txt`). **Pero el umbral escrito pide dos cosas más y ninguna se cumple, y esto lo destapó una auditoría, no la corrida.** (a) «Más de 10 rutas»: el aviso informa **1**, porque el puntero llega primero y dispara solo — la ráfaga de escrituras sí supera diez, pero ésa da causa `DESCONOCIDA` y no es un recall. **Ninguna corrida sola satisface el enunciado.** (b) «En menos de 1 s»: **no se midió nunca.** La columna `ms` de la corrida de ráfaga es `Date.now() - t0` tomado después de un `setTimeout` fijo de 1400 ms, y por eso da 1400-1403 las diez veces (`evidence/avalancha-real-2026-09-10.txt`): **es la espera del guion publicada como si fuera una medición.** | 🟡 |
 | 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
 | 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Elegido y verificado el 2026-09-10: se infiere del tráfico ajeno.** La consola no publica presencia —cero líneas al entrar o salir un cliente, ninguna clave movida— así que lo único que cuenta es quién **toca** algo. Prueba de dos clientes contra el aparato: con el volcado de ~6700 claves adentro **no inventa** un operador; con una escritura propia `APPLIED` **no se ve a sí misma**; con otro cliente escribiendo lo detecta a los 1467 ms. El límite está dicho en la API y no en la letra chica: **no ve al que solo mira**. `evidence/presencia-dos-clientes-2026-09-10b.txt` | ✅ |
 
@@ -253,3 +253,27 @@ guion exige `APPLIED` antes de contar ese paso.
 
 Queda archivada, en `evidence/presencia-dos-clientes-2026-09-10.txt`: es el
 registro de un resultado que se veía bien y no lo era.
+
+
+## Por qué el criterio 4 volvió atrás — 2026-09-10
+
+Se había marcado ✅ y no correspondía. El enunciado pide **«10 de 10, con más de
+10 rutas en menos de 1 s»**, y la celda contestaba solo la primera parte.
+
+**Las rutas.** El aviso de un recall informa **1**, no 45. El puntero de
+instantánea llega primero, dispara el detector con una sola ruta en el conjunto,
+y las 44 que siguen caen en la ventana de silencio sin corregir el número. Antes
+del arreglo decía 10 —el umbral—; ahora dice 1. **El número empeoró y se archivó
+como criterio cumplido.**
+
+La pantalla no lo muestra en esta rama, y eso es un atenuante real: el texto de
+`SNAPSHOT_RECALL` dice «cambió la instantánea activa, así que cualquier parámetro
+pudo moverse», que es lo correcto. Pero `rutasAfectadas` va al registro y es API
+pública: una reconstrucción después de un incidente va a leer «1 ruta» sobre un
+recall de 45.
+
+**El tiempo.** Nunca se midió. La columna `ms` de `avalancha-real.ts` es el
+resultado de un `setTimeout(1400)` del propio guion. Publicar una constante
+nuestra en una columna llamada `ms`, al lado de un criterio cuyo umbral es un
+tiempo, es exactamente la clase de número que este proyecto persigue: **parece
+medido y no lo es.**

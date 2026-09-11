@@ -167,7 +167,7 @@ Sirve para diagnóstico de una línea —`curl -s --max-time 10 http://<consola>
 | `/raw` | el estado entero, en vivo |
 | `/mixer.html` | el cliente de tableta, 1,2 MB. La fuente más autoritativa del protocolo |
 | `/phone.html` | un **segundo cliente**, 862 KB. Sin explotar: sirve para contrastar conversiones |
-| `/js/initparams.js` | `curSetup` y los valores por defecto de cada clave |
+| `/js/initparams.js` | `curSetup` y **el estado actual** de cada clave. Decía «los valores por defecto» y es falso: trae el nombre que el usuario tipeó y las ganancias de ahora, idénticas a `/raw`. **No sirve como segunda fuente**: es la misma lectura por otra cañería |
 | `/config.html` | pide autenticación |
 
 `curSetup` declara la topología: `input:24, fx:4, aux:10, sub:6, linein:2, bankSize:8, phantom:20`. Coincide con la cabecera de `VU2` y agrega que **solo 20 de las 24 entradas tienen alimentación fantasma** — coherente con que `i.N.src` valga `none` en los cuatro últimos.
@@ -556,8 +556,9 @@ Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt`.
 
 **`i.N.phantom` existe y no es lo mismo que `hw.N.phantom`.** Con el condensador
 del puerto 9 alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el
-mismo instante, y el juego de parámetros de fábrica que la consola sirve trae
-esos dos valores tal cual. La alimentación fantasma vive en el previo y **hay
+mismo instante. **Ojo con citar `js/initparams.js` como corroboración**: no son
+valores de fábrica sino el estado actual, así que confirma tanto como volver a
+leer `/raw`. La alimentación fantasma vive en el previo y **hay
 que resolver antes qué previo alimenta al canal**: `i.N.src` no es la identidad.
 Leer la ruta del canal devuelve «sin fantasma» sobre un micrófono alimentado.
 

@@ -40,6 +40,8 @@ export interface OpcionesAdapter {
    * este aparato, y es lo que se vigila ahora.
    */
   readonly umbralHuecoRtaMs?: number;
+  /** Cuánto se espera la primera línea de un volcado pedido a mano. */
+  readonly esperaPrimeraLineaMs?: number;
   /** Espera máxima por la confirmación de una escritura. */
   readonly timeoutConfirmacionMs?: number;
   /**
@@ -242,6 +244,7 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private ultimaTramaVuMs: number | null = null;
   private ultimaTramaRtaMs: number | null = null;
   private readonly umbralHuecoRtaMs: number;
+  private readonly esperaPrimeraLineaMs: number;
   private readonly timeoutMs: number;
   private readonly ahora: () => number;
 
@@ -344,6 +347,11 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // percentil 95 de 37 ms. Se mantiene el valor: sobre RTA es holgado y
     // ademas es un flujo que no se apaga solo.
     this.umbralHuecoRtaMs = opciones.umbralHuecoRtaMs ?? 300;
+    // Cuánto se espera la PRIMERA línea de un volcado pedido a mano. Holgado:
+    // el volcado inicial son ~6700 claves y la consola tarda en arrancarlo.
+    // Errar por exceso deja el cartel un rato de más; errar por defecto lo
+    // apaga sin motivo, que es lo que este plazo vino a impedir.
+    this.esperaPrimeraLineaMs = opciones.esperaPrimeraLineaMs ?? 3000;
     this.timeoutMs = opciones.timeoutConfirmacionMs ?? 500;
     this.quietudVolcadoMs = opciones.quietudVolcadoMs ?? 250;
     // Cuánto se le da a la consola para escribir la instantánea en su disco
@@ -414,7 +422,21 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     }
     this.store.volcadoIniciado();
     this.transporte.enviar('INIT');
-    this.reiniciarQuietudDeVolcado();
+    // **Acá NO se arma el temporizador de quietud, y es el punto del arreglo.**
+    // Armarlo era declarar válido el silencio: `volcadoIniciado()` acaba de
+    // poner la bandera, así que la guarda de `reiniciarQuietudDeVolcado` pasaba,
+    // y a los 250 ms el volcado se daba por completo sin una sola línea. Se arma
+    // un plazo para la PRIMERA línea: si no llega, el estado se queda inválido,
+    // que es la verdad. Si llega, `procesar()` reemplaza este temporizador por
+    // el de quietud, que es el camino normal.
+    if (this.temporizadorVolcado !== null) clearTimeout(this.temporizadorVolcado);
+    this.temporizadorVolcado = setTimeout(
+      () => {
+        this.temporizadorVolcado = null;
+        if (this.store.recibiendoVolcado) this.store.volcadoAbortado();
+      },
+      this.esperaPrimeraLineaMs,
+    );
   }
 
   async desconectar(): Promise<void> {
@@ -499,6 +521,13 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     const anterior = this.instantaneaActual;
 
     const nombre = nombreDeInstantanea(this.ahora());
+    // **Avisarle al almacén ANTES de mandar el comando.** Guardar mueve
+    // `var.currentSnapshot` y la consola le devuelve ese cambio a quien lo
+    // provocó —medido el 2026-09-10: vuelve a los 172 ms por la misma
+    // conexión—. Sin este aviso, la rama de INV-021 que reconoce el puntero
+    // tomaría nuestro propio guardado por un recall ajeno, y como se guarda
+    // antes de cada escritura, la aplicación se invalidaría sola siempre.
+    this.store.registrarPunteroPropio(nombre);
     this.transporte.enviar(comandoCrearShow());
     this.transporte.enviar(comandoGuardar(nombre));
 
@@ -524,6 +553,8 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // contenido y cambiaría el estado entero de la consola, que es lo contrario
     // de restaurar.
     if (anterior !== null && anterior !== nombre) {
+      // La devolución de la etiqueta también vuelve, y también es nuestra.
+      this.store.registrarPunteroPropio(anterior);
       this.transporte.enviar(comandoDevolverEtiqueta(anterior));
       this.instantaneaActual = anterior;
     }

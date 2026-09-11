@@ -133,9 +133,17 @@ Evidencia: `evidence/capacidades-que-faltan-2026-09-10b.txt`
 **1. `i.N.phantom` existe, y miente.** El charter pedía «alimentación fantasma
 en lectura» dando por sentado que había una ruta. Hay dos. Con el condensador
 alimentado, `hw.8.phantom` valía **1** y `i.8.phantom` valía **0** en el mismo
-instante — y el juego de parámetros de fábrica que la consola sirve
-(`js/initparams.js`) trae exactamente esos dos valores, así que no es un desfase
-momentáneo: son claves distintas y la del canal no se usa.
+instante — Son claves distintas y la del canal
+no se usa.
+
+> **Corrección del 2026-09-10, de una auditoría.** Este párrafo decía que el dato
+> estaba confirmado «contra el juego de parámetros de fábrica que la consola
+> sirve (`js/initparams.js`), así que no es un desfase momentáneo».
+> **`initparams.js` no son valores de fábrica: es el estado actual del aparato.**
+> Trae `"i.0.name":"PRUEBA"` —el nombre que Gabriel tipeó el 2026-09-08— y
+> `hw.0.gain` idéntico al de `/raw` ahora mismo. Era **la misma lectura por otra
+> cañería**, y un desfase momentáneo habría aparecido igual en las dos. La
+> observación cruda se sostiene; **la corroboración no existía**.
 
 Esto ya estaba **bien resuelto en el código** —`clasificarRuta` reconoce
 `hw.N.phantom` y devuelve `null` para `i.N.phantom`— pero estaba resuelto por
@@ -151,8 +159,9 @@ justo el diagnóstico que hace perder diez minutos en una prueba de sonido.
 físico. **No es la matriz**: es el patchbay de salida. La matriz es
 `<fuente>.mtx.<destino>.*`, y tienen envío a ella **19 fuentes**: los diez
 auxiliares, los seis subgrupos, el general, y **solo dos canales de entrada,
-`i.9` e `i.19`**. Los otros veintidós no pueden mandar a la matriz. Confirmado
-contra el juego de parámetros de fábrica, no solo contra el estado de hoy.
+`i.9` e `i.19`**. Los otros veintidós no pueden mandar a la matriz. **Medido
+sobre el estado de hoy, y nada más que eso**: la «confirmación contra el juego de
+parámetros de fábrica» que decía esta línea se cayó con lo de arriba.
 
 Y esas dos, que son las únicas entradas con matriz, son también las únicas
 fuentes **sin `postproc` propio** en su envío: no tienen punto de derivación

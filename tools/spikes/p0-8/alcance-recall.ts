@@ -106,12 +106,25 @@ const TEXTOS_CANAL = CANALES.map((n) => `i.${n}.name`);
  * reproduciendo nada.
  */
 const EXTRA_NUM = [
-  `hw.${CANALES[0]}.phantom`,   // alimentación fantasma
+  // **La alimentación fantasma estaba acá y se sacó.** INV-007 la deja en solo
+  // lectura, el guion hermano de P0.2a se negó a escribirla citando esa regla el
+  // mismo día, y este la conmutó cuatro veces igual. El comentario de abajo
+  // decía que el previo elegido «no tiene nada enchufado» y no lo comprobaba:
+  // `i.13.src = hw.13`, o sea que alimenta un canal patcheado. Lo encontró una
+  // auditoría.
+  //
+  // La consecuencia para el criterio 3 de SPK-P0.8: **si un recall devuelve la
+  // alimentación fantasma vuelve a estar sin medir**, y así queda dicho ahí.
   'm.afs.enabled',              // supresión de realimentación
   'p.0.mix',                    // reproductor
   'p.0.mute',
 ];
 const EXTRA_TXT = [
+  // El patcheo de una salida física manda una señal a un jack que uno no ve. Se
+  // comprobó después de las corridas que era inocuo --`a.6.mix = 0`, ningún
+  // envío a ese bus-- pero **fue inocuo por suerte y no por método**: el guion
+  // nunca lo verifica antes. Se deja, porque el criterio lo nombra, con la
+  // comprobación ahora explícita.
   'hwoutaux.6.src',             // patcheo de salida física
 ];
 

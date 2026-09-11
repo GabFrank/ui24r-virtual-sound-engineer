@@ -16,7 +16,7 @@ contra la consola:
 | | |
 |---|---|
 | Dos conexiones del mismo proceso, ¿son dos clientes para la consola? | **Sí** |
-| ¿En cuánto ve el testigo una escritura hecha por la principal? | **27 ms** |
+| ¿En cuánto ve el testigo una escritura hecha por la principal? | **11,5 ms de mediana** sobre ocho muestras. **Decía 27 ms** — una sola muestra, con el calentamiento adentro, retirada por ADR-024 el 2026-09-09 y todavía circulando acá el 2026-09-10 |
 | Con tres clientes, ¿cuántas veces llega la difusión? | **una a cada uno menos al origen**: 0 líneas el que escribe, 1 cada uno de los otros dos |
 
 Se eligió sobre las alternativas porque los medidores solo confirman fader, silencio y ganancia

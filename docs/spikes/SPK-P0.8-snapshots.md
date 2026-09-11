@@ -31,7 +31,7 @@ Lo segundo importa porque el retroceso por instantánea es la última red de seg
 |---|---|---|---|---|---|
 | 1 | Ciclos de guardar y recuperar correctos | bloqueante | 50 de 50 | | ⬜ |
 | 2 | Instantáneas manuales intactas | bloqueante | hash idéntico antes y después de 50 ciclos | | ⬜ |
-| 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | campo por campo | **Cerrado el 2026-09-10, campo por campo: 44 de 45 vuelven.** Las seis familias que el criterio nombra, medidas: ganancia ✅, fantasma ✅, patcheo ✅, retardos ✅, reproductor ✅ — y **supresión de realimentación NO**. `m.afs.enabled` es el único campo de los 45 que un `LOADSNAPSHOT` no devuelve. También vuelven ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares, y **el recall no movió nada que no hubiéramos tocado**. `evidence/alcance-recall-booleanos-2026-09-10.txt` | 🟡 |
+| 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | campo por campo | **Contestado el 2026-09-10, con dos asteriscos que puso una auditoría.** De 45 campos movidos vuelven 44; el que no es `m.afs.enabled`, la supresión de realimentación. Vuelven ganancia, patcheo, retardos de canal, reproductor, ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares. **(a) La alimentación fantasma sale de la lista**: se midió cruzando INV-007, que no correspondía, y el guion ya no la toca — o sea que esa familia vuelve a estar **sin medir**. **(b) Los retardos medidos son `i.N.delay`, los de canal**; los de salida —`m.delayL`, `m.delayR`, `a.B.delay`— no están cubiertos. Y el «cero efectos colaterales sobre 6.700 claves» es más fuerte de lo que el método sostiene: la comparación final no puede ver una clave que el recall escribió **devolviéndola a su valor de base**. Lo que sí lo sostiene es que la consola difundió exactamente 45 rutas | 🟡 |
 | 4 | Comportamiento al guardar sobre un nombre existente | bloqueante | documentado | | ⬜ |
 | 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`. **Renombrar: sin clave conocida y sin probar** | ✅ |
 | 6 | Corte audible al guardar con audio pasando | informativo | sí o no | | ⬜ |
@@ -65,16 +65,27 @@ cual la propia recuperación es la restauración. Antes y después se leen los
 | Familia | ¿Vuelve? |
 |---|---|
 | Ganancia del previo (`hw.N.gain`) | sí |
-| Alimentación fantasma (`hw.N.phantom`) | sí |
+| Alimentación fantasma (`hw.N.phantom`) | **sin medir** — se midió cruzando INV-007 y esa medición se retira |
 | Patcheo de salida física (`hwoutaux.N.src`) | sí |
-| Retardos (`i.N.delay`) | sí |
+| Retardos **de canal** (`i.N.delay`) | sí. Los de salida, sin medir |
 | Reproductor (`p.0.mix`, `p.0.mute`) | sí |
 | Fader, silencio, panorama, envío auxiliar, nombre | sí |
 | Ecualizador, puerta, dinámica | sí |
 | **Supresión de realimentación (`m.afs.enabled`)** | **no** |
 
-Y **el recall no tocó ninguna clave que no hubiéramos movido nosotros**: cero
-efectos colaterales sobre 6.700.
+Sobre los efectos colaterales, con la precisión que faltaba: la consola difundió
+**exactamente 45 rutas para 45 campos movidos**, y eso es lo que sostiene que no
+tocó nada más. La comparación final del volcado **no** lo prueba por sí sola: una
+clave que el recall hubiera escrito devolviéndola a su valor de base saldría
+idéntica y sería invisible ahí — porque la base *es* el contenido de la
+instantánea.
+
+**Y hay una clave sin rendir cuentas.** La corrida informa «claves que de verdad
+cambiaron: 46» contra 45 campos movidos. Una de ellas es `var.currentSnapshot`,
+que movió el guardado del paso 1. Queda **una** sin identificar, reproducible en
+la corrida gemela. El candidato obvio es un compañero de par estéreo arrastrado
+por `stereoIndex`, pero no está comprobado, y «44 de 45» es justamente el
+inventario de lo que el punto de retorno de INV-001 promete devolver.
 
 **`m.afs.enabled` es la única excepción, y no es una cualquiera.** El supresor
 de realimentación ya nos había arruinado una ronda entera de mediciones: toma
@@ -138,3 +149,37 @@ solo dice el resultado bueno deja al que venga sin saber qué trampas hay.
   con 0↔1, las seis familias, 44 de 45 campos vuelven y `m.afs.enabled` no
 - `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática
   nuestra, ejecutado contra el aparato
+
+
+---
+
+## La consola le devuelve el puntero a quien guardó — 2026-09-10
+
+Salió de una auditoría que preguntó lo obvio: si guardar mueve
+`var.currentSnapshot`, y el almacén confirmado ahora reconoce ese cambio como un
+recall ajeno, **¿qué pasa cuando el que guardó es uno mismo?**
+
+Medido con **una sola conexión**, que es la única forma de contestarlo:
+`SAVESNAPSHOT`, y a los **172 ms** vuelve `SETS^var.currentSnapshot^<nombre>` por
+esa misma conexión. Evidencia: `evidence/eco-del-puntero-2026-09-10.txt`
+
+**Esto no contradice lo medido el 2026-09-08.** Ahí se midió que la consola no le
+devuelve un `SETD` de parámetro a su autor, sobre `i.9.mute` y `i.9.mix`. Acá hay
+dos diferencias que nadie había probado: es un `SETS`, y no es una escritura sino
+el **efecto colateral de un comando**.
+
+### Lo que rompía, y por qué importaba tanto
+
+La aplicación guarda una instantánea **antes de cada escritura**, por INV-001.
+Sin distinguir el eco propio, el arreglo de INV-021 hecho unas horas antes hacía
+que **la aplicación se invalidara a sí misma en cada escritura**: el cartel
+diría «alguien recuperó una instantánea en la consola» culpando a un operador que
+no existe, `otroOperador()` informaría presencia inventada, y toda escritura
+posterior saldría en conflicto. Un arreglo que rompía más de lo que arreglaba.
+
+**Y no había forma de que los tests lo atraparan**, porque el doble de transporte
+admite un solo oyente y se desengancha justo durante el guardado. La única
+manera de encontrarlo era preguntarle al aparato.
+
+El almacén ahora anota los punteros que provoca antes de mandar el comando, y los
+reconoce al volver. Un recall ajeno sigue invalidando; un valor repetido no.

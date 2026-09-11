@@ -74,7 +74,7 @@ apoyaba en que la consola difunde a los otros clientes, pero eso estaba probado 
 garantizaba que la consola no las tratara como una sola sesión.
 
 **Medido:** dos conexiones abiertas desde el mismo proceso son **dos clientes distintos** para la
-consola, y **el testigo ve la escritura a los 27 ms**. Con tres clientes a la vez se ve la misma
+consola, y **el testigo ve la escritura a los 11,5 ms de mediana** sobre ocho muestras. (Decía 27 ms: era una sola muestra con el calentamiento adentro, retirada por ADR-024.) Con tres clientes a la vez se ve la misma
 regla desde el otro lado: el que escribe registra **0 líneas** de su propia escritura y los otros
 dos **1 cada uno**, o sea que la difusión llega una sola vez y no se le pierde a nadie.
 
@@ -87,7 +87,7 @@ dos **1 cada uno**, o sea que la difusión llega una sola vez y no se le pierde 
    por cada escritura. Una transacción de varias escrituras secuenciales —que es lo que INV-005
    obliga a hacer— pediría el volcado tantas veces como escrituras tenga. Es el R-23 en su peor
    forma. El testigo, en cambio, ya está escuchando: la confirmación no cuesta un pedido, cuesta
-   esperar 27 ms.
+   esperar unos 11,5 ms de mediana.
 3. **Es la única compatible con el nivel de autonomía al que el producto va.** ADR-023 dice que
    la aplicación va a automatizar. Un mecanismo que no escala más allá de una escritura suelta
    cierra esa puerta antes de llegar.
