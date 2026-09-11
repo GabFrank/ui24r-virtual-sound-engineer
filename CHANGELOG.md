@@ -46,6 +46,42 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **El segundo camino: qué pareja monitor↔micrófono está más expuesta.** El
+  analizador dice que algo se sostiene a nueve kilohercios pero no dice de dónde
+  sale; la geometría dice qué pareja está más expuesta pero no dice a qué
+  frecuencia. Cuando los dos señalan el mismo canal, se confirman. **Cuando no,
+  un dato registrado está mal** —el monitor no está donde se dijo, está en otro
+  auxiliar del registrado, o el micrófono se movió— y hasta ahora no había
+  ninguna forma de enterarse. Un desacuerdo no es un fallo del método: es el
+  método funcionando.
+
+- **No devuelve decibeles, y no es que falten unidades: faltan las leyes.** La
+  ganancia de lazo necesita el envío al auxiliar, el preamplificador y la
+  sensibilidad del micrófono, y las leyes del envío y del ecualizador de canal
+  **no están medidas contra la consola**. Lo que sale es un orden, sin unidad, y
+  el tipo lleva la advertencia en el nombre: la razón entre dos de esos valores
+  no significa nada.
+
+- **Y no ordena lo que no se puede ordenar.** Cada pareja trae un rango, porque
+  las posiciones traen su incertidumbre; dos parejas cuyos rangos se solapan van
+  en el mismo escalón, informado como empate, en vez de inventar un desempate.
+  Un plano cargado a ojo produce un escalón único con todo adentro —que no es un
+  defecto del método, es la respuesta correcta cuando las entradas no alcanzan
+  para separar nada—, y la pantalla dice que medir mejor las posiciones las
+  separa.
+
+- **El filtro más fuerte no es geométrico.** Un micrófono que no se envía a ese
+  monitor no cierra lazo por ahí, por más cerca que esté, y se va de la lista en
+  vez de bajar de puesto. Pero **no saber si llega no es lo mismo que saber que
+  no llega**: cuando el estado de la consola no está, la pareja se informa igual
+  y con la reserva escrita.
+
+- **El patrón polar entra en la cuenta, con los patrones ideales de libro.** Un
+  cardioide anula atrás, un bidireccional capta atrás **igual que adelante** —o
+  sea que 180° es su peor caso y no el mejor—, y un patrón sin cargar se trata
+  como el caso más expuesto, porque errar por exceso pone la pareja más arriba
+  en la lista mientras que errar por defecto la esconde.
+
 - **Dónde está puesto un monitor pasó a ser un dato de la sala, no del equipo.**
   El perfil de amplificación describe **qué** equipo es —qué caja, por qué bus
   sale, si se puede silenciar sola— y el escenario de cada local dice **dónde**
@@ -119,6 +155,94 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   métrica sabe más que la tabla.
 
 ### Corregido
+
+- **El índice mezclaba dos leyes distintas, y eso cambiaba el orden.** La
+  respuesta polar de un micrófono es una sensibilidad de **presión**, y dividir
+  por la distancia al cuadrado es la ley de la **intensidad**. El producto no
+  era ni una cosa ni la otra: a 1,00 m y 75° fuera de eje contra 1,55 m en el
+  eje, el índice mezclado hacía ganar a la de costado y las dos leyes coherentes
+  hacen ganar a la de eje. Y un comentario **defendía la mezcla** diciendo que
+  para ordenar daba lo mismo porque las dos son monótonas — cierto a ángulo
+  fijo, falso en cuanto el factor polar entra en el producto. Queda todo en
+  presión.
+
+- **Una sola pareja ancha destruía el orden de todas las demás.** El
+  agrupamiento en escalones era por encadenamiento: si A se solapa con B y B con
+  C, los tres iban al mismo grupo aunque A y C no se tocaran. En un escenario
+  real —un cantante con el micrófono de mano encima de su cuña, más guitarra,
+  coro y bombo— esa única pareja se tragaba a las otras seis, que entre sí eran
+  perfectamente separables, y la pantalla pasaba a decir que la geometría no
+  podía separar ocho parejas cuando siete estaban separadas. Ahora cada pareja
+  dice de cuáles no se la puede distinguir, de a pares y no en cadena: es más
+  información y no menos.
+
+- **«Medir mejor las posiciones las separa» es falso en los dos casos que más
+  aparecen.** Cuando el nulo del patrón cae dentro del rango de ángulos, el piso
+  es cero por física y no baja por más que se mida — medido con dudas de ±10 cm
+  y ±1 mm, el resultado es el mismo. Y cuando la duda viene de que alguien se
+  mueve con el micrófono en la mano, no es imprecisión sino movimiento. La frase
+  mandaba a hacer algo que no arregla lo que el usuario está mirando; ahora
+  distingue el caso y dice que moverlo un poco sí lo resuelve.
+
+- **La reserva del ángulo indeterminado comparaba con igualdad exacta.** Sólo
+  atrapaba el centinela `0..180` que fabrica el dominio, así que un `0..173` —el
+  mismo caso físico, apenas recortado— se escapaba sin advertencia. El dominio
+  ya tenía una función para esto y no se la llamaba.
+
+- **Una caja de sala se presentaba como la pareja más limpia del informe.** Como
+  no sale por un auxiliar, no había envío que consultar y no llevaba ninguna
+  reserva, mientras la cuña —de la que sí se sabe algo— llevaba la suya escrita.
+  La falta de dato se mostraba al revés.
+
+- **Once mutaciones sobrevivían en verde**, entre ellas no propagar la
+  incertidumbre de la distancia —que dejaba el rango colapsado a un punto—,
+  ordenar por el piso en vez del techo, mover el piso de distancia nueve veces,
+  y una comprobación que reemplazó a una guarda muerta y era ella misma inerte.
+  Todas mueren ahora.
+
+- **El piso del rango de exposición se calculaba sólo en las esquinas, y el
+  mínimo puede caer adentro.** La respuesta polar no es monótona: baja hasta
+  anularse en el nulo del patrón y **vuelve a subir** por el lóbulo trasero. Un
+  bidireccional con el ángulo entre 80° y 100° —que contiene su nulo en 90°—
+  salía con el rango **colapsado a un punto**, o sea inventando exactamente la
+  precisión que ese módulo existe para no inventar. Y el error iba para el lado
+  inseguro: un piso inflado no se solapa con nadie, así que producía escalones
+  separados donde la geometría no separa nada.
+
+- **La tarjeta del diagnóstico se contradecía consigo misma.** Con doce parejas
+  empatadas y un tope de ocho líneas, mostraba al mismo tiempo «la geometría no
+  puede separar estas doce» y «y cuatro más, menos expuestas». Las cuatro que
+  faltaban no eran menos expuestas: eran las que el encabezado acababa de
+  declarar inseparables. Ahora la frase distingue si el corte cayó entre
+  escalones o dentro de uno.
+
+- **Enuncié mal una ley de física y la llamé geometría.** Un comentario decía
+  que la presión cae con el cuadrado de la distancia; lo que cae con el cuadrado
+  es la intensidad —la presión cae con la distancia a secas, seis decibeles al
+  doblarla—. Para ordenar da lo mismo, porque las dos son monótonas; escribir
+  mal una ley no da lo mismo.
+
+- **El nulo de catálogo y el nulo exacto no son el mismo número, y el cálculo
+  usaba el equivocado.** La tabla del dominio lleva la cifra impresa en el
+  micrófono —110° para un hipercardioide— y el nulo exacto del patrón ideal está
+  en 109,47°. Para mostrar alcanza; para calcular el piso de un rango no, porque
+  evaluar en 110 no da cero. Ahora el cálculo deriva el nulo de los mismos
+  coeficientes que la respuesta, y un test compara las dos cifras para que no
+  puedan separarse de verdad.
+
+- **Una guarda defensiva que no protegía de nada.** Una cláusula evitaba
+  calcular el nulo de un patrón de lóbulo ancho, que daría `NaN` — y ningún
+  patrón de la tabla es así, de modo que borrarla pasaba todos los tests. Se
+  saca y en su lugar queda una comprobación que **sí** muerde: agregar un
+  subcardioide a la tabla ahora hace fallar cuatro tests en vez de devolver
+  `NaN` en silencio. Una guarda inerte no protege y da la sensación de que sí.
+
+- **Dos docblocks que decían otra cosa que su código.** El de `EMPATE` hablaba
+  de más de una pareja cuando lo que se compara son canales; y el del ángulo
+  decía que `null` significa «omnidireccional o sin orientación» cuando
+  significa sólo lo segundo. Ese segundo se espejaba en la pantalla, que de un
+  cardioide sin orientación imprimía «capta desde cualquier dirección» — que es
+  afirmar justo lo que no se sabe.
 
 - **Tocar una ficha para leer sus números la corría 34 centímetros.** El
   arrastre mandaba el elemento a la posición absoluta del dedo en vez de moverlo
@@ -265,7 +389,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **907**. Los diez bloques son
+  auditorías, **951**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 

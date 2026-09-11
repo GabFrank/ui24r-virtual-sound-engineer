@@ -5,11 +5,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  emplazar, makeId, validarNombre,
+  elementosDelEscenario, emplazar, makeId, validarNombre,
   type ElementoCaptacion, type ElementoFuente, type Emplazamiento, type Escenario,
   type EscenarioElementoId, type Fijeza, type PAComponentSpec, type PAProfile,
   type PatronPolar, type PuntoM, type VenueProfile, type VenueProfileId,
 } from '@vse/domain';
+import { ordenDeExposicion, parejasExpuestas } from '@vse/assistants';
 import { Repositorios } from '../core/repos/repositorios';
 import {
   ButtonComponent, CardComponent, CargandoComponent, DialogComponent, EmptyStateComponent,
@@ -21,6 +22,9 @@ import {
   aCentimetros, aplicarMovida, elDedoEsMasGruesoQueLaDuda, loQueLeFaltaAlMicrofono,
   loQueVaEnElPlano, type DimensionesDelLocal, type EstadoDelPlano,
 } from './plano';
+import {
+  encabezadoDelInforme, frasePorLoQueFalta, lineasDeExposicion,
+} from './lo-que-dice-la-geometria';
 
 const FIJEZAS: readonly { id: Fijeza; etiqueta: string; ayuda: string }[] = [
   { id: 'FIJO', etiqueta: 'Fijo', ayuda: 'Colgado, atornillado o apoyado y nadie lo toca. No se mueve, pero se mide peor que algo que está al alcance de la mano.' },
@@ -168,6 +172,32 @@ const PATRONES: readonly { id: PatronPolar; etiqueta: string }[] = [
               </ui-card>
             }
 
+            <ui-card titulo="Lo que dice la geometría" [subtitulo]="subtituloDelInforme()">
+              <div class="pila">
+                <p class="nota">{{ encabezado() }}</p>
+                @for (l of informe().lineas; track $index) {
+                  <div class="linea">
+                    <div class="fila entre">
+                      <strong>{{ l.titulo }}</strong>
+                      @if (l.empatadaCon > 0) {
+                        <span class="escalon">empatada con {{ l.empatadaCon }}</span>
+                      } @else {
+                        <span class="escalon">separada</span>
+                      }
+                    </div>
+                    <p class="nota">{{ l.detalle }}</p>
+                    @for (r of l.reservas; track r) { <p class="aviso">{{ r }}</p> }
+                  </div>
+                }
+                @if (fraseDeLasQueFaltan(); as f) { <p class="nota">{{ f }}</p> }
+                <p class="nota">
+                  Esto <strong>no escribe nada en la consola</strong> y no propone valores:
+                  ordena parejas por lo que está cargado en el plano. A qué frecuencia suena
+                  lo dice el analizador, no esto.
+                </p>
+              </div>
+            </ui-card>
+
             @if (elegido(); as el) {
               <ui-card [titulo]="el.etiqueta" [subtitulo]="el.detalle">
                 <div class="pila">
@@ -253,6 +283,12 @@ const PATRONES: readonly { id: PatronPolar; etiqueta: string }[] = [
     .fila { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-end; }
     .fila.entre { justify-content: space-between; align-items: center; }
     .nota { color: var(--muted); font-size: var(--txt-sm); line-height: var(--alto-linea); }
+    .linea { border-left: 2px solid var(--line); padding-left: var(--sp-3); }
+    .escalon {
+      min-width: 1.6rem; text-align: center; border-radius: var(--radio-full);
+      background: var(--surface-2); color: var(--muted); font-size: var(--txt-xs);
+      padding: 0 var(--sp-2);
+    }
     .aviso { color: var(--warn); font-size: var(--txt-sm); line-height: var(--alto-linea); }
   `],
 })
@@ -400,6 +436,37 @@ export class EscenarioEditComponent implements OnDestroy, PuedeSalir {
       ? 'Este elemento está fuera de las paredes del local, así que no se dibuja en el plano. '
         + 'Corregí los números, o el tamaño del local.'
       : null;
+  });
+
+  /**
+   * El orden de exposición, que es el segundo camino hacia la misma conclusión.
+   *
+   * **No se le pasa ningún envío ni ningún canal**, y por eso cada pareja
+   * alimentada por un auxiliar sale con su reserva escrita. El estado de los
+   * envíos vive en la consola y esta pantalla no se conecta: el hueco queda
+   * declarado en vez de rellenado con un supuesto, que es lo que corresponde
+   * mientras la ley de los envíos siga sin medirse.
+   */
+  readonly orden = computed(() => {
+    const e = this.estado();
+    if (e === null) return [];
+    const r = loQueVaEnElPlano(e.escenario, e.componentes);
+    const captaciones = r.fichas
+      .filter((f) => f.origen === 'CAPTACION')
+      .map((f) => e.escenario.elementos.find(
+        (x) => x.tipo === 'CAPTACION' && `c:${x.id}` === f.id))
+      .filter((x): x is ElementoCaptacion => x !== undefined);
+    const emisores = elementosDelEscenario(e.escenario, e.componentes).emisores;
+    return ordenDeExposicion(parejasExpuestas(emisores, captaciones));
+  });
+
+  readonly informe = computed(() => lineasDeExposicion(this.orden()));
+  readonly encabezado = computed(() => encabezadoDelInforme(this.orden()));
+  readonly fraseDeLasQueFaltan = computed(
+    () => frasePorLoQueFalta(this.informe().sinMostrar, this.informe().elCorteParteUnEscalon));
+  readonly subtituloDelInforme = computed(() => {
+    const n = this.informe().lineas.length + this.informe().sinMostrar;
+    return n === 0 ? 'Sin parejas' : `${n} ${n === 1 ? 'pareja' : 'parejas'} · sólo diagnostica`;
   });
 
   /** Los que están fuera del plano y no son el elegido: si no, se pierden. */

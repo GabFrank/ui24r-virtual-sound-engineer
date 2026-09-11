@@ -273,6 +273,13 @@ export type PatronPolar =
  * trasero cambia con la frecuencia. Esto ordena, no predice, y no reabre el
  * registro de micrófonos con curvas de corrección.
  *
+ * **Son las cifras de catálogo, las que vienen impresas**, no el nulo exacto
+ * del patrón ideal. Para el hipercardioide se dice 110° y el nulo exacto de
+ * `0,25 + 0,75·cos θ` está en 109,47°. La diferencia no importa para mostrar y
+ * sí para calcular el piso de un rango, así que quien calcula lo deriva de los
+ * coeficientes en vez de leer esta tabla. Un test compara las dos cosas para
+ * que no puedan separarse de verdad.
+ *
  * `null` donde no hay nulo que buscar: un omnidireccional capta parejo, y de un
  * patrón sin cargar no se adivina nada.
  */
