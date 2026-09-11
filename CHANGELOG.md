@@ -6,6 +6,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Tres de las cinco transcripciones que quedaban, remedidas con guiones
+  nuevos.** Las originales se archivaron a mano antes de que existiera la
+  herramienta, y sus guiones no habían quedado en el árbol: remedirlas era
+  escribirlos de nuevo.
+
+  **El tic que se traga una escritura, confirmado diez veces.** Si se escriben
+  dos valores sobre la misma ruta dentro del tic de la consola, ésta aplica los
+  dos y difunde uno solo: el testigo vio la segunda **10 de 10** veces y la
+  primera **0 de 10**. Una escritura que funcionó puede salir sin verificar, y
+  eso no es un fallo del testigo sino la forma del aparato.
+
+  **Y la retención trajo su propio control, por accidente.** La primera corrida
+  arrancó con las veinte del tope: la lista se clavó en veinte y borró la más
+  vieja. Pero **medir un tope lo gasta** —cada automática de más se lleva puesta
+  una vieja— así que terminó con cuatro menos, y el guion lo dijo en vez de
+  taparlo. La segunda arrancó por debajo del tope y la lista creció hasta veinte
+  **sin borrar nada**: ése es exactamente el control que faltaba, porque es la
+  situación de todas las corridas anteriores. La retención no «nunca había
+  borrado» por fallar, sino porque nunca le había tocado.
+
+  Quedan dos: una necesita señal en la sala, y a la otra le falta el guion.
+
 - **Cuatro formas de esquivar la regla de la evidencia, cerradas.** La guarda
   sólo miraba los `.txt`, así que guardar una transcripción como `.md` la volvía
   invisible — y al ampliarla aparecieron **tres archivos de evidencia reales**

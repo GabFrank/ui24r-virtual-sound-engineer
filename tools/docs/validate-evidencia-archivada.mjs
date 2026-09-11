@@ -128,11 +128,11 @@ const CUANTAS_SIN_HERRAMIENTA = 42;
  * la frase de abajo. No se exime: se obliga a decirlo.
  */
 const PENDIENTES_DE_REMEDIR = new Set([
-  'SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt',
-  'SPK-P0.8/evidence/retencion-y-lista-2026-09-10.txt',
-  'SPK-P0.9/evidence/agrupacion-arrastre-2026-09-10.txt',
-  'SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt',
+  // Necesita al usuario en la sala: el respaldo por medidor no se puede medir
+  // sin señal, y sin señal el medidor no confirma nada.
   'SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt',
+  // Le falta el guion todavía.
+  'SPK-P0.9/evidence/agrupacion-arrastre-2026-09-10.txt',
 ]);
 
 /**
@@ -143,6 +143,12 @@ const PENDIENTES_DE_REMEDIR = new Set([
  * cite **también** la remedición.
  */
 const REMEDIDAS = new Map([
+  ['SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt',
+    'SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt'],
+  ['SPK-P0.8/evidence/borrado-instantanea-2026-09-10.txt',
+    'SPK-P0.8/evidence/retencion-y-borrado-2026-09-11.txt'],
+  ['SPK-P0.8/evidence/retencion-y-lista-2026-09-10.txt',
+    'SPK-P0.8/evidence/retencion-y-borrado-2026-09-11.txt'],
   ['SPK-P0.9/evidence/escrituras-propias-2026-09-10.txt',
     'SPK-P0.9/evidence/escrituras-propias-2026-09-11.txt'],
   ['SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt',

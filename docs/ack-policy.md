@@ -291,7 +291,7 @@ misma ruta dentro de un tic producen **una sola línea, con el segundo valor**:
 la primera se aplica y su confirmación no llega nunca. Con las dos pegadas, 0 de
 5 confirmaciones para la primera; entre 5 y 25 ms sale a suertes según dónde
 caiga el borde del tic —2, 1 y 3 de 5—; **a partir de un tic completo, 5 de 5
-siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` — **transcripción sin archivar**, no pasó por `medir.mjs`.
+siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, **remedido en** `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`: diez vueltas, la segunda escritura vista 10 de 10 y la primera 0 de 10.
 
 **Qué protege hoy a la aplicación.** INV-005 pauta las escrituras secuenciales
 cada **≥ 100 ms**, casi tres tics. Las escrituras normales quedan fuera del

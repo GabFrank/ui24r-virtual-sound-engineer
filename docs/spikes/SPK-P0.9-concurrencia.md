@@ -296,6 +296,6 @@ por HTTP, que es un camino distinto del que escribió:
 
 **Todavía transcripción sin archivar**, y por eso queda dicho acá en vez de
 escondido: `evidence/agrupacion-arrastre-2026-09-10.txt` y
-`evidence/testigo-en-el-tic-2026-09-10.txt`. Sus guiones no están en el árbol, así
+`evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, remedido en `evidence/testigo-en-el-tic-2026-09-11.txt`: diez vueltas, la segunda escritura vista 10 de 10 y la primera 0 de 10. Sus guiones no están en el árbol, así
 que remedirlas es escribirlos de nuevo. Hasta entonces, lo que sostienen se lee
 con esa advertencia puesta.

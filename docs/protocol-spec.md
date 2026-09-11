@@ -66,7 +66,7 @@ ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
 consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
 confirmada aunque haya funcionado. Evidencia:
 `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` —remedido en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`, donde el tic reproduce exacto— y
-`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` — **transcripción sin archivar**, no pasó por `medir.mjs`.
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`. **Diez vueltas, y las diez iguales: el testigo vio la segunda escritura 10 de 10 veces y la primera 0 de 10.**
 
 ## 1. Transporte
 

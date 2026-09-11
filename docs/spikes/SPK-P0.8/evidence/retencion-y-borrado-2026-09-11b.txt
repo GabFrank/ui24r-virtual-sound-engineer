@@ -1,0 +1,43 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T11:28:52.966Z
+# comando: node --experimental-strip-types tools/spikes/p0-8/retencion-y-borrado.ts 192.168.0.78
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+
+show de la aplicacion: VSE
+automaticas al empezar: 16
+SNAPSHOTLIST tardo: 52 ms
+
+== 1. Borrar una automatica nuestra, y comprobar que se fue ==
+  guardada: VSE_AUTO_1789126145194
+  esta en la lista: SI
+  despues de DELETESNAPSHOT: SE FUE
+  la lista quedo en 16
+
+== 2. La retencion al llegar al maximo ==
+  Se guarda una detras de otra hasta pasar el tope, y se mira si la
+  lista deja de crecer. Lo que se prueba es que la retencion BORRA,
+  no que el comando exista.
+
+  guardada                          | cuantas quedan | la mas vieja se fue
+  ----------------------------------+----------------+--------------------
+  VSE_AUTO_1789126147610            |             17 | no
+  VSE_AUTO_1789126148466            |             18 | no
+  VSE_AUTO_1789126149341            |             19 | no
+  VSE_AUTO_1789126150200            |             20 | no
+
+LA LISTA SIGUIO CRECIENDO: la retencion no llego al tope en esta corrida,
+o no borro. Mirar las cuentas de arriba antes de sacar conclusiones.
+
+== 3. Dejar el show como estaba ==
+  automaticas creadas por esta corrida y borradas: 4
+  automaticas al terminar: 16 (al empezar habia 16)
+  de las que habia al empezar, faltan: ninguna
+
+comprobacion por HTTP, contra el estado previo (6732 claves leidas):
+  claves que cambiaron: ninguna
+  (var.currentSnapshot puede figurar: guardar lo mueve, y es lo esperado)
+
+
+# salida del proceso: 0

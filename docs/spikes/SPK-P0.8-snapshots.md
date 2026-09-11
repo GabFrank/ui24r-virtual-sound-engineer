@@ -6,7 +6,20 @@
 >
 > `SNAPSHOTLIST` contesta en **6 ms de mediana** sobre 84 pedidos en tres corridas —mínimo 5, máximo 13, más un único caso de 277 ms que no se repitió en sesenta intentos seguidos—, o sea **más rápido que el testigo**. La política de confirmación afirmaba «del orden de un segundo» sin haberlo medido nunca, y ese número inventado tapaba un defecto real: `pedirLista()` tomaba prestados los 500 ms del plazo de confirmación de escritura y, al vencer, devolvía lista vacía **en silencio** —indistinguible de un show sin instantáneas—. Ahora tiene plazo propio y devuelve `null` cuando no hubo respuesta.
 >
-> Y la retención **nunca había borrado nada desde el adaptador**: todas las corridas anteriores tenían menos de veinte automáticas, o sea por debajo del máximo. Se llenó el show a propósito para comprobarlo. Ver `evidence/retencion-y-lista-2026-09-10.txt` — **transcripción sin archivar**: se escribió a mano en vez de pasar por `medir.mjs`, que ya existía ese día. El guion no está en el árbol, así que remedirla es escribirlo de nuevo.
+> Y la retención **nunca había borrado nada desde el adaptador**: todas las corridas anteriores tenían menos de veinte automáticas, o sea por debajo del máximo. Se llenó el show a propósito para comprobarlo. Ver `evidence/retencion-y-lista-2026-09-10.txt` —transcripción—, **remedida el
+2026-09-11 con un guion nuevo**: `evidence/retencion-y-borrado-2026-09-11.txt`.
+
+**Y la remedición trajo su propio control, por accidente y vale la pena
+contarlo.** La primera corrida arrancó con las veinte del tope: la lista se clavó
+en veinte y borró la más vieja en tres de las cuatro guardadas. Pero medir un
+tope lo gasta —cada automática de más se lleva puesta una vieja— así que terminó
+con cuatro menos, y el guion lo dijo en vez de taparlo.
+
+La segunda, `evidence/retencion-y-borrado-2026-09-11b.txt`, arrancó con dieciséis
+**por debajo del tope** y la lista creció 17, 18, 19, 20 **sin borrar nada**. Ése
+es exactamente el control que faltaba: es la situación de todas las corridas
+anteriores, y por eso la retención «nunca había borrado nada» — no porque
+fallara, sino porque nunca le tocó.
 **Depende de:** SPK-P0.2a · **Bloquea a:** S-02.13
 **Montaje:** Ui24R con un show de trabajo, router, laptop.
 
@@ -33,7 +46,7 @@ Lo segundo importa porque el retroceso por instantánea es la última red de seg
 | 2 | Instantáneas manuales intactas | bloqueante | hash idéntico antes y después de 50 ciclos | | ⬜ |
 | 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | campo por campo | **Contestado el 2026-09-10, con dos asteriscos que puso una auditoría.** De 45 campos movidos vuelven 44; el que no es `m.afs.enabled`, la supresión de realimentación. Vuelven ganancia, patcheo, retardos de canal, reproductor, ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares. **(a) La alimentación fantasma sale de la lista**: se midió cruzando INV-007, que no correspondía, y el guion ya no la toca — o sea que esa familia vuelve a estar **sin medir**. **(b) Los retardos medidos son `i.N.delay`, los de canal**; los de salida —`m.delayL`, `m.delayR`, `a.B.delay`— no están cubiertos. Y el «cero efectos colaterales sobre 6.700 claves» es más fuerte de lo que el método sostiene: la comparación final no puede ver una clave que el recall escribió **devolviéndola a su valor de base**. Lo que sí lo sostiene es que la consola difundió exactamente 45 rutas | 🟡 |
 | 4 | Comportamiento al guardar sobre un nombre existente | bloqueante | documentado | | ⬜ |
-| 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`, las dos **transcripción sin archivar**. **Renombrar: sin clave conocida y sin probar** | ✅ |
+| 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`, las dos transcripciones, **remedidas en** `evidence/retencion-y-borrado-2026-09-11.txt` y `evidence/retencion-y-borrado-2026-09-11b.txt`: el borrado funciona en las dos corridas y la retención se clava en veinte. **Renombrar: sin clave conocida y sin probar** | ✅ |
 | 6 | Corte audible al guardar con audio pasando | informativo | sí o no | | ⬜ |
 
 ## Evidencia a entregar
@@ -202,7 +215,7 @@ solo dice el resultado bueno deja al que venga sin saber qué trampas hay.
   «nunca lo aceptó»
 - `evidence/alcance-recall-booleanos-2026-09-10.txt` — **la buena.** Booleanos
   con 0↔1, las seis familias, 44 de 45 campos vuelven y `m.afs.enabled` no
-- `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática (**transcripción sin archivar**)
+- `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática (transcripción, remedida en `evidence/retencion-y-borrado-2026-09-11.txt`)
   nuestra, ejecutado contra el aparato
 
 
