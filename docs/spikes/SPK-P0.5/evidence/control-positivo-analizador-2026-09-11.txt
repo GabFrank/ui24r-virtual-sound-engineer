@@ -1,0 +1,18 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T03:24:21.706Z
+# comando: node --experimental-strip-types tools/spikes/p0-5/control-positivo-del-analizador.ts 192.168.0.78 10 -30
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+analizador en el general, tono de 1000 Hz a -30 dBFS por la Scarlett
+banda esperada: 67 (~1000 Hz)
+
+SIN tono: banda 67 = 0.0 dB, media 0.00 dB
+CON tono: banda 67 = 21.4 dB, media 0.55 dB
+SIN tono otra vez: banda 67 = 0.0 dB
+
+la banda del tono subio 21.4 dB con el tono puesto
+EL ANALIZADOR VE. Los ceros de antes eran silencio de verdad.
+
+
+# salida del proceso: 0

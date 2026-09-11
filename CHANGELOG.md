@@ -6,6 +6,31 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **RETRACTADO: el aviso de realimentación nunca falló. La sala no estaba en
+  silencio.** Se dijo que el detector marcaba una banda sostenida con todo
+  apagado y que eso lo invalidaba en una sala real. Había un **Bluetooth
+  conectado a las entradas de línea `l.0`/`l.1`, abiertas a 0 dB**, metiendo un
+  tono en el general de forma continua. Lo encontró el oído del usuario, no
+  ninguna medición.
+
+  Desconectado, el general da **0,0 dB en las 122 bandas**, y un control positivo
+  —un tono de 1000 Hz— confirma que el analizador ve cuando hay algo: 0,0 → 21,4
+  y de vuelta a 0,0. **El detector acertaba: había una banda sostenida porque
+  había una banda sostenida.**
+
+  Se cae con eso que los umbrales estén mal, y también la conclusión del día
+  anterior sobre el silencio de un canal: el condensador **no llega al general**
+  con silencio ni sin él, comprobado subiendo su fader en todo el recorrido útil
+  sin que el espectro se moviera.
+
+- **Y queda el hallazgo verdadero, que es de producto.** Algo entraba al general
+  **por una puerta que la aplicación no sabe que existe**: `clasificarRuta` no
+  cubre la familia `l.*`, sesenta claves que caen en «ruta desconocida». Quien
+  mide el general está midiendo la suma de cosas que no puede enumerar, y el
+  operador no tenía forma de enterarse desde la aplicación.
+
+  **Antes de medir el general hay que poder decir qué está entrando en él.**
+
 - **Una auditoría revisó los arreglos del día anterior y encontró que uno
   afirmaba algo falso en cuatro lugares a la vez.** El commit, el comentario del
   código, el del test y el CHANGELOG decían que clasificar la alimentación
