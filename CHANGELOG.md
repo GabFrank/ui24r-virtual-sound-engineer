@@ -6,6 +6,121 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación recorrió una sesión entera sobre el aparato de verdad.** Sobre
+  una Blackview LINK 8 con Android 15, contra la consola en la sala: recupera la
+  sesión anterior al reinstalar encima, se conecta sola, recibe el volcado
+  completo, muestra **los nombres reales de los canales de la consola**, los
+  medidores en vivo con sus picos, y el espectro. **Pide permiso antes de tomar
+  el analizador y lo devuelve al salir** — comprobado por HTTP, que no es la
+  conexión que escribió.
+
+  Y se midió algo que valía la pena: **el silencio de un canal sí lo saca del
+  analizador del general.** Con el condensador oyendo a una persona hablar, se
+  correlacionó su medidor contra las 122 bandas del analizador. Ninguna lo
+  sigue. Importa porque si no fuera así, el detector de realimentación estaría
+  viendo canales que el operador cree apagados.
+
+- **El aviso de realimentación no se apaga en una sala en silencio, y eso hay
+  que arreglarlo antes de que alguien dependa de él.** Con nada sonando, marcó
+  105 Hz sostenida y el contador siguió subiendo sin reiniciarse nunca. Esa
+  banda vive justo encima del piso útil del detector: lo cruza para arriba y
+  para abajo, y cada cruce vuelve a contar.
+
+  Los tres umbrales estaban marcados desde el principio como «elegidos, no
+  medidos» y «sin validar contra una realimentación real». Es la primera vez que
+  el detector se encuentra con una sala, y la sala le ganó. **Un aviso que nunca
+  se apaga es un aviso que el operador deja de leer** — y es el que tiene que
+  salvarle el show. Queda anotado, no parcheado: subir el piso a ciegas apagaría
+  también las realimentaciones de nivel bajo, que son las que conviene cazar
+  temprano.
+
+- **La aplicación sabe si hay otro operador tocando la consola.** Primero se
+  midió que **la consola no publica presencia**: tres ciclos de un cliente
+  entrando y saliendo dieron cero líneas difundidas, y ninguna de las claves
+  cuyo nombre lo sugería —`settings.maxconn`, `var.present`, `var.pongtime`— se
+  movió. Sabe cuántas conexiones admite y no cuenta cuántas hay.
+
+  Así que se infiere de lo único que la consola sí cuenta: **quién toca algo**.
+  Cuesta cero, porque todo estaba medido — lo que entra por la conexión
+  principal es ajeno sin excepción, y la conexión testigo escucha y nunca
+  escribe. Verificado con dos clientes contra el aparato: el volcado de seis mil
+  claves no inventa un operador, una escritura propia `APPLIED` no se ve a sí
+  misma, y una ajena se detecta.
+
+  **Y `presente: false` no dice «no hay nadie»: dice «nadie tocó nada».** El
+  operador parado frente a la consola mirando es invisible para esto, y es
+  justo el que se sorprende cuando la aplicación mueve un fader. Está escrito en
+  el tipo que se usa, no en una nota al pie, para que quien lo consuma no pueda
+  no verlo.
+
+- **Qué devuelve de verdad una recuperación de instantánea, campo por campo.**
+  Era la pregunta más importante que quedaba sin contestar, porque el punto de
+  retorno que la aplicación guarda antes de escribir promete «se puede
+  deshacer». Medido con un `LOADSNAPSHOT` real: **44 de 45 campos vuelven**,
+  incluidas ganancia, alimentación fantasma, patcheo de salida, retardos y
+  reproductor, y sin un solo efecto colateral sobre 6.700 claves.
+
+  **La excepción es `m.afs.enabled`**, la supresión de realimentación — y no es
+  un campo cualquiera: ese supresor le pone filtros de −18 dB al audio por su
+  cuenta, así que su estado cambia lo que la consola hace. Si algo lo mueve,
+  recuperar la instantánea no lo deshace. Queda dicho en la promesa.
+
+- **Y el mismo recall destapó que la mitad de INV-021 nunca se ejecutó.** El
+  almacén confirmado compara la ruta `var.currentSnapshot` para detectar un
+  recall, pero se llega a esa comparación solo desde `procesarLinea`, que
+  arranca descartando todo lo que no sea `SETD` — y el puntero de instantánea
+  viaja como `SETS`. La consola **sí** lo difunde, comprobado contra el aparato;
+  el almacén lo tiraba.
+
+  El comentario que acompaña a ese código ya decía por qué importaba: *«un recall
+  chico es el que nadie nota»*. Y el mismo día se midió que un recall difunde
+  solo lo que cambió, así que un recall chico es, efectivamente, un puñado de
+  mensajes por debajo del umbral de avalancha. El diagnóstico estaba escrito
+  hace tiempo; lo que faltaba era que el dato llegara a la rama que lo esperaba.
+
+### Corregido
+
+- **Un recall chico ya no pasa desapercibido.** El almacén confirmado ahora
+  reconoce el `SETS` de `var.currentSnapshot` y el adaptador se lo pasa, con lo
+  que la mitad de INV-021 que habla de la recuperación de instantánea deja de
+  ser código inalcanzable. Contra la consola: **diez recuperaciones, diez
+  avisos, diez veces con la causa correcta**, y la consola quedó con cero claves
+  distintas de como estaba.
+
+  Los tests de esa rama llevaban tiempo en verde **probando algo que no pasa**:
+  construían la línea con `codificarSetd` y la consola manda `SETS`. Ahora usan
+  la forma real, y sin el arreglo fallan ocho. Un test que fabrica su propia
+  entrada solo prueba lo que el que lo escribió creía del protocolo.
+
+- **La avalancha, medida contra la consola de verdad.** Estaba probada solo
+  contra el simulador — que la dispara porque nosotros se lo pedimos, así que
+  probaba que la pantalla dibuja el aviso y nada más. Ahora un segundo cliente
+  hace de otro operador y escribe dieciséis rutas de golpe: **diez de diez
+  avisos**, dieciséis de dieciséis rutas restauradas.
+
+  Y apareció algo que el simulador no podía mostrar: **el aviso dice «10
+  parámetros cambiaron» cuando cambiaron 16**. Emite el tamaño en el instante en
+  que cruza el umbral, que es diez. Para la seguridad da igual —el estado se
+  invalida igual—, pero el número está ahí para que el operador dimensione lo
+  que pasó, y le está devolviendo el valor de nuestra propia constante
+  disfrazado de medición.
+
+- **Las seis capacidades que le faltaban al primer entregable, medidas contra el
+  aparato.** Alimentación fantasma en lectura, silencio de envío auxiliar, los
+  dos puntos de derivación, matriz con el general como fuente y retardos de
+  salida. Nueve escrituras, nueve difundidas, nueve restauradas, con la
+  restauración comprobada por HTTP —un camino distinto del que escribió—.
+
+  Y tres cosas que nadie había anticipado. **`i.N.phantom` existe y contradice a
+  `hw.N.phantom`**: con el condensador alimentado, una decía 1 y la otra 0 en el
+  mismo instante. Quien lea la del canal va a diagnosticar «este micrófono no
+  tiene fantasma» sobre uno que sí la tiene. **La matriz solo la alcanzan dos de
+  los veinticuatro canales**, y no es la familia que parecía serlo:
+  `hwoutaux.N.src` es el patchbay físico, no la matriz. Y **la unidad de los
+  retardos sigue sin medirse**: la ruta acepta el valor y lo difunde, pero el
+  «de 0 a 500 ms» que decía la matriz de capacidades salía de una API de
+  terceros, no de una medición nuestra. Quedó dicho así.
+
 - **Con una pista de soundcheck sonando, la ganancia no se aplica.** El canal
   reproduce lo grabado, así que mover la perilla del previo no cambia nada de lo
   que se escucha: el consejo no es impreciso, es **inaplicable**. Dejar aplicar y

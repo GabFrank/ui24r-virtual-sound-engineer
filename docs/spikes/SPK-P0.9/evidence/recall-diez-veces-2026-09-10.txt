@@ -1,0 +1,31 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T22:51:09.318Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/recall-diez-veces.ts 192.168.0.78 10
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, 10 recuperaciones, 12 rutas por vuelta
+
+punto de retorno: VSE_AUTO_1789080684275, verificado releyendo la lista
+
+vuelta | aviso | causa            | rutas que informa
+     1 | si    | SNAPSHOT_RECALL  | 1
+     2 | si    | SNAPSHOT_RECALL  | 1
+     3 | si    | SNAPSHOT_RECALL  | 1
+     4 | si    | SNAPSHOT_RECALL  | 1
+     5 | si    | SNAPSHOT_RECALL  | 1
+     6 | si    | SNAPSHOT_RECALL  | 1
+     7 | si    | SNAPSHOT_RECALL  | 1
+     8 | si    | SNAPSHOT_RECALL  | 1
+     9 | si    | SNAPSHOT_RECALL  | 1
+    10 | si    | SNAPSHOT_RECALL  | 1
+
+== Dejar todo como estaba ==
+  instantaneas creadas: 11, sin borrar: 0
+  claves distintas de como estaban: 0
+
+recuperaciones detectadas: 10 de 10
+con causa SNAPSHOT_RECALL: 10 de 10
+
+
+# salida del proceso: 0

@@ -1,0 +1,37 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T22:14:00.093Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/avalancha-real.ts 192.168.0.78 10
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, 10 vueltas
+rutas por vuelta: 16 distintas, sobre los canales 21, 22, 23, 24
+umbral del detector: 10 rutas distintas en 1000 ms
+
+  i.20.pan = 0.5
+  i.20.mix = 0.5862161798
+  i.20.aux.0.value = 0
+  i.20.aux.1.value = 0
+  ...
+
+vuelta | rutas escritas | aviso | rutas que vio el detector | causa            | ms
+     1 |             16 | si    |                        10 | DESCONOCIDA      | 1401
+     2 |             16 | si    |                        10 | DESCONOCIDA      | 1402
+     3 |             16 | si    |                        10 | DESCONOCIDA      | 1401
+     4 |             16 | si    |                        10 | DESCONOCIDA      | 1403
+     5 |             16 | si    |                        10 | DESCONOCIDA      | 1402
+     6 |             16 | si    |                        10 | DESCONOCIDA      | 1401
+     7 |             16 | si    |                        10 | DESCONOCIDA      | 1403
+     8 |             16 | si    |                        10 | DESCONOCIDA      | 1400
+     9 |             16 | si    |                        10 | DESCONOCIDA      | 1400
+    10 |             16 | si    |                        10 | DESCONOCIDA      | 1401
+
+== Restauracion, comprobada por HTTP ==
+  16 de 16 rutas restauradas
+
+avalanchas detectadas: 10 de 10
+rutas por aviso: mediana 10, minimo 10, maximo 10
+se escribieron 16 rutas distintas por vuelta
+
+
+# salida del proceso: 0

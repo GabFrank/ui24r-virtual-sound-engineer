@@ -94,3 +94,36 @@ test('INV-021: un DUMP_END suelto no revalida un estado invalidado', async () =>
     );
   });
 });
+
+// --- «Releer» no puede declarar valido el silencio -------------------------
+//
+// Lo encontro una auditoria el 2026-09-10. `releerEstado()` ponia la bandera de
+// volcado en curso y armaba en el acto el temporizador de quietud; a los 250 ms
+// vencia sin que hubiera llegado una sola linea y el estado se daba por bueno.
+//
+// El usuario ve una avalancha, toca «Releer», la consola no contesta --con la
+// wifi cargada, que es justo cuando pasa-- y el cartel desaparece solo. Peor que
+// no tener el boton: el boton miente hacia el lado tranquilizador.
+//
+// El test que ya existia metia una linea INMEDIATAMENTE despues de releer, asi
+// que no podia distinguir «volvio a valido porque releyo» de «volvio a valido
+// porque nadie hablo».
+
+test('releer sin respuesta deja el estado invalido', async () => {
+  await conAdaptador(async (t, a) => {
+    t.entra(codificarSetd('i.0.mix', 0.5));
+    await new Promise((r) => setTimeout(r, 60));
+    avalancha(t);
+    assert.equal(a.leer('i.0.mix').storeState, 'INVALID');
+
+    await a.releerEstado();
+    // Nadie contesta. Se espera mas que la quietud de volcado (250 ms) y mas
+    // que el plazo para la primera linea.
+    await new Promise((r) => setTimeout(r, 3400));
+
+    assert.equal(
+      a.leer('i.0.mix').storeState, 'INVALID',
+      'nadie contesto: el estado NO puede volver a valido',
+    );
+  });
+});

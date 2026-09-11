@@ -1,0 +1,68 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T22:02:29.596Z
+# comando: node --experimental-strip-types tools/spikes/p0-2a/capacidades-que-faltan.ts 192.168.0.78 10
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, canal 10
+
+estado inicial leido por HTTP: 6728 claves
+
+== 1. Alimentacion fantasma, EN LECTURA (INV-007: no se escribe) ==
+  hw.N.phantom: hw.0=0 hw.1=0 hw.2=0 hw.3=0 hw.4=0 hw.5=0 hw.6=0 hw.7=0 hw.8=1 hw.9=0 hw.10=0 hw.11=0 hw.12=0 hw.13=0 hw.14=0 hw.15=0 hw.16=0 hw.17=0 hw.18=0 hw.19=0
+  encendidos: hw.8=1
+  espejo i.N.phantom del mismo indice: i.8=0 i.9=0
+  var.nophantom=0  settings.nophantomonboot=0
+
+== Enrutamiento de salidas fisicas, EN LECTURA (no es la matriz) ==
+  hwoutm.0.src     = m.0
+  hwoutm.1.src     = m.1
+  hwoutaux.0.src   = a.0
+  hwoutaux.6.src   = none
+  hwouthp.0.src    = hp.0
+
+== 2. Silencio de envio auxiliar ==
+  i.9.aux.0.mute                    0 ->            1  confirmado, 13 ms
+
+== 3 y 4. Los dos puntos de derivacion del envio auxiliar ==
+  .post     = antes o despues del fader
+  .postproc = antes o despues del procesamiento del canal
+  i.9.aux.0.post                    0 ->            1  confirmado, 14 ms
+  i.9.aux.0.postproc                1 ->            0  confirmado, 24 ms
+
+  Y el ajuste GLOBAL, que es el criterio 4 del charter:
+    settings.auxsendpoint = 1
+    settings.mtxsendpoint = 1
+    al cambiarlo, la consola difundio 0 rutas mas -> el ajuste global NO reescribe las rutas por envio
+  settings.auxsendpoint             1 ->            0  confirmado, 29 ms
+
+== 5. Matriz con el general como fuente ==
+  La matriz NO es hwoutaux.N.src (eso es el jack fisico).
+  Es m.mtx.M.*: el general como fuente, hacia el destino M.
+  m.mtx.0.value                     0 ->          0.3  confirmado, 4 ms
+  m.mtx.0.mute                      0 ->            1  confirmado, 13 ms
+  fuentes que tienen envio a la matriz: a.0 a.1 a.2 a.3 a.4 a.5 a.6 a.7 a.8 a.9 i.19 i.9 m s.0 s.1 s.2 s.3 s.4 s.5
+  de esas, SIN punto de derivacion propio: i.19 i.9
+
+== 6. Retardos de salida ==
+  m.delayL                          0 ->         0.25  confirmado, 10 ms
+  m.delayR                          0 ->         0.25  confirmado, 11 ms
+  a.0.delay                         0 ->         0.25  confirmado, 16 ms
+
+== Restauracion, comprobada por HTTP (ni el escritor ni el testigo) ==
+  i.9.aux.0.mute         era            0, quedo            0  ok
+  i.9.aux.0.post         era            0, quedo            0  ok
+  i.9.aux.0.postproc     era            1, quedo            1  ok
+  settings.auxsendpoint  era            1, quedo            1  ok
+  m.mtx.0.value          era            0, quedo            0  ok
+  m.mtx.0.mute           era            0, quedo            0  ok
+  m.delayL               era            0, quedo            0  ok
+  m.delayR               era            0, quedo            0  ok
+  a.0.delay              era            0, quedo            0  ok
+
+escrituras confirmadas por el testigo: 9 de 9
+rutas restauradas: 9 de 9
+latencia de difusion: mediana 13 ms, minimo 4, maximo 29
+
+
+# salida del proceso: 0

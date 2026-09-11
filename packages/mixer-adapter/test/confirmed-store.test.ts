@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ConfirmedStateStore, RUTA_INSTANTANEA_ACTIVA } from '../src/confirmed-store.ts';
 import type { BulkExternalChange } from '../src/api.ts';
-import { codificarSetd } from '../src/protocol.ts';
+import { codificarSetd, codificarSets } from '../src/protocol.ts';
 
 /** Reloj controlado: probar tiempo esperándolo es lento y frágil. */
 /**
@@ -253,6 +253,15 @@ test('terminado el volcado, una avalancha real sí se detecta', () => {
 
 // --- INV-021: "cambio masivo O cambio de currentSnapshot" ------------------
 //
+// **Estos tests estuvieron verdes un mes probando algo que no pasa.** Construian
+// la linea con `codificarSetd`, o sea `SETD^var.currentSnapshot^3`, y la consola
+// manda `SETS^var.currentSnapshot^<nombre>`. La rama funcionaba con la forma
+// inventada y era inalcanzable con la real. Lo destapo ejecutar un LOADSNAPSHOT
+// contra el aparato el 2026-09-10 y ver la causa salir DESCONOCIDA.
+//
+// Ahora usan `codificarSets`. Un test que fabrica su propia entrada solo prueba
+// lo que el que lo escribio creia del protocolo.
+//
 // Solo estaba la primera mitad. Un recall desde el navegador de la consola
 // cambia la instantanea activa y despues los parametros que difieran: si
 // difieren menos de diez, la avalancha no se detectaba y el estado local se
@@ -264,7 +273,7 @@ test('INV-021: cambiar la instantanea activa invalida, aunque cambie sola', () =
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
 
   assert.equal(rafagas.length, 1, 'una sola ruta, pero es la que cuenta');
   assert.equal(store.storeState, 'INVALID');
@@ -275,7 +284,7 @@ test('INV-021: un recall chico se detecta igual que uno grande', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   for (let canal = 1; canal <= 3; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
@@ -293,7 +302,7 @@ test('el volcado inicial incluye la instantanea activa y no es una avalancha', (
   store.alCambioMasivo((e) => rafagas.push(e));
 
   store.volcadoIniciado();
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
   store.volcadoCompletoRecibido();
 
   assert.equal(rafagas.length, 0);
@@ -338,13 +347,19 @@ test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   reloj.avanzar(100);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 1);
 
   reloj.avanzar(2000);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 4));
+  // **Esta linea se habia quedado en `codificarSetd` cuando se corrigieron las
+  // otras tres.** Entraba por el camino generico `aplicar()` --guardando una
+  // entrada numerica para una clave de texto-- en vez de por la rama de la
+  // instantanea. La unica asercion que prueba que la ventana de silencio de
+  // INV-021 se reabre lo hacia por el camino equivocado. Lo encontro una
+  // auditoria, no yo.
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Otra distinta'));
   assert.equal(rafagas.length, 2, 'pasada la ventana, un recall nuevo sí avisa');
 });
 
@@ -362,7 +377,7 @@ test('si la instantanea llega despues de los parametros, se corrige la causa', (
   }
   assert.equal(rafagas[0]?.probableCausa, 'GRUPO_DE_CANALES', 'con lo visto hasta acá, eso parecía');
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
   assert.equal(rafagas.length, 2);
   assert.equal(rafagas[1]?.probableCausa, 'SNAPSHOT_RECALL');
 });
@@ -375,9 +390,9 @@ test('la correccion de causa se avisa una sola vez', () => {
   for (let canal = 1; canal <= 12; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.3));
   }
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 1));
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 3));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Prueba asistente'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 2);
 });
 
@@ -386,7 +401,7 @@ test('INV-021: el estado invalido vuelve a ser valido con la relectura', () => {
   // estaba; la segunda no existia, y el estado se quedaba invalido para
   // siempre: la unica salida era desconectar y volver a conectar a mano.
   const { store } = nuevoStore();
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(store.storeState, 'INVALID');
 
   // Lo que hace una relectura: el volcado entero, otra vez.
@@ -402,14 +417,14 @@ test('la relectura no se anuncia como una avalancha nueva', () => {
   const rafagas: BulkExternalChange[] = [];
   store.alCambioMasivo((e) => rafagas.push(e));
 
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(rafagas.length, 1);
 
   store.volcadoIniciado();
   for (let canal = 1; canal <= 24; canal++) {
     store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.5));
   }
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   store.volcadoCompletoRecibido();
 
   assert.equal(rafagas.length, 1, 'el volcado de la relectura no es un cambio de nadie');
@@ -422,7 +437,7 @@ test('una avalancha dentro de la ventana de silencio invalida igual', () => {
   // estado valido se puede escribir.
   const reloj = relojFalso();
   const { store } = nuevoStore(reloj);
-  store.procesarLinea(codificarSetd(RUTA_INSTANTANEA_ACTIVA, 2));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   assert.equal(store.storeState, 'INVALID');
 
   // El usuario relee: el estado vuelve a ser valido dentro de la ventana.
@@ -564,4 +579,149 @@ test('agrupar NO retrasa lo que el estado confirmado sabe', () => {
     'el estado se actualiza con la linea, sin esperar a que el gesto termine');
   assert.equal(store.coincideConEsperado('i.4.mix', 0.30).coincide, false,
     'y por eso una escritura contra el valor viejo da conflicto en el acto');
+});
+
+// --- Presencia inferida del trafico ajeno ----------------------------------
+//
+// La consola NO publica presencia: medido el 2026-09-10, tres ciclos de un
+// cliente entrando y saliendo dieron cero lineas difundidas y ninguna clave
+// movida. Lo unico que la consola cuenta es quien TOCA algo, asi que se infiere
+// de ahi. El limite --que no ve al que solo mira-- es parte del disenio y esta
+// dicho en `PresenciaAjena`.
+
+test('sin cambios ajenos no hay de donde inferir presencia', () => {
+  const { store } = nuevoStore();
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+test('un cambio ajeno deja marca, y la marca envejece con el reloj', () => {
+  const { store, reloj } = nuevoStore();
+  store.procesarLinea(codificarSetd('i.1.mix', 0.5));
+  assert.equal(store.desdeElUltimoAjenoMs(), 0);
+
+  reloj.avanzar(12_000);
+  assert.equal(store.desdeElUltimoAjenoMs(), 12_000);
+});
+
+test('el volcado inicial no cuenta como otro operador', () => {
+  // Al conectar llegan miles de claves. Si eso contara, la aplicacion
+  // arrancaria siempre diciendo que hay alguien mas.
+  const { store } = nuevoStore();
+  store.volcadoIniciado();
+  for (let canal = 1; canal <= 20; canal++) {
+    store.procesarLinea(codificarSetd(`i.${canal}.mix`, 0.4));
+  }
+  store.volcadoCompletoRecibido();
+
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+test('un recall tambien cuenta como alguien tocando', () => {
+  // Llega como SETS y no como parametro, pero es una persona operando.
+  const { store } = nuevoStore();
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  assert.equal(store.desdeElUltimoAjenoMs(), 0);
+});
+
+test('nuestra propia escritura confirmada no inventa un operador ajeno', () => {
+  // `confirmarPropia` es el camino del testigo. Si dejara marca, la aplicacion
+  // se veria a si misma cada vez que escribe.
+  const { store } = nuevoStore();
+  store.confirmarPropia('i.1.mix', 0.6);
+  assert.equal(store.desdeElUltimoAjenoMs(), null);
+});
+
+// --- El eco del puntero de instantanea, que es NUESTRO --------------------
+//
+// Medido el 2026-09-10 con una sola conexion: `SAVESNAPSHOT` y a los 172 ms la
+// consola devuelve `SETS^var.currentSnapshot^<nombre>` POR ESA MISMA CONEXION.
+// No contradice lo del 2026-09-08 --que no devuelve un SETD de parametro a su
+// autor--: es el efecto colateral de un comando, y nadie lo habia probado.
+//
+// Importa porque la aplicacion guarda una instantanea ANTES DE CADA ESCRITURA
+// por INV-001. Sin esto, el arreglo de INV-021 la invalidaria en cada una.
+
+test('el eco de nuestro propio guardado no invalida ni inventa un operador', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+
+  assert.equal(rafagas.length, 0, 'guardar nosotros no es una avalancha');
+  assert.equal(store.storeState, 'VALID');
+  assert.equal(store.desdeElUltimoAjenoMs(), null, 'ni un operador ajeno inventado');
+});
+
+test('un recall ajeno sigue invalidando aunque hayamos guardado antes', () => {
+  // El caso que importa: que el arreglo no se coma tambien lo que si es ajeno.
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+
+  assert.equal(rafagas.length, 1);
+  assert.equal(rafagas[0]?.probableCausa, 'SNAPSHOT_RECALL');
+  assert.equal(store.storeState, 'INVALID');
+});
+
+test('el eco propio se consume una sola vez', () => {
+  // Si no se consumiera, un recall ajeno al MISMO nombre pasaria inadvertido
+  // para siempre.
+  const { store, reloj } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  //
+  // **La primera version contaba alertas y fallaba con razon**: la segunda caia
+  // dentro de la ventana de silencio de la avalancha, que existe para no abrir
+  // un cartel por cada trama del mismo recall. Contar carteles mide el
+  // antirrebote, no el consumo. Lo que hay que mirar es la invalidacion, que va
+  // siempre.
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  assert.equal(store.storeState, 'VALID', 'el eco propio no invalida');
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Otra'));
+  assert.equal(store.storeState, 'INVALID');
+
+  reloj.avanzar(2000);
+  store.volcadoIniciado();
+  store.volcadoCompletoRecibido();
+  assert.equal(store.storeState, 'VALID', 'releido');
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+  assert.equal(store.storeState, 'INVALID', 'el segundo VSE_AUTO_123 ya no es nuestro');
+});
+
+test('el mismo puntero repetido no invalida: no es un cambio', () => {
+  const { store } = nuevoStore();
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+
+  assert.equal(rafagas.length, 1, 'el segundo es el mismo valor');
+});
+
+test('si el eco tarda mas que la ventana, se lo trata como ajeno', () => {
+  // Errar por exceso acá pierde un aviso; errar por defecto bloquea la
+  // aplicacion entera. La ventana es holgada a proposito, pero no infinita.
+  const reloj = relojFalso();
+  const store = new ConfirmedStateStore({
+    ahora: reloj.ahora, programar: reloj.programar, ventanaPunteroPropioMs: 1000,
+  });
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  store.registrarPunteroPropio('VSE_AUTO_123');
+  reloj.avanzar(2000);
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
+
+  assert.equal(rafagas.length, 1);
 });

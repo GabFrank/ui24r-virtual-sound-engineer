@@ -1,0 +1,29 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-10T22:22:39.707Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/hay-presencia.ts 192.168.0.78 3
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, 3 ciclos de entrar y salir
+
+== Claves cuyo nombre sugiere presencia, leidas por HTTP ==
+  settings.maxconn           = 48
+  var.present                = 0
+  var.pongtime               = 0
+  var.asosec                 = -1
+  var.cascade.connected      = 0
+  settings.cascade.remote    = 
+
+ciclo | al ENTRAR el otro cliente | al SALIR el otro cliente
+    1 | nada                      | nada
+    2 | nada                      | nada
+    3 | nada                      | nada
+
+La consola NO difundio NADA al entrar ni al salir un cliente, en ningun ciclo.
+No hay presencia por protocolo: si se quiere, hay que construirla.
+
+== Las mismas claves despues, por HTTP: ¿alguna se movio? ==
+  ninguna
+
+
+# salida del proceso: 0

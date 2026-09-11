@@ -1,0 +1,23 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T01:24:05.833Z
+# comando: node --experimental-strip-types tools/spikes/p0-8/eco-del-puntero.ts 192.168.0.78
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, una sola conexion
+guardando VSE_AUTO_1789089850870 y escuchando 4 s por esta misma conexion
+
+lineas recibidas tras guardar: 2
+  +  172 ms  UPDATE_SHOWS
+  +  172 ms  SETS^var.currentSnapshot^VSE_AUTO_1789089850870
+
+lineas de var.currentSnapshot: 1
+  +172 ms  SETS^var.currentSnapshot^VSE_AUTO_1789089850870
+
+instantanea borrada: si  (quedan 20)
+
+LA CONSOLA SE LO DEVUELVE AL QUE GUARDO.
+El arreglo de INV-021 hace que la aplicacion se invalide sola en cada escritura.
+
+
+# salida del proceso: 1

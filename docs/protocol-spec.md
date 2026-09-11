@@ -167,7 +167,7 @@ Sirve para diagnóstico de una línea —`curl -s --max-time 10 http://<consola>
 | `/raw` | el estado entero, en vivo |
 | `/mixer.html` | el cliente de tableta, 1,2 MB. La fuente más autoritativa del protocolo |
 | `/phone.html` | un **segundo cliente**, 862 KB. Sin explotar: sirve para contrastar conversiones |
-| `/js/initparams.js` | `curSetup` y los valores por defecto de cada clave |
+| `/js/initparams.js` | `curSetup` y **el estado actual** de cada clave. Decía «los valores por defecto» y es falso: trae el nombre que el usuario tipeó y las ganancias de ahora, idénticas a `/raw`. **No sirve como segunda fuente**: es la misma lectura por otra cañería |
 | `/config.html` | pide autenticación |
 
 `curSetup` declara la topología: `input:24, fx:4, aux:10, sub:6, linein:2, bankSize:8, phantom:20`. Coincide con la cabecera de `VU2` y agrega que **solo 20 de las 24 entradas tienen alimentación fantasma** — coherente con que `i.N.src` valga `none` en los cuatro últimos.
@@ -534,6 +534,44 @@ Una sesión posterior sí escribió, desde un script de spike y no desde la apli
 La consola aplica la escritura y no se la devuelve a quien la hizo, pero sí la difunde al resto. Con eso, **un cliente solo puede verificar su propia escritura de dos maneras**: pidiendo `INIT`, que trae el valor nuevo y con él el volcado entero —del orden de seis mil claves—, o **abriendo una segunda conexión que haga de testigo**. Lo segundo estaba anotado como pregunta y el 2026-09-09 quedó medido: dos conexiones del mismo proceso son dos clientes distintos para la consola, y el testigo ve la escritura a los **27 ms**. Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY, que con este dato ya eligió.
 
 Se escribió además en `i.9.dyn.bypass` y `i.9.gate.enabled` para puentear el procesamiento del canal antes de medir su medidor. Las dos claves existen y aceptan escritura; su efecto se verificó de forma indirecta, por lo que le pasó a la recta del §4.3, y no se midió ninguna curva ni ningún rango.
+
+### 5.2 Las seis que faltaban, medidas el 2026-09-10
+
+Nueve escrituras desde un guion, cada una con su valor anterior leído por
+`GET /raw` antes, confirmada por una **segunda conexión testigo**, restaurada en
+el acto y comprobada de nuevo por HTTP. Nueve de nueve difundidas, nueve de
+nueve restauradas. Mediana de difusión 13 ms, mínimo 4, máximo 29 ms.
+Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt`.
+
+| Qué | Ruta | Verbo | Qué se midió |
+|---|---|---|---|
+| Silencio de envío auxiliar | `i.N.aux.B.mute` | `SETD` | booleano, escrito y difundido |
+| Derivación antes o después del fader | `i.N.aux.B.post` | `SETD` | booleano, escrito y difundido |
+| Derivación antes o después del proceso | `i.N.aux.B.postproc` | `SETD` | booleano, escrito y difundido |
+| Punto de derivación global | `settings.auxsendpoint`, `settings.mtxsendpoint` | `SETD` | booleano, escrito y difundido |
+| Matriz con el general como fuente | `m.mtx.B.value`, `m.mtx.B.mute` | `SETD` | escritos y difundidos |
+| Retardo general por lado | `m.delayL`, `m.delayR` | `SETD` | aceptan 0,25 y lo difunden. **Unidad sin medir** |
+| Retardo de salida auxiliar | `a.B.delay` | `SETD` | igual: ruta sí, unidad no |
+| Alimentación fantasma | `hw.N.phantom` | — | **solo lectura**, por INV-007 |
+
+**`i.N.phantom` existe y no es lo mismo que `hw.N.phantom`.** Con el condensador
+del puerto 9 alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el
+mismo instante. **Ojo con citar `js/initparams.js` como corroboración**: no son
+valores de fábrica sino el estado actual, así que confirma tanto como volver a
+leer `/raw`. La alimentación fantasma vive en el previo y **hay
+que resolver antes qué previo alimenta al canal**: `i.N.src` no es la identidad.
+Leer la ruta del canal devuelve «sin fantasma» sobre un micrófono alimentado.
+
+**La matriz no es `hwoutaux.N.src`.** Esa familia dice qué bus sale por cada
+conector físico —el patchbay de salida—. La matriz es `<fuente>.mtx.<destino>.*`
+y la alcanzan **19 fuentes**: los diez auxiliares, los seis subgrupos, el
+general y **solo dos de los veinticuatro canales, `i.9` e `i.19`**. Esas dos son
+además las únicas fuentes cuyo envío a la matriz **no tiene `postproc` propio**.
+
+**El ajuste global de derivación no reescribe los de cada envío.** Al cambiar
+`settings.auxsendpoint`, la consola difundió **cero** rutas más: los dos niveles
+conviven en el estado. Cuál manda en el audio no se puede deducir de esto y
+queda para SPK-P0.2b, que sí puede escuchar la diferencia.
 
 ---
 

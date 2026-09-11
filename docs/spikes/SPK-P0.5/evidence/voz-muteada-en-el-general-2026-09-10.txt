@@ -1,0 +1,13 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T00:43:18.929Z
+# comando: node --experimental-strip-types tools/spikes/p0-5/voz-muteada-en-el-general.ts 192.168.0.78 45 9
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, canal 9, banda 27.98153479604842 (~105 Hz)
+escuchando 45 s. Hablá en la sala parte del tiempo y quedate callado la otra.
+
+solo 0 muestras utiles: no alcanza para decir nada
+
+
+# salida del proceso: 1
