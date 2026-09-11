@@ -65,7 +65,7 @@ producen una sola línea con el segundo valor: la primera se aplica y **nadie la
 ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
 consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
 confirmada aunque haya funcionado. Evidencia:
-`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` y
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` —remedido en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`, donde el tic reproduce exacto— y
 `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` — **transcripción sin archivar**, no pasó por `medir.mjs`.
 
 ## 1. Transporte

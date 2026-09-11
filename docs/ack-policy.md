@@ -46,7 +46,8 @@ de 500 ms, y restaurar. **18 de 18 difundidas en las tres corridas**, con
 medianas de 17, 18 y 17 ms; mínimo 12 y máximo 29 entre las tres. Las 18
 quedaron restauradas según la relectura del arnés, y **once de ellas** además
 comprobadas desde fuera con un volcado HTTP nuevo.
-`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` y
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` —remedida en
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`— y
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10b.txt`; la primera de
 las tres está transcrita al pie de la primera, porque antes solo vivía en la
 terminal de quien la corrió.
@@ -77,7 +78,8 @@ escribir por la red y que otro socket vea la difusión no describe una red rápi
 explicación cómoda.
 
 Aquella primera corrida, la transcrita:
-`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`.
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`, remedida en
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`.
 
 El barrido usó el canal 17 —sin nombre, silenciado, fader abajo— con un punto de
 retorno guardado antes de escribir nada, como manda INV-001.
@@ -282,7 +284,7 @@ Escribiendo 40 veces cada 15 ms llegan 20; cada 5 ms llegan 5; cada 40 ms o más
 llegan las 40, y ahí los intervalos quedan cuantizados en múltiplos del tic —67
 para escrituras cada 60 ms, 100 para cada 100—. Es el mismo ~33 ms de la
 cadencia de `RTA`: hay un solo reloj de difusión.
-`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt`.
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt`, remedido con la herramienta en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`: el tic de ~34 ms reproduce exacto.
 
 **La consecuencia sobre INV-011, medida y no deducida.** Dos escrituras a la
 misma ruta dentro de un tic producen **una sola línea, con el segundo valor**:

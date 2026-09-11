@@ -69,6 +69,13 @@ function tieneEncabezado(texto) {
  * herramienta disponible.
  */
 const SIN_HERRAMIENTA_DISPONIBLE = new Set([
+  // **Los tres que no son `.txt`**, y que hasta el 2026-09-11 ninguna regla
+  // miraba porque el filtro pedia esa extension. Los tres entraron el
+  // 2026-09-08, mucho antes que la herramienta. Verificado con
+  // `git log --diff-filter=A`.
+  'SPK-P0.1/evidence/reconexion-desde-imac.jsonl',
+  'SPK-P0.2a/evidence/prueba-A-pasivo-claves.tsv',
+  'SPK-P0.2a/evidence/tablas-conversion-ui24r.js',
   // Las nueve del 2026-09-10, todas anteriores a las 12:55:27 de ese día.
   'SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt',
   'SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt',
@@ -112,7 +119,7 @@ const SIN_HERRAMIENTA_DISPONIBLE = new Set([
 ]);
 
 /** El tamaño de la lista cerrada. Si cambia, se cambia acá a propósito. */
-const CUANTAS_SIN_HERRAMIENTA = 39;
+const CUANTAS_SIN_HERRAMIENTA = 42;
 
 /**
  * Transcripciones posteriores a la herramienta que **todavía no se remidieron**.
@@ -158,9 +165,20 @@ function archivos(dir, salida = []) {
   return salida;
 }
 
+/** Lo que no puede llevar un encabezado de texto porque no es texto. */
+const BINARIOS = /\.(png|jpe?g|gif|wav|zip|pdf)$/i;
+
 const RAIZ_SPIKES = join(RAIZ, 'docs', 'spikes');
 const evidencias = archivos(RAIZ_SPIKES)
-  .filter((f) => f.includes(`${'evidence'}/`) && f.endsWith('.txt'))
+  // **Toda la carpeta, no solo los `.txt`.** El filtro era `endsWith('.txt')`,
+  // asi que guardar una transcripcion como `.md` o `.tsv` la volvia invisible
+  // para la regla. Lo midio una auditoria, y de paso saco a la luz que hay tres
+  // archivos de evidencia reales con otras extensiones --un `.jsonl`, un `.tsv`
+  // y un `.js`-- que nunca habian estado sujetos a nada.
+  //
+  // Se exceptuan los binarios, donde un encabezado de texto no tiene sentido:
+  // esos van en `SIN_ENCABEZADO_POSIBLE`, con su motivo.
+  .filter((f) => f.includes(`${'evidence'}/`) && !BINARIOS.test(f))
   .map((f) => f.slice(RAIZ_SPIKES.length + 1));
 
 const docs = archivos(join(RAIZ, 'docs')).filter((f) => f.endsWith('.md'));
@@ -175,7 +193,13 @@ const prosa = docs.map((f) => ({ f, texto: readFileSync(f, 'utf8') }));
 function parrafos(texto) {
   const salida = [];
   for (const bloque of texto.split(/\n\s*\n/)) {
-    if (bloque.trimStart().startsWith('|')) salida.push(...bloque.split('\n'));
+    // **Se parte fila por fila si el bloque TIENE filas, no si EMPIEZA por
+    // una.** Antes se miraba el primer caracter del bloque, asi que una tabla
+    // pegada al parrafo que la introduce --Markdown la renderiza igual-- no se
+    // partia, y el aviso de una fila volvia a tapar la cita de otra. Es justo
+    // el defecto que esta funcion vino a cerrar, sobreviviendo a su arreglo.
+    const lineas = bloque.split('\n');
+    if (lineas.some((l) => l.trimStart().startsWith('|'))) salida.push(...lineas);
     else salida.push(bloque);
   }
   return salida;
@@ -192,7 +216,18 @@ function parrafos(texto) {
  */
 function cita(texto, rel) {
   const nombre = rel.split('/').pop().toLowerCase();
-  return texto.replace(/\s+/g, '').toLowerCase().includes(nombre.replace(/\s+/g, ''));
+  const plano = texto.replace(/\s+/g, '').toLowerCase();
+  const i = plano.indexOf(nombre);
+  if (i < 0) return false;
+  // **Y el nombre tiene que empezar donde empieza.** Con `includes` a secas,
+  // cualquier archivo con PREFIJO satisfacia la obligacion de citar a otro:
+  // una auditoria lo demostro reemplazando la cita de
+  // `escrituras-propias-…txt` por `pre-escrituras-propias-…txt` y la guarda
+  // paso. Se exige que antes del nombre no haya un caracter de nombre de
+  // archivo. (La colision por SUFIJO que se temia --`…-11.txt` dentro de
+  // `…-11b.txt`-- no existe: la `b` cae antes del punto.)
+  const antes = i === 0 ? '' : plano[i - 1];
+  return antes === '' || !/[\w.-]/.test(antes);
 }
 
 const fallos = [];
@@ -216,10 +251,28 @@ for (const rel of evidencias) {
   // que están.
 
   if (REMEDIDAS.has(rel)) {
+    // **La remedición se cita DONDE se cita la vieja, no en cualquier parte.**
+    // Esta rama pedía una sola aparición en cualquier documento, sin exigir
+    // párrafo ni nada — una asimetría con la rama de las pendientes que nadie
+    // había escrito. Quien lee la transcripción tiene que ver ahí mismo que hay
+    // una medición nueva, o la cita no le sirve de nada.
     const nueva = REMEDIDAS.get(rel);
-    const citada = prosa.some((p) => cita(p.texto, nueva));
-    if (!citada) {
-      fallos.push(`${rel} se remidió en ${nueva} y ningún documento cita la remedición`);
+    const mudos = [];
+    let algunaCita = false;
+    for (const p of prosa) {
+      for (const trozo of parrafos(p.texto)) {
+        if (!cita(trozo, rel)) continue;
+        algunaCita = true;
+        if (!cita(trozo, nueva)) mudos.push(p.f.slice(RAIZ.length + 1));
+      }
+    }
+    if (!algunaCita) {
+      fallos.push(`${rel} se remidió en ${nueva} y nadie cita ni una ni otra`);
+    } else if (mudos.length > 0) {
+      fallos.push(
+        `${rel} se remidió en ${nueva} y donde se la cita no se dice: `
+        + [...new Set(mudos)].join(', '),
+      );
     }
     continue;
   }

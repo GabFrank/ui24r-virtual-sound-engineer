@@ -6,6 +6,24 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Cuatro formas de esquivar la regla de la evidencia, cerradas.** La guarda
+  sólo miraba los `.txt`, así que guardar una transcripción como `.md` la volvía
+  invisible — y al ampliarla aparecieron **tres archivos de evidencia reales**
+  que nunca habían estado sujetos a nada.
+
+  La detección de citas se satisfacía con **cualquier nombre que tuviera al
+  pedido como sufijo**: bastaba citar `pre-loquesea.txt` para dar por cumplida
+  la obligación de citar `loquesea.txt`. Y el aviso de una transcripción se
+  contaba aunque estuviera en otra fila de la misma tabla, si la tabla iba
+  pegada al párrafo que la introduce — Markdown la renderiza igual, y la función
+  que parte las tablas miraba sólo el primer carácter del bloque. Es justo el
+  defecto que esa función vino a cerrar, sobreviviendo a su arreglo.
+
+  Y la rama de las remediciones pedía **una sola aparición en cualquier
+  documento**, sin exigir que estuviera donde se lee la transcripción. Al
+  apretarla salieron a la luz cuatro lugares donde la vieja se citaba sin decir
+  que hay una medición nueva al lado.
+
 - **Cinco agujeros más en el conteo de avalanchas, todos medidos por auditoría.**
 
   El recuento repetido que la entrega anterior daba por cerrado **seguía vivo a
