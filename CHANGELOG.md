@@ -6,6 +6,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El aviso de tamaño de la avalancha volvía a poner el cartel después de que
+  el usuario releyera** — una regresión de la entrega anterior, encontrada por
+  auditoría. El segundo aviso, el que trae el total, no se cancelaba nunca: el
+  operador tocaba «Releer», el cartel se iba, y hasta un segundo después
+  reaparecía solo **con las escrituras bloqueadas otra vez**.
+
+  Con él se iban también la ventana y la causa de la ráfaga vieja, así que un
+  recall nuevo llegado dentro de esa ventana quedaba sin avisar: el estado se
+  invalidaba **en silencio**, que es la dirección peligrosa.
+
+  Y dos cosas más del mismo conteo: al cerrar, la ráfaga no consumía sus rutas,
+  así que un solo cambio ajeno posterior abría otra avalancha que se llevaba
+  puestas las ya contadas —medido: un cambio producía un aviso de doce rutas,
+  once repetidas—; y abrir una avalancha nueva **cancelaba** el total de la
+  anterior en vez de decirlo, con lo que la pantalla se quedaba en «al menos N»
+  para siempre.
+
+  Se corrige además la explicación que acompañaba al arreglo anterior, que era
+  falsa: una avalancha no puede estirarse más allá de su ventana. Lo que se
+  perdía eran las rutas llegadas **antes** de cruzar el umbral. El mecanismo
+  hacía falta; el motivo escrito estaba mal.
+
 - **Seis cosas que las auditorías habían dejado señaladas, y dos son de las que
   corrompen tests.**
 

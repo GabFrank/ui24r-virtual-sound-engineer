@@ -85,10 +85,16 @@ export class ConfirmedStateStore {
   /**
    * Las rutas de la avalancha en curso, acumuladas desde que empezó.
    *
-   * **No se cuenta sobre `cambiosRecientes`, y la diferencia importa**: esa
-   * lista se poda a la ventana contada desde el ÚLTIMO cambio, así que en una
-   * avalancha que se estira más allá de la ventana perdería las primeras rutas
-   * justo cuando hay que decir el total. Acá se acumula y se vacía al cerrar.
+   * **No se cuenta sobre `cambiosRecientes`, y el motivo no es el que decía
+   * acá.** Esta nota afirmaba que una avalancha «que se estira más allá de la
+   * ventana» perdería sus primeras rutas, y **eso no puede pasar**:
+   * `enRafagaHastaMs` se fija al abrir y nunca se extiende, así que toda ruta
+   * de la ráfaga cae dentro de la poda. Lo marcó una auditoría.
+   *
+   * Lo que sí se pierde son las rutas que llegaron **antes de cruzar el
+   * umbral**. En el test largo el umbral se cruza recién en la ruta diez, y las
+   * tres primeras ya envejecieron: contando sobre la lista podada dan 17 de 20.
+   * El mecanismo hacía falta; la explicación estaba mal.
    */
   private rutasDeLaRafaga = new Set<string>();
   private cerrarRafaga: (() => void) | null = null;
@@ -190,6 +196,34 @@ export class ConfirmedStateStore {
     this.cargandoVolcado = true;
     this._storeState = 'INVALID';
     this.cambiosRecientes = [];
+    // **Releer empieza de cero, y el aviso de cierre pendiente muere con él.**
+    //
+    // Sin esto, el segundo aviso de la avalancha --el que trae el total-- llega
+    // DESPUES de que el usuario releyo, y la aplicacion lo toma como si fuera
+    // nuevo: vuelve a poner el cartel y vuelve a invalidar el estado. El
+    // operador toca «Releer», el cartel se va, y hasta un segundo despues
+    // reaparece solo con las escrituras bloqueadas otra vez. Lo introdujo el
+    // propio arreglo del aviso de tamaño y lo midio una auditoria.
+    //
+    // Y con el temporizador se van tambien la ventana y la causa: un recall
+    // nuevo llegado dentro de la ventana VIEJA quedaba sin avisar, invalidando
+    // el estado en silencio.
+    this.olvidarRafaga();
+  }
+
+  /**
+   * Abandona la avalancha en curso: su temporizador, su cuenta y su ventana.
+   *
+   * Se llama al releer y al cerrar la conexion. **Un aviso pendiente que
+   * sobrevive a cualquiera de las dos cosas habla de un estado que ya no
+   * existe.**
+   */
+  olvidarRafaga(): void {
+    this.cerrarRafaga?.();
+    this.cerrarRafaga = null;
+    this.rutasDeLaRafaga = new Set();
+    this.enRafagaHastaMs = 0;
+    this.causaAvisada = null;
   }
 
   /**
@@ -568,6 +602,15 @@ export class ConfirmedStateStore {
       return;
     }
 
+    // **Si habia un cierre pendiente se DICE, y se dice ANTES de instalar la
+    // nueva.** Dos cosas que la primera version hacia mal: cancelaba el cierre
+    // anterior en vez de emitirlo --una avalancha que empezaba en el mismo
+    // milisegundo del vencimiento se comia el total de la anterior, y la
+    // pantalla quedaba en «al menos N» para siempre-- y lo hacia DESPUES de
+    // pisar la cuenta, asi que si llegaba a emitirse hablaba de la ráfaga
+    // equivocada. Las dos las monto una auditoria.
+    this.cerrarLaRafagaEnCurso();
+
     this.enRafagaHastaMs = t + this.ventanaRafagaMs;
     this.causaAvisada = this.causaProbable(cambioDeInstantanea, rutas);
     this.rutasDeLaRafaga = new Set(rutas);
@@ -577,18 +620,33 @@ export class ConfirmedStateStore {
     // enterarse tarde de que el estado dejó de ser válido es peor que enterarse
     // con un número corto; éste sale cuando la ventana cierra y dice cuántas
     // rutas fueron de verdad.
-    this.cerrarRafaga?.();
-    const { cancelar } = this.programar(() => {
-      this.cerrarRafaga = null;
-      this.avisarRafaga(
-        this.rutasDeLaRafaga.size,
-        this.causaAvisada ?? 'DESCONOCIDA',
-        this.ahora(),
-        true,
-      );
-      this.rutasDeLaRafaga = new Set();
-    }, this.ventanaRafagaMs);
+    const { cancelar } = this.programar(
+      () => this.cerrarLaRafagaEnCurso(), this.ventanaRafagaMs,
+    );
     this.cerrarRafaga = cancelar;
+  }
+
+  /**
+   * Dice el total de la avalancha en curso y la da por terminada.
+   *
+   * **Y consume sus rutas.** `cambiosRecientes` se poda por ventana contada
+   * desde el ultimo cambio, asi que al vencer una avalancha sus rutas siguen
+   * ahi; sin sacarlas, un solo cambio ajeno nuevo abria otra avalancha que se
+   * llevaba puestas las que ya se habian contado. Medido por una auditoria:
+   * veinte rutas cerraban en veinte, y despues UN cambio producia un aviso de
+   * once, diez de ellas repetidas.
+   */
+  private cerrarLaRafagaEnCurso(): void {
+    if (this.cerrarRafaga === null && this.rutasDeLaRafaga.size === 0) return;
+    this.cerrarRafaga?.();
+    this.cerrarRafaga = null;
+    const t = this.ahora();
+    if (this.rutasDeLaRafaga.size > 0) {
+      this.avisarRafaga(this.rutasDeLaRafaga.size, this.causaAvisada ?? 'DESCONOCIDA', t, true);
+    }
+    this.rutasDeLaRafaga = new Set();
+    this.cambiosRecientes = [];
+    this.causaAvisada = null;
   }
 
   private avisarRafaga(

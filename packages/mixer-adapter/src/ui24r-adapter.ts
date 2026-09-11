@@ -482,6 +482,9 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     await this.cerrarTestigo();
     await this.transporte.desconectar();
     this.store.invalidar();
+    // Un aviso de avalancha pendiente no puede sobrevivir al cierre: hablaria
+    // de un estado que ya no existe, sobre una consola que ya no escuchamos.
+    this.store.olvidarRafaga();
     this.cambiarEstado('DISCONNECTED');
   }
 
