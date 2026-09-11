@@ -1,4 +1,5 @@
 import type { PAProfileId, VenueProfileId } from '../ids.ts';
+import type { Emplazamiento, Escenario } from './escenario.ts';
 
 export type VenueType =
   | 'INDOOR_SMALL' | 'INDOOR_MEDIUM' | 'INDOOR_LARGE'
@@ -8,6 +9,47 @@ export type BusRef =
   | { readonly tipo: 'MASTER' }
   | { readonly tipo: 'AUX'; readonly indice: number }
   | { readonly tipo: 'MTX'; readonly indice: number };
+
+/**
+ * Qué papel cumple un componente del sistema.
+ *
+ * Un monitor **es** un componente de amplificación alimentado por un auxiliar:
+ * no hace falta un modelo aparte para los monitores, hace falta que este diga
+ * cuál lo es. Lo contrario --una lista de monitores al lado de una lista de
+ * componentes-- deja dos verdades que se contradicen en cuanto alguien cambia
+ * un cable de bus.
+ */
+export type ClaseDeAmplificacion =
+  | 'PRINCIPAL'
+  | 'SUBGRAVE'
+  /** Cuña en el piso, apuntando a quien toca. */
+  | 'MONITOR_CUNA'
+  /** Refuerzo lateral o de retorno lejano. */
+  | 'MONITOR_LATERAL'
+  /** Caja de refuerzo retardada, sala grande. */
+  | 'RETARDO'
+  /**
+   * Monitoreo intraural, que sale por un auxiliar y **no radia al aire**.
+   *
+   * Está en la lista por lo que evita: sin esta clase, unos intraurales
+   * cargados con su emplazamiento —en la cabeza de quien canta— salen como un
+   * emisor a cero metros y en el eje del micrófono de voz, o sea el par más
+   * riesgoso de todo el escenario, y es el único que **no puede realimentar
+   * nunca**. La alternativa era dejarlos sin lugar, y entonces se informan como
+   * «no analizados», que tampoco es cierto.
+   */
+  | 'IEM'
+  | 'OTRO';
+
+/**
+ * Las clases que ponen presión sonora en el aire de la sala.
+ *
+ * Lo que no está acá no participa de ningún análisis de realimentación, y no
+ * por falta de datos sino porque no puede acoplar.
+ */
+export const CLASES_QUE_RADIAN: readonly ClaseDeAmplificacion[] = [
+  'PRINCIPAL', 'SUBGRAVE', 'MONITOR_CUNA', 'MONITOR_LATERAL', 'RETARDO', 'OTRO',
+];
 
 /**
  * Un componente del sistema de amplificación y por qué bus sale.
@@ -20,6 +62,17 @@ export interface PAComponentSpec {
   readonly nombre: string;
   readonly bus: BusRef;
   readonly silenciable: boolean;
+  readonly clase: ClaseDeAmplificacion;
+  readonly modelo: string | null;
+  /**
+   * Dónde está y hacia dónde apunta, si el usuario lo cargó.
+   *
+   * `null` es lo normal --y lo que traen todos los perfiles guardados hasta
+   * hoy--. No es un descarte silencioso: `elementosDelEscenario()` devuelve los
+   * componentes sin lugar en una lista aparte para que la aplicación pueda
+   * decir cuáles quedaron fuera del análisis geométrico y por qué.
+   */
+  readonly emplazamiento: Emplazamiento | null;
 }
 
 export interface PAProfile {
@@ -72,5 +125,14 @@ export interface VenueProfile {
    * (INV-023, spike de repetibilidad).
    */
   readonly sigmaRoomScore: number | null;
+  /**
+   * El plano del local: dónde están las fuentes y los micrófonos.
+   *
+   * Cuelga del local y no de la banda porque los monitores y las cajas se
+   * mueven de sala en sala mientras la formación no cambia. Los emisores no
+   * están acá: viven en los componentes del perfil de amplificación, que ahora
+   * llevan emplazamiento.
+   */
+  readonly escenario: Escenario | null;
   readonly notas: string | null;
 }

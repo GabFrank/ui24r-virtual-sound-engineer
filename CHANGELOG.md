@@ -4,7 +4,158 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Agregado
+
+- **El escenario: dónde está cada cosa en la sala, y con cuánta duda.** La
+  aplicación razonaba sobre señales —niveles, espectro, medidores— y ahora puede
+  razonar también sobre el espacio. Lo que eso agrega no es una pantalla: es un
+  **segundo camino independiente hacia la misma conclusión**. Si la geometría
+  dice que una cuña apunta casi directo a un micrófono y el analizador encuentra
+  un lazo, se confirman; si la geometría señala otra pareja, **una de las dos
+  está mal** y hoy no hay forma de darse cuenta.
+
+  La regla que gobierna el modelo entero: **ninguna inferencia geométrica se
+  presenta más precisa que sus entradas**. Cada emplazamiento lleva su
+  incertidumbre —fijo, en un pie, o en la mano de quien canta— y **toda función
+  que deriva un número devuelve un rango**, no un escalar. El tipo `Rango` no
+  tiene campo para el valor central, y es deliberado: en cuanto exista el número
+  lindo, alguien lo va a mostrar solo.
+
+  Cuando dos elementos están más cerca que su propia duda, el ángulo fuera de
+  eje se informa como `0..180`, que es contestar «no se sabe» sin dejar de
+  contestar.
+
+  **Lo que se acopla es el micrófono, no el instrumento**: un amplificador de
+  guitarra es una fuente, y lo que el monitor realimenta es el micrófono que
+  tiene delante. Para una voz están casi en el mismo sitio; para una batería,
+  no.
+
+  El escenario cuelga del **local** y no de la banda, porque los monitores se
+  mueven de sala en sala mientras la formación no cambia. **Y los monitores no
+  se modelan aparte**: un monitor *es* un componente del sistema de
+  amplificación alimentado por un auxiliar, así que lo que se hizo fue darle
+  clase, modelo y emplazamiento a los componentes que ya existían. Una lista de
+  monitores al lado de la lista de componentes serían dos verdades que se
+  contradicen en cuanto alguien cambia un cable de bus.
+
+  El micrófono necesita **patrón polar**, que es dato de catálogo y viene
+  impreso en la caja. No reabre el registro de micrófonos con curvas de
+  corrección, que es otra cosa y sigue diferido.
+
+  Todavía **no calcula acoplamiento ni diagnostica nada**: esto es el modelo y
+  la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
+  proponer ni escribir.
+
+- **El patrón polar dejó de ser un campo inerte.** Se exigía al cargar un
+  micrófono y no lo leía ninguna cuenta: cardioide, hipercardioide y
+  bidireccional daban resultados idénticos. Ahora cada patrón declara **dónde
+  está su nulo**, que es dato de catálogo y de primer orden —no un micrófono
+  medido—. Sin eso, quien ordenara por ángulo iba a leer 180° como el mejor
+  caso, y para un bidireccional 180° es **el peor**: el lóbulo trasero capta
+  igual que el delantero.
+
+- **El omnidireccional ya no se informa igual que una caja directa.** La
+  pregunta por el ángulo devolvía `null` para tres cosas distintas: una caja
+  directa que no capta aire, un micrófono direccional al que le falta la
+  orientación, y un omnidireccional perfectamente válido. El tercero es el caso
+  caro — el omni es el micrófono más propenso a realimentar de cualquier
+  escenario, y salía del análisis con el mismo silencio que algo que no capta.
+
+- **Los intraurales tienen su propia clase, y no van a la lista de «falta
+  ubicarlo».** Cargados con su emplazamiento —en la cabeza de quien canta—
+  salían como un emisor a cero metros y en el eje del micrófono de voz: el par
+  más riesgoso de todo el escenario, y el único que **no puede realimentar
+  nunca**. La alternativa era dejarlos sin lugar, y entonces se informaban como
+  no analizados, que tampoco es cierto.
+
+- **Los seis números de incertidumbre por fijeza están declarados como
+  suposiciones, no como mediciones.** Viven en una sola constante para que se
+  los pueda discutir, cambiar o reemplazar por mediciones sin tocar el modelo, y
+  cualquier emplazamiento puede sobreescribirlos: quien midió su sala con cinta
+  métrica sabe más que la tabla.
+
 ### Corregido
+
+- **Una migración que dejaba la base sin abrir para siempre.** Un elemento de
+  la lista de componentes que no fuera un objeto —un texto, un número, un
+  `null`— es JSON perfectamente válido, así que la guarda por documento
+  ilegible no lo filtraba, y la conversión fallaba con «malformed JSON». Como
+  la aplicación manda cada migración **en un solo lote junto con la versión del
+  esquema**, el error revertía todo: no migraba ninguna fila, la versión quedaba
+  atrás, y en el arranque siguiente se reintentaba y volvía a fallar. Una sola
+  fila con esa forma y la base no abre nunca más — exactamente el desenlace que
+  el bloque decía estar evitando, entrando por la puerta de al lado. La
+  migración anterior había previsto el caso y esta no lo copió. Lo encontraron
+  **dos auditorías por separado**, cada una por su camino.
+
+- **Dos de los cinco tests de la migración pasaban con la migración entera
+  borrada.** Uno plantaba un documento que ya traía las tres claves, así que
+  «no las pisa» era cierto también si nadie las tocaba; el otro comprobaba
+  idempotencia, y **una migración que no hace nada es idempotente por
+  definición**. Los dos llevan ahora un componente sin claves al lado. Se
+  comprobó rompiendo cada guarda a propósito: borrar la migración hace fallar
+  seis tests, y quitar cualquiera de las cuatro guardas hace fallar exactamente
+  uno.
+
+- **El margen del ángulo se ensanchaba por un término que la fórmula no
+  sostiene.** Sumaba la incertidumbre de orientación del elemento **mirado**,
+  cuando el cálculo usa el eje de quien mira y la recta entre posiciones: hacia
+  dónde mira el otro no entra en ninguno de los dos. Ensanchar de más es la
+  dirección segura para equivocarse, pero no es gratis: un rango inflado sin
+  motivo hace que una pareja parezca indecidible cuando no lo es.
+
+- **Los tests de ángulo no distinguían un escenario espejado.** Todos usaban
+  azimut 0, así que invertir el eje x —cambiar izquierda por derecha en toda la
+  sala— los dejaba **20 de 20 en verde**. Es el error que pone la cuña apuntando
+  al otro lado y señala como más acoplado al micrófono equivocado. Comprobado
+  rompiéndolo a propósito, y ahora hay un caso con azimut ±90.
+
+- **Un escenario sin dimensiones del local no se validaba en absoluto.** Todo
+  el bloque de posición colgaba de que el local las tuviera, así que al aire
+  libre pasaban coordenadas negativas y un 200 tipeado donde iba 2,00. Había un
+  test que consagraba eso como correcto. Los negativos se revisan siempre; sólo
+  los topes necesitan paredes.
+
+- **`NaN` pasaba por «rango apto para decidir».** Toda comparación con `NaN` es
+  falsa, así que un azimut mal cargado producía un rango de `NaN` a `NaN` y el
+  filtro de rangos inservibles lo dejaba pasar. Lo mismo un rango invertido, que
+  es lo que produce una incertidumbre angular negativa — que ahora además se
+  denuncia al validar.
+
+- **La lista de componentes sin ubicar devolvía nombres y perdía la
+  identidad.** Los dos lados de un general estéreo comparten bus y pueden
+  compartir nombre: quien recibiera la lista no podía distinguirlos para pedirle
+  al usuario que ubicara uno en particular.
+
+- **`json_patch` habría dejado la migración sin hacer nada, en silencio.** La
+  migración 5 agrega tres claves a cada componente guardado, y la primera
+  versión las escribía con `json_patch`, que implementa la fusión de la RFC
+  7386: ahí un `null` **borra la clave** en vez de escribirla. `modelo` y
+  `emplazamiento` no aparecían, no fallaba nada, y la versión del esquema
+  quedaba subida — así que no se volvía a intentar nunca. Se escribe con
+  `json_set`, y el test pregunta por la existencia de la clave con `in` y no
+  sólo por su valor, porque `deepEqual` no distingue un campo ausente de uno en
+  `undefined` después de `JSON.parse`. **El motivo que escribí primero para eso
+  era falso** y lo corrigió una auditoría que corrió las cuatro comparaciones en
+  vez de razonarlas: `deepEqual` sí distingue un campo ausente; quien no
+  distingue es `assert.equal(x, null)`, porque `undefined == null`.
+
+- **Un `json()` que puse por las dudas y no hacía nada.** Envolvía el
+  emplazamiento al reinsertarlo, por miedo a que volviera como cadena. El test
+  pasa igual con y sin él: `json_extract` le deja el subtipo JSON al valor y
+  `json_set` lo vuelve a insertar como objeto. Se saca en vez de dejarlo, y el
+  comentario que lo justificaba se corrige: decía que sin el envoltorio el
+  objeto «volvía como cadena», y eso era razonamiento, no observación.
+
+- **La cifra de la suite completa estaba un test corta.** Se venía arrastrando
+  827 de memoria, sin archivo donde comprobarla —no aparece en ningún documento
+  del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
+  anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
+  tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
+  auditorías, **866**. Los diez bloques son
+  nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
+  `packages/dsp-contract` no tienen suite propia.
+
 
 - **Un mecanismo que presenté como la pieza central de un arreglo, y era
   inerte.** Marcaba cada cambio como «ya contado» en vez de borrarlo, y una

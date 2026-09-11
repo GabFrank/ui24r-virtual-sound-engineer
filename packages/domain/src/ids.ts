@@ -28,6 +28,16 @@ export type CalibrationStateId = Branded<string, 'CalibrationStateId'>;
 export type MixSceneId = Branded<string, 'MixSceneId'>;
 export type TakeId = Branded<string, 'TakeId'>;
 export type MixCandidateId = Branded<string, 'MixCandidateId'>;
+/**
+ * Un elemento del plano del escenario: una fuente o una captación.
+ *
+ * Se marca por tipo como todo lo demás para que el compilador impida pasar el
+ * identificador de un integrante donde se espera el de una fuente. Es
+ * exactamente el enredo que la geometría vuelve caro: emparejar un micrófono
+ * con la fuente equivocada no rompe nada, devuelve un diagnóstico creíble y
+ * falso.
+ */
+export type EscenarioElementoId = Branded<string, 'EscenarioElementoId'>;
 
 /** Índice de entrada física de la Ui24R, de 1 a 24. */
 export type Ui24rInputIndex = Branded<number, 'Ui24rInputIndex'>;

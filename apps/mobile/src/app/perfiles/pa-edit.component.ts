@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   reunirErrores, validarNombre, validarRangoUtil, validarUnico,
-  type BusRef, type PAComponentSpec, type PAProfile, type PAProfileId,
+  type BusRef, type ClaseDeAmplificacion, type PAComponentSpec, type PAProfile, type PAProfileId,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import { cuenta } from '../ui/plural';
@@ -166,6 +166,18 @@ function textoDeBus(b: BusRef): string {
             @for (i of indices; track i) { <option [value]="'MTX' + i">Matriz {{ i }}</option> }
           </select>
         </ui-field>
+        <ui-field rotulo="Qué es" idControl="comp-clase"
+                  ayuda="Un monitor es un componente más, alimentado por un auxiliar. Decirlo acá es lo que permite después ubicarlo en el escenario.">
+          <select id="comp-clase" [(ngModel)]="nuevaClase">
+            <option value="PRINCIPAL">Caja principal</option>
+            <option value="SUBGRAVE">Subgrave</option>
+            <option value="MONITOR_CUNA">Monitor de piso</option>
+            <option value="MONITOR_LATERAL">Monitor lateral</option>
+            <option value="RETARDO">Refuerzo retardado</option>
+            <option value="IEM">Intraurales (no suenan en la sala)</option>
+            <option value="OTRO">Otra cosa</option>
+          </select>
+        </ui-field>
         <ui-field rotulo="¿Tiene silencio propio?" idControl="comp-mute"
                   ayuda="Solo si se puede silenciar sin silenciar el resto. Es lo que decide si se puede medir por separado.">
           <select id="comp-mute" [ngModel]="nuevoSilenciableTexto()" (ngModelChange)="fijarSilenciable($event)">
@@ -247,6 +259,7 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
   readonly nuevoNombre = signal('');
   readonly nuevoBus = signal('MASTER');
   readonly nuevoSilenciable = signal(false);
+  readonly nuevaClase = signal<ClaseDeAmplificacion>('PRINCIPAL');
 
   /** El texto del bus se calcula una vez, no en cada ciclo de detección. */
   readonly componentesConTexto = computed(() => this.componentes().map((c) => ({
@@ -387,6 +400,7 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
     this.nuevoNombre.set('');
     this.nuevoBus.set('MASTER');
     this.nuevoSilenciable.set(false);
+    this.nuevaClase.set('PRINCIPAL');
     this.nuevoAbierto.set(true);
   }
 
@@ -403,6 +417,11 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
       nombre: this.nuevoNombre().trim(),
       bus: this.aBus(this.nuevoBus()),
       silenciable: this.nuevoSilenciable(),
+      clase: this.nuevaClase(),
+      modelo: null,
+      // El lugar se carga en el editor del escenario, no acá: esta pantalla
+      // describe el sistema, no la sala.
+      emplazamiento: null,
     }]);
     this.nuevoAbierto.set(false);
   }

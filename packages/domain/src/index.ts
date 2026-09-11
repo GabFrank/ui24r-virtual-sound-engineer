@@ -6,6 +6,7 @@ export * from './entities/measurement.ts';
 export * from './entities/dinamica.ts';
 export * from './entities/recommendation.ts';
 export * from './entities/transaction.ts';
+export * from './entities/escenario.ts';
 export * from './entities/venue.ts';
 export * from './entities/session.ts';
 export * from './entities/factories.ts';

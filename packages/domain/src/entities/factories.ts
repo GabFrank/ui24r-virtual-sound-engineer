@@ -72,7 +72,13 @@ export function crearPa(nombre: string, cajasPrincipales: string): PAProfile {
     crossoverHz: null,
     // Un general estéreo con un solo silencio: no se puede medir por
     // componente hasta que el usuario describa buses separados (INV-028).
-    componentes: [{ nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false }],
+    componentes: [{
+      nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false,
+      clase: 'PRINCIPAL', modelo: null,
+      // Sin lugar: un perfil recién creado no sabe dónde están las cajas, y
+      // suponerlo sería inventar la entrada de una inferencia geométrica.
+      emplazamiento: null,
+    }],
     outputBuses: [{ tipo: 'MASTER' }],
     generatorFaderDb: FADER_GENERADOR_INICIAL_DB,
     procesadorExterno: null,
@@ -99,6 +105,9 @@ export function crearLocal(
     // oscilaría sobre el ruido de su propia medición (INV-023). Arranca nulo
     // a propósito: se gana midiendo, no declarando.
     sigmaRoomScore: null,
+    // Un local nuevo no tiene plano. Se carga con el editor, y hasta entonces
+    // el análisis geométrico simplemente no está disponible para este local.
+    escenario: null,
     notas: null,
   };
 }

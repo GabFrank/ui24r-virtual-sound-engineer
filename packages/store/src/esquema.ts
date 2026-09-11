@@ -195,6 +195,80 @@ export const MIGRACIONES: readonly Migracion[] = [
        WHERE json_valid(datos);`,
     ],
   },
+  {
+    version: 5,
+    descripcion: 'los componentes de amplificación ganan clase, modelo y lugar; el local gana escenario',
+    sentencias: [
+      // Tres campos nuevos en cada componente del sistema y uno en cada local.
+      // El documento entero vive en `datos`, así que las columnas no cambian:
+      // lo que cambia es la forma, y los perfiles guardados quedarían sin las
+      // claves que el dominio ahora declara obligatorias.
+      //
+      // **Esta migración no interpreta nada.** No adivina que un componente
+      // que sale por un auxiliar es un monitor --puede ser un envío a un
+      // procesador externo, o a una grabadora-- ni inventa dónde está puesto.
+      // Pone `OTRO`, `NULL` y `NULL`, que es exactamente lo que se sabe hoy de
+      // un perfil cargado antes de que existiera la pregunta. Clasificar de
+      // más acá sería fabricar la entrada de una inferencia geométrica, que es
+      // el error que este modelo entero está tratando de no cometer.
+      //
+      // **`c.type = 'object'` o la base no vuelve a abrir nunca más.** Un
+      // elemento de `componentes` que no sea objeto --texto, número, `null`--
+      // es JSON perfectamente válido, así que `json_valid(datos)` no lo filtra,
+      // y `json_set` sobre él falla con «malformed JSON». Como la aplicación
+      // manda cada migración en **un solo lote junto con el
+      // `PRAGMA user_version`**, ese error revierte todo: no migra ninguna
+      // fila, la versión queda en 4, y en el arranque siguiente se reintenta y
+      // vuelve a fallar. Una sola fila con esa forma deja la base atascada
+      // para siempre — exactamente el desenlace que esta migración dice estar
+      // evitando. La versión 4 previó el caso con `i.type = 'text'`; esta no lo
+      // había copiado, y lo encontraron dos auditorías por separado. Los
+      // elementos que no son objeto se dejan pasar tal cual: no se los puede
+      // arreglar desde SQL y romper la base es peor que dejar una fila rara.
+      //
+      // **`json_set` y no `json_patch`.** `json_patch` es la fusión de la RFC
+      // 7386, donde un `null` **borra la clave** en vez de escribirla: pedirle
+      // que ponga `modelo: null` deja el componente exactamente igual que
+      // antes, sin la clave, y la migración parece correr sin hacer nada. Es
+      // justo el modo de fallar más caro --silencioso y con la versión del
+      // esquema ya subida, así que no vuelve a intentarse--. `json_set` sí
+      // escribe el nulo.
+      //
+      // Idempotente porque cada campo se reescribe con lo que ya tenía:
+      // `json_extract` de una clave ausente y de una clave en `null` dan lo
+      // mismo, y volver a poner `null` sobre `null` no cambia nada. `clase` es
+      // el único que podría pisarse, y por eso se conserva **sólo si es texto no
+      // vacío**: con `coalesce` a secas, una `clase` en `false` se guardaba
+      // como `0` y una en cadena vacía sobrevivía como clase inválida, que es
+      // interpretar al revés de lo que este bloque promete.
+      //
+      // El emplazamiento es un objeto y sobrevive el viaje **sin** envolverlo
+      // en `json()`: `json_extract` le deja el subtipo JSON al valor y
+      // `json_set` lo vuelve a insertar como objeto. Llegué a poner el `json()`
+      // por las dudas y lo saqué al comprobar que el test pasaba igual con y
+      // sin él: un arreglo sin consecuencia observable es ruido que después
+      // alguien imita donde sí importa. Lo que sí se escaparía como cadena es
+      // un texto literal --`json_set(..., '{\"x\":1}')` da `\"{\\\"x\\\":1}\"`--,
+      // y por eso ninguna de estas tres ramas construye JSON a mano.
+      //
+      // `json_valid(datos)` deja fuera cualquier fila ilegible en vez de hacer
+      // fallar la migración entera, por lo mismo que la versión 4: una base
+      // que no abre cancela un show.
+      `UPDATE pa_profile SET datos = json_replace(datos, '$.componentes', json((
+         SELECT json_group_array(CASE WHEN c.type = 'object' THEN
+           json_set(json_set(json_set(c.value,
+             '$.clase', CASE WHEN json_type(c.value, '$.clase') = 'text'
+                              AND json_extract(c.value, '$.clase') <> ''
+                        THEN json_extract(c.value, '$.clase') ELSE 'OTRO' END),
+             '$.modelo', json_extract(c.value, '$.modelo')),
+             '$.emplazamiento', json_extract(c.value, '$.emplazamiento'))
+           ELSE c.value END)
+         FROM json_each(pa_profile.datos, '$.componentes') c)))
+       WHERE json_valid(datos) AND json_type(datos, '$.componentes') = 'array';`,
+      `UPDATE venue_profile SET datos = json_set(datos, '$.escenario', NULL)
+       WHERE json_valid(datos) AND json_type(datos, '$.escenario') IS NULL;`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;

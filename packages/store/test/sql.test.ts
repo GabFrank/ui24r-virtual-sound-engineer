@@ -337,3 +337,233 @@ test('la migración 4 no rompe la base por una fila ilegible', () => {
     { datos: string };
   assert.equal(fila.datos, 'esto no es JSON');
 });
+
+/**
+ * La migración 5: clase, modelo y lugar en cada componente; escenario en cada
+ * local.
+ *
+ * El riesgo que estos tests cubren no es que la conversión pierda datos --no
+ * los toca-- sino que **no haga nada y lo parezca**. La primera versión usaba
+ * `json_patch`, que es la fusión de la RFC 7386: un `null` ahí borra la clave
+ * en vez de escribirla, así que `modelo` y `emplazamiento` no aparecían y todo
+ * terminaba sin error, con la versión del esquema ya subida.
+ *
+ * Por eso se pregunta por la clave con `in` y no sólo por su valor. **El motivo
+ * que escribí primero acá era falso**: culpaba a `deepEqual`, que sí distingue
+ * un campo ausente de uno presente. Quien no distingue es
+ * `assert.equal(c.modelo, null)`, porque `undefined == null` es cierto. Lo
+ * corrigió una auditoría que corrió las cuatro comparaciones en vez de
+ * razonarlas.
+ *
+ * **Y cada test de acá tiene que fallar si la migración no hace nada.** Dos de
+ * los cinco primeros no fallaban: uno plantaba un documento que ya traía las
+ * tres claves, y el de idempotencia pasaba porque una migración vacía es
+ * idempotente por definición. Los dos llevan ahora un componente sin claves al
+ * lado, que es lo que los vuelve capaces de acusar.
+ *
+ * El otro agujero que encontraron las auditorías no era de redacción: un
+ * elemento de `componentes` que no fuera objeto tumbaba la migración entera y
+ * dejaba la base atascada en cada arranque. Ese caso tiene test propio abajo.
+ */
+
+function baseHastaLa4(): DatabaseSync {
+  const db = new DatabaseSync(':memory:');
+  for (const m of MIGRACIONES.filter((x) => x.version < 5)) for (const s of m.sentencias) db.exec(s);
+  return db;
+}
+
+function migrar5(db: DatabaseSync): void {
+  const m = MIGRACIONES.find((x) => x.version === 5);
+  assert.ok(m, 'falta la migración 5');
+  for (const s of m.sentencias) db.exec(s);
+}
+
+function paGuardado(db: DatabaseSync, id = 'pa_1'): { componentes: Record<string, unknown>[] } {
+  const fila = db.prepare('SELECT datos FROM pa_profile WHERE id = ?;').get(id) as { datos: string };
+  return JSON.parse(fila.datos);
+}
+
+test('la migración 5 crea las tres claves del componente, y crearlas es lo que hay que comprobar', () => {
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);').run('pa_1', 'Sistema', JSON.stringify({
+    id: 'pa_1',
+    nombre: 'Sistema',
+    componentes: [
+      { nombre: 'Izquierdo', bus: { tipo: 'MASTER' }, silenciable: false },
+      { nombre: 'Retorno de Ana', bus: { tipo: 'AUX', indice: 2 }, silenciable: true },
+    ],
+  }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+
+  const comps = paGuardado(db).componentes;
+  assert.equal(comps.length, 2, 'no se pierde ningún componente');
+  for (const c of comps) {
+    // Con `json_patch` estas tres aserciones fallaban: las claves no existían.
+    assert.ok('clase' in c, `${String(c['nombre'])} tiene que tener clase`);
+    assert.ok('modelo' in c, `${String(c['nombre'])} tiene que tener modelo`);
+    assert.ok('emplazamiento' in c, `${String(c['nombre'])} tiene que tener emplazamiento`);
+    assert.equal(c['modelo'], null);
+    assert.equal(c['emplazamiento'], null);
+  }
+  // **No adivina.** El que sale por un auxiliar bien podría ser un monitor, y
+  // la migración no lo declara: podría ser un envío a un procesador externo o
+  // a una grabadora. Clasificar acá sería fabricar la entrada de una
+  // inferencia geométrica.
+  assert.deepEqual(comps.map((c) => c['clase']), ['OTRO', 'OTRO']);
+  // Y lo que ya estaba sigue igual.
+  assert.deepEqual(comps[1]?.['bus'], { tipo: 'AUX', indice: 2 });
+  assert.equal(comps[1]?.['silenciable'], true);
+});
+
+test('la migración 5 no pisa una clase ya cargada, ni un emplazamiento ya cargado', () => {
+  const db = baseHastaLa4();
+  const emplazamiento = {
+    posicion: { x: 1, y: 2, z: 0 }, orientacion: { azimutGrados: 180, inclinacionGrados: 35 },
+    fijeza: 'FIJO', incertidumbrePosicionM: 0.1, incertidumbreOrientacionGrados: 10,
+  };
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);').run('pa_1', 'Sistema', JSON.stringify({
+    componentes: [{
+      nombre: 'Cuña 1', bus: { tipo: 'AUX', indice: 1 }, silenciable: true,
+      clase: 'MONITOR_CUNA', modelo: 'EV ZLX-12P', emplazamiento,
+    }],
+  }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+
+  const c = paGuardado(db).componentes[0]!;
+  assert.equal(c['clase'], 'MONITOR_CUNA');
+  assert.equal(c['modelo'], 'EV ZLX-12P');
+  // El objeto vuelve como objeto y no como cadena. No es mérito de ninguna
+  // precaución en el SQL: `json_extract` le deja el subtipo JSON al valor. Se
+  // comprueba igual porque es lo que el escenario necesita para poder leerse.
+  assert.deepEqual(c['emplazamiento'], emplazamiento);
+});
+
+test('la migración 5 se puede aplicar dos veces y deja lo mismo', () => {
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);').run('pa_1', 'Sistema', JSON.stringify({
+    componentes: [{ nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false }],
+  }), '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('venue_1', 'El Galpón', 'WAREHOUSE', JSON.stringify({ nombre: 'El Galpón' }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+  const unaVez = paGuardado(db);
+  migrar5(db);
+  assert.deepEqual(paGuardado(db), unaVez);
+});
+
+test('la migración 5 le pone escenario al local, y no le pisa el que ya tenga', () => {
+  const db = baseHastaLa4();
+  const conPlano = {
+    nombre: 'La Sala', escenario: { venueProfileId: 'venue_2', elementos: [], actualizado: 'x', notas: null },
+  };
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('venue_1', 'El Galpón', 'WAREHOUSE', JSON.stringify({ nombre: 'El Galpón' }), '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('venue_2', 'La Sala', 'INDOOR_SMALL', JSON.stringify(conPlano), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+
+  const leer = (id: string): Record<string, unknown> => JSON.parse(
+    (db.prepare('SELECT datos FROM venue_profile WHERE id = ?;').get(id) as { datos: string }).datos,
+  );
+  const viejo = leer('venue_1');
+  assert.ok('escenario' in viejo, 'el local sin plano tiene que quedar con la clave, en null');
+  assert.equal(viejo['escenario'], null);
+  // Control positivo: si la condición del WHERE no filtrara, este se perdería.
+  assert.deepEqual(leer('venue_2')['escenario'], conPlano.escenario);
+});
+
+test('la migración 5 no rompe la base por una fila ilegible', () => {
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_roto', 'Roto', 'esto no es JSON', '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);').run('pa_1', 'Sistema', JSON.stringify({
+    componentes: [{ nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false }],
+  }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+  // La fila buena migró igual: una base que no abre cancela un show, una fila
+  // rota se ve y se corrige.
+  assert.ok('clase' in paGuardado(db).componentes[0]!);
+});
+
+/**
+ * El defecto que dos auditorías encontraron por separado: un elemento de
+ * `componentes` que no sea objeto tumbaba la migración entera.
+ *
+ * Es JSON perfectamente válido, así que `json_valid(datos)` no lo filtra, y
+ * `json_set` sobre él falla. Como la aplicación manda cada migración en un solo
+ * lote junto con el `PRAGMA user_version`, el error revertía todo y la versión
+ * quedaba atrás: en el arranque siguiente se reintentaba y volvía a fallar.
+ * **Una sola fila así dejaba la base sin abrir para siempre** — el desenlace que
+ * la migración dice estar evitando, entrando por la puerta de al lado.
+ */
+test('la migración 5 no se cae con un componente que no es un objeto', () => {
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_raro', 'Raro', JSON.stringify({
+      componentes: ['Izquierdo', 5, null, { nombre: 'Derecho', bus: { tipo: 'MASTER' }, silenciable: false }],
+    }), '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_1', 'Sistema', JSON.stringify({
+      componentes: [{ nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false }],
+    }), '2026-01-01T00:00:00.000Z');
+
+  migrar5(db); // Antes del arreglo, esta línea lanzaba «malformed JSON».
+
+  // Lo que no es objeto se deja tal cual: no se lo puede arreglar desde SQL, y
+  // romper la base es peor que dejar una fila rara.
+  const raro = paGuardado(db, 'pa_raro').componentes;
+  assert.deepEqual(raro.slice(0, 3), ['Izquierdo', 5, null]);
+  assert.ok('clase' in raro[3]!, 'el objeto de la misma lista sí recibe las claves');
+  // Y la otra fila migró: el fallo no era local, se llevaba puesta la tabla.
+  assert.ok('clase' in paGuardado(db).componentes[0]!);
+});
+
+test('la migración 5 no se cae con un local ilegible', () => {
+  // El test de la fila ilegible plantaba la fila rota sólo en `pa_profile`. La
+  // sentencia del local tiene su propio `json_valid`, y no lo comprobaba nadie.
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('v_roto', 'Roto', 'CUSTOM', 'esto no es JSON', '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('v_1', 'El Galpón', 'WAREHOUSE', JSON.stringify({ nombre: 'El Galpón' }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+  const bueno = JSON.parse(
+    (db.prepare('SELECT datos FROM venue_profile WHERE id = ?;').get('v_1') as { datos: string }).datos,
+  ) as Record<string, unknown>;
+  assert.ok('escenario' in bueno);
+});
+
+test('la migración 5 deja quieto lo que no es una lista de componentes', () => {
+  // La guarda `json_type(datos, '$.componentes') = 'array'` es load-bearing y
+  // ningún test la tocaba: sin ella, `{"componentes": null}` se convertía en
+  // `{"componentes": [null]}` --pérdida-- y un objeto se reformaba en lista.
+  const db = baseHastaLa4();
+  const formas: readonly [string, unknown][] = [
+    ['pa_sin', { nombre: 'S' }],
+    ['pa_null', { componentes: null }],
+    ['pa_obj', { componentes: { a: { nombre: 'x' } } }],
+    ['pa_vacio', { componentes: [] }],
+  ];
+  for (const [id, datos] of formas) {
+    db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+      .run(id, id, JSON.stringify(datos), '2026-01-01T00:00:00.000Z');
+  }
+  migrar5(db);
+  for (const [id, datos] of formas) {
+    const guardado = (db.prepare('SELECT datos FROM pa_profile WHERE id = ?;').get(id) as { datos: string }).datos;
+    assert.deepEqual(JSON.parse(guardado), datos, `${id} tiene que quedar igual`);
+  }
+});
+
+test('la migración 5 no da por buena una clase vacía ni una que no sea texto', () => {
+  // Con `coalesce` a secas, `false` se guardaba como `0` y la cadena vacía
+  // sobrevivía como clase inválida. Las dos son interpretar, que es justo lo
+  // que este bloque promete no hacer.
+  const db = baseHastaLa4();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_1', 'Sistema', JSON.stringify({
+      componentes: [{ nombre: 'a', clase: false }, { nombre: 'b', clase: '' }, { nombre: 'c', clase: 'SUBGRAVE' }],
+    }), '2026-01-01T00:00:00.000Z');
+  migrar5(db);
+  assert.deepEqual(paGuardado(db).componentes.map((c) => c['clase']), ['OTRO', 'OTRO', 'SUBGRAVE']);
+});
