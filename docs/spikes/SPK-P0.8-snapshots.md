@@ -80,12 +80,43 @@ clave que el recall hubiera escrito devolviéndola a su valor de base saldría
 idéntica y sería invisible ahí — porque la base *es* el contenido de la
 instantánea.
 
-**Y hay una clave sin rendir cuentas.** La corrida informa «claves que de verdad
-cambiaron: 46» contra 45 campos movidos. Una de ellas es `var.currentSnapshot`,
-que movió el guardado del paso 1. Queda **una** sin identificar, reproducible en
-la corrida gemela. El candidato obvio es un compañero de par estéreo arrastrado
-por `stereoIndex`, pero no está comprobado, y «44 de 45» es justamente el
-inventario de lo que el punto de retorno de INV-001 promete devolver.
+**La clave sin rendir cuentas: contada el 2026-09-10, identificada el 2026-09-11.**
+Aquella corrida informó «claves que de verdad cambiaron: 46» contra 45 campos
+movidos, y dejó **una** sin nombre. El error de método está a la vista: el guion
+**contaba** las claves y no las **nombraba**, y contar no es identificar. Ahora
+las nombra, y sobre cuatro canales verificados muertos la cuenta cierra exacta:
+45 cambiadas = 44 escritas + `var.currentSnapshot`, **ninguna se movió sola**.
+Evidencia: `evidence/alcance-recall-clave-de-mas-2026-09-11.txt`.
+
+**La hipótesis que estaba escrita acá no se sostiene**, y eso también se midió:
+decía que el candidato obvio era un compañero de par estéreo arrastrado por
+`stereoIndex`. Leídos los 24 canales, **los 24 valen −1**: no hay ni un par
+enlazado. Los únicos enlazados son `l.0` y `l.1`, las entradas de línea.
+
+Lo que queda sin cerrar es la corrida vieja: se hizo sobre los canales 14 a 17,
+y dos de ellos —`i.14` y `i.15`— **tienen envíos abiertos a efectos y a
+auxiliares**, así que por el criterio que este proyecto usa hoy no estaban
+muertos. Reproducirla tal cual sería escribir sobre canales que pueden sonar.
+
+**Y el aviso de avalancha se queda corto en un recall, medido.** El recall tarda
+~3 s en difundir y la ventana de la alerta dura 1 s: de **44 rutas difundidas**,
+el aviso de cierre informó **39**. La invalidación no se queda corta —es por
+línea— pero el número sí, y está dicho en el tipo `BulkExternalChange`.
+
+**Las cuatro corridas de esa madrugada, y qué agrega cada una.** Se dejan las
+cuatro porque el instrumento fue cambiando entre ellas y borrar las de antes
+haría ilegible por qué las de después dicen otra cosa:
+
+- `evidence/alcance-recall-2026-09-11.txt` — sobre los canales 21 a 24, los que
+  el guion usa por omisión. Reproduce «44 de 45 vuelven» y `m.afs.enabled` como
+  la única excepción. Todavía informaba el aviso leyendo sólo la apertura.
+- `evidence/alcance-recall-clave-de-mas-2026-09-11.txt` — el guion ya **nombra**
+  las claves que se movieron solas. Es la que contesta la pregunta.
+- `evidence/alcance-recall-aviso-completo-2026-09-11.txt` — el guion ya lee el
+  aviso de cierre además del de apertura. Es donde aparece el 39 contra 44.
+- `evidence/alcance-recall-avisos-2026-09-11.txt` — lista **todos** los avisos,
+  para poder afirmar que un recall produce dos y no más: `1 (apertura), 39
+  (cierre)`.
 
 **`m.afs.enabled` es la única excepción, y no es una cualquiera.** El supresor
 de realimentación ya nos había arruinado una ronda entera de mediciones: toma

@@ -6,6 +6,30 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La clave que faltaba en un recall: contada en septiembre, identificada
+  ahora, y el error de método estaba a la vista.** El guion **contaba** las
+  claves que se habían movido y no las **nombraba**. Contar no es identificar, y
+  con el número solo la pregunta no se podía contestar: quedó meses como «una
+  clave sin rendir cuentas». Ahora las nombra, y sobre cuatro canales
+  verificados muertos la cuenta cierra exacta — **ninguna se movió sola** salvo
+  el puntero de instantánea, que ya estaba contado.
+
+  **La hipótesis que estaba escrita se descartó midiendo**: decía que el
+  candidato obvio era un compañero de par estéreo. Leídos los 24 canales, **los
+  24 están sueltos**. Los únicos enlazados son las dos entradas de línea — lo
+  que confirma, por otro camino, que enumerarlas como dos fuentes
+  independientes es un doble conteo real.
+
+- **Y el aviso de avalancha se queda corto en un recall.** Medido: el recall
+  difundió **44 rutas** a lo largo de tres segundos y el aviso de cierre informó
+  **39**, porque su ventana dura uno. La invalidación del estado no se queda
+  corta —es por línea, dentro y fuera de la ventana— pero el número sí, y ahora
+  lo dice el propio tipo en vez de descubrirse en la sala.
+
+  De paso: el guion de medición seguía leyendo el contrato viejo de ese aviso
+  —el de un solo evento— así que venía informando «1» donde antes informaba el
+  total. **La medición no había cambiado; cambió quien la leía.**
+
 - **El aviso de tamaño de la avalancha volvía a poner el cartel después de que
   el usuario releyera** — una regresión de la entrega anterior, encontrada por
   auditoría. El segundo aviso, el que trae el total, no se cancelaba nunca: el

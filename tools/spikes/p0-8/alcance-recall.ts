@@ -213,6 +213,17 @@ await new Promise((r) => setTimeout(r, 2500));
 const movido = leerCrudo();
 const cambiados = diferencias(base, movido).map(([k]) => k);
 console.log(`  claves que de verdad cambiaron: ${cambiados.length}`);
+// **Las que se movieron sin que las escribieramos, POR SU NOMBRE.**
+//
+// La corrida del 2026-09-10 informo «46 claves cambiaron» contra 45 escritas y
+// dejo una sin identificar; el numero solo no alcanzaba para saber cual era, y
+// la hipotesis que quedo escrita --un compañero de par estereo arrastrado por
+// `stereoIndex`-- no se pudo comprobar porque nadie miro el nombre. Contar no es
+// identificar.
+const escritas = new Set<string>([...NUMERICOS, ...TEXTOS]);
+const deMas = cambiados.filter((k) => !escritas.has(k));
+console.log(`  de esas, escritas por nosotros: ${cambiados.length - deMas.length}`);
+console.log(`  se movieron SOLAS: ${deMas.length === 0 ? 'ninguna' : deMas.map((k) => `${k} (${base.get(k)} -> ${movido.get(k)})`).join(', ')}`);
 const noSeMovieron = [...NUMERICOS, ...TEXTOS].filter((r) => !cambiados.includes(r));
 if (noSeMovieron.length > 0) {
   console.log(`  NO ACEPTARON EL CAMBIO, y por eso no prueban nada del recall: ${noSeMovieron.join(' ')}`);
@@ -250,13 +261,29 @@ actor.enviar(`LOADSNAPSHOT^${SHOW_DE_LA_APLICACION}^${nombre}`);
 await new Promise((r) => setTimeout(r, 3000));
 anotando = false;
 
-const aviso = avisos[0];
+// **Una avalancha emite DOS avisos y hay que mirar el segundo.**
+//
+// El primero sale al cruzar el umbral y trae lo que se sabe en ese instante;
+// para un recall eso es UNA ruta, porque el cambio de puntero abre la alerta el
+// solo. El total llega cuando la ventana cierra, con `definitivo` puesto.
+//
+// Este guion leia `avisos[0]` y desde que el aviso de tamaño se partio en dos
+// venia informando «1» donde antes informaba el total: la medicion no cambio,
+// cambio el contrato, y el guion se quedo leyendo el viejo. Es el mismo error
+// que este proyecto persigue en la otra direccion -- un numero que parece una
+// medicion del aparato y es un artefacto de quien lo lee.
+const apertura = avisos.find((e) => !e.definitivo);
+const cierre = avisos.find((e) => e.definitivo);
 console.log(`  rutas difundidas por el recall: ${new Set(difundidas).size} distintas, ${difundidas.length} mensajes`);
-console.log(`  aviso de avalancha: ${aviso === undefined ? 'NO HUBO' : 'si'}`);
-if (aviso !== undefined) {
-  console.log(`  rutas que informa el aviso: ${aviso.rutasAfectadas}`);
-  console.log(`  causa: ${aviso.probableCausa}   <- se espera SNAPSHOT_RECALL`);
+console.log(`  aviso de avalancha: ${apertura === undefined ? 'NO HUBO' : 'si'}`);
+if (apertura !== undefined) {
+  console.log(`  rutas al abrir la alerta: ${apertura.rutasAfectadas}  (lo que se sabe al cruzar el umbral)`);
+  console.log(`  causa: ${apertura.probableCausa}   <- se espera SNAPSHOT_RECALL`);
 }
+console.log(`  rutas al cerrar la ventana: ${cierre === undefined ? 'NO LLEGO EL CIERRE' : cierre.rutasAfectadas}`);
+// Todos los avisos, porque un recall dura mas que la ventana de la alerta y por
+// lo tanto puede producir varias.
+console.log(`  avisos emitidos: ${avisos.length} -> ${avisos.map((e) => `${e.rutasAfectadas}${e.definitivo ? ' (cierre)' : ' (apertura)'}`).join(', ')}`);
 console.log(`  ¿difundio var.currentSnapshot? ${difundidas.includes('var.currentSnapshot') ? 'si' : 'no'}`);
 console.log(`  tardo ${Date.now() - t0} ms en total`);
 

@@ -1,0 +1,63 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T10:19:46.609Z
+# comando: node --experimental-strip-types tools/spikes/p0-8/alcance-recall.ts 192.168.0.78 4,13,16,17
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78
+campos a mover: 39 numericos y 5 de texto, sobre los canales 5, 14, 17, 18
+
+volcado inicial: 6732 claves
+
+== 1. Guardar la instantanea, que es el estado de AHORA ==
+  show VSE, instantanea VSE_AUTO_1789122001648
+  verificada releyendo la lista: SI  (21 automaticas nuestras en el show)
+
+== 2. Mover campos de familias distintas ==
+  claves que de verdad cambiaron: 45
+  de esas, escritas por nosotros: 44
+  se movieron SOLAS: var.currentSnapshot (VSE_AUTO_1789097773977 -> VSE_AUTO_1789122001648)
+
+== 2b. Segunda instantanea, para que el puntero tenga a donde volver ==
+  guardada VSE_AUTO_1789122017183
+  var.currentSnapshot ahora: VSE_AUTO_1789122017183
+  (era VSE_AUTO_1789097773977 al empezar)
+
+== 3. LOADSNAPSHOT de la PRIMERA: la avalancha de verdad ==
+  rutas difundidas por el recall: 44 distintas, 44 mensajes
+  aviso de avalancha: si
+  rutas al abrir la alerta: 1  (lo que se sabe al cruzar el umbral)
+  causa: SNAPSHOT_RECALL   <- se espera SNAPSHOT_RECALL
+  rutas al cerrar la ventana: 39
+  ¿difundio var.currentSnapshot? si
+  tardo 3002 ms en total
+
+== 4. Alcance de la recuperacion, campo por campo ==
+  campo                | volvieron | NO volvieron
+  aux.N.value          |         4 |            0
+  delay                |         4 |            0
+  dyn.bypass           |         4 |            0
+  eq.bN.gain           |         4 |            0
+  gain                 |         4 |            0
+  gate.enabled         |         4 |            0
+  hwoutaux.N.src       |         1 |            0
+  m.afs.enabled        |         0 |            1  (m.afs.enabled)
+  mix                  |         4 |            0
+  mute                 |         4 |            0
+  name                 |         4 |            0
+  p.N.mix              |         1 |            0
+  p.N.mute             |         1 |            0
+  pan                  |         4 |            0
+
+== 5. ¿El recall movio algo que nosotros no tocamos? ==
+  nada
+
+== 6. Dejar todo como estaba ==
+  restaurados a mano los 1 que el recall no devolvio
+  instantaneas borradas: las dos  (quedan 20 automaticas)
+
+== Comprobacion final, por HTTP ==
+  la consola quedo EXACTAMENTE como estaba
+
+
+# salida del proceso: 0
