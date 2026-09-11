@@ -8,8 +8,19 @@
 
 | Modelo | Android / API | Carga mientras hace de anfitrión | Captura sin procesar | Cortes por hora | Estabilidad térmica 4 h | Estado |
 |---|---|---|---|---|---|---|
-| _candidata 1, por completar_ | | ⬜ | ⬜ | | ⬜ | ⬜ Pendiente |
+| **Blackview LINK 8** | Android 15 / API 35 | ⬜ | ⬜ | | ⬜ | 🟡 En uso, sin certificar |
 | _candidata 2, por completar_ | | ⬜ | ⬜ | | ⬜ | ⬜ Pendiente |
+
+**La LINK 8 es la que se viene usando y el 2026-09-10 quedó identificada.** Pantalla
+1600 × 2176, y la aplicación corre sobre ella conectada a la consola por la misma red.
+Lo que **no** está medido es nada de lo que pide SPK-P0.3: carga como anfitrión USB,
+captura sin procesar, cortes en cuatro horas, estabilidad térmica. Que funcione una
+sesión no certifica ninguna de esas cosas, y la fila queda en amarillo a propósito.
+
+**Depuración inalámbrica**: se vincula una vez desde *Opciones de desarrollador →
+Depuración inalámbrica → Vincular con código*, que muestra un puerto y seis dígitos.
+El puerto de vinculación **no** es el de conexión. Después, `adb` la descubre sola por
+mDNS mientras la función siga encendida.
 
 ## Interfaces de audio
 

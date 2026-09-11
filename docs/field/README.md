@@ -14,3 +14,5 @@ Una prueba de campo cierra cada versión. No es una demostración: es una medici
 | S-11.6 · Mix-A/B | Repetibilidad | Tres pasadas dentro de tolerancia; alineación de 2 muestras o menos; A y B distinguibles con confianza media o mayor; ningún canal en vivo afectado | Alineación fallida en más de una pasada; cualquier canal en vivo silenciado |
 | S-13.5 · MVP4a | Diez aplicaciones asistidas o más | 10 de 10 aplicadas o en conflicto explicado; ningún cambio sin verificar en silencio; retroceso probado dos veces con verificación | Cualquier incidente de seguridad |
 | S-14.4 · MVP4b | Lazo cerrado en dos salas | Converge o se detiene con motivo en las dos; ningún incidente; la invariante de pantalla bloqueada verificada a propósito | Oscilación entre conservar y revertir dos veces o más |
+
+- [2026-09-10 — la sesión entera en la tablet](2026-09-10-sesion-en-la-tablet.md) — la primera sesión completa sobre el aparato de verdad. El lazo cierra; el aviso de realimentación no se apaga en una sala en silencio

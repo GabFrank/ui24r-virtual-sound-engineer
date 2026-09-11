@@ -6,6 +6,34 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación recorrió una sesión entera sobre el aparato de verdad.** Sobre
+  una Blackview LINK 8 con Android 15, contra la consola en la sala: recupera la
+  sesión anterior al reinstalar encima, se conecta sola, recibe el volcado
+  completo, muestra **los nombres reales de los canales de la consola**, los
+  medidores en vivo con sus picos, y el espectro. **Pide permiso antes de tomar
+  el analizador y lo devuelve al salir** — comprobado por HTTP, que no es la
+  conexión que escribió.
+
+  Y se midió algo que valía la pena: **el silencio de un canal sí lo saca del
+  analizador del general.** Con el condensador oyendo a una persona hablar, se
+  correlacionó su medidor contra las 122 bandas del analizador. Ninguna lo
+  sigue. Importa porque si no fuera así, el detector de realimentación estaría
+  viendo canales que el operador cree apagados.
+
+- **El aviso de realimentación no se apaga en una sala en silencio, y eso hay
+  que arreglarlo antes de que alguien dependa de él.** Con nada sonando, marcó
+  105 Hz sostenida y el contador siguió subiendo sin reiniciarse nunca. Esa
+  banda vive justo encima del piso útil del detector: lo cruza para arriba y
+  para abajo, y cada cruce vuelve a contar.
+
+  Los tres umbrales estaban marcados desde el principio como «elegidos, no
+  medidos» y «sin validar contra una realimentación real». Es la primera vez que
+  el detector se encuentra con una sala, y la sala le ganó. **Un aviso que nunca
+  se apaga es un aviso que el operador deja de leer** — y es el que tiene que
+  salvarle el show. Queda anotado, no parcheado: subir el piso a ciegas apagaría
+  también las realimentaciones de nivel bajo, que son las que conviene cazar
+  temprano.
+
 - **La aplicación sabe si hay otro operador tocando la consola.** Primero se
   midió que **la consola no publica presencia**: tres ciclos de un cliente
   entrando y saliendo dieron cero líneas difundidas, y ninguna de las claves
