@@ -575,6 +575,13 @@ export class ConfirmedStateStore {
     const hayAvalancha = rutas.size >= this.umbralRutas;
     if (!cambioDeInstantanea && !hayAvalancha) return;
 
+    // **«La invalidación va siempre» es cierto DE ACÁ PARA ABAJO, y no del
+    // método entero.** La línea de arriba retorna cuando el cambio no cruza el
+    // umbral ni toca el puntero, así que un cambio ajeno suelto **no invalida
+    // nada** — y está bien que no lo haga: arrastrar un fader no es una
+    // avalancha, y hay tests que lo exigen. La documentación del proyecto llegó
+    // a afirmar lo contrario en tres lugares; lo marcó una auditoría.
+    //
     // La invalidación va siempre, la alerta no. La ventana de silencio existe
     // para no abrir un cartel por cada trama de un mismo recall; suprimir
     // también la invalidación hacía que una avalancha **distinta**, caída

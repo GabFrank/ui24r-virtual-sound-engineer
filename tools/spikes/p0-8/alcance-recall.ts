@@ -16,8 +16,19 @@
  *
  * **Por qué es seguro, y dónde está la red.** La instantánea se guarda **desde
  * el estado de ahora**, así que recuperarla devuelve exactamente el ahora: la
- * propia recuperación es la restauración. Los campos que se mueven en el medio
- * son de los canales 21 a 24, que no tienen nada enchufado y están silenciados.
+ * propia recuperación es la restauración.
+ *
+ * **Pero eso solo no alcanza, y el docstring decía que sí.** Acá figuraba que
+ * los campos movidos «son de los canales 21 a 24, que no tienen nada enchufado
+ * y están silenciados» — una frase sobre los canales por omisión, escrita como
+ * si valiera para cualquier lista que le pasen. Y no vale: este guion
+ * **desilencia** el canal (su regex de booleanos captura `i.N.mute`), le sube el
+ * fader a 0,2 y le sube la ganancia del previo, y lo deja así entre ocho y
+ * quince segundos. Sobre una entrada XLR con algo enchufado, eso suena.
+ *
+ * Por eso ahora exige `src = none`: **sin entrada física no hay qué mandar,
+ * haga lo que haga el guion**. La enumeración se imprime siempre, pasen o no,
+ * para que quede en el archivo de evidencia y no en la terminal de quien corrió.
  * Y por si el recall no devolviera algo, se guardan los ~6700 valores de antes
  * y **se comparan uno a uno al final**: lo que no haya vuelto se restaura a
  * mano y se dice cuál era.
@@ -35,6 +46,9 @@ import {
   instantaneasDeLaLista, SHOW_DE_LA_APLICACION,
 } from '@vse/mixer-adapter';
 import type { BulkExternalChange } from '@vse/mixer-adapter';
+import {
+  estadoPorHttp, exigirCanalesMuertos, reproductorCallado, busSinEnvios,
+} from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 
@@ -145,7 +159,13 @@ const observador = new Ui24rTransport();
 const store = new ConfirmedStateStore();
 let avisos: BulkExternalChange[] = [];
 store.alCambioMasivo((e) => { avisos.push(e); });
-let difundidas: string[] = [];
+// **Con marca de tiempo, y no es un adorno.** Este guion informaba «tardo 3003
+// ms» y ese 3003 era su propio `setTimeout(3000)`: la espera fija, no la
+// duracion del recall. Sobre ese numero inventado se construyo despues toda una
+// explicacion de por que el aviso de avalancha se queda corto. Es exactamente
+// «un numero que parece una medicion del aparato y es un artefacto de quien lo
+// lee», que es la frase que este mismo archivo tiene escrita mas abajo.
+let difundidas: { path: string; enMs: number }[] = [];
 let anotando = false;
 observador.alRecibir((linea) => {
   // Se le pasa la linea entera y no solo los `SETD`, que es lo que hace el
@@ -155,7 +175,7 @@ observador.alRecibir((linea) => {
   // instrumento tanto como del programa.
   store.procesarLinea(linea);
   const m = decodificar(linea);
-  if (anotando && (m.tipo === 'SETD' || m.tipo === 'SETS')) difundidas.push(m.path);
+  if (anotando && (m.tipo === 'SETD' || m.tipo === 'SETS')) difundidas.push({ path: m.path, enMs: Date.now() });
 });
 
 const actor = new Ui24rTransport();
@@ -172,6 +192,36 @@ console.log('');
 console.log('== 1. Guardar la instantanea, que es el estado de AHORA ==');
 actor.enviar(comandoCrearShow());
 await new Promise((r) => setTimeout(r, 600));
+// **Nada se escribe sin enumerar primero, y la enumeracion va al archivo.**
+//
+// Este guion aceptaba la lista de canales que le pasaran y escribia. Su propio
+// comentario decia que la comprobacion era «ahora explicita» y era PROSA: el
+// codigo no miraba nada. La corrida del 2026-09-10 uso los canales 14 a 17, y
+// dos de ellos tienen envios abiertos a efectos y a auxiliares -- o sea que
+// escribio sobre canales que podian sonar, y salio bien por suerte.
+//
+// Se comprueban las tres cosas que este guion toca y pueden hacer ruido: los
+// canales, el reproductor y el bus al que se le cambia el patcheo de salida.
+console.log('');
+const estadoPrevio = await estadoPorHttp(maquina);
+if (estadoPrevio.size === 0) {
+  console.log('no se pudo leer /raw: sin enumerar no se escribe');
+  await actor.desconectar(); await observador.desconectar();
+  process.exit(2);
+}
+const canalesMuertos = exigirCanalesMuertos(estadoPrevio, CANALES, 'sin-fuente');
+const player = reproductorCallado(estadoPrevio);
+const bus = busSinEnvios(estadoPrevio, 'a.6', 24);
+console.log(`  reproductor: ${player.si ? 'callado' : 'PUEDE SONAR'} -- ${player.porQue}`);
+console.log(`  bus a.6, al que se le cambia el patcheo: ${bus.si ? 'sin envios' : 'RECIBE ENVIOS'} -- ${bus.porQue}`);
+if (!canalesMuertos || !player.si || !bus.si) {
+  console.log('');
+  console.log('ALGO DE LO QUE ESTE GUION TOCA PUEDE SONAR EN LA SALA. No se escribe nada.');
+  await actor.desconectar(); await observador.desconectar();
+  process.exit(2);
+}
+console.log('');
+
 const nombre = nombreDeInstantanea(Date.now());
 actor.enviar(comandoGuardar(nombre));
 await new Promise((r) => setTimeout(r, 1500));
@@ -274,7 +324,11 @@ anotando = false;
 // medicion del aparato y es un artefacto de quien lo lee.
 const apertura = avisos.find((e) => !e.definitivo);
 const cierre = avisos.find((e) => e.definitivo);
-console.log(`  rutas difundidas por el recall: ${new Set(difundidas).size} distintas, ${difundidas.length} mensajes`);
+const rutasDifundidas = new Set(difundidas.map((d) => d.path));
+const primera = difundidas.length > 0 ? difundidas[0]!.enMs - t0 : null;
+const ultima = difundidas.length > 0 ? difundidas[difundidas.length - 1]!.enMs - t0 : null;
+console.log(`  rutas difundidas por el recall: ${rutasDifundidas.size} distintas, ${difundidas.length} mensajes`);
+console.log(`  primera linea a los ${primera} ms, ultima a los ${ultima} ms  <- ESTO es lo que tarda`);
 console.log(`  aviso de avalancha: ${apertura === undefined ? 'NO HUBO' : 'si'}`);
 if (apertura !== undefined) {
   console.log(`  rutas al abrir la alerta: ${apertura.rutasAfectadas}  (lo que se sabe al cruzar el umbral)`);
@@ -284,8 +338,8 @@ console.log(`  rutas al cerrar la ventana: ${cierre === undefined ? 'NO LLEGO EL
 // Todos los avisos, porque un recall dura mas que la ventana de la alerta y por
 // lo tanto puede producir varias.
 console.log(`  avisos emitidos: ${avisos.length} -> ${avisos.map((e) => `${e.rutasAfectadas}${e.definitivo ? ' (cierre)' : ' (apertura)'}`).join(', ')}`);
-console.log(`  ¿difundio var.currentSnapshot? ${difundidas.includes('var.currentSnapshot') ? 'si' : 'no'}`);
-console.log(`  tardo ${Date.now() - t0} ms en total`);
+console.log(`  ¿difundio var.currentSnapshot? ${rutasDifundidas.has('var.currentSnapshot') ? 'si' : 'no'}`);
+console.log(`  (la espera del guion fue de 3000 ms fijos: no es una medicion de nada)`);
 
 // ------------------------------------------------- 4. el alcance, campo por campo
 console.log('');

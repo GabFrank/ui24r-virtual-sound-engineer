@@ -108,17 +108,20 @@ export interface BulkExternalChange {
    * uno en el acto con `definitivo: false`, y otro al cerrarse la ventana.
    * La pantalla dice «al menos N» hasta que llega el segundo.
    *
-   * **`definitivo` quiere decir «la ventana cerró», NO «esto es todo lo que
-   * pasó», y la diferencia se midió.** Un `LOADSNAPSHOT` contra la consola
-   * tarda unos **3 segundos** en difundir sus cambios y la ventana dura
-   * **1 segundo**: el 2026-09-11, un recall difundió **44 rutas distintas** y el
-   * aviso de cierre informó **39**. Las cinco que llegaron después no abrieron
-   * otra alerta porque no alcanzan el umbral por su cuenta.
+   * **`definitivo` quiere decir «la ventana cerró», y el total se queda corto en
+   * un recall: medido, 44 rutas difundidas contra 39 informadas.**
    *
-   * O sea que sobre un recall largo el total **se queda corto**, y queda dicho
-   * acá en vez de descubrirse en la sala. Lo que no se queda corto es la
-   * invalidación: el estado se marca inválido con cada línea, dentro y fuera de
-   * la ventana.
+   * **Por qué se queda corto NO está medido, y acá hubo una explicación falsa
+   * que conviene dejar escrita.** Se publicó que era porque «el recall tarda
+   * unos 3 segundos y la ventana dura 1». Los 3 segundos eran el `setTimeout`
+   * del propio guion de medición, no el aparato: al ponerle marca de tiempo a
+   * cada línea, **el recall difunde sus 44 rutas entre los 343 y los 344 ms**.
+   * Un milisegundo. Todas caben holgadas en la ventana.
+   *
+   * Así que la diferencia de cinco viene de otro lado —candidatos: rutas cuyo
+   * valor el almacén ya tenía y no cuenta como cambio, o el puntero que se
+   * trata aparte— y **hasta que se mida, no se explica**. Lo que sí está medido
+   * es el hecho: el número informado es menor que las rutas difundidas.
    */
   readonly definitivo: boolean;
   readonly ventanaMs: number;

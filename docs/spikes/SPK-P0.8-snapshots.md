@@ -84,8 +84,15 @@ instantánea.
 Aquella corrida informó «claves que de verdad cambiaron: 46» contra 45 campos
 movidos, y dejó **una** sin nombre. El error de método está a la vista: el guion
 **contaba** las claves y no las **nombraba**, y contar no es identificar. Ahora
-las nombra, y sobre cuatro canales verificados muertos la cuenta cierra exacta:
-45 cambiadas = 44 escritas + `var.currentSnapshot`, **ninguna se movió sola**.
+las nombra, y la cuenta cierra exacta: **45 cambiadas = 44 escritas + una que se
+movió sola, y esa una es `var.currentSnapshot`**, el puntero que mueve el propio
+guardado del paso 1. No queda ninguna sin identificar.
+
+> **Acá se escribió «ninguna se movió sola», y era una cita fabricada.** Los
+> archivos dicen, con todas las letras, `se movieron SOLAS: var.currentSnapshot`.
+> Se entrecomilló como texto archivado la rama del guion que **no se ejecutó**.
+> Lo marcó una auditoría. La conclusión —que no queda ninguna sin identificar—
+> es la misma; la cita no existía.
 Evidencia: `evidence/alcance-recall-clave-de-mas-2026-09-11.txt`.
 
 **La hipótesis que estaba escrita acá no se sostiene**, y eso también se midió:
@@ -94,14 +101,21 @@ decía que el candidato obvio era un compañero de par estéreo arrastrado por
 enlazado. Los únicos enlazados son `l.0` y `l.1`, las entradas de línea.
 
 Lo que queda sin cerrar es la corrida vieja: se hizo sobre los canales 14 a 17,
-y dos de ellos —`i.14` y `i.15`— **tienen envíos abiertos a efectos y a
-auxiliares**, así que por el criterio que este proyecto usa hoy no estaban
-muertos. Reproducirla tal cual sería escribir sobre canales que pueden sonar.
+y dos de ellos no estaban muertos: **`i.14` tiene dos envíos abiertos a efectos**
+—`fx.0` y `fx.2`— y **`i.15` uno abierto a auxiliares**, `aux.2`. Acá decía «los
+dos tienen envíos a efectos **y** a auxiliares», y era falso por canal: ninguno
+de los dos tiene las dos cosas. La conclusión aguanta; la frase no. Reproducirla tal cual sería escribir sobre canales que pueden sonar.
 
-**Y el aviso de avalancha se queda corto en un recall, medido.** El recall tarda
-~3 s en difundir y la ventana de la alerta dura 1 s: de **44 rutas difundidas**,
-el aviso de cierre informó **39**. La invalidación no se queda corta —es por
-línea— pero el número sí, y está dicho en el tipo `BulkExternalChange`.
+**Y el aviso de avalancha se queda corto en un recall: 44 difundidas contra 39
+informadas.** El hecho está medido. **La explicación que se publicó era falsa**,
+y vale dejarla escrita porque es la trampa de siempre: se dijo que el recall
+«tarda ~3 s y la ventana dura 1 s», y esos 3 segundos eran el `setTimeout` del
+guion de medición. Al ponerle marca de tiempo a cada línea, **el recall difunde
+sus 44 rutas entre los 343 y los 344 ms**: un milisegundo, todas dentro de la
+ventana. De dónde salen los cinco que faltan **no está medido**.
+
+Lo mismo con «la invalidación no se queda corta porque es por línea»: **también
+es falso**, y el código dice otra cosa. Ver el charter de concurrencia.
 
 **Las cuatro corridas de esa madrugada, y qué agrega cada una.** Se dejan las
 cuatro porque el instrumento fue cambiando entre ellas y borrar las de antes
@@ -117,6 +131,16 @@ haría ilegible por qué las de después dicen otra cosa:
 - `evidence/alcance-recall-avisos-2026-09-11.txt` — lista **todos** los avisos,
   para poder afirmar que un recall produce dos y no más: `1 (apertura), 39
   (cierre)`.
+- `evidence/alcance-recall-con-guarda-2026-09-11.txt` — la primera con la guarda
+  puesta: la enumeración de los cuatro canales queda **dentro del archivo**, con
+  el reproductor y el bus de salida al que se le cambia el patcheo. Todavía
+  sobre canales con entrada física.
+- `evidence/alcance-recall-sin-fuente-2026-09-11.txt` — **la buena**, y la que
+  corrige el error de las tres anteriores. Sobre los canales 21 a 24, los únicos
+  con `src=none`, que es lo que este guion necesita porque **desilencia y sube
+  ganancia**. Y con marca de tiempo real: el recall difunde sus 44 rutas **entre
+  los 343 y los 344 ms**, no en los 3 segundos que el guion decía antes — ese
+  número era su propia espera fija.
 
 **`m.afs.enabled` es la única excepción, y no es una cualquiera.** El supresor
 de realimentación ya nos había arruinado una ronda entera de mediciones: toma

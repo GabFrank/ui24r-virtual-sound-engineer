@@ -22,6 +22,7 @@
  * Uso:
  *   node --experimental-strip-types tools/spikes/p0-10b-vu/barrido-testigo.ts
  */
+import { estadoPorHttp, exigirCanalesMuertos } from '../canal-muerto.ts';
 import {
   Ui24rTransport, Ui24rMixerAdapter, TestigoDeEscrituras, codificarSetd, decodificar,
 } from '@vse/mixer-adapter';
@@ -107,50 +108,7 @@ if (!testigo.listoParaAtestiguar) {
   process.exit(1);
 }
 
-/**
- * El estado entero de la consola por HTTP, que es un camino distinto del que
- * escribe.
- *
- * **Existe porque la comprobacion se hacia y no se archivaba.** El 2026-09-11
- * se afirmo en un commit que las dieciocho rutas habian quedado identicas y que
- * no se habia movido ninguna otra clave, y esa comparacion vivia en la terminal
- * de quien la corrio: exactamente lo que este proyecto llama transcripcion. Lo
- * marco una auditoria, y tenia razon. Ahora la hace la medicion y queda en su
- * archivo.
- */
-async function estadoPorHttp(): Promise<Map<string, string>> {
-  // **`/raw` NO TERMINA NUNCA**: la consola manda el estado entero y despues se
-  // queda difundiendo por el mismo flujo. Un `await r.text()` no resuelve
-  // jamas, y con un plazo encima aborta y devuelve vacio -- que es lo que pasa
-  // la primera vez que se escribio esto. Hay que leer de a trozos y cortar
-  // cuando el volcado inicial ya paso, que se nota porque deja de llegar nada
-  // durante un momento.
-  const r = await fetch(`http://${maquina}/raw`).catch(() => null);
-  if (r === null || r.body === null) return new Map();
-  const lector = r.body.getReader();
-  const dec = new TextDecoder();
-  let cuerpo = '';
-  const hasta = Date.now() + 8000;
-  for (;;) {
-    const paso = await Promise.race([
-      lector.read(),
-      new Promise<{ done: true; value: undefined }>(
-        (res) => setTimeout(() => res({ done: true, value: undefined }), 900),
-      ),
-    ]).catch(() => ({ done: true as const, value: undefined }));
-    if (paso.done || Date.now() > hasta) break;
-    cuerpo += dec.decode(paso.value, { stream: true });
-  }
-  await lector.cancel().catch(() => {});
-  const m = new Map<string, string>();
-  for (const linea of cuerpo.split('\n')) {
-    const c = /^SET[DS]\^([^^]+)\^(.*)$/.exec(linea.trim());
-    if (c !== null) m.set(c[1]!, c[2]!);
-  }
-  return m;
-}
-
-const antesHttp = await estadoPorHttp();
+const antesHttp = await estadoPorHttp(maquina);
 if (antesHttp.size === 0) {
   console.log('no se pudo leer /raw: sin punto de comparacion independiente, no se escribe');
   await testigo.cerrar();
@@ -160,25 +118,13 @@ if (antesHttp.size === 0) {
 
 // **El canal se elige enumerando, no confiando en el silencio.** Un canal
 // silenciado con envios abiertos a auxiliares o a efectos PUEDE estar sonando en
-// los monitores mientras el general no lo muestra. Se comprueba antes de
-// escribir y se deja escrito en la evidencia.
-const num = (k: string): number => Number(antesHttp.get(k) ?? '0');
-const auxAbiertos = [...Array(10).keys()].filter(
-  (k) => num(`i.${N}.aux.${k}.value`) > 0.001 && num(`i.${N}.aux.${k}.mute`) === 0,
-);
-const fxAbiertos = [...Array(4).keys()].filter(
-  (k) => num(`i.${N}.fx.${k}.value`) > 0.001 && num(`i.${N}.fx.${k}.mute`) === 0,
-);
+// los monitores mientras el general no lo muestra. La enumeracion vive en
+// `canal-muerto.ts` para que haya UNA sola implementacion de la regla, y se
+// imprime pasen o no: una medicion que dice «se eligio un canal muerto» sin
+// mostrar en que estado estaba es una afirmacion sin respaldo.
 console.log('');
-console.log(`el canal i.${N}, enumerado por HTTP antes de escribir:`);
-console.log(`  silenciado: ${num(`i.${N}.mute`) === 1 ? 'si' : 'NO'}`
-  + ` · fader: ${num(`i.${N}.mix`).toFixed(4)}`
-  + ` · nombre: ${JSON.stringify(antesHttp.get(`i.${N}.name`) ?? '')}`);
-console.log(`  envios abiertos: ${auxAbiertos.length} a auxiliares, ${fxAbiertos.length} a efectos`);
-const vivo = num(`i.${N}.mute`) !== 1 || num(`i.${N}.mix`) > 0.001
-  || auxAbiertos.length > 0 || fxAbiertos.length > 0;
-if (vivo) {
-  console.log('  ESTE CANAL NO ESTA MUERTO. No se escribe nada.');
+if (!exigirCanalesMuertos(antesHttp, [N])) {
+  console.log('ESTE CANAL NO ESTA MUERTO. No se escribe nada.');
   await testigo.cerrar();
   await a.desconectar();
   process.exit(1);
@@ -249,7 +195,7 @@ console.log(`sin restaurar, segun la relectura del arnes: ${sinRestaurar.length 
 // una medicion que solo revisa lo que sabe que toco no puede ver lo que toco
 // sin saber.
 console.log('');
-const despuesHttp = await estadoPorHttp();
+const despuesHttp = await estadoPorHttp(maquina);
 if (despuesHttp.size === 0) {
   console.log('COMPROBACION POR HTTP: no se pudo releer. La restauracion queda sin verificar por fuera.');
 } else {

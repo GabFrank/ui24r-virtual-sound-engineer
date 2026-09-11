@@ -20,11 +20,19 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   que confirma, por otro camino, que enumerarlas como dos fuentes
   independientes es un doble conteo real.
 
-- **Y el aviso de avalancha se queda corto en un recall.** Medido: el recall
-  difundió **44 rutas** a lo largo de tres segundos y el aviso de cierre informó
-  **39**, porque su ventana dura uno. La invalidación del estado no se queda
-  corta —es por línea, dentro y fuera de la ventana— pero el número sí, y ahora
-  lo dice el propio tipo en vez de descubrirse en la sala.
+- **Y el aviso de avalancha se queda corto en un recall: 44 rutas difundidas
+  contra 39 informadas.** El hecho está medido. **La explicación que se publicó
+  era falsa y hay que decirlo**: se dijo que el recall «tarda tres segundos y la
+  ventana dura uno», y esos tres segundos eran la espera fija del propio guion de
+  medición. Con marca de tiempo real, **el recall difunde sus 44 rutas en un
+  milisegundo** — todas caben en la ventana. De dónde salen los cinco que faltan
+  **no está medido**.
+
+  Y la otra mitad de esa frase también era falsa: se dijo que «la invalidación
+  no se queda corta porque es por línea». No lo es — un cambio ajeno suelto no
+  invalida nada, y está bien que no lo haga, porque arrastrar un fader no es una
+  avalancha. Lo que quedó abierto y sí es un hueco: si el operador relee **en
+  mitad** de un recall, las rutas que faltan entran sin invalidar ni avisar.
 
   De paso: el guion de medición seguía leyendo el contrato viejo de ese aviso
   —el de un solo evento— así que venía informando «1» donde antes informaba el
