@@ -142,9 +142,20 @@ en vez de ser un número suelto, y que este cuadro dice dónde falta el cable.
   sola al conectar; el cartel decía «hasta releerlo» y su botón decía
   «Entendido». Un recall desde el navegador de la consola dejaba el estado —y
   con él la posibilidad de escribir— muerto por el resto del show. Ahora hay
-  `releerEstado()`, que reconecta: **no** pide el volcado, porque no hay
-  mensaje verificado que lo pida, y usa lo único que el protocolo ya demostró
-  hacer.
+  `releerEstado()`.
+
+  > **Corregido el 2026-09-11, de una auditoría.** Esta viñeta decía, en
+  > presente, que `releerEstado()` «reconecta: **no** pide el volcado, porque no
+  > hay mensaje verificado que lo pida». **Hace lo contrario desde el
+  > 2026-09-08**: manda `INIT`, que SPK-P0.2a dejó medido ese día. El código lo
+  > dice en su propio comentario —«ahora se pide, ya no se reconecta»— y este
+  > documento seguía con la frase vieja, en presente, a nueve líneas de otra
+  > viñeta que describe el comportamiento nuevo. **Dos párrafos contradictorios
+  > en el mismo archivo, los dos afirmando el presente.**
+  >
+  > Y el 2026-09-10 se le agregó lo que le faltaba: si nadie contesta, el estado
+  > **se queda inválido**. Antes el temporizador lo declaraba válido con el
+  > silencio.
 - **INV-034**, el aviso que se apagaba antes de tiempo: `conActividad` era un
   interruptor y no un contador, así que con dos transacciones solapadas el
   final de la primera apagaba el aviso con la segunda todavía escribiendo. El

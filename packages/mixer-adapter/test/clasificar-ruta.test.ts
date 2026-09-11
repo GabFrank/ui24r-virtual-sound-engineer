@@ -94,13 +94,18 @@ test('una ruta desconocida devuelve null, no una suposicion', () => {
 });
 
 test('no confunde rutas parecidas', () => {
-  strictEqual(clasificarRuta('i.3.mixer'), null);
-  strictEqual(clasificarRuta('m.mixdown'), null);
+  // **Estas dos son inventadas a proposito**: prueban que un nombre que empieza
+  // igual que uno real no se cuela por prefijo. El sufijo `-inventada` lo dice,
+  // para que la guarda de rutas fabricadas no las cuente como un descuido.
+  strictEqual(clasificarRuta('i.3.mixer-inventada'), null);
+  strictEqual(clasificarRuta('m.mixdown-inventada'), null);
+  // Y el caso de verdad: `m.mix` SI existe y es el fader del general.
+  strictEqual(clasificarRuta('m.mix'), 'MASTER_FADER');
 });
 
 test('INV-010: ninguna ruta de auxiliar de monitor es escribible', () => {
   // El test estatico que la invariante promete desde el principio.
-  const rutas = ['i.1.aux.1.value', 'i.24.aux.6.value', 'a.1.mix'];
+  const rutas = ['i.1.aux.1.value', 'i.23.aux.6.value', 'a.1.mix'];
   for (const r of rutas) {
     const kind = clasificarRuta(r);
     strictEqual(kind !== null, true, r);

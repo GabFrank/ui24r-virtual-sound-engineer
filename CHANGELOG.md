@@ -76,6 +76,27 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Las rutas fabricadas en los tests dejaron de depender de que alguien mire.**
+  Ya habían aparecido tres veces: los tests inventan una ruta, el clasificador
+  la agarra por prefijo, y el test pasa **probando el patrón y no el
+  protocolo**. Así vivieron meses `m.eq.b1.gain`, `m.delay.time`, `afs2.enable`
+  y `i.24.aux.6.value` — un canal que esta consola no tiene.
+
+  Ahora hay un test que barre **todos** los archivos de prueba y contrasta cada
+  ruta contra el inventario capturado. Encontró tres más: el canal 24 otra vez,
+  `m.eq.easy` y `m.mixdown`, ninguna de las cuales existe. Las fabricaciones
+  **deliberadas** —probar un borde, probar que una ruta mal formada se rechaza—
+  entran en una lista **con su motivo escrito**: una lista de excepciones sin
+  motivo se convierte en el lugar donde se esconde lo que molesta.
+
+- **Y la quinta discrepancia entre lo que un documento dice y lo que el código
+  hace.** `safety-invariants.md` afirmaba, en presente, que «`releerEstado()`
+  reconecta: **no** pide el volcado». Hace lo contrario desde el 2026-09-08:
+  manda `INIT`. El código lo dice en su propio comentario, y el documento
+  seguía con la frase vieja **a nueve líneas de otra viñeta que describe el
+  comportamiento nuevo** — dos párrafos contradictorios en el mismo archivo, los
+  dos afirmando el presente.
+
 - **Tres cosas más que la auditoría encontró de lo que se entregó anoche.**
 
   **El puente del perfil de sala no existe, y un commit dijo que sí.** La

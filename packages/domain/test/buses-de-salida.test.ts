@@ -30,9 +30,10 @@ test('el grafico del general entra por su prefijo', () => {
   strictEqual(ecualizacionPermitida('m.eq.peak.l.0', p), true);
   strictEqual(ecualizacionPermitida('m.eq.peak.r.30', p), true);
   strictEqual(ecualizacionPermitida('m.eq.hpf.l', p), true);
-  // Y la ruta inventada que la lista blanca usaba tambien entraria, porque
-  // empieza igual. Eso no la hace existir: lo que cambio es que ya no hace
-  // falta enumerar rutas para autorizar un bus.
+  // **`m.eq.b1.gain` es la ruta inventada que la lista blanca uso durante
+  // meses.** Se deja como caso para dejar constancia de que un paramétrico de
+  // salida entraria por el mismo camino -- esta consola no tiene uno, pero otra
+  // podria. No la hace existir.
   strictEqual(ecualizacionPermitida('m.eq.b1.gain', p), true);
 });
 
@@ -77,5 +78,4 @@ test('el prefijo autoriza FILTROS, no todo lo que vive bajo .eq.', () => {
   strictEqual(ecualizacionPermitida('m.eq.linked', p), false);
   strictEqual(ecualizacionPermitida('m.eq.prmod', p), false, 'recall de preset');
   strictEqual(ecualizacionPermitida('m.eq.prname', p), false);
-  strictEqual(ecualizacionPermitida('m.eq.easy', p), false);
 });
