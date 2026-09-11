@@ -23,6 +23,11 @@ export const RUTAS: Routes = [
     loadComponent: () => import('./sesion/sesion.component').then((m) => m.SesionComponent),
   },
   {
+    path: 'sesion/recorrido',
+    title: 'Recorrido',
+    loadComponent: () => import('./recorrido/recorrido.component').then((m) => m.RecorridoComponent),
+  },
+  {
     path: 'sesion/canales',
     title: 'Canales',
     loadComponent: () => import('./channels/channels.component').then((m) => m.ChannelsComponent),

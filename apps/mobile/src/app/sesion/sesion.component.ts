@@ -73,6 +73,15 @@ import { ESTADOS, ESTADOS_EN_VIVO } from './estados';
                 <p class="dato">{{ c.banda?.asignaciones?.length ?? 0 }} asignados</p>
               </ui-card>
             </a>
+            <a class="atajo" routerLink="/sesion/recorrido">
+              <ui-card titulo="Recorrido" subtitulo="En qué orden se ajusta la banda">
+                @if (permiteGanancia()) {
+                  <ui-badge tono="ok">Se puede recorrer</ui-badge>
+                } @else {
+                  <ui-badge tono="neutro">Sólo en configuración de canales</ui-badge>
+                }
+              </ui-card>
+            </a>
             <a class="atajo" routerLink="/sesion/ganancia">
               <ui-card titulo="Ganancia" subtitulo="Cuánto margen tiene cada canal">
                 @if (permiteGanancia()) {

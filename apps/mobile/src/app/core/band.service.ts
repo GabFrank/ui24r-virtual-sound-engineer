@@ -128,6 +128,39 @@ export class BandService {
     this._banda.set(actualizada);
   }
 
+  /**
+   * Guarda el orden del recorrido y lo que quedó afuera.
+   *
+   * **Pasa por acá y no por el repositorio, y ése es todo el punto.** Un auditor
+   * de expectativas lo encontró antes de que existiera la pantalla: este
+   * servicio guarda haciendo `{ ...banda }` sobre su **propia señal cacheada**,
+   * así que si otra pantalla escribiera el orden por el repositorio, la
+   * siguiente asignación de canal lo pisaría sin decir nada. Un solo camino de
+   * escritura y la caché no se puede quedar vieja.
+   *
+   * `orden` en `null` es «el usuario no tiene orden propio»: es lo que hace que
+   * restaurar **olvide** en vez de congelar, y que la propuesta siga
+   * acompañando si mañana el catálogo clasifica mejor.
+   */
+  async guardarRecorrido(
+    orden: readonly ChannelAssignmentId[] | null,
+    fuera: readonly ChannelAssignmentId[],
+  ): Promise<void> {
+    const banda = this._banda();
+    if (banda === null) {
+      this.log.warn('system', 'recorrido_sin_banda', {});
+      return;
+    }
+    const actualizada: BandProfile = {
+      ...banda, ordenDelRecorrido: orden, fueraDelRecorrido: fuera,
+    };
+    await this.repos.guardarBanda(actualizada);
+    this._banda.set(actualizada);
+    this.log.info('system', 'recorrido_guardado', {
+      id: banda.id, ordenPropio: orden !== null, fuera: fuera.length,
+    });
+  }
+
   perfilDe(asignacion: ChannelAssignment) {
     return this.perfiles.find((p) => p.id === asignacion.channelProfileId)!;
   }
