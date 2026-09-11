@@ -6,6 +6,31 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El tope de ±3 dB de INV-004 comparaba decibeles contra crudo, y no se
+  disparaba nunca.** El motor restaba el valor propuesto menos el esperado —en
+  crudo, que es lo que va al cable— y comparaba eso contra un tope escrito en
+  decibeles. El crudo va de 0 a 1 y el tope es 3: **medido, el mayor salto que
+  dejaba pasar era de 61,9 dB**, el recorrido entero del previo de esta consola,
+  de −6,0 a +55,9.
+
+  El cambio propuesto llevaba un campo `unidad` desde el principio y **no lo
+  leía nadie**: se copiaba al diario y ahí moría, así que el diario registraba
+  «dB» al lado de un número que no eran decibeles.
+
+  **Y la suite estaba verde.** Todos los tests declaraban decibeles y pasaban
+  valores que sí lo eran, o sea que modelaban un universo donde el defecto no
+  existe; el único camino de escritura que la aplicación tiene de verdad pasaba
+  crudo. Un test en verde sobre un mundo que no es el que corre.
+
+  Ahora el cambio lleva las dos magnitudes en la unidad declarada, **y son
+  obligatorias**: así el compilador señala cada sitio de construcción en vez de
+  dejar el fallo silencioso donde estaba. El crudo sigue yendo al cable. La misma
+  corrección alcanza al realce máximo de sala, que tenía el mismo problema.
+
+  Lo que el compilador no puede ver es que alguien llene la magnitud con el
+  crudo, así que hay una guarda que lo busca en el código de producción y falla
+  si los dos salen del mismo sitio — comprobado volviendo a poner el defecto.
+
 - **Una escritura con el socket muerto tiraba una excepción en vez de devolver
   un resultado.** `escribir()` promete un `WriteResult` con su motivo, y el
   transporte real **lanza** si se lo llama con el socket cerrado. El adaptador

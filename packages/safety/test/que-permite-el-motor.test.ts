@@ -44,7 +44,8 @@ function permitidas(): readonly string[] {
   for (const path of claves) {
     const kind = clasificarRuta(path);
     if (kind === null) continue;
-    const cambio = { kind, path, unidad: 'dB', valorPropuesto: 1, valorEsperado: 0 } as CambioPropuesto;
+    const cambio = { kind, path, unidad: 'dB', valorPropuesto: 1, valorEsperado: 0,
+  magnitudPropuesta: 1, magnitudEsperada: 0 } as CambioPropuesto;
     const v = motor.evaluar([cambio], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
     if (v.permitido) salida.push(path);
   }

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { rawParaGananciaMasCercana, gananciaAlcanzable } from '@vse/mixer-adapter';
+import { rawParaGananciaMasCercana, gananciaAlcanzable, gananciaADb } from '@vse/mixer-adapter';
 import { puedeAplicarGanancia } from '@vse/assistants';
 import type { Confidence } from '@vse/domain';
 import type { ContextoSeguridad } from '@vse/safety';
@@ -184,8 +184,20 @@ export class AplicarGananciaService {
         kind: 'PREAMP_GAIN',
         path: p.rutaGanancia,
         unidad: 'dB',
+        // Al cable va el crudo: es lo que la consola entiende.
         valorPropuesto: crudo,
         valorEsperado: p.crudoActual,
+        // **Y al control de INV-004 van los decibeles.** Hasta el 2026-09-11
+        // este sitio mandaba el crudo con la etiqueta «dB» y el motor comparaba
+        // ese crudo contra un tope de 3 dB. El crudo del previo va de 0 a 1, así
+        // que el tope **no se disparaba nunca**: medido, dejaba pasar 61,9 dB,
+        // el recorrido entero del previo, de −6,0 a +55,9.
+        //
+        // Se manda `quedoEnDb` y no `p.gainPropuestoDb`: la ganancia no es
+        // continua y lo que se va a aplicar es el escalón alcanzable. Controlar
+        // el valor pedido en vez del que va a quedar sería controlar otra cosa.
+        magnitudPropuesta: quedoEnDb,
+        magnitudEsperada: gananciaADb(p.crudoActual),
       }],
       this.contexto(p.confianza),
       {

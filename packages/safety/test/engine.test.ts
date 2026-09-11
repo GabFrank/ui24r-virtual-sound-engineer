@@ -9,6 +9,7 @@ const ok = { conexionPermiteEscribir: true, snapshotVerificado: true };
 const fader = (valor: number, esperado = -6): CambioPropuesto => ({
   kind: 'CHANNEL_FADER', path: 'i.3.mix', unidad: 'dB',
   valorPropuesto: valor, valorEsperado: esperado,
+  magnitudPropuesta: valor, magnitudEsperada: esperado,
 });
 
 function motivos(v: ReturnType<SafetyEngine['evaluar']>): string[] {
@@ -26,6 +27,7 @@ test('INV-008: un envío de monitor nunca se escribe', () => {
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
     valorPropuesto: -6, valorEsperado: -10,
+  magnitudPropuesta: -6, magnitudEsperada: -10,
   }], contexto(), ok);
   assert.equal(v.permitido, false);
   assert.ok(motivos(v).includes('INV-008'));
@@ -41,6 +43,7 @@ test('INV-008: el fader general tampoco', () => {
   const v = e.evaluar([{
     kind: 'MASTER_FADER', path: 'm.mix', unidad: 'dB',
     valorPropuesto: 0, valorEsperado: -1,
+  magnitudPropuesta: 0, magnitudEsperada: -1,
   }], contexto(), ok);
   assert.equal(v.permitido, false);
 });
@@ -81,6 +84,7 @@ test('INV-006: la ganancia solo se toca en configuración de canales', () => {
   const gain: CambioPropuesto = {
     kind: 'PREAMP_GAIN', path: 'hw.3.gain', unidad: 'dB',
     valorPropuesto: 32, valorEsperado: 30,
+  magnitudPropuesta: 32, magnitudEsperada: 30,
   };
   assert.equal(e.evaluar([gain], contexto({ sessionState: 'CHANNEL_SETUP' }), ok).permitido, true);
   assert.equal(e.evaluar([gain], contexto({ sessionState: 'SHOW' }), ok).permitido, false);
@@ -92,6 +96,7 @@ test('INV-006: con una toma grabada, la ganancia queda congelada', () => {
   const v = e.evaluar([{
     kind: 'PREAMP_GAIN', path: 'hw.3.gain', unidad: 'dB',
     valorPropuesto: 32, valorEsperado: 30,
+  magnitudPropuesta: 32, magnitudEsperada: 30,
   }], contexto({ hayTakeDeSoundcheckActivo: true }), ok);
   assert.equal(v.permitido, false);
   assert.match(
@@ -165,6 +170,7 @@ test('INV-008: la ecualización de salida solo va a los buses declarados', () =>
   const permitido: CambioPropuesto = {
     kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
     valorPropuesto: -2, valorEsperado: 0,
+  magnitudPropuesta: -2, magnitudEsperada: 0,
   };
   assert.equal(e.evaluar([permitido], contexto(), ok).permitido, true);
 
@@ -212,6 +218,7 @@ test('INV-008: una ruta de auxiliar de monitor no pasa aunque se declare como fa
     [{
       kind: 'CHANNEL_FADER', path: 'i.3.aux.1.value', unidad: 'dB',
       valorPropuesto: -6, valorEsperado: -9,
+  magnitudPropuesta: -6, magnitudEsperada: -9,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -229,6 +236,7 @@ test('INV-008: una ruta que el dominio no sabe clasificar se rechaza', () => {
     [{
       kind: 'CHANNEL_FADER', path: 'i.1.inventado', unidad: 'dB',
       valorPropuesto: -6, valorEsperado: -9,
+  magnitudPropuesta: -6, magnitudEsperada: -9,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -243,6 +251,7 @@ test('una ruta coherente con su clase sigue pasando', () => {
     [{
       kind: 'CHANNEL_FADER', path: 'i.3.mix', unidad: 'dB',
       valorPropuesto: -6, valorEsperado: -9,
+  magnitudPropuesta: -6, magnitudEsperada: -9,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -261,6 +270,7 @@ test('INV-019: con el paro activo, un retroceso pasa y un cambio normal no', () 
   const cambio = [{
     kind: 'CHANNEL_FADER' as const, path: 'i.3.mix', unidad: 'dB',
     valorPropuesto: -6, valorEsperado: -9,
+  magnitudPropuesta: -6, magnitudEsperada: -9,
   }];
   const opciones = { conexionPermiteEscribir: true, snapshotVerificado: true };
 
@@ -287,7 +297,8 @@ test('INV-004: un filtro estrecho en un bus PARAMETRICO se rechaza', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.b3.gain', unidad: 'dB',
-      valorPropuesto: -3, valorEsperado: 0, q: 0.4,
+      valorPropuesto: -3, valorEsperado: 0,
+  magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -312,7 +323,8 @@ test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar',
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -3, valorEsperado: 0, q: 0.4,
+      valorPropuesto: -3, valorEsperado: 0,
+  magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -325,7 +337,8 @@ test('INV-004: la correccion de sala atenua, no realza', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: 3, valorEsperado: 0, q: 1.4,
+      valorPropuesto: 3, valorEsperado: 0,
+  magnitudPropuesta: 3, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -341,7 +354,8 @@ test('una atenuacion con Q ancho en un bus declarado pasa', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -2, valorEsperado: 0, q: 1.4,
+      valorPropuesto: -2, valorEsperado: 0,
+  magnitudPropuesta: -2, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -364,7 +378,8 @@ test('sin perfil de sala el rechazo lo DICE, no culpa al bus', () => {
   // mensaje mandaba a revisar el bus cuando falta el perfil entero.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0 }],
+    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
+  magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set() }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );
@@ -381,7 +396,8 @@ test('con perfil, un bus ajeno SI se rechaza por el bus', () => {
   // verdad corresponde.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0 }],
+    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
+  magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set(['m']) }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );

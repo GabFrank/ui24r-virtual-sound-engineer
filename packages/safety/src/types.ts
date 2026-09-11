@@ -13,10 +13,38 @@ export interface CambioPropuesto {
   readonly kind: ParameterKind;
   /** Ruta del protocolo. */
   readonly path: string;
+  /** En qué unidad están las magnitudes de abajo: `dB`, `octavas`, `ms`. */
   readonly unidad: string;
+  /** Lo que se le manda a la consola, **en crudo**: es lo que va al cable. */
   readonly valorPropuesto: number;
-  /** Valor esperado en la consola justo antes de escribir. */
+  /** Valor esperado en la consola justo antes de escribir, también en crudo. */
   readonly valorEsperado: number;
+  /**
+   * Los mismos dos valores **en la unidad declarada**, y son obligatorios.
+   *
+   * **Sin esto INV-004 no se puede aplicar, y durante meses no se aplicó.** El
+   * motor calculaba el delta como `valorPropuesto - valorEsperado` --crudo-- y
+   * lo comparaba contra `LIMITES[kind].porTransaccion`, que está en decibeles.
+   * El crudo del previo va de 0 a 1 y el tope es 3, así que **el tope por
+   * transacción no se podía disparar nunca**: medido, el mayor salto que dejaba
+   * pasar era de **61,9 dB**, de −6,0 a +55,9, el recorrido entero del previo.
+   *
+   * El campo `unidad` existía desde el principio y no lo leía nadie: se copiaba
+   * al diario y ahí moría. O sea que el diario registraba «dB» al lado de un
+   * número que no eran decibeles.
+   *
+   * **Y la suite estaba verde.** Todos los tests declaraban `unidad: 'dB'` y
+   * pasaban valores que SÍ eran decibeles, así que modelaban un universo donde
+   * el defecto no existe. El único llamador de producción
+   * --`aplicar-ganancia.service.ts`-- pasaba crudo. Un test verde sobre un
+   * mundo que no es el que corre.
+   *
+   * Son obligatorios y no opcionales **a propósito**: así el compilador señala
+   * cada sitio de construcción. Un campo opcional habría dejado el fallo
+   * silencioso exactamente donde estaba.
+   */
+  readonly magnitudPropuesta: number;
+  readonly magnitudEsperada: number;
   /**
    * Factor de calidad del filtro, solo para ecualización de salida.
    *

@@ -296,7 +296,10 @@ export class SafetyEngine {
           path: c.path,
         });
       }
-      const realce = c.valorPropuesto - c.valorEsperado;
+      // **En decibeles, no en crudo.** `REALCE_MAXIMO_SALA_DB` vale 2 y el
+      // crudo de una banda del gráfico no llega a 2 nunca, así que sobre el
+      // crudo esta comprobación tampoco se disparaba.
+      const realce = c.magnitudPropuesta - c.magnitudEsperada;
       if (realce > REALCE_MAXIMO_SALA_DB) {
         salida.push({
           codigo: 'REALCE_EXCESIVO',
@@ -309,7 +312,11 @@ export class SafetyEngine {
       }
     }
 
-    const delta = c.valorPropuesto - c.valorEsperado;
+    // **El delta va en la unidad que LIMITES declara, no en crudo.** Ver
+    // `CambioPropuesto.magnitudPropuesta`: durante meses esto restaba crudos y
+    // los comparaba contra decibeles, así que el tope de INV-004 dejaba pasar
+    // el recorrido entero del previo.
+    const delta = c.magnitudPropuesta - c.magnitudEsperada;
     const limite = verificarLimite({
       kind: c.kind,
       deltaSolicitado: delta,

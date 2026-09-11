@@ -24,6 +24,7 @@ function montar(
 const fader = (path: string, propuesto: number, esperado: number): CambioPropuesto => ({
   kind: 'CHANNEL_FADER', path, unidad: 'dB',
   valorPropuesto: propuesto, valorEsperado: esperado,
+  magnitudPropuesta: propuesto, magnitudEsperada: esperado,
 });
 
 const conSnapshot = { conexionPermiteEscribir: true, snapshotRef: 'VSE_AUTO_1' };
@@ -209,7 +210,8 @@ test('una transacción rechazada no deja rastro en el diario', async () => {
   const r = await ejecutor.ejecutar(
     'tx1', 's1', 'x',
     [{ kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-       valorPropuesto: -6, valorEsperado: -10 }],
+       valorPropuesto: -6, valorEsperado: -10,
+  magnitudPropuesta: -6, magnitudEsperada: -10 }],
     contexto(), conSnapshot,
   );
   assert.equal(r.estado, 'RECHAZADA');
