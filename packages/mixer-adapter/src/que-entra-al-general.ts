@@ -83,12 +83,145 @@ export interface FuenteDelGeneral {
  * enrutamiento no se miraba en absoluto. Devolver una lista de fuentes sin decir
  * esto invita a creer que la lista es completa — que es el error original, con
  * la confianza subida.
+ *
+ * **Y la primera declaración de huecos tenía el mismo defecto que venía a
+ * corregir.** Sus catorce patrones existían todos en la consola, pero estaban
+ * escritos para la familia `i.` mientras el módulo enumera cinco clases:
+ * declaraba `i.N.mgmask` y no `l.N.mgmask` —**las entradas de línea, que son el
+ * caso testigo que le da sentido a todo esto**—, `i.N.vca` y no el de los
+ * auxiliares, los efectos o el reproductor. Una lista de huecos con huecos.
+ *
+ * Ahora los patrones **se derivan** de una tabla de conceptos por familia, y un
+ * test los contrasta contra las 6732 claves del inventario en las dos
+ * direcciones. Ver `SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO`: entre los dos, la cuenta
+ * de sufijos de familia fuente **cierra exacta**, así que un firmware que
+ * agregue uno nuevo rompe el test en vez de pasar desapercibido.
  */
+
+/** Por qué una ruta que no se lee puede cambiar la respuesta. */
+export type ClaseDeHueco =
+  /** Decide por dónde llega al general, o si llega. */
+  | 'CAMINO'
+  /** Puede callar —o destapar— una fuente con su `.mute` diciendo lo contrario. */
+  | 'SILENCIO'
+  /** Mueve ganancias por su cuenta, sin que nadie toque nada. */
+  | 'AUTOMATICO'
+  /** Existe en la consola y no se estableció qué hace. */
+  | 'DESCONOCIDO';
+
+/** Una ruta que existe en la consola y este módulo no lee. */
+export interface Hueco {
+  /** El patrón con `N` en el índice: `l.N.mgmask`. */
+  readonly patron: string;
+  readonly clase: ClaseDeHueco;
+}
+
 export interface LoQueNoSeVe {
-  /** Rutas de enrutamiento que existen en la consola y este módulo no lee. */
+  /** Cada hueco con la razón por la que importa. */
+  readonly huecos: readonly Hueco[];
+  /** Los mismos patrones, planos, para quien solo quiera la lista. */
   readonly sinMirar: readonly string[];
   readonly porQue: readonly string[];
 }
+
+/**
+ * Los conceptos que deciden si una fuente llega al general, y en qué familias.
+ *
+ * **Las familias no se escriben de memoria**: salieron de contar el inventario,
+ * y el test las vuelve a contar. `subgroup` está en `f i l p` y **no en `s`**
+ * —un subgrupo no alimenta a otro subgrupo—, `amix` solo en `i`, `ducker` solo
+ * en `s`. Escribir `i` y confiar es exactamente lo que falló.
+ */
+const CONCEPTOS: readonly { sufijo: string; familias: readonly string[]; clase: ClaseDeHueco }[] = [
+  { sufijo: 'subgroup', familias: ['f', 'i', 'l', 'p'], clase: 'CAMINO' },
+  { sufijo: 'vca', familias: ['a', 'f', 'i', 'l', 'p'], clase: 'CAMINO' },
+  { sufijo: 'link2master', familias: ['a'], clase: 'CAMINO' },
+  { sufijo: 'matrix', familias: ['a'], clase: 'CAMINO' },
+  // Qué entrada física alimenta cada tira. **Por acá entró el Bluetooth.**
+  { sufijo: 'src', familias: ['i', 'l'], clase: 'CAMINO' },
+  { sufijo: 'mgmask', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
+  { sufijo: 'forceunmute', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
+  { sufijo: 'solo', familias: ['a', 'f', 'i', 'l', 'p', 's', 'v'], clase: 'SILENCIO' },
+  { sufijo: 'amix', familias: ['i'], clase: 'AUTOMATICO' },
+  { sufijo: 'amixgroup', familias: ['i'], clase: 'AUTOMATICO' },
+  // El nombre sugiere qué hacen y **el nombre no es una medición**. Lo que no
+  // se pudo descartar se declara, que es la dirección segura.
+  { sufijo: 'scsrc', familias: ['i', 'l'], clase: 'DESCONOCIDO' },
+  { sufijo: 'exclude', familias: ['i', 's'], clase: 'DESCONOCIDO' },
+  { sufijo: 'ducker', familias: ['s'], clase: 'DESCONOCIDO' },
+  { sufijo: 'bypass', familias: ['f'], clase: 'DESCONOCIDO' },
+  { sufijo: 'smix', familias: ['f'], clase: 'DESCONOCIDO' },
+  { sufijo: 'span', familias: ['f'], clase: 'DESCONOCIDO' },
+];
+
+/**
+ * Huecos que no cuelgan de una familia de fuente: los globales y los grupos.
+ *
+ * Los VCA están acá **enteros**: `v.N.mix` tiene fader y `CLASES` no lo
+ * reconoce, así que la enumeración descarta la familia completa en silencio.
+ */
+const HUECOS_SUELTOS: readonly { patron: string; clase: ClaseDeHueco }[] = [
+  { patron: 'v.N.mix', clase: 'CAMINO' },
+  { patron: 'v.N.mute', clase: 'CAMINO' },
+  { patron: 'v.N.name', clase: 'CAMINO' },
+  { patron: 'vg.N', clase: 'CAMINO' },
+  { patron: 'vg.N.name', clase: 'CAMINO' },
+  { patron: 'hwoutm.N.src', clase: 'CAMINO' },
+  { patron: 'hwoutaux.N.src', clase: 'CAMINO' },
+  { patron: 'hwouthp.N.src', clase: 'CAMINO' },
+  { patron: 'hwouthpdsp.N.src', clase: 'CAMINO' },
+  { patron: 'mgmask', clase: 'SILENCIO' },
+  { patron: 'mg.N.name', clase: 'SILENCIO' },
+  { patron: 'settings.soloMode', clase: 'SILENCIO' },
+  { patron: 'settings.solotype', clase: 'SILENCIO' },
+  { patron: 'settings.multiplesolo', clase: 'SILENCIO' },
+  { patron: 'settings.solovol', clase: 'SILENCIO' },
+  { patron: 'automix.a.on', clase: 'AUTOMATICO' },
+  { patron: 'automix.b.on', clase: 'AUTOMATICO' },
+  { patron: 'automix.time', clase: 'AUTOMATICO' },
+];
+
+/** Los tres sufijos que este módulo sí lee de cada fuente. */
+export const SUFIJOS_LEIDOS: readonly string[] = ['mix', 'mute', 'name'];
+
+/**
+ * Lo que no se lee **porque cambia el sonido y no el camino**, con su motivo.
+ *
+ * Existe para que la cuenta cierre. Sin esto, «estos son mis huecos» es una
+ * afirmación que nadie puede comprobar: hay 42 sufijos en las familias de
+ * fuente, y la única forma de saber que ninguno se coló es que cada uno esté en
+ * exactamente una de las tres listas. El test lo verifica contra el inventario.
+ *
+ * **No es una lista de cosas sin importancia.** Un canal con la ganancia al
+ * mínimo o la fase invertida cambia el general muchísimo. Lo que dicen estas
+ * entradas es más angosto: no cambian **si** la fuente llega, que es la única
+ * pregunta que este módulo contesta.
+ */
+export const SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO: readonly { sufijo: string; porQue: string }[] = [
+  { sufijo: 'gain', porQue: 'previo: cambia cuánto entra, no si entra' },
+  { sufijo: 'disablegain', porQue: 'previo' },
+  { sufijo: 'hiz', porQue: 'previo: impedancia de entrada' },
+  { sufijo: 'phantom', porQue: 'previo: alimentación del micrófono (INV-007, de solo lectura)' },
+  { sufijo: 'delay', porQue: 'cambia cuándo suena, no si llega' },
+  { sufijo: 'invert', porQue: 'cambia la fase, no el camino' },
+  { sufijo: 'pan', porQue: 'reparte entre izquierda y derecha; al extremo sigue llegando' },
+  { sufijo: 'mtkrec', porQue: 'va a la grabación multipista, no al general' },
+  { sufijo: 'safe', porQue: 'es del punto de retorno, no del camino: ver que-no-devuelve-el-punto-de-retorno.ts' },
+  { sufijo: 'color', porQue: 'cosmético' },
+  { sufijo: 'instrument', porQue: 'etiqueta' },
+  { sufijo: 'iosyscmd', porQue: 'etiqueta del sistema de entrada/salida' },
+  { sufijo: 'iosysname', porQue: 'etiqueta del sistema de entrada/salida' },
+  { sufijo: 'fxtype', porQue: 'qué efecto es; el retorno llega igual' },
+  { sufijo: 'bpm', porQue: 'parámetro del efecto' },
+  { sufijo: 'prmod', porQue: 'preajuste del efecto' },
+  { sufijo: 'prname', porQue: 'nombre del preajuste del efecto' },
+  { sufijo: 'par1', porQue: 'parámetro del efecto' },
+  { sufijo: 'par2', porQue: 'parámetro del efecto' },
+  { sufijo: 'par3', porQue: 'parámetro del efecto' },
+  { sufijo: 'par4', porQue: 'parámetro del efecto' },
+  { sufijo: 'par5', porQue: 'parámetro del efecto' },
+  { sufijo: 'par6', porQue: 'parámetro del efecto' },
+];
 
 const CLASES: readonly { re: RegExp; clase: FuenteDelGeneral['clase'] }[] = [
   { re: /^i\.\d+$/, clase: 'CANAL' },
@@ -178,27 +311,58 @@ export function rutasSinNombre(rutas: Iterable<string>): readonly string[] {
  * Se devuelve junto con las fuentes y no se esconde en un comentario: una lista
  * que no declara sus huecos invita a creer que no los tiene, que es el error que
  * este módulo vino a corregir.
+ *
+ * Los patrones **se arman** con `CONCEPTOS` × sus familias, así que no hay forma
+ * de declarar el de un canal y olvidarse del de una entrada de línea: o está
+ * para todas las familias que lo tienen, o el test lo dice.
  */
 export function loQueNoSeVe(): LoQueNoSeVe {
-  return {
-    sinMirar: [
-      'i.N.subgroup', 'l.N.subgroup', 'i.N.vca', 'l.N.vca',
-      'a.N.link2master', 'a.N.matrix',
-      'v.N.mix', 'v.N.mute',
-      'i.N.solo', 'settings.soloMode', 'settings.solotype',
-      'i.N.mgmask', 'mgmask', 'i.N.forceunmute',
-    ],
-    porQue: [
-      'El enrutamiento no se mira: un canal que va al general POR UN SUBGRUPO se '
-      + 'cuenta dos veces y sin relación, y uno ruteado fuera del general se '
-      + 'informa igual como fuente suya.',
-      'Los VCA gobiernan si una fuente llega al general y acá no aparecen. Se '
-      + 'descartaban en silencio.',
-      'El solo cambia lo que llega al general y no se lee.',
-      'Los grupos de silencio y `forceunmute` pueden dejar un canal silenciado '
-      + 'con `i.N.mute` en cero. Si eso es así, esta enumeración diría '
-      + '«no silenciada» sobre algo silenciado — un falso negativo, que es la '
-      + 'dirección peligrosa. **No está medido contra el aparato.**',
-    ],
-  };
+  const huecos: Hueco[] = [];
+  for (const c of CONCEPTOS) {
+    for (const f of c.familias) huecos.push({ patron: `${f}.N.${c.sufijo}`, clase: c.clase });
+  }
+  for (const h of HUECOS_SUELTOS) huecos.push({ patron: h.patron, clase: h.clase });
+  huecos.sort((a, b) => a.patron.localeCompare(b.patron));
+
+  const hay = (c: ClaseDeHueco): boolean => huecos.some((h) => h.clase === c);
+  const porQue: string[] = [];
+  if (hay('CAMINO')) {
+    porQue.push(
+      'El enrutamiento no se mira. Un canal que llega al general POR UN SUBGRUPO, '
+      + 'o cuyo fader gobierna un VCA, se cuenta como fuente directa y sin relación '
+      + 'con ellos; y uno ruteado fuera del general se informa igual como fuente '
+      + 'suya. Tampoco se lee qué entrada física alimenta cada tira ni qué manda de '
+      + 'verdad la salida general: por ahí entró el receptor Bluetooth.',
+    );
+  }
+  if (hay('SILENCIO')) {
+    porQue.push(
+      'Un grupo de silencio, un `forceunmute` o un solo pueden dejar una fuente '
+      + 'callada —o al aire— con su `.mute` diciendo lo contrario. Entonces esta '
+      + 'enumeración diría «no silenciada» sobre algo silenciado: un falso negativo, '
+      + 'que es la dirección peligrosa. **No está medido contra el aparato.**',
+    );
+  }
+  if (hay('AUTOMATICO')) {
+    porQue.push(
+      'El automix mueve ganancias por su cuenta. Una fuente puede abrirse sin que '
+      + 'nadie toque nada, así que la foto que devuelve esto puede quedar vieja sola.',
+    );
+  }
+  if (hay('DESCONOCIDO')) {
+    porQue.push(
+      'Hay rutas que existen en la consola y de las que solo se conoce el nombre. '
+      + 'El nombre no es una medición: `s.N.ducker` suena a que baja un subgrupo por '
+      + 'su cuenta y `i.N.exclude` a que saca un canal de algo, y ninguna de las dos '
+      + 'cosas se comprobó. Lo que no se pudo descartar se declara.',
+    );
+  }
+  porQue.push(
+    'La cuenta cierra: los 42 sufijos de las familias de fuente están repartidos '
+    + 'entre los tres que se leen, éstos y `SUFIJOS_QUE_NO_AFECTAN_EL_CAMINO`. Lo '
+    + 'que este módulo no puede prometer es que los conceptos sean los correctos: '
+    + 'que un sufijo no cambie el camino es un juicio, no una medición.',
+  );
+
+  return { huecos, sinMirar: huecos.map((h) => h.patron), porQue };
 }

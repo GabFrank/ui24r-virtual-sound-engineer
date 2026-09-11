@@ -38,6 +38,27 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   También sabe decir **qué rutas no sabe nombrar**, en vez de dar a entender que
   las entiende todas.
 
+  **Y declara sus puntos ciegos — que es donde la primera versión falló.** La
+  lista de «lo que no miro» tenía exactamente el defecto que venía a corregir:
+  sus catorce patrones existían todos en la consola, pero estaban escritos para
+  la familia de canales mientras el módulo enumera cinco clases. Declaraba el
+  grupo de silencio de un canal y **no el de una entrada de línea** — la puerta
+  por la que había entrado el Bluetooth, el caso testigo que le da sentido a
+  todo esto. Una lista de huecos con huecos.
+
+  Ahora los patrones **se derivan** de una tabla de conceptos por familia, y son
+  62 en vez de 14, cada uno con la razón por la que importa: cambia el camino,
+  puede callar algo con su silencio diciendo lo contrario, mueve ganancias solo,
+  o **existe y no se sabe qué hace**. Lo que no se pudo descartar se declara.
+
+  Lo que lo vuelve difícil de repetir es que **la cuenta cierra**: los 42
+  sufijos que las familias de fuente tienen en la consola están repartidos entre
+  los tres que el módulo lee, los que declara como huecos y los que declara que
+  no cambian el camino. Un firmware que agregue uno nuevo rompe el test en vez
+  de pasar desapercibido. Lo que el test no puede comprobar, y está dicho: que
+  la clasificación sea **la correcta**. Que la panoramización no cambie si una
+  fuente llega al general es un juicio, no una medición.
+
 - **Y el vocabulario que la aplicación reconoce pasó de la mitad al 79 %.**
   Contrastado contra las 6732 claves capturadas de la consola real, no contra una
   lista escrita de memoria. Entraron: las **entradas de línea**, que son canales
