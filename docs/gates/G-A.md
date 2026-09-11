@@ -2,6 +2,12 @@
 
 **Estado:** ⬜ Pendiente · **12 de 14 criterios contestados, 8 en verde** · repasado contra la realidad el 2026-09-10
 
+> **Ningún criterio de esta tabla pasa a ✅ sin que lo mire alguien más.** La
+> regla está en [TEMPLATE.md](TEMPLATE.md) con el porqué. Salió de esta misma
+> acta: el 2026-09-10 se cerraron cuatro criterios y una auditoría independiente
+> volvió uno a amarillo, le puso salvedades a dos, y encontró que el arreglo
+> hecho para cerrar otro rompía la aplicación entera.
+
 > **Qué cuenta como «contestado»:** que la celda *Medido* tenga un resultado, aunque sea parcial o negativo. Un criterio que dice «un modo de tres» está contestado y no cumplido; uno que dice «sin medir» o «solo contra el simulador» no está contestado. Con esa definición son **12**: los **ocho en ✅**, más reconexión, la avalancha —detectada, con el umbral a medias— —un modo de tres—, instantáneas manuales —sin los 50 ciclos, pero con lo que sí está medido— y el alcance de la recuperación, contestado con una excepción. Los dos que faltan son los de P0.7a, que necesitan un pendrive con contenido. La avalancha, que en el repaso anterior no contaba por estar probada solo contra el simulador, ahora está medida contra el aparato y entra. Y el alcance de la recuperación pasó de una celda vacía a una respuesta con una excepción, así que también.
 >
 > **Y el denominador estaba mal.** Esta línea dijo «de 13» durante varias revisiones; la tabla tiene **14** filas desde que se escribió. El error sobrevivió porque nadie contó: se venía copiando el número de la revisión anterior mientras se discutía el numerador. **Un total heredado no es un total medido** — y este documento existe precisamente para no dejar pasar eso.
