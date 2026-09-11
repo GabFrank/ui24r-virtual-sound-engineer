@@ -6,6 +6,40 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Tres fugas de estado detrás de un envío que no sale, dos de ellas serias.**
+  El arreglo anterior hizo que una escritura fallida devolviera un resultado en
+  vez de una excepción. Una auditoría midió que eso no alcanzaba: el camino que
+  devuelve el resultado dejaba **estado armado** detrás, y ese estado no era
+  basura inerte — interfería con lo que venía después.
+
+  **La confirmación del reintento se la comía un fantasma.** La espera del
+  testigo se arma antes del envío, porque a 27 ms medidos armarla después es una
+  carrera perdida. Cuando el envío no salía, esa espera quedaba viva medio
+  segundo, y el testigo resuelve el **primer** pendiente que coincide. Escenario:
+  parpadea la wifi, la escritura sale rechazada, el operador repite el mismo
+  movimiento, **la consola sí lo aplica y lo difunde**, el testigo sí lo ve — y
+  la aplicación contestaba «pudo aplicarse o no». Justo el modo de fallo que el
+  arreglo anterior decía haber eliminado.
+
+  **Y un recall del operador se volvía invisible.** Guardar avisa al almacén de
+  que el cambio de puntero es nuestro, porque la consola se lo devuelve a quien
+  lo provocó. Si la orden de devolver la etiqueta no salía, ese aviso quedaba
+  huérfano cinco segundos y lo gastaba el primer cambio de puntero que llegara
+  — que es un recall **ajeno**, y quedaba sin invalidar nada. El escenario es el
+  más probable de todos: la consola queda apuntando a nuestra automática, el
+  operador lo ve y recarga la suya a mano. Donde el código decía «es molesto y
+  no es peligroso», era peligroso.
+
+  **Y cada intento de conexión fallido dejaba un par de oyentes vivo**, así que
+  al reconectar cada línea entrante se procesaba tantas veces como intentos
+  hubiera habido: tres fallos y cada cambio contaba cuatro veces, con lo que el
+  aviso de avalancha saltaba con una fracción de los cambios.
+
+  Se cerró además el noveno sitio que enviaba sin protección, y el doble de
+  pruebas se acercó al real en cuatro puntos más — uno de ellos **introducido
+  por el arreglo anterior**: el latido del doble lanzaba con el socket caído,
+  donde el del real se saltea el tick en silencio.
+
 - **El tope de ±3 dB de INV-004 comparaba decibeles contra crudo, y no se
   disparaba nunca.** El motor restaba el valor propuesto menos el esperado —en
   crudo, que es lo que va al cable— y comparaba eso contra un tope escrito en

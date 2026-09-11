@@ -228,7 +228,12 @@ test('control positivo: un doble que acepta todo NO ve el escenario', async () =
   const t = new TransporteFalso();
   // El doble de antes: enviar() sin comprobar si hay socket.
   t.enviar = (linea: string) => { (t.enviadas as string[]).push(linea); };
-  const a = new Ui24rMixerAdapter(t, { quietudVolcadoMs: 30, esperaGuardadoMs: 5, esperaBorradoMs: 5 });
+  // `timeoutConfirmacionMs` corto a proposito: sin el, este test se come los
+  // 500 ms por defecto esperando una confirmacion que no va a llegar nunca, y
+  // era el 43% del tiempo del fichero entero.
+  const a = new Ui24rMixerAdapter(t, {
+    quietudVolcadoMs: 30, esperaGuardadoMs: 5, esperaBorradoMs: 5, timeoutConfirmacionMs: 40,
+  });
   await a.conectar('ws://prueba');
   try {
     t.entra(codificarSetd('i.0.mix', 0.5));
@@ -240,8 +245,15 @@ test('control positivo: un doble que acepta todo NO ve el escenario', async () =
     // el fallo: lo disfrazaba del OTRO modo de fallo, el que dice «pudo
     // aplicarse o no». El peor de los dos, porque deja la transaccion en
     // suspenso en vez de decir la verdad, que es que no se aplico nada.
-    assert.equal(
-      r.status, 'UNVERIFIED',
+    //
+    // **Se afirma que NO es un rechazo, y no cual es exactamente.** Medido, hoy
+    // da UNVERIFIED; fijar esa cadena congelaria un arreglo alternativo
+    // legitimo --comprobar `conectado` al principio de `escribir()`, antes de
+    // pagar una sesion de testigo-- sin decirlo en ningun lado. Lo que este
+    // test tiene que sujetar es que el doble permisivo NO PUEDE dar la
+    // respuesta afirmativa, no el nombre del sucedaneo.
+    assert.notEqual(
+      r.status, 'REJECTED',
       'con el doble permisivo la escritura sale igual: el fallo es INVISIBLE',
     );
   } finally { await a.desconectar(); }
@@ -324,4 +336,82 @@ test('el adaptador procesa un volcado que llega en una sola trama', async () => 
     assert.equal(a.leer('i.0.mix').value, 0.5);
     assert.equal(a.leer('i.1.mix').value, 0.25);
   });
+});
+
+// --- Cuatro apartamientos mas, que encontro la auditoria de la tanda ---------
+
+/**
+ * **`desconectar()` del real avisa; el del doble solo bajaba la bandera.**
+ *
+ * `WebSocketTransport.desconectar()` llama a `ws.close()` y el `onclose` corre
+ * despues llamando a los callbacks de cierre. El escenario «el usuario toca
+ * Desconectar y el aviso llega despues» era irrepresentable.
+ */
+test('desconectar avisa a quien escucha el cierre', async () => {
+  const t = new TransporteFalso();
+  const motivos: string[] = [];
+  t.alCerrar((m) => motivos.push(m));
+  await t.conectar();
+  await t.desconectar();
+  assert.deepEqual(motivos, ['cerrado'], 'el real dispara el cierre al desconectar');
+  await t.desconectar();
+  assert.equal(motivos.length, 1, 'y no avisa dos veces de lo que ya estaba cerrado');
+});
+
+/**
+ * **Un intento fallido deja el transporte cerrado, y avisa.**
+ *
+ * En el real el corte de tiempo hace `ws.close()` ANTES de rechazar, asi que el
+ * aviso de cierre corre mientras `conectar()` todavia esta en vuelo. El doble
+ * lanzaba a secas y encima dejaba `conectado` como estuviera: mentia justo al
+ * reves que el real, y «reconexion fallida» es el escenario donde eso importa.
+ */
+test('un conectar fallido deja conectado en false y avisa del cierre', async () => {
+  const padre = new TransporteFalso();
+  padre.fallaLaSesionNueva = true;
+  const hija = padre.nuevaSesion();
+  const motivos: string[] = [];
+  hija.alCerrar((m) => motivos.push(m));
+  hija.abre();
+  assert.equal(hija.conectado, true, 'estaba abierta');
+
+  await assert.rejects(() => hija.conectar());
+  assert.equal(hija.conectado, false, 'un intento fallido no puede dejarla diciendo que esta abierta');
+  assert.equal(motivos.length, 1, 'y el real avisa del cierre antes de rechazar');
+});
+
+/**
+ * **El latido del real se saltea el tick en silencio si no hay socket.**
+ *
+ * `if (this.conectado) this.enviar(MENSAJE_ALIVE)`. La primera version de
+ * `latir()` llamaba a `enviar()` pelado, o sea que lanzaba donde el real no
+ * puede: un apartamiento NUEVO, introducido por el cambio que vino a quitar
+ * apartamientos.
+ */
+test('el latido no lanza con el socket caido', () => {
+  const t = new TransporteFalso();
+  t.abre();
+  t.cae();
+  t.latir();
+  assert.deepEqual(t.enviadas, [], 'sin socket no sale nada, y no explota nada');
+  t.abre();
+  t.latir();
+  assert.equal(t.enviadasSinLatido.length, 0);
+  assert.equal(t.enviadas.length, 1, 'con socket, si late');
+});
+
+/**
+ * **Si falla la sesion nueva, falla tambien la de la sesion nueva.**
+ *
+ * Sin esto no se podia montar «se cayo la red, asi que NINGUNA sesion abre»:
+ * la hija fallaba y la nieta conectaba tan contenta. Es el escenario de una
+ * wifi caida, no el de un socket con mala suerte.
+ */
+test('la red caida alcanza a la nieta, no solo a la hija', async () => {
+  const padre = new TransporteFalso();
+  padre.fallaLaSesionNueva = true;
+  const hija = padre.nuevaSesion();
+  await assert.rejects(() => hija.conectar());
+  const nieta = hija.nuevaSesion();
+  await assert.rejects(() => nieta.conectar(), 'la red sigue caida para la nieta');
 });

@@ -71,11 +71,34 @@ export class TransporteFalso implements Transport {
    * los dos lados** y nadie podía notarlo.
    */
   async conectar(): Promise<void> {
-    if (this.debeFallar) throw new Error('no se pudo abrir la sesión');
+    if (this.debeFallar) {
+      // **Un intento fallido deja el transporte CERRADO, y avisa.** En el real,
+      // el corte de tiempo llama a `ws.close()` **antes** de rechazar, así que
+      // el aviso de cierre corre mientras `conectar()` todavía está en vuelo y
+      // la promesa rechaza después. El doble antes lanzaba a secas: ni cerraba
+      // ni avisaba, y encima dejaba `conectado` como estuviera --o sea que
+      // mentía justo al revés que el real--.
+      this.conectado = false;
+      for (const cb of [...this.cerrar]) cb('no se pudo abrir');
+      throw new Error('no se pudo abrir la sesión');
+    }
     this.conectado = true;
     for (const cb of [...this.abrir]) cb();
   }
-  async desconectar(): Promise<void> { this.conectado = false; }
+
+  /**
+   * Cierra, y **avisa**, igual que el real.
+   *
+   * `WebSocketTransport.desconectar()` llama a `ws.close()`, y el `onclose`
+   * corre después llamando a los callbacks de cierre. El doble solo bajaba la
+   * bandera: el escenario «el usuario toca Desconectar y el aviso llega
+   * después» no se podía montar.
+   */
+  async desconectar(): Promise<void> {
+    const estaba = this.conectado;
+    this.conectado = false;
+    if (estaba) for (const cb of [...this.cerrar]) cb('cerrado');
+  }
 
   /**
    * Envía, y **lanza con el socket cerrado, igual que el real.**
@@ -104,7 +127,14 @@ export class TransporteFalso implements Transport {
    * contra la consola no es cierto ni un segundo-- y nadie podía comprobar que
    * siguieran significando lo mismo con los latidos puestos.
    */
-  latir(): void { this.enviar(MENSAJE_ALIVE); }
+  latir(): void {
+    // **Se saltea el tick en silencio si no hay socket, igual que el real**:
+    // `if (this.conectado) this.enviar(MENSAJE_ALIVE)`. La primera versión de
+    // este método llamaba a `enviar()` pelado, así que lanzaba donde el real no
+    // puede — un apartamiento nuevo, introducido por el mismo cambio que vino a
+    // quitar apartamientos.
+    if (this.conectado) this.enviar(MENSAJE_ALIVE);
+  }
 
   /**
    * Lo enviado **sin los latidos**, que es lo que casi todos los tests quieren.
@@ -133,6 +163,11 @@ export class TransporteFalso implements Transport {
   nuevaSesion(): TransporteFalso {
     const sesion = new TransporteFalso();
     sesion.debeFallar = this.fallaLaSesionNueva;
+    // **La nieta también.** Sin esto no se podía montar «se cayó la red, así
+    // que NINGUNA sesión abre»: la hija fallaba y la nieta conectaba tan
+    // contenta. Es el escenario de una wifi caída, no el de un socket con mala
+    // suerte.
+    sesion.fallaLaSesionNueva = this.fallaLaSesionNueva;
     this.sesiones.push(sesion);
     return sesion;
   }
