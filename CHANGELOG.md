@@ -4,6 +4,24 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Corregido
+
+- **El doble de transporte de los tests admitía un solo oyente y el real admite
+  una lista.** Con eso, pedir la lista de instantáneas **borraba** al adaptador
+  de los oyentes y lo dejaba mudo: durante y después de cada guardado, el
+  adaptador de los tests no procesaba nada. Los tests pasaban porque casi todos
+  miran lo que se envió, no lo que se recibió.
+
+  Eso fue lo que hizo **estructuralmente intestable** el defecto más caro de la
+  jornada —el eco del puntero de instantánea— y obligó a preguntarle al aparato.
+  Ahora hay cuatro tests que cubren esa ventana, y **tres de los cuatro fallan
+  con el doble viejo**, comprobado revirtiéndolo.
+
+  El cuarto pasa con el defecto puesto, y eso también quedó escrito: afirma que
+  el estado sigue siendo válido, y «nunca llegó el mensaje» produce el mismo
+  resultado que «llegó y se ignoró bien». **Una prueba de que algo no pasa
+  necesita su gemela que muestre que el camino existe.**
+
 ### Agregado
 
 - **La aplicación recorrió una sesión entera sobre el aparato de verdad.** Sobre
