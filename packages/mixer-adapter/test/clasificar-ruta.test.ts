@@ -29,10 +29,14 @@ test('clasifica la cadena de canal', () => {
   strictEqual(clasificarRuta('i.1.gate.thresh'), 'GATE');
   strictEqual(clasificarRuta('i.1.pan'), 'CHANNEL_PAN');
   strictEqual(clasificarRuta('i.1.mute'), 'CHANNEL_MUTE');
-  // `hw.N.phantom` es la ruta que la matriz da como CONFIRMADA. La otra estaba
-  // inventada, y una ruta inventada hace que se cite la invariante equivocada.
+  // **Las dos rutas de fantasma existen, y acá se afirmaba que una estaba
+  // inventada.** La que manda es `hw.N.phantom` --con el condensador alimentado
+  // vale 1 mientras `i.N.phantom` vale 0 en el mismo instante, medido el
+  // 2026-09-10-- pero la del canal tambien existe y esta en la especificacion.
+  // Clasificarla deja que un intento de escribirla se rechace por la invariante
+  // verdadera, INV-007, y no por «ruta desconocida».
   strictEqual(clasificarRuta('hw.1.phantom'), 'PHANTOM');
-  strictEqual(clasificarRuta('i.1.phantom'), null);
+  strictEqual(clasificarRuta('i.1.phantom'), 'PHANTOM');
 });
 
 test('clasifica el general y los buses de salida', () => {
@@ -81,9 +85,15 @@ test('toda clase que el clasificador produce existe en el registro de propiedad'
     'hw.1.gain', 'i.1.eq.hpf.freq', 'i.1.eq.b1.gain', 'i.1.dyn.ratio',
     'i.1.gate.thresh', 'i.1.deesser.amount', 'i.1.mix', 'i.1.pan', 'i.1.mute',
     'hw.1.phantom', 'i.1.aux.1.value', 'p.0.mute', 'p.0.mix', 'p.0.aux.1.value',
-    'm.eq.b1.gain', 'm.delay.time', 'm.polarity', 'm.dyn.threshold', 'm.mix',
-    'm.mute', 'a.1.eq.b1.gain', 'a.1.delay.time', 'a.1.polarity', 'a.1.mute',
-    'a.1.mix', 'v.1.mix', 'f.1.type', 'var.currentSnapshot', 'afs2.enable',
+    // **Tres de estas rutas estaban inventadas y nadie lo noto**, porque el
+    // clasificador las agarraba por prefijo. Los retardos son `m.delayL`,
+    // `m.delayR` y `a.B.delay` --no `.delay.time`-- y el supresor es `m.afs.*`,
+    // `a.B.afs.*` y `var.afsdata`, no `afs2.*`. Una lista de muestras con rutas
+    // que el aparato no manda prueba el patron, no el protocolo.
+    'm.eq.b1.gain', 'm.delayL', 'm.delayR', 'm.polarity', 'm.dyn.threshold',
+    'm.mix', 'm.mute', 'a.1.eq.b1.gain', 'a.1.delay', 'a.1.polarity', 'a.1.mute',
+    'a.1.mix', 'v.1.mix', 'f.1.type', 'var.currentSnapshot',
+    'i.1.phantom', 'm.afs.enabled', 'a.1.afs.enabled', 'var.afsdata',
   ];
   const sinClasificar = muestras.filter((m) => clasificarRuta(m) === null);
   deepStrictEqual(sinClasificar, []);

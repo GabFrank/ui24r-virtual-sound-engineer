@@ -44,12 +44,18 @@ const PATRONES: readonly Patron[] = [
   { re: /^i\.\d+\.mix$/, kind: 'CHANNEL_FADER' },
   { re: /^i\.\d+\.pan$/, kind: 'CHANNEL_PAN' },
   { re: /^i\.\d+\.mute$/, kind: 'CHANNEL_MUTE' },
-  // `hw.N.phantom`, no `i.N.phantom`: es la ruta que la matriz de capacidades
-  // da como CONFIRMADA. Con la ruta inventada, un intento de escribir
-  // alimentación fantasma se rechazaba por RUTA_DESCONOCIDA (INV-008) en vez de
-  // por PARAMETRO_DEL_USUARIO (INV-007). Se rechaza igual, pero citando la
-  // invariante equivocada, y el registro es lo que se lee después.
+  // **Las dos rutas de fantasma, y no son la misma cosa.** La que manda es
+  // `hw.N.phantom`, la del previo: medido el 2026-09-10, con el condensador
+  // alimentado valía 1 mientras `i.N.phantom` valía 0 en el mismo instante.
+  //
+  // `i.N.phantom` estuvo devolviendo `null` con un comentario que la llamaba
+  // «inventada». **No lo está**: existe en la consola y está en la
+  // especificación. Clasificarla también deja que un intento de escribirla se
+  // rechace por PARAMETRO_DEL_USUARIO (INV-007), que es el motivo verdadero, y
+  // no por RUTA_DESCONOCIDA (INV-008), que manda a buscar el problema al lugar
+  // equivocado. Las dos son del usuario y ninguna se escribe.
   { re: /^hw\.\d+\.phantom$/, kind: 'PHANTOM' },
+  { re: /^i\.\d+\.phantom$/, kind: 'PHANTOM' },
   { re: /^hw\.\d+\.gain$/, kind: 'PREAMP_GAIN' },
 
   // --- Reproductor: solo dentro de la reserva ---
@@ -81,7 +87,26 @@ const PATRONES: readonly Patron[] = [
   // todavía, así que cae en RUTA_DESCONOCIDA y se rechaza, que es la respuesta
   // correcta mientras SPK-P0.7a no lo verifique.
   { re: /^var\.currentSnapshot$/, kind: 'SNAPSHOT' },
-  { re: /^afs2\./, kind: 'AFS2' },
+
+  // --- Supresión de realimentación ---
+  //
+  // **El patrón era `/^afs2\./` y esa familia no existe en la consola.** `AFS2`
+  // es el nombre comercial de Soundcraft; las rutas que el aparato publica son
+  // `m.afs.*` para el general, `a.B.afs.*` para cada auxiliar, y `var.afsdata`,
+  // que trae los filtros ya puestos. Ninguna empieza con `afs2`, así que el
+  // kind era **inalcanzable** y el supresor caía en RUTA_DESCONOCIDA.
+  //
+  // Es el mismo error que el comentario de `hw.N.phantom`, doce líneas más
+  // arriba, describe y dice haber arreglado — en el mismo archivo. Se rechazaba
+  // igual, pero citando INV-008 «ruta desconocida» en vez de la invariante de
+  // propiedad, y el registro es lo que se lee después de un show.
+  //
+  // Y no es un parámetro cualquiera: el supresor le mete filtros de −18 dB al
+  // audio por su cuenta, y `m.afs.enabled` es **el único de 45 campos que una
+  // recuperación de instantánea no devuelve**. Lo encontró una auditoría.
+  { re: /^m\.afs\./, kind: 'AFS2' },
+  { re: /^a\.\d+\.afs\./, kind: 'AFS2' },
+  { re: /^var\.afsdata$/, kind: 'AFS2' },
 ];
 
 export interface OpcionesDeClasificacion {

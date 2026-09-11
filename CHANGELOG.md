@@ -6,6 +6,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El clasificador de rutas no reconocía ninguna ruta real del supresor de
+  realimentación.** Buscaba `afs2.*`, que es el nombre comercial de Soundcraft;
+  la consola publica `m.afs.*`, `a.B.afs.*` y `var.afsdata`. La categoría era
+  **inalcanzable**, así que tocar el supresor se rechazaba citando «ruta
+  desconocida» en vez de la invariante de propiedad — y el registro es lo que se
+  lee después de un show.
+
+  No es un parámetro cualquiera: ese supresor le mete filtros de −18 dB al audio
+  por su cuenta, y su interruptor es **el único de 45 campos que una
+  recuperación de instantánea no devuelve**. Es además el mismo error que un
+  comentario doce líneas más arriba, en el mismo archivo, describe y dice haber
+  arreglado para la alimentación fantasma.
+
+  De paso, `i.N.phantom` devolvía nada con un comentario que la llamaba
+  «inventada». **No lo está**: existe y está medida. Y la lista de muestras del
+  test tenía tres rutas que el aparato no manda —`afs2.enable`, `m.delay.time`,
+  `a.1.delay.time`—, que pasaban porque el clasificador las agarraba por
+  prefijo. Una lista de muestras con rutas inventadas prueba el patrón, no el
+  protocolo.
+
 - **El doble de transporte de los tests admitía un solo oyente y el real admite
   una lista.** Con eso, pedir la lista de instantáneas **borraba** al adaptador
   de los oyentes y lo dejaba mudo: durante y después de cada guardado, el
