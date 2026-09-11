@@ -128,8 +128,9 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
   Y la rama de las remediciones pedía **una sola aparición en cualquier
   documento**, sin exigir que estuviera donde se lee la transcripción. Al
-  apretarla salieron a la luz cuatro lugares donde la vieja se citaba sin decir
-  que hay una medición nueva al lado.
+  apretarla salieron a la luz los lugares donde la vieja se citaba sin decir que
+  hay una medición nueva al lado — **cinco**, contados después del diff, no los
+  «cuatro» que esta nota decía.
 
 - **Cinco agujeros más en el conteo de avalanchas, todos medidos por auditoría.**
 

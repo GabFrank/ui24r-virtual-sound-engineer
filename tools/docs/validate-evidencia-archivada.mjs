@@ -27,6 +27,25 @@
  *
  * - `SIN_HERRAMIENTA_DISPONIBLE` está **cerrada**, y su tamaño se comprueba:
  *   sumarle algo es un acto deliberado y visible.
+ * **CONTRA QUIÉN ES ESTA GUARDA, que va la tercera ronda de parches.**
+ *
+ * No contra alguien que quiera engañarla. Lee prosa con expresiones regulares,
+ * y eso **siempre** se puede esquivar: tres auditorías seguidas encontraron
+ * evasiones nuevas —el aviso en un comentario, en un bloque de código, dentro
+ * del nombre de un archivo, la cita mudada a otro árbol, la cita por sufijo, una
+ * lista sin renglones en blanco— y una cuarta encontraría más. Cerrarlas todas
+ * no es alcanzable y perseguirlas de a una es un juego que no se gana.
+ *
+ * Contra lo que sí sirve, y es lo que pasa de verdad: **el descuido.** Alguien
+ * —yo, mañana— agrega una cita y se olvida del aviso, o mueve un párrafo y lo
+ * deja atrás, o escribe una lista y separa las dos cosas sin darse cuenta. Las
+ * seis evasiones cerradas se cerraron porque **cuatro de ellas se producen sin
+ * mala intención**, no porque la guarda aspire a ser hermética.
+ *
+ * Lo que la hace útil no es que no se pueda burlar: es que **no se puede
+ * ignorar**. Falla la validación entera, con el nombre del archivo y el del
+ * documento.
+ *
  * - `PENDIENTES_DE_REMEDIR` no exime de nada. Exige que el documento que cita
  *   cada una lo diga **en el mismo párrafo que la cita**, no en cualquier parte
  *   del archivo. Una deuda que no se ve donde se lee es una deuda que no se
@@ -187,6 +206,32 @@ const evidencias = archivos(RAIZ_SPIKES)
   .filter((f) => f.includes(`${'evidence'}/`) && !BINARIOS.test(f))
   .map((f) => f.slice(RAIZ_SPIKES.length + 1));
 
+/**
+ * Lo que un lector VE, que no es todo lo que el archivo dice.
+ *
+ * Una auditoría cerró tres evasiones de un saque mostrando que el aviso contaba
+ * aunque estuviera donde nadie lo lee: dentro de un comentario HTML, dentro de
+ * un bloque de código de ejemplo, o dentro del **nombre de un archivo** citado.
+ * Las tres son texto para el que busca subcadenas y **nada** para el que lee la
+ * página.
+ *
+ * **Y esto se aplica al AVISO, no a la cita**, que es una distinción que costó
+ * un intento. Las citas viven dentro de comillas invertidas porque son nombres
+ * de archivo y así se escriben en Markdown: normalizarlas también dejaba a la
+ * guarda sin encontrar una sola cita en todo el repositorio. El aviso, en
+ * cambio, es prosa — si está entre comillas invertidas o dentro de un
+ * comentario, no lo lee nadie.
+ *
+ * No es una defensa contra alguien que quiera engañarla —ver la nota sobre el
+ * alcance— sino el mínimo para que «está avisado» signifique «se ve».
+ */
+function seLee(texto) {
+  return texto
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`\n]*`/g, (m) => ' '.repeat(m.length));
+}
+
 const docs = archivos(join(RAIZ, 'docs')).filter((f) => f.endsWith('.md'));
 const prosa = docs.map((f) => ({ f, texto: readFileSync(f, 'utf8') }));
 
@@ -204,8 +249,13 @@ function parrafos(texto) {
     // pegada al parrafo que la introduce --Markdown la renderiza igual-- no se
     // partia, y el aviso de una fila volvia a tapar la cita de otra. Es justo
     // el defecto que esta funcion vino a cerrar, sobreviviendo a su arreglo.
+    // **Tablas y LISTAS.** La version anterior partia solo las tablas, y una
+    // lista Markdown sin renglones en blanco quedaba entera: la cita en un item
+    // y el aviso en otro se tapaban igual que antes. Mismo defecto, otra
+    // sintaxis. Lo midio una auditoria.
     const lineas = bloque.split('\n');
-    if (lineas.some((l) => l.trimStart().startsWith('|'))) salida.push(...lineas);
+    const hayFilas = lineas.some((l) => /^\s*(\||[-*+]\s|\d+\.\s)/.test(l));
+    if (hayFilas) salida.push(...lineas);
     else salida.push(bloque);
   }
   return salida;
@@ -285,6 +335,13 @@ for (const rel of evidencias) {
 
   if (PENDIENTES_DE_REMEDIR.has(rel)) {
     const mudos = [];
+    // **Tiene que citarla alguien, y esa exigencia faltaba.** Esta rama sólo
+    // miraba los párrafos que ya citaban: si la cita se mudaba fuera de `docs/`
+    // --al CHANGELOG, al README-- no quedaba ninguna, y con cero párrafos que
+    // mirar la obligación desaparecía en silencio. La rama de las remedidas sí
+    // lo exigía: era la asimetría INVERSA a la que se declaró cerrada. La
+    // encontró una auditoría.
+    let citadaPorAlguien = false;
     for (const p of prosa) {
       // **El aviso tiene que estar donde se lee la cita, no en cualquier parte
       // del archivo.** Antes bastaba con que la frase apareciera en el
@@ -294,10 +351,16 @@ for (const rel of evidencias) {
       // donde aparece la cita.
       for (const trozo of parrafos(p.texto)) {
         if (!cita(trozo, rel)) continue;
-        if (!trozo.includes(AVISO)) mudos.push(p.f.slice(RAIZ.length + 1));
+        citadaPorAlguien = true;
+        if (!seLee(trozo).includes(AVISO)) mudos.push(p.f.slice(RAIZ.length + 1));
       }
     }
-    if (mudos.length > 0) {
+    if (!citadaPorAlguien) {
+      fallos.push(
+        `${rel} es una transcripción sin archivar y ningún documento de docs/ la cita. `
+        + 'Si se movió la cita a otro lado, el aviso se fue con ella y ya no se lee.',
+      );
+    } else if (mudos.length > 0) {
       fallos.push(
         `${rel} es una transcripción sin archivar y no lo dice donde se la cita: `
         + [...new Set(mudos)].join(', '),
