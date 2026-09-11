@@ -85,7 +85,30 @@ export interface WriteResult {
  * único aviso de cambio externo.
  */
 export interface BulkExternalChange {
+  /**
+   * Cuántas rutas distintas se movieron. **Mirá `definitivo` antes de mostrarlo.**
+   *
+   * Cuando `definitivo` es falso, esto es «al menos esto»: el aviso sale en el
+   * instante en que se cruza el umbral, así que lo que llega después todavía no
+   * está contado.
+   */
   readonly rutasAfectadas: number;
+  /**
+   * Si la avalancha ya terminó y este número es el total de verdad.
+   *
+   * **Existe porque el aviso mostraba nuestra constante y no el tamaño real.**
+   * Medido el 2026-09-10: se escribieron 16 rutas y la pantalla dijo 10 — las
+   * diez vueltas exactas del umbral. El aviso se emitía al cruzarlo y lo que
+   * caía después entraba en la ventana de silencio sin actualizar la cuenta.
+   * El operador leía el valor de una constante nuestra creyendo que era una
+   * medición de su consola.
+   *
+   * Se arregló **sin retrasar el aviso**, porque enterarse tarde de que el
+   * estado dejó de ser válido es peor que enterarse con un número corto. Sale
+   * uno en el acto con `definitivo: false`, y otro al cerrarse la ventana con
+   * el total. La pantalla dice «al menos N» hasta que llega el segundo.
+   */
+  readonly definitivo: boolean;
   readonly ventanaMs: number;
   readonly probableCausa: 'SNAPSHOT_RECALL' | 'GRUPO_DE_CANALES' | 'DESCONOCIDA';
   readonly timestamp: string;

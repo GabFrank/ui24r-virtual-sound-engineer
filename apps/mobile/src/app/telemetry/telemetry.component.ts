@@ -385,6 +385,13 @@ export class TelemetryComponent {
   readonly avisoMasivo = computed(() => {
     const ev = this.masivo();
     if (ev === null) return null;
+    // **«Al menos» hasta que la avalancha cierre.** El primer aviso sale al
+    // cruzar el umbral, asi que su numero es el umbral y no el tamaño: medido
+    // el 2026-09-10, dieciseis rutas escritas y la pantalla decia diez, las
+    // diez vueltas exactas de la constante. Mostrar un numero corto sin decir
+    // que es corto era mostrarle al operador el valor de una constante nuestra
+    // como si fuera una medicion de su consola.
+    const cuantas = ev.definitivo ? `${ev.rutasAfectadas}` : `al menos ${ev.rutasAfectadas}`;
     switch (ev.probableCausa) {
       case 'SNAPSHOT_RECALL':
         return {
@@ -394,13 +401,13 @@ export class TelemetryComponent {
       case 'GRUPO_DE_CANALES':
         return {
           titulo: 'Cambio masivo detectado en la consola.',
-          detalle: `${ev.rutasAfectadas} canales cambiaron el mismo parámetro en menos de un ` +
+          detalle: `${cuantas} canales cambiaron el mismo parámetro en menos de un ` +
             'segundo: parece un grupo de faders movido desde otro dispositivo.',
         };
       case 'DESCONOCIDA':
         return {
           titulo: 'Cambio masivo detectado en la consola.',
-          detalle: `${ev.rutasAfectadas} parámetros cambiaron en menos de un segundo, y no se ` +
+          detalle: `${cuantas} parámetros cambiaron en menos de un segundo, y no se ` +
             'puede saber por qué desde el protocolo.',
         };
     }

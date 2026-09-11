@@ -342,10 +342,16 @@ test('rutas de distinto parametro dan causa desconocida', () => {
 test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
   // La ventana de silencio evita que un recall que llega en varias tramas
   // abra una alerta por trama.
+  //
+  // **Se cuentan las APERTURAS, no todos los eventos.** Cada avalancha emite
+  // dos: una al cruzar el umbral, con el numero corto, y otra al cerrarse la
+  // ventana, con el total. Lo que esta prueba mira es que no se abra una alerta
+  // por trama, y eso son las primeras.
   const reloj = relojFalso();
   const { store } = nuevoStore(reloj);
+  const todas: BulkExternalChange[] = [];
   const rafagas: BulkExternalChange[] = [];
-  store.alCambioMasivo((e) => rafagas.push(e));
+  store.alCambioMasivo((e) => { todas.push(e); if (!e.definitivo) rafagas.push(e); });
 
   store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
   reloj.avanzar(100);
@@ -361,6 +367,10 @@ test('dos cambios de instantanea seguidos no disparan dos alertas', () => {
   // auditoria, no yo.
   store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Otra distinta'));
   assert.equal(rafagas.length, 2, 'pasada la ventana, un recall nuevo sí avisa');
+  assert.equal(
+    todas.filter((e) => e.definitivo).length, 1,
+    'y la primera avalancha cerro con su total cuando vencio la ventana',
+  );
 });
 
 test('si la instantanea llega despues de los parametros, se corrige la causa', () => {
@@ -724,4 +734,90 @@ test('si el eco tarda mas que la ventana, se lo trata como ajeno', () => {
   store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'VSE_AUTO_123'));
 
   assert.equal(rafagas.length, 1);
+});
+
+/**
+ * **El aviso mostraba nuestra constante, no el tamaño de la avalancha.**
+ *
+ * Medido contra la consola el 2026-09-10: se escribieron dieciseis rutas y la
+ * pantalla dijo diez -- las diez vueltas exactas del umbral. El aviso sale en
+ * el instante de cruzarlo, y lo que llega despues cae en la ventana de silencio
+ * sin actualizar la cuenta. El operador leia el valor de una constante nuestra
+ * creyendo que era una medicion de su consola.
+ *
+ * No se arreglo retrasando el aviso: enterarse tarde de que el estado dejo de
+ * ser valido es peor que enterarse con un numero corto. Sale uno en el acto,
+ * que dice «al menos», y otro al cerrarse la ventana, con el total.
+ */
+test('la avalancha informa su tamaño real, no el umbral', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  // Dieciseis rutas distintas, como en la medicion.
+  for (let i = 0; i < 16; i++) {
+    store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+    reloj.avanzar(5);
+  }
+
+  const primera = rafagas.filter((e) => !e.definitivo);
+  assert.equal(primera.length, 1, 'una sola apertura para una sola avalancha');
+  // **El numero corto sigue siendo el umbral, y esta bien que lo sea**: es lo
+  // que se sabe en ese instante. Lo que cambia es que ahora se dice.
+  assert.equal(primera[0]!.rutasAfectadas, 10, 'al cruzar el umbral se sabe eso y nada mas');
+  assert.equal(primera[0]!.definitivo, false, 'y el evento lo declara');
+
+  reloj.avanzar(1200);
+  const cierre = rafagas.filter((e) => e.definitivo);
+  assert.equal(cierre.length, 1, 'la ventana cierra con un solo aviso');
+  assert.equal(cierre[0]!.rutasAfectadas, 16, 'y ese si es el tamaño de verdad');
+});
+
+/**
+ * **Control positivo.** El test de arriba afirma que el cierre trae 16; sin
+ * esto no distingue «se conto bien» de «se conto lo mismo que siempre». Con
+ * cuatro rutas sobre el umbral, el total tiene que ser 14 y no 16.
+ */
+test('control positivo: el total sigue al tamaño, no a un numero fijo', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let i = 0; i < 14; i++) {
+    store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+    reloj.avanzar(5);
+  }
+  reloj.avanzar(1200);
+  const cierre = rafagas.filter((e) => e.definitivo);
+  assert.equal(cierre.length, 1);
+  assert.equal(cierre[0]!.rutasAfectadas, 14);
+});
+
+/**
+ * **Una avalancha que se estira mas alla de la ventana no pierde su principio.**
+ *
+ * El total NO se cuenta sobre `cambiosRecientes`, que se poda a la ventana
+ * contada desde el ULTIMO cambio: en una avalancha larga eso descartaria las
+ * primeras rutas justo cuando hay que decir el total. Se acumula aparte.
+ */
+test('el total de una avalancha larga no pierde las primeras rutas', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  // Veinte rutas repartidas a lo largo de mas de una ventana entera.
+  for (let i = 0; i < 20; i++) {
+    store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+    reloj.avanzar(60);
+  }
+  reloj.avanzar(1200);
+  const cierre = rafagas.filter((e) => e.definitivo);
+  assert.equal(cierre.length, 1);
+  assert.equal(
+    cierre[0]!.rutasAfectadas, 20,
+    'las primeras rutas cuentan aunque la poda por ventana ya no las tenga',
+  );
 });

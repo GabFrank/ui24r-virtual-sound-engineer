@@ -82,6 +82,16 @@ export class ConfirmedStateStore {
   private _storeState: StoreState = 'INVALID';
   private enRafagaHastaMs = 0;
   private causaAvisada: BulkExternalChange['probableCausa'] | null = null;
+  /**
+   * Las rutas de la avalancha en curso, acumuladas desde que empezó.
+   *
+   * **No se cuenta sobre `cambiosRecientes`, y la diferencia importa**: esa
+   * lista se poda a la ventana contada desde el ÚLTIMO cambio, así que en una
+   * avalancha que se estira más allá de la ventana perdería las primeras rutas
+   * justo cuando hay que decir el total. Acá se acumula y se vacía al cerrar.
+   */
+  private rutasDeLaRafaga = new Set<string>();
+  private cerrarRafaga: (() => void) | null = null;
   private cargandoVolcado = false;
 
   private readonly ventanaMs: number;
@@ -540,6 +550,11 @@ export class ConfirmedStateStore {
     this.invalidar();
 
     if (t < this.enRafagaHastaMs) {
+      // Sigue la misma avalancha: se suma al total sin volver a hablar. Quien
+      // escucha ya sabe que pasó algo; lo que todavía no sabe es de qué tamaño,
+      // y eso se dice una sola vez, al final.
+      for (const r of rutas) this.rutasDeLaRafaga.add(r);
+
       // Ya se avisó por esta avalancha. La única razón para volver a hablar es
       // haber aprendido algo: la consola no promete un orden, así que el
       // cambio de instantánea puede llegar **después** de los parámetros que
@@ -548,23 +563,43 @@ export class ConfirmedStateStore {
       // sola vez por avalancha.
       if (cambioDeInstantanea && this.causaAvisada !== 'SNAPSHOT_RECALL') {
         this.causaAvisada = 'SNAPSHOT_RECALL';
-        this.avisarRafaga(rutas.size, 'SNAPSHOT_RECALL', t);
+        this.avisarRafaga(this.rutasDeLaRafaga.size, 'SNAPSHOT_RECALL', t, false);
       }
       return;
     }
 
     this.enRafagaHastaMs = t + this.ventanaRafagaMs;
     this.causaAvisada = this.causaProbable(cambioDeInstantanea, rutas);
-    this.avisarRafaga(rutas.size, this.causaAvisada, t);
+    this.rutasDeLaRafaga = new Set(rutas);
+    this.avisarRafaga(this.rutasDeLaRafaga.size, this.causaAvisada, t, false);
+
+    // **El segundo aviso, con el total.** El primero sale en el acto porque
+    // enterarse tarde de que el estado dejó de ser válido es peor que enterarse
+    // con un número corto; éste sale cuando la ventana cierra y dice cuántas
+    // rutas fueron de verdad.
+    this.cerrarRafaga?.();
+    const { cancelar } = this.programar(() => {
+      this.cerrarRafaga = null;
+      this.avisarRafaga(
+        this.rutasDeLaRafaga.size,
+        this.causaAvisada ?? 'DESCONOCIDA',
+        this.ahora(),
+        true,
+      );
+      this.rutasDeLaRafaga = new Set();
+    }, this.ventanaRafagaMs);
+    this.cerrarRafaga = cancelar;
   }
 
   private avisarRafaga(
     rutasAfectadas: number,
     probableCausa: BulkExternalChange['probableCausa'],
     t: number,
+    definitivo: boolean,
   ): void {
     const evento: BulkExternalChange = {
       rutasAfectadas,
+      definitivo,
       ventanaMs: this.ventanaRafagaMs,
       probableCausa,
       timestamp: new Date(t).toISOString(),

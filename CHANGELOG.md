@@ -6,6 +6,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El aviso de cambio masivo mostraba nuestra constante, no el tamaño de la
+  avalancha.** Medido contra la consola: se escribieron dieciséis rutas y la
+  pantalla dijo diez — las diez vueltas exactas del umbral. El aviso sale en el
+  instante de cruzarlo, y lo que llega después caía en la ventana de silencio
+  sin actualizar la cuenta. El operador leía el valor de una constante nuestra
+  creyendo que era una medición de su consola.
+
+  **No se arregló retrasando el aviso**, porque enterarse tarde de que el estado
+  dejó de ser válido es peor que enterarse con un número corto. Sale uno en el
+  acto, que dice **«al menos N»**, y otro al cerrarse la ventana, con el total.
+
+  El total se acumula aparte y no se cuenta sobre la lista de cambios recientes,
+  que se poda a la ventana contada desde el último: en una avalancha que se
+  estira, esa poda descartaría las primeras rutas justo cuando hay que decir
+  cuántas fueron.
+
 - **Tres fugas de estado detrás de un envío que no sale, dos de ellas serias.**
   El arreglo anterior hizo que una escritura fallida devolviera un resultado en
   vez de una excepción. Una auditoría midió que eso no alcanzaba: el camino que
