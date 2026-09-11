@@ -990,3 +990,214 @@ test('un recall nuevo despues de releer si se avisa', () => {
   );
   assert.equal(store.storeState, 'INVALID');
 });
+
+// --- Lo que quedo abierto del conteo, medido por una auditoria --------------
+
+/** Un reloj que avanza SIN disparar temporizadores, y los dispara a pedido. */
+function relojManual() {
+  let t = 0;
+  const dormidos: { en: number; fn: () => void }[] = [];
+  return {
+    ahora: () => t,
+    programar: (fn: () => void, ms: number) => {
+      const p = { en: t + ms, fn };
+      dormidos.push(p);
+      return { cancelar: () => { const i = dormidos.indexOf(p); if (i >= 0) dormidos.splice(i, 1); } };
+    },
+    poner: (v: number) => { t = v; },
+    correr: () => {
+      for (const p of [...dormidos].sort((a, b) => a.en - b.en)) {
+        if (p.en <= t) { dormidos.splice(dormidos.indexOf(p), 1); p.fn(); }
+      }
+    },
+  };
+}
+function storeManual(r: ReturnType<typeof relojManual>) {
+  const store = new ConfirmedStateStore({
+    ahora: r.ahora, programar: r.programar, ventanaAgrupacionMs: 0,
+  });
+  store.volcadoCompletoRecibido();
+  const ev: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => ev.push(e));
+  return { store, ev };
+}
+
+/**
+ * **El recuento repetido seguia vivo a UN MILISEGUNDO de donde miraba su test.**
+ *
+ * El test anterior usaba `t = 1001`, justo donde la poda por ventana se lleva
+ * las rutas viejas sola. Con la linea llegando en `t == enRafagaHastaMs`
+ * EXACTO --y el temporizador todavia sin correr, un orden perfectamente
+ * posible-- el cierre decia 12 y el cambio siguiente, UNO SOLO, se anunciaba
+ * como 13 y con causa GRUPO_DE_CANALES. Lo midio una auditoria.
+ */
+test('un cambio suelto justo en el vencimiento no recuenta la rafaga anterior', () => {
+  const r = relojManual();
+  const { store, ev } = storeManual(r);
+  for (let i = 0; i < 12; i++) store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+
+  r.poner(1000);   // el vencimiento exacto, sin correr el temporizador
+  store.procesarLinea(codificarSetd('a.0.mix', 0.7));
+
+  const cierres = ev.filter((e) => e.definitivo);
+  assert.equal(cierres.length, 1, 'la primera cerro');
+  assert.equal(cierres[0]!.rutasAfectadas, 12, 'con sus doce, ni una mas');
+  assert.equal(
+    ev.filter((e) => !e.definitivo).length, 1,
+    'un cambio suelto no abre una alerta nueva: no es una avalancha',
+  );
+});
+
+/**
+ * **Vaciar la lista al cerrar tapaba una avalancha real posterior.**
+ *
+ * La lista de cambios recientes contesta DOS preguntas: si hay avalancha y de
+ * que tamaño. Vaciarla al cerrar quitaba las dos de un saque. Ahora las
+ * ocurrencias se marcan como contadas en vez de borrarse -- marcar y no
+ * comparar por reloj, porque una linea que llega en el mismo milisegundo del
+ * cierre no se puede ordenar contra el.
+ */
+test('una avalancha nueva DESPUES de un cierre sigue detectandose', () => {
+  const r = relojManual();
+  const { store, ev } = storeManual(r);
+  for (let i = 0; i < 12; i++) store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+  r.poner(1200); r.correr();
+  ev.length = 0;
+
+  for (let i = 0; i < 11; i++) {
+    store.procesarLinea(codificarSetd(`a.${i}.mix`, 0.5));
+    r.poner(r.ahora() + 10);
+  }
+  r.poner(r.ahora() + 1200); r.correr();
+
+  assert.equal(ev.filter((e) => !e.definitivo).length, 1, 'once rutas nuevas SI son una avalancha');
+  const cierre = ev.find((e) => e.definitivo);
+  assert.equal(cierre?.rutasAfectadas, 11, 'y su total son las once nuevas, sin las doce viejas');
+});
+
+/**
+ * **Control positivo del de arriba**: lo que NO llega al umbral por su cuenta
+ * no abre alerta nueva. Sin esto, el test anterior no distingue «detecta lo
+ * nuevo» de «alerta por cualquier cosa».
+ */
+test('control positivo: lo que no llega al umbral no abre alerta nueva', () => {
+  const r = relojManual();
+  const { store, ev } = storeManual(r);
+  for (let i = 0; i < 12; i++) store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+  r.poner(1200); r.correr();
+  ev.length = 0;
+
+  for (let i = 0; i < 9; i++) {
+    store.procesarLinea(codificarSetd(`a.${i}.mix`, 0.5));
+    r.poner(r.ahora() + 10);
+  }
+  assert.deepEqual(ev, [], 'nueve rutas no son una avalancha, y el estado ya estaba invalido');
+  assert.equal(store.storeState, 'INVALID', 'pero el estado sigue invalido, que es lo que importa');
+});
+
+/**
+ * **`olvidarRafaga()` se escribio para el aviso de rafaga y dejo afuera al
+ * vecino.** El aviso por ruta usa su propio temporizador: un cambio agrupado
+ * sobrevivia a la relectura y disparaba 300 ms despues, hablando de un estado
+ * que el usuario ya releyo. Es el mismo defecto, sin arreglar para el de al
+ * lado.
+ */
+test('releer tambien se lleva los avisos de cambio externo pendientes', () => {
+  const reloj = relojFalso();
+  const store = new ConfirmedStateStore({
+    ahora: reloj.ahora, programar: reloj.programar, ventanaAgrupacionMs: 250,
+  });
+  store.volcadoCompletoRecibido();
+  const vistos: string[] = [];
+  store.alCambioExterno((p) => vistos.push(p));
+
+  store.procesarLinea(codificarSetd('i.3.mix', 0.7));
+  reloj.avanzar(50);
+  store.volcadoIniciado();
+  store.procesarLinea(codificarSetd('i.0.mix', 0.5));
+  store.volcadoCompletoRecibido();
+
+  reloj.avanzar(400);
+  assert.deepEqual(vistos, [], 'un aviso de antes de releer no puede hablar despues');
+});
+
+/** Control positivo: sin releer, ese mismo aviso SI llega. */
+test('control positivo: sin releer, el aviso agrupado si llega', () => {
+  const reloj = relojFalso();
+  const store = new ConfirmedStateStore({
+    ahora: reloj.ahora, programar: reloj.programar, ventanaAgrupacionMs: 250,
+  });
+  store.volcadoCompletoRecibido();
+  const vistos: string[] = [];
+  store.alCambioExterno((p) => vistos.push(p));
+
+  store.procesarLinea(codificarSetd('i.3.mix', 0.7));
+  reloj.avanzar(400);
+  assert.deepEqual(vistos, ['i.3.mix']);
+});
+
+/**
+ * **Las dos mitades del arreglo de la relectura, cada una con su test.**
+ *
+ * `olvidarRafaga()` limpia la ventana Y la causa. Una auditoria midio que
+ * revertir CUALQUIERA de las dos por separado dejaba la suite en verde: se
+ * tapaban mutuamente, y el unico test que las cubria solo caia si se revertian
+ * las dos. «Comprobado revirtiendo el arreglo» no valia para este.
+ */
+test('releer limpia la VENTANA: una avalancha dentro de la vieja si avisa', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+
+  for (let i = 0; i < 12; i++) store.procesarLinea(codificarSetd(`i.${i}.mix`, 0.3));
+  assert.equal(rafagas.length, 1);
+
+  store.volcadoIniciado();
+  store.procesarLinea(codificarSetd('i.0.mix', 0.5));
+  store.volcadoCompletoRecibido();
+
+  // **Una avalancha de PARAMETROS, no un recall, y el detalle es el punto.**
+  // Con el puntero de por medio, la rama de correccion de causa avisa igual y
+  // el test no separa nada: la version anterior de esta prueba usaba un recall
+  // y pasaba en verde con la ventana sin limpiar. Sin puntero, si la ventana
+  // vieja sigue en pie esto cae en la rama de «misma avalancha» y se calla.
+  reloj.avanzar(100);
+  rafagas.length = 0;
+  for (let i = 0; i < 12; i++) store.procesarLinea(codificarSetd(`a.${i % 10}.mix`, 0.7));
+  assert.equal(
+    rafagas.length, 1,
+    'si la ventana no se limpia al releer, esta avalancha cae en la vieja y no avisa',
+  );
+});
+
+/**
+ * **Y de la otra mitad hay que decir que NO tiene test, y por que.**
+ *
+ * `olvidarRafaga()` tambien pone `causaAvisada` en null. Una auditoria midio
+ * que revertir esa linea sola deja la suite entera en verde, y buscando el
+ * escenario que la separe no aparece ninguno: todo camino que vuelve a abrir
+ * una rafaga recalcula la causa antes de usarla, y `cerrarLaRafagaEnCurso()`
+ * retorna sin emitir cuando la rafaga esta vacia, que es como queda despues de
+ * olvidarla.
+ *
+ * O sea que limpiar la causa es **defensa por si acaso**, no una correccion con
+ * consecuencia observable. Queda escrito asi en vez de inventarle una prueba:
+ * un test que no distingue el arreglo de su ausencia no cubre nada, solo lo
+ * aparenta. Si algun dia aparece el camino que la lee antes de recalcularla,
+ * este parrafo es la deuda que hay que pagar.
+ */
+test('releer deja la causa en null, aunque hoy nadie la lea antes de recalcularla', () => {
+  const reloj = relojFalso();
+  const { store } = nuevoStore(reloj);
+  store.procesarLinea(codificarSets(RUTA_INSTANTANEA_ACTIVA, 'Show de anoche'));
+  store.volcadoIniciado();
+  store.volcadoCompletoRecibido();
+
+  // Lo unico comprobable desde afuera: despues de olvidar la rafaga, cerrar no
+  // emite nada -- ni con la causa vieja ni sin ella.
+  const rafagas: BulkExternalChange[] = [];
+  store.alCambioMasivo((e) => rafagas.push(e));
+  reloj.avanzar(2000);
+  assert.deepEqual(rafagas, [], 'una rafaga olvidada no habla despues, con causa o sin ella');
+});

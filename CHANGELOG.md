@@ -6,6 +6,35 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Cinco agujeros más en el conteo de avalanchas, todos medidos por auditoría.**
+
+  El recuento repetido que la entrega anterior daba por cerrado **seguía vivo a
+  un milisegundo de donde miraba su test**: con la línea llegando justo en el
+  vencimiento de la ventana —y el temporizador todavía sin correr, que es un
+  orden perfectamente posible— el cierre decía doce y el cambio siguiente, **uno
+  solo**, se anunciaba como trece y con causa «grupo de canales».
+
+  Y vaciar la lista de cambios recientes al cerrar **tapaba una avalancha real
+  posterior**: esa lista contesta dos preguntas —si hay avalancha y de qué
+  tamaño— y vaciarla quitaba las dos de un saque. Medido: doce rutas antes de un
+  cierre y nueve después son diecinueve distintas en menos de un segundo, y no se
+  avisaba ni una vez.
+
+  Las dos se arreglan con un solo cambio de criterio: **se detecta y se cuenta
+  sobre lo que todavía no se anunció**, marcando cada cambio como contado en vez
+  de borrarlo. Marcar y no comparar por reloj, porque dos cosas en el mismo
+  milisegundo no se pueden ordenar. Con eso, un cambio suelto después de una
+  ráfaga ya no abre nada, y once rutas nuevas sí.
+
+  El aviso de cambio externo pendiente también sobrevivía a la relectura y
+  hablaba trescientos milisegundos después de un estado que el usuario ya había
+  releído — el mismo defecto que se arregló para el aviso de ráfaga, sin arreglar
+  para el de al lado.
+
+  **Y queda dicho lo que no tiene arreglo desde acá**: un recall de otro
+  operador caído en medio de nuestro volcado entra sin un solo aviso, porque la
+  consola manda las dos cosas por el mismo camino y sin decir de quién son.
+
 - **La clave que faltaba en un recall: contada en septiembre, identificada
   ahora, y el error de método estaba a la vista.** El guion **contaba** las
   claves que se habían movido y no las **nombraba**. Contar no es identificar, y
