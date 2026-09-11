@@ -1,4 +1,6 @@
-import type { BandMemberId, ChannelAssignmentId, EscenarioElementoId, VenueProfileId } from '../ids.ts';
+import type {
+  BandMemberId, ChannelAssignmentId, EscenarioElementoId, PAComponentId, VenueProfileId,
+} from '../ids.ts';
 import { CLASES_QUE_RADIAN } from './venue.ts';
 import type { BusRef, PAComponentSpec } from './venue.ts';
 
@@ -68,13 +70,20 @@ import type { BusRef, PAComponentSpec } from './venue.ts';
  *    ordenables**, y este archivo no ofrece ninguna regla para desempatarlas.
  *    Quien las ordene va a tener que decidir qué hace con el empate, y decirlo.
  *
- * **Y el sistema de amplificación NO se modela acá.** El perfil de amplificación
- * ya tiene componentes con su bus, y el bus ya distingue general, auxiliar y
- * matriz: un monitor *es* un componente alimentado por un auxiliar. Agregarles
- * emplazamiento a esos componentes —que es lo que hace {@link PAComponentSpec}—
- * es más barato y más honesto que declarar monitores acá y tener dos listas que
- * se contradicen. {@link elementosDelEscenario} une las dos mitades para quien
- * necesite la lista completa.
+ * **El sistema de amplificación no se vuelve a describir acá, pero sí se lo
+ * ubica.** El perfil de amplificación ya tiene componentes con su bus, y el bus
+ * ya distingue general, auxiliar y matriz: un monitor *es* un componente
+ * alimentado por un auxiliar, y no hace falta declararlo dos veces. Lo que el
+ * escenario agrega es **dónde está puesto**, referenciando el componente por su
+ * identificador.
+ *
+ * Esa separación no estaba al principio: el emplazamiento vivía dentro del
+ * componente, y una auditoría encontró lo que eso costaba. Dos locales que
+ * comparten el mismo sistema —que la aplicación permite— se pisaban las
+ * posiciones entre sí, en silencio: ubicar las cuñas en un galpón movía las del
+ * bar. **Qué equipo es, es del equipo; dónde está puesto, es de la sala.**
+ * {@link elementosDelEscenario} une las dos mitades para quien necesite la
+ * lista completa.
  */
 
 // --- Números que no están medidos, y hay que decirlo ------------------------
@@ -392,9 +401,24 @@ export function anguloDeCaptacion(captacion: ElementoCaptacion, otro: Emplazamie
 export interface Escenario {
   readonly venueProfileId: VenueProfileId;
   readonly elementos: readonly ElementoDeEscenario[];
+  /**
+   * Dónde está puesto, **en este local**, cada componente del sistema.
+   *
+   * Un componente que no figura acá es uno que el usuario todavía no ubicó en
+   * esta sala. No se hereda de otro local: el mismo equipo en dos salas
+   * distintas está en dos lugares distintos, y ésa es toda la razón de que esta
+   * lista esté acá y no dentro del perfil de amplificación.
+   */
+  readonly emisores: readonly EmplazamientoDeComponente[];
   /** Fecha de la última edición, en ISO. Un plano viejo vale menos. */
   readonly actualizado: string;
   readonly notas: string | null;
+}
+
+/** Un componente del sistema, puesto en algún lugar de este local. */
+export interface EmplazamientoDeComponente {
+  readonly componenteId: PAComponentId;
+  readonly emplazamiento: Emplazamiento;
 }
 
 /**
@@ -430,7 +454,7 @@ export function elementosDelEscenario(
   readonly captaciones: readonly ElementoCaptacion[];
   readonly fuentes: readonly ElementoFuente[];
   /**
-   * Componentes que radian al aire pero no tienen lugar cargado.
+   * Componentes que radian al aire pero que este local todavía no ubicó.
    *
    * **Son los componentes enteros y no sus nombres.** Devolver nombres perdía
    * la identidad de dos componentes homónimos --lado izquierdo y lado derecho
@@ -448,10 +472,12 @@ export function elementosDelEscenario(
   const emisores: Emisor[] = [];
   const sinLugar: PAComponentSpec[] = [];
   const noRadian: PAComponentSpec[] = [];
+  const porId = new Map((escenario.emisores ?? []).map((e) => [e.componenteId, e.emplazamiento]));
   for (const c of componentes) {
     if (!CLASES_QUE_RADIAN.includes(c.clase)) { noRadian.push(c); continue; }
-    if (c.emplazamiento === null || c.emplazamiento === undefined) sinLugar.push(c);
-    else emisores.push({ nombre: c.nombre, bus: c.bus, emplazamiento: c.emplazamiento, componente: c });
+    const emplazamiento = porId.get(c.id);
+    if (emplazamiento === undefined) sinLugar.push(c);
+    else emisores.push({ nombre: c.nombre, bus: c.bus, emplazamiento, componente: c });
   }
   const captaciones = escenario.elementos.filter((e): e is ElementoCaptacion => e.tipo === 'CAPTACION');
   const fuentes = escenario.elementos.filter((e): e is ElementoFuente => e.tipo === 'FUENTE');

@@ -5,8 +5,11 @@ import {
   elementosDelEscenario, validarEscenario, INCERTIDUMBRE_POR_FIJEZA,
   anguloDeCaptacion, NULO_DEL_PATRON_GRADOS,
   type Emplazamiento, type Escenario, type ElementoCaptacion, type ElementoFuente, type PuntoM,
+  type EmplazamientoDeComponente,
 } from '../src/index.ts';
-import type { PAComponentSpec, VenueProfileId, ChannelAssignmentId, EscenarioElementoId } from '../src/index.ts';
+import type {
+  PAComponentSpec, PAComponentId, VenueProfileId, ChannelAssignmentId, EscenarioElementoId,
+} from '../src/index.ts';
 
 /**
  * El modelo del escenario, y sobre todo la regla que lo gobierna: **ninguna
@@ -194,18 +197,30 @@ test('la fijeza pone la duda por defecto, y se puede sobreescribir', () => {
 
 const VENUE = 'venue_1' as VenueProfileId;
 
-function escenarioCon(elementos: readonly (ElementoFuente | ElementoCaptacion)[]): Escenario {
-  return { venueProfileId: VENUE, elementos, actualizado: '2026-09-11T00:00:00.000Z', notas: null };
+function escenarioCon(
+  elementos: readonly (ElementoFuente | ElementoCaptacion)[],
+  emisores: readonly EmplazamientoDeComponente[] = [],
+): Escenario {
+  return {
+    venueProfileId: VENUE, elementos, emisores,
+    actualizado: '2026-09-11T00:00:00.000Z', notas: null,
+  };
+}
+
+/** Ubica un componente en este local. El lugar es del local, no del equipo. */
+function ubicado(c: PAComponentSpec, em: Emplazamiento): EmplazamientoDeComponente {
+  return { componenteId: c.id, emplazamiento: em };
 }
 
 const CUNA: PAComponentSpec = {
+  id: 'comp_cuna' as PAComponentId,
   nombre: 'Cuña de Ana', bus: { tipo: 'AUX', indice: 1 }, silenciable: true,
   clase: 'MONITOR_CUNA', modelo: null,
-  emplazamiento: emplazar(PUNTO(2, 1, 0.2), 'FIJO', { azimutGrados: 0, inclinacionGrados: 35 }),
 };
+const LUGAR_DE_LA_CUNA = emplazar(PUNTO(2, 1, 0.2), 'FIJO', { azimutGrados: 0, inclinacionGrados: 35 });
 const GENERAL: PAComponentSpec = {
-  nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false,
-  clase: 'PRINCIPAL', modelo: null, emplazamiento: null,
+  id: 'comp_general' as PAComponentId,
+  nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false, clase: 'PRINCIPAL', modelo: null,
 };
 
 const MIC: ElementoCaptacion = {
@@ -220,7 +235,7 @@ const VOZ: ElementoFuente = {
 };
 
 test('las dos mitades se unen, y el componente sin lugar NO desaparece en silencio', () => {
-  const r = elementosDelEscenario(escenarioCon([VOZ, MIC]), [CUNA, GENERAL]);
+  const r = elementosDelEscenario(escenarioCon([VOZ, MIC], [ubicado(CUNA, LUGAR_DE_LA_CUNA)]), [CUNA, GENERAL]);
   deepStrictEqual(r.emisores.map((e) => e.nombre), ['Cuña de Ana']);
   // Es la mitad importante: un monitor que el usuario no ubicó y que
   // desaparece del análisis es exactamente el caso en que la geometría y el
@@ -237,10 +252,36 @@ test('sin lugar devuelve los componentes, no sus nombres: dos homónimos se dist
   // los llamó igual, con el mismo nombre. Devolviendo nombres, la lista decía
   // dos veces lo mismo y no había forma de pedirle al usuario que ubicara uno
   // en particular.
-  const izq: PAComponentSpec = { ...GENERAL, modelo: 'izquierdo' };
-  const der: PAComponentSpec = { ...GENERAL, modelo: 'derecho' };
+  const izq: PAComponentSpec = { ...GENERAL, id: 'c_izq' as PAComponentId, modelo: 'izquierdo' };
+  const der: PAComponentSpec = { ...GENERAL, id: 'c_der' as PAComponentId, modelo: 'derecho' };
   const r = elementosDelEscenario(escenarioCon([]), [izq, der]);
   deepStrictEqual(r.sinLugar.map((c) => c.modelo), ['izquierdo', 'derecho']);
+});
+
+test('dos componentes homónimos se ubican por separado, cada uno con su identidad', () => {
+  // El nombre no identifica: dos componentes homónimos son un caso real que el
+  // propio modelo nombra. Una auditoría comprobó que la pantalla, usando el
+  // nombre, movía los dos a la vez.
+  const izq: PAComponentSpec = { ...CUNA, id: 'c_izq' as PAComponentId, nombre: 'Cuña' };
+  const der: PAComponentSpec = { ...CUNA, id: 'c_der' as PAComponentId, nombre: 'Cuña' };
+  const aca = emplazar(PUNTO(1, 1, 0.2), 'FIJO');
+  const r = elementosDelEscenario(escenarioCon([], [ubicado(der, aca)]), [GENERAL, izq, der]);
+  deepStrictEqual(r.emisores.map((e) => e.componente.id), ['c_der'], 'sólo el ubicado');
+  deepStrictEqual(r.sinLugar.map((c) => c.id), ['c_general', 'c_izq']
+    .map((x) => (x === 'c_general' ? GENERAL.id : izq.id)));
+});
+
+test('el mismo equipo en dos locales está en dos lugares, y ninguno pisa al otro', () => {
+  // Es el defecto que una auditoría encontró y que decidió este modelo: con el
+  // lugar guardado dentro del componente, ubicar las cuñas en un galpón movía
+  // las del bar, sin aviso.
+  const galpon = escenarioCon([], [ubicado(CUNA, emplazar(PUNTO(2, 1, 0.2), 'FIJO'))]);
+  const bar = escenarioCon([], [ubicado(CUNA, emplazar(PUNTO(5, 3, 0.2), 'FIJO'))]);
+  const equipo = [CUNA];
+  deepStrictEqual(elementosDelEscenario(galpon, equipo).emisores[0]?.emplazamiento.posicion,
+    { x: 2, y: 1, z: 0.2 });
+  deepStrictEqual(elementosDelEscenario(bar, equipo).emisores[0]?.emplazamiento.posicion,
+    { x: 5, y: 3, z: 0.2 });
 });
 
 test('los intraurales no van a «sin lugar»: no es que falte un dato, es que no acoplan', () => {
@@ -248,11 +289,13 @@ test('los intraurales no van a «sin lugar»: no es que falte un dato, es que no
   // como emisor a cero metros y en el eje del micrófono de voz: el par más
   // riesgoso de todo el escenario, y el único que no puede realimentar nunca.
   const iem: PAComponentSpec = {
+    id: 'comp_iem' as PAComponentId,
     nombre: 'Intraurales de Ana', bus: { tipo: 'AUX', indice: 3 }, silenciable: true,
     clase: 'IEM', modelo: null,
-    emplazamiento: emplazar(PUNTO(2, 2, 1.7), 'EN_MANO'),
   };
-  const r = elementosDelEscenario(escenarioCon([]), [iem, CUNA, GENERAL]);
+  const r = elementosDelEscenario(
+    escenarioCon([], [ubicado(iem, emplazar(PUNTO(2, 2, 1.7), 'EN_MANO')), ubicado(CUNA, LUGAR_DE_LA_CUNA)]),
+    [iem, CUNA, GENERAL]);
   deepStrictEqual(r.emisores.map((e) => e.nombre), ['Cuña de Ana']);
   deepStrictEqual(r.noRadian.map((c) => c.nombre), ['Intraurales de Ana']);
   // Y no se cuelan en la otra lista, que es la que le pide datos al usuario.
@@ -266,9 +309,14 @@ test('un perfil guardado antes de que existiera el emplazamiento no rompe nada',
   // posición indefinida, que envenenaría toda la geometría de la sala.
   const viejo = { nombre: 'Lado derecho', bus: { tipo: 'MASTER' }, silenciable: false,
     clase: 'PRINCIPAL', modelo: null } as unknown as PAComponentSpec;
-  const r = elementosDelEscenario(escenarioCon([]), [viejo, CUNA]);
-  deepStrictEqual(r.sinLugar.map((c) => c.nombre), ['Lado derecho']);
-  deepStrictEqual(r.emisores.map((e) => e.nombre), ['Cuña de Ana']);
+  // Y un escenario guardado antes de que existiera la lista de emisores: la
+  // clave no está, y leerla no puede reventar.
+  const escenarioViejo = {
+    venueProfileId: VENUE, elementos: [], actualizado: 'x', notas: null,
+  } as unknown as Escenario;
+  const r = elementosDelEscenario(escenarioViejo, [viejo, CUNA]);
+  deepStrictEqual(r.sinLugar.map((c) => c.nombre), ['Lado derecho', 'Cuña de Ana']);
+  deepStrictEqual(r.emisores, []);
 });
 
 // --- Validación -------------------------------------------------------------

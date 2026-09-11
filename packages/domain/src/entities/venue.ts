@@ -1,5 +1,5 @@
-import type { PAProfileId, VenueProfileId } from '../ids.ts';
-import type { Emplazamiento, Escenario } from './escenario.ts';
+import type { PAComponentId, PAProfileId, VenueProfileId } from '../ids.ts';
+import type { Escenario } from './escenario.ts';
 
 export type VenueType =
   | 'INDOOR_SMALL' | 'INDOOR_MEDIUM' | 'INDOOR_LARGE'
@@ -59,21 +59,35 @@ export const CLASES_QUE_RADIAN: readonly ClaseDeAmplificacion[] = [
  * estéreo con un solo silencio, no se puede separar (INV-028).
  */
 export interface PAComponentSpec {
+  /**
+   * Identidad propia, que el nombre no da.
+   *
+   * Es lo que permite que el local diga dónde está puesto **este** componente:
+   * dos pueden llamarse igual, y la posición en la lista cambia en cuanto
+   * alguien borra uno del medio.
+   */
+  readonly id: PAComponentId;
   readonly nombre: string;
   readonly bus: BusRef;
   readonly silenciable: boolean;
   readonly clase: ClaseDeAmplificacion;
   readonly modelo: string | null;
-  /**
-   * Dónde está y hacia dónde apunta, si el usuario lo cargó.
-   *
-   * `null` es lo normal --y lo que traen todos los perfiles guardados hasta
-   * hoy--. No es un descarte silencioso: `elementosDelEscenario()` devuelve los
-   * componentes sin lugar en una lista aparte para que la aplicación pueda
-   * decir cuáles quedaron fuera del análisis geométrico y por qué.
-   */
-  readonly emplazamiento: Emplazamiento | null;
 }
+
+/**
+ * **Dónde está puesto un componente NO vive acá, y es deliberado.**
+ *
+ * Este perfil describe **qué** equipo es: qué caja, por qué bus sale, si se
+ * puede silenciar sola. Dónde está puesta es un dato de la **sala**, y vive en
+ * el escenario del local, que lo referencia por `id`.
+ *
+ * La primera versión guardaba el emplazamiento acá y una auditoría encontró lo
+ * que eso significaba: dos locales que comparten el mismo sistema —que la
+ * aplicación permite y tiene un selector para eso— se pisaban las posiciones
+ * entre sí, sin aviso. Ubicar las cuñas en un galpón movía las del bar. El
+ * mismo equipo en dos salas distintas está en dos lugares distintos, y el
+ * modelo tiene que poder decirlo.
+ */
 
 export interface PAProfile {
   readonly id: PAProfileId;

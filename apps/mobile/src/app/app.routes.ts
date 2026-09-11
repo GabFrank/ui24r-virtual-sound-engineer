@@ -62,6 +62,12 @@ export const RUTAS: Routes = [
     canDeactivate: [guardaDeSalida],
   },
   {
+    path: 'perfiles/locales/:id/escenario',
+    title: 'Escenario',
+    loadComponent: () => import('./escenario/escenario-edit.component').then((m) => m.EscenarioEditComponent),
+    canDeactivate: [guardaDeSalida],
+  },
+  {
     path: 'perfiles/pa/:id',
     title: 'Sistema de amplificación',
     loadComponent: () => import('./perfiles/pa-edit.component').then((m) => m.PaEditComponent),

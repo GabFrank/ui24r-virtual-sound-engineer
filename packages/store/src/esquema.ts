@@ -269,6 +269,54 @@ export const MIGRACIONES: readonly Migracion[] = [
        WHERE json_valid(datos) AND json_type(datos, '$.escenario') IS NULL;`,
     ],
   },
+  {
+    version: 6,
+    descripcion: 'los componentes ganan identidad propia y el lugar se muda del equipo al local',
+    sentencias: [
+      // **Dónde está puesto un monitor es un dato de la sala, no del equipo.**
+      // La versión 5 lo guardó dentro del componente, y una auditoría encontró
+      // lo que eso significaba: dos locales que comparten el mismo sistema
+      // --que la aplicación permite, y tiene un selector para eso-- se pisaban
+      // las posiciones entre sí, en silencio. Ubicar las cuñas en un galpón
+      // movía las del bar.
+      //
+      // Así que el emplazamiento se muda a `escenario.emisores` del local, y
+      // para poder referenciar un componente desde afuera, el componente
+      // necesita **identidad propia**: el nombre no alcanza --el propio modelo
+      // nombra el caso de dos componentes homónimos, los dos lados de un
+      // general estéreo-- y la posición en la lista se rompe en cuanto alguien
+      // borra uno del medio.
+      //
+      // No se edita la 5, que ya está publicada: se agrega ésta.
+      //
+      // **El identificador se arma del `rowid` y la posición**, no al azar:
+      // SQLite no tiene generador de identificadores y `random()` haría que
+      // esta migración diera resultados distintos en cada corrida, o sea que
+      // dejaría de ser reproducible. `comp_<rowid>_<indice>` es único dentro de
+      // la base y estable.
+      `UPDATE pa_profile SET datos = json_replace(datos, '$.componentes', json((
+         SELECT json_group_array(CASE WHEN c.type = 'object' THEN
+           json_remove(
+             json_set(c.value, '$.id',
+               coalesce(json_extract(c.value, '$.id'),
+                        'comp_' || pa_profile.rowid || '_' || c.key)),
+             '$.emplazamiento')
+           ELSE c.value END)
+         FROM json_each(pa_profile.datos, '$.componentes') c)))
+       WHERE json_valid(datos) AND json_type(datos, '$.componentes') = 'array';`,
+      // La lista de emisores del escenario. Arranca vacía: **no se hereda nada
+      // del equipo**, porque un emplazamiento guardado en el perfil compartido
+      // no dice a cuál de los locales pertenecía. Perder una posición que el
+      // usuario puso a mano sería feo; adjudicársela al local equivocado es
+      // peor, porque después contradice al analizador y nadie sabe por qué.
+      // Al 2026-09-11 no hay ninguna cargada: la versión 5 es de hoy y el
+      // editor todavía no se publicó.
+      `UPDATE venue_profile SET datos = json_set(datos, '$.escenario.emisores', json('[]'))
+       WHERE json_valid(datos)
+         AND json_type(datos, '$.escenario') = 'object'
+         AND json_type(datos, '$.escenario.emisores') IS NULL;`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;

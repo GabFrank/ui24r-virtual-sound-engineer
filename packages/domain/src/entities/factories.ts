@@ -1,4 +1,4 @@
-import { makeId, type BandMemberId, type BandProfileId, type PAProfileId,
+import { makeId, type BandMemberId, type BandProfileId, type PAComponentId, type PAProfileId,
   type SessionId, type VenueProfileId } from '../ids.ts';
 import type { BandMember, BandProfile } from './musical.ts';
 import { normalizarInstrumentos } from './integrantes.ts';
@@ -72,12 +72,14 @@ export function crearPa(nombre: string, cajasPrincipales: string): PAProfile {
     crossoverHz: null,
     // Un general estéreo con un solo silencio: no se puede medir por
     // componente hasta que el usuario describa buses separados (INV-028).
+    //
+    // Sin lugar, porque el lugar no vive acá: este perfil dice QUÉ equipo es y
+    // el escenario de cada local dice dónde está puesto. El mismo sistema en
+    // dos salas está en dos lugares distintos.
     componentes: [{
+      id: makeId<'PAComponentId'>('comp') as PAComponentId,
       nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false,
       clase: 'PRINCIPAL', modelo: null,
-      // Sin lugar: un perfil recién creado no sabe dónde están las cajas, y
-      // suponerlo sería inventar la entrada de una inferencia geométrica.
-      emplazamiento: null,
     }],
     outputBuses: [{ tipo: 'MASTER' }],
     generatorFaderDb: FADER_GENERADOR_INICIAL_DB,

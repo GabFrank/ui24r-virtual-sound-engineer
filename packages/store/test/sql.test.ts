@@ -567,3 +567,114 @@ test('la migración 5 no da por buena una clase vacía ni una que no sea texto',
   migrar5(db);
   assert.deepEqual(paGuardado(db).componentes.map((c) => c['clase']), ['OTRO', 'OTRO', 'SUBGRAVE']);
 });
+
+/**
+ * La migración 6: identidad para los componentes, y el lugar mudado del equipo
+ * al local.
+ *
+ * Lo que motivó el cambio lo encontró una auditoría: dos locales que comparten
+ * el mismo perfil de amplificación se pisaban las posiciones de los monitores
+ * entre sí, porque el emplazamiento vivía dentro del componente. Ubicar las
+ * cuñas en un galpón movía las del bar, sin aviso.
+ */
+
+function baseHastaLa5(): DatabaseSync {
+  const db = new DatabaseSync(':memory:');
+  for (const m of MIGRACIONES.filter((x) => x.version < 6)) for (const s of m.sentencias) db.exec(s);
+  return db;
+}
+
+function migrar6(db: DatabaseSync): void {
+  const m = MIGRACIONES.find((x) => x.version === 6);
+  assert.ok(m, 'falta la migración 6');
+  for (const s of m.sentencias) db.exec(s);
+}
+
+test('la migración 6 le da identidad a cada componente y le saca el lugar', () => {
+  const db = baseHastaLa5();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_1', 'Sistema', JSON.stringify({
+      componentes: [
+        { nombre: 'Cuña', clase: 'MONITOR_CUNA', emplazamiento: { posicion: { x: 1, y: 1, z: 0 } } },
+        { nombre: 'Cuña', clase: 'MONITOR_CUNA', emplazamiento: null },
+      ],
+    }), '2026-01-01T00:00:00.000Z');
+  migrar6(db);
+
+  const comps = paGuardado(db).componentes;
+  assert.equal(comps.length, 2);
+  for (const c of comps) {
+    assert.ok('id' in c, 'cada componente tiene que tener identidad');
+    assert.ok(!('emplazamiento' in c), 'el lugar ya no vive en el equipo');
+  }
+  // **Dos homónimos tienen que quedar con identificadores distintos**, que es
+  // el caso que motivó darles identidad.
+  assert.equal(new Set(comps.map((c) => c['id'])).size, 2);
+});
+
+test('la migración 6 no pisa una identidad ya puesta', () => {
+  const db = baseHastaLa5();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_1', 'Sistema', JSON.stringify({
+      componentes: [{ id: 'comp_mio', nombre: 'General' }, { nombre: 'Otro' }],
+    }), '2026-01-01T00:00:00.000Z');
+  migrar6(db);
+  const comps = paGuardado(db).componentes;
+  assert.equal(comps[0]?.['id'], 'comp_mio');
+  assert.ok(typeof comps[1]?.['id'] === 'string' && comps[1]['id'] !== 'comp_mio');
+});
+
+test('la migración 6 da el mismo resultado dos veces, y también si se la corre de nuevo', () => {
+  // Sin esto, un identificador armado con `random()` haría que la migración no
+  // fuera reproducible: dos bases iguales terminarían distintas.
+  const armar = (): string => {
+    const db = baseHastaLa5();
+    db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+      .run('pa_1', 'Sistema', JSON.stringify({ componentes: [{ nombre: 'a' }, { nombre: 'b' }] }),
+        '2026-01-01T00:00:00.000Z');
+    migrar6(db);
+    return JSON.stringify(paGuardado(db));
+  };
+  assert.equal(armar(), armar(), 'dos bases iguales tienen que terminar iguales');
+
+  const db = baseHastaLa5();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_1', 'Sistema', JSON.stringify({ componentes: [{ nombre: 'a' }] }), '2026-01-01T00:00:00.000Z');
+  migrar6(db);
+  const unaVez = paGuardado(db);
+  assert.ok('id' in unaVez.componentes[0]!, 'la primera corrida tiene que haber hecho algo');
+  migrar6(db);
+  assert.deepEqual(paGuardado(db), unaVez);
+});
+
+test('la migración 6 le pone la lista de emisores al escenario que ya exista', () => {
+  const db = baseHastaLa5();
+  const conPlano = { nombre: 'La Sala', escenario: { venueProfileId: 'v_1', elementos: [], actualizado: 'x', notas: null } };
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('v_1', 'La Sala', 'INDOOR_SMALL', JSON.stringify(conPlano), '2026-01-01T00:00:00.000Z');
+  // Y un local sin escenario: no se le inventa uno.
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('v_2', 'El Galpón', 'WAREHOUSE', JSON.stringify({ nombre: 'El Galpón', escenario: null }),
+      '2026-01-01T00:00:00.000Z');
+  migrar6(db);
+
+  const leer = (id: string): Record<string, unknown> => JSON.parse(
+    (db.prepare('SELECT datos FROM venue_profile WHERE id = ?;').get(id) as { datos: string }).datos);
+  assert.deepEqual((leer('v_1')['escenario'] as Record<string, unknown>)['emisores'], []);
+  assert.equal(leer('v_2')['escenario'], null, 'a un local sin plano no se le inventa uno');
+});
+
+test('la migración 6 no se cae con un componente que no es objeto ni con una fila ilegible', () => {
+  const db = baseHastaLa5();
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_roto', 'Roto', 'esto no es JSON', '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO pa_profile (id, nombre, datos, actualizado_el) VALUES (?, ?, ?, ?);')
+    .run('pa_raro', 'Raro', JSON.stringify({ componentes: ['texto', 7, null, { nombre: 'bueno' }] }),
+      '2026-01-01T00:00:00.000Z');
+  db.prepare('INSERT INTO venue_profile (id, nombre, tipo, datos, actualizado_el) VALUES (?, ?, ?, ?, ?);')
+    .run('v_roto', 'Roto', 'CUSTOM', 'tampoco es JSON', '2026-01-01T00:00:00.000Z');
+  migrar6(db);
+  const raro = paGuardado(db, 'pa_raro').componentes;
+  assert.deepEqual(raro.slice(0, 3), ['texto', 7, null]);
+  assert.ok('id' in raro[3]!);
+});

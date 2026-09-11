@@ -46,6 +46,50 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **Dónde está puesto un monitor pasó a ser un dato de la sala, no del equipo.**
+  El perfil de amplificación describe **qué** equipo es —qué caja, por qué bus
+  sale, si se puede silenciar sola— y el escenario de cada local dice **dónde**
+  está puesto, refiriéndose al componente por su identificador. La primera
+  versión guardaba el lugar dentro del componente, y una auditoría encontró lo
+  que eso significaba: dos locales que comparten el mismo sistema —que la
+  aplicación permite, y tiene un selector para eso— **se pisaban las posiciones
+  entre sí, sin aviso**. Ubicar las cuñas en un galpón movía las del bar.
+
+  Para eso los componentes ganaron **identidad propia**, que no tenían. El
+  nombre no alcanza —el propio modelo nombra el caso de dos homónimos, los dos
+  lados de un general estéreo— y la posición en la lista se rompe en cuanto
+  alguien borra uno del medio. El editor llegó a usar las dos cosas antes de
+  esto, y las dos fallaban.
+
+  De yapa, guardar dejó de ser dos escrituras encadenadas en un intento que no
+  es transaccional: ahora es una sola, al local.
+
+- **El editor del escenario: arrastrar cada cosa a su lugar en el plano del
+  local.** Se llega desde la ficha del local, dibuja la sala vista desde arriba
+  —el escenario arriba, el público abajo— y deja poner instrumentos, micrófonos
+  y monitores con el dedo. Los monitores y las cajas no se cargan dos veces:
+  salen del sistema de amplificación y lo único que se les agrega acá es dónde
+  están.
+
+- **Sin el tamaño del local no hay plano, y no se inventa uno.** Es la única
+  puerta cerrada de la pantalla, y manda a cargarlo. Dibujar una sala de medidas
+  supuestas y dejar arrastrar cosas adentro produciría un escenario entero de
+  datos falsos, que después van a contradecir al analizador sin que nadie sepa
+  por qué.
+
+- **La precisión del arrastre se dice, no se finge.** Sobre un plano de una sala
+  de 12 por 8 metros en un lienzo de 700 px la escala da 51,4 px por metro, así
+  que una yema de 44 px son **86 cm** de ambigüedad. Cuando el elemento ya tiene
+  cargada menos duda que eso —un micrófono en un pie está a ±5 cm— la pantalla
+  lo marca y ofrece escribir los números: arrastrarlo ahí **empeora** el dato.
+  El círculo de duda se dibuja siempre, aunque quede diminuto, porque un punto
+  pelado invita a creer que la posición es exacta.
+
+- **Un micrófono nace sin patrón declarado.** Poner el cardioide —que es el más
+  común— ahorraría un toque y metería un dato inventado en la entrada de una
+  inferencia geométrica. La pantalla dice qué falta, en vez de dejar el elemento
+  apagado sin explicación.
+
 - **El patrón polar dejó de ser un campo inerte.** Se exigía al cargar un
   micrófono y no lo leía ninguna cuenta: cardioide, hipercardioide y
   bidireccional daban resultados idénticos. Ahora cada patrón declara **dónde
@@ -75,6 +119,75 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   métrica sabe más que la tabla.
 
 ### Corregido
+
+- **Tocar una ficha para leer sus números la corría 34 centímetros.** El
+  arrastre mandaba el elemento a la posición absoluta del dedo en vez de moverlo
+  lo que el dedo se movió, así que apoyar en el borde de un blanco de 48 px y
+  levantar sin desplazarse reubicaba el elemento y dejaba la pantalla en «sin
+  guardar». Una auditoría lo midió. Ahora el arrastre guarda el agarre, hay un
+  umbral que separa tocar de arrastrar, y un `pointercancel` —que lo dispara el
+  sistema, no el usuario— **descarta** el movimiento en vez de confirmarlo.
+
+- **Un segundo dedo secuestraba el arrastre en curso.** Sin comparar el puntero,
+  apoyar otro dedo sobre otra ficha cambiaba el objetivo y los movimientos del
+  primer dedo pasaban a arrastrar la segunda. Es el gesto más natural en una
+  tablet.
+
+- **El blanco táctil de 48 px medía 26,7 en una tablet chica.** El lienzo tenía
+  un ancho fijo de 720 que nadie ligaba, y como el dibujo se estira al hueco
+  disponible, una unidad de dibujo no era un píxel de pantalla. Eso ponía el
+  blanco por debajo del mínimo del sistema de diseño **y** hacía que la
+  ambigüedad del dedo se informara casi a la mitad de lo que era — justo la
+  cifra que esta pantalla existe para no falsear. Ahora el lienzo se mide.
+
+- **Los dos avisos de precisión eran dos cuentas distintas que discrepaban.** El
+  de la ficha decía usar la misma escala que el plano y comparaba contra un
+  umbral fijo de 25 cm: un elemento con 30 cm de duda no recibía el aviso aunque
+  el plano lo marcara. Ahora hay una sola cuenta, y la hace quien mide el
+  lienzo.
+
+- **La aplicación inventaba posiciones y las declaraba con ±5 cm.** Al agregar
+  un elemento o ubicar un componente, el lugar es un punto de partida para poder
+  agarrarlo, no una medición; declararlo con la duda de un pie de micrófono
+  metía precisión inventada en la entrada de una inferencia geométrica. Ahora
+  nace con una duda del orden del local, y la pantalla dice que es eso.
+
+- **Unidades mezcladas en tres campos.** El redondeo a centímetros se aplicaba
+  también a grados y a un valor que ya estaba en centímetros; el campo de duda
+  en centímetros no aceptaba decimales —escribir 7,5 guardaba 8—; y la lectura
+  de números aceptaba notación científica y hexadecimal, así que `1e3` entraba
+  como mil metros sin avisar.
+
+- **Un elemento fuera de las paredes quedaba invisible e intocable.** Pasa al
+  achicar el local después de cargar el escenario. No se dibujaba, no aparecía
+  en ninguna lista, y si se perdía la selección no había forma de recuperarlo.
+  Ahora tiene su lista, con un botón para traerlo de vuelta.
+
+- **Un local sin sistema de amplificación no decía nada.** La pantalla se veía
+  completa y los monitores simplemente no existían.
+
+- **Un test mío no distinguía una de las tres ramas.** Al aplicar un movimiento
+  sobre una ficha que ya no existe, quitarle la guarda al camino de los
+  componentes pasaba 24 de 24: yo sólo probaba el camino de las fuentes. Lo
+  encontró romper el código a propósito, una guarda por vez.
+
+- **Escribí una cuenta sin hacerla.** Un comentario afirmaba 58 px por metro y
+  76 cm de ambigüedad para el dedo; corriendo la función da **51,4 y 86 cm** —el
+  número estimado se olvidaba de restar los márgenes—. Corregido, y con un test
+  que ata el ejemplo del comentario para que no pueda quedar viejo en silencio.
+
+- **Y dos fichas de diseño inventadas, más un número que ya estaba declarado.**
+  El plano usaba `--text`, que no existe —es `--ink`— y lo escondía detrás de un
+  valor de reserva: la guarda de fichas dice, con razón, que un valor de reserva
+  no arregla un nombre mal escrito sino que lo tapa. Y el blanco táctil de 48 px
+  estaba escrito a mano cuando el repositorio ya lo declara en `--tap-min`.
+  Ahora un test compara los dos números, porque dos cifras que dicen lo mismo y
+  pueden separarse son un defecto esperando.
+
+- **Un filtro de la revisión estaba tapando errores reales.** Buscar `error TS`
+  en la salida de la compilación no ve los errores de plantilla de Angular, que
+  `tsc --noEmit` tampoco revisa: hace falta `ng build`, que ya está en el `lint`
+  del paquete. Detrás de ese filtro había un error propio.
 
 - **Una migración que dejaba la base sin abrir para siempre.** Un elemento de
   la lista de componentes que no fuera un objeto —un texto, un número, un
@@ -152,7 +265,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **866**. Los diez bloques son
+  auditorías, **907**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 

@@ -6,7 +6,9 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   reunirErrores, validarNombre, validarRangoUtil, validarUnico,
-  type BusRef, type ClaseDeAmplificacion, type PAComponentSpec, type PAProfile, type PAProfileId,
+  makeId,
+  type BusRef, type ClaseDeAmplificacion, type PAComponentId, type PAComponentSpec,
+  type PAProfile, type PAProfileId,
 } from '@vse/domain';
 import { Repositorios } from '../core/repos/repositorios';
 import { cuenta } from '../ui/plural';
@@ -414,14 +416,16 @@ export class PaEditComponent implements PuedeSalir, OnDestroy {
 
   agregar(): void {
     this.componentes.update((l) => [...l, {
+      // Identidad propia desde que nace: es lo que le permite al escenario de
+      // cada local decir dónde está puesto ESTE componente. El nombre no
+      // alcanza --dos pueden llamarse igual-- y la posición en la lista cambia
+      // al borrar uno del medio.
+      id: makeId<'PAComponentId'>('comp') as PAComponentId,
       nombre: this.nuevoNombre().trim(),
       bus: this.aBus(this.nuevoBus()),
       silenciable: this.nuevoSilenciable(),
       clase: this.nuevaClase(),
       modelo: null,
-      // El lugar se carga en el editor del escenario, no acá: esta pantalla
-      // describe el sistema, no la sala.
-      emplazamiento: null,
     }]);
     this.nuevoAbierto.set(false);
   }
