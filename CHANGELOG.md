@@ -46,16 +46,64 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
-- **El recorrido guiado: en qué orden se ajusta la banda.** Primero el cimiento
-  de graves y las voces al final, porque todo lo que viene después se equilibra
-  contra lo que ya está puesto. **El orden propuesto no sale de la intuición de
-  quien programa**: está en [orden-del-soundcheck.md](docs/orden-del-soundcheck.md)
-  con las tres fuentes de oficio que coinciden familia por familia, y un test
-  compara la tabla del documento contra la del código para que no puedan
-  separarse en silencio.
+- **Hice un documento para no inventar el orden, y después inventé el acuerdo
+  entre las fuentes.** Es el hallazgo más caro de esta tanda y no fue un detalle
+  de cita: el documento existe justamente para eso. Una auditoría bajó las tres
+  páginas y las leyó enteras.
 
-  Y es una propuesta, no una imposición: las tres fuentes describen una banda de
-  rock, y un trío de cuerdas o un grupo de candombe no encajan. El usuario
+  - La fuente que sostiene la tabla **no da ningún motivo**. Dice que la mayoría
+    ordena más o menos así y que se puede usar el orden que uno quiera. Yo le
+    atribuí a las tres un argumento sobre armar primero el cimiento de graves
+    que no está en ninguna con esa forma — y que ni siquiera explica la tabla:
+    con ese criterio el bajo no iría en el puesto 5, detrás de los platos.
+  - Una de las tres **es sólo de batería** y su orden dentro del kit
+    **contradice** al de la tabla en toms y aéreos. Justo la parte que la nota al
+    pie le atribuía.
+  - La tercera coincide en la lista de entradas pero su secuencia de soundcheck
+    es otra.
+  - **Seis de los trece puestos los decidí yo** —la percusión afrolatina y la
+    línea— y el comentario decía que salían de la tabla. Y afirmaba que el
+    catálogo no tiene vientos cuando sí los tiene.
+
+  Todo eso está corregido y separado en el documento: qué publica la fuente, qué
+  dicen las otras dos incluida la contradicción, y qué decidí yo. Hay un test que
+  impide que la frase del acuerdo vuelva.
+
+- **El orden de las etapas dentro del canal estaba al revés que su fuente.** La
+  misma página publica ganancia, puerta, ecualizador, compresor y envíos; yo
+  tenía el compresor antes del ecualizador, justificado con un razonamiento
+  propio. Y los envíos van al final **porque lo dice la fuente**, no porque se
+  sepa dónde derivan: eso depende de si el envío se toma antes o después del
+  procesamiento, y no está medido.
+
+- **Una batería acústica completa sale mal ordenada, y ahora está declarado.**
+  Redoblante, toms y aéreos son las filas 2, 3 y 4 —el cimiento del kit— y el
+  catálogo no los tiene, así que caen en «no clasificado» y van detrás de las
+  voces. El test que decía atar el documento al código **nombraba esas tres filas
+  y no las comprobaba**: afirmaba que la tabla tiene ocho y verificaba las cinco
+  en las que el código coincide.
+
+- **Ocho de las trece constantes del orden no las fijaba ningún test**, y eran
+  justo las de percusión afrolatina, línea y palabra: el repertorio que el propio
+  catálogo declara como el del usuario. Se podía poner el djembe después de la
+  voz y la suite quedaba verde.
+
+- **Un identificador repetido en el orden guardado movía el canal al final.**
+  `new Map` con duplicados se queda con el último índice, así que la voz guardada
+  en el puesto 0 salía en el 2.
+
+- **Una rama por defecto inalcanzable, con un comentario que la justificaba.** La
+  tabla de puestos es total sobre las familias del catálogo, así que el
+  `?? PUESTO_DESCONOCIDO` no podía ejecutarse nunca.
+
+- **El recorrido guiado: en qué orden se ajusta la banda.** Primero el cimiento
+  de graves y las voces al final. **El orden propuesto no sale de la intuición de
+  quien programa**: está en [orden-del-soundcheck.md](docs/orden-del-soundcheck.md),
+  que separa qué publica la fuente de qué se decidió acá, y un test comprueba
+  esa separación para que no puedan confundirse otra vez.
+
+  Y es una propuesta, no una imposición: la fuente describe una banda de rock, y
+  un trío de cuerdas o un grupo de candombe no encajan. El usuario
   reordena y lo que elija queda guardado. **Un canal agregado después no
   desaparece del recorrido** —sumar un micrófono a mitad del soundcheck es lo
   normal— y lo que el catálogo no supo clasificar va al final y no al principio:
@@ -409,7 +457,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **961**. Los diez bloques son
+  auditorías, **966**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 
