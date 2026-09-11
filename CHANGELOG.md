@@ -6,6 +6,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **«Sin integrant»: la columna «Quién» de Canales cortaba su propio texto.**
+  Visto en la tablet. No rompía nada, y ése era el problema — le dice al usuario
+  que nadie miró, justo antes de que la aplicación le pida confiar en números que
+  él no puede comprobar.
+
+  La causa no era el texto: era que **el ancho estaba elegido y el texto
+  también, cada uno por su lado**. El desplegable mide 130 px porque son tres en
+  la misma fila y sin ese recorte la tabla obliga a desplazarse de lado en una
+  tablet entera; de ahí salen unos 84 px para el texto, que a 15 px son unas
+  once letras. «Sin integrante» son catorce. Ahora dice **«Nadie»**, que bajo el
+  rótulo «Quién» es además la respuesta natural.
+
+  Y el límite dejó de ser invisible: está escrito en el CSS con la cuenta que lo
+  produce, y hay un test que lo comprueba sobre la plantilla — con su control
+  positivo, que verifica que el texto viejo no pasaría.
+
 - **El aviso de cambio masivo mostraba nuestra constante, no el tamaño de la
   avalancha.** Medido contra la consola: se escribieron dieciséis rutas y la
   pantalla dijo diez — las diez vueltas exactas del umbral. El aviso sale en el
