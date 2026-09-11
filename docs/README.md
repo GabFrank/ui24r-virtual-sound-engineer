@@ -23,6 +23,7 @@
 | [risk-register.md](risk-register.md) | Riesgos, responsable y mitigación | En cada control de paso |
 | [adr/](adr/) | Decisiones de arquitectura | Se agregan, no se editan |
 | [spikes/](spikes/) | Charters con criterio numérico y su evidencia | Al cerrar cada spike |
+| [inventario/](inventario/) | Inventarios de claves capturados contra la consola real, por firmware y fecha | Al capturar |
 | [gates/](gates/) | Actas de los controles de paso | Al cerrar cada control |
 | [field/](field/) | Informes de prueba de campo | Al cerrar cada versión |
 
