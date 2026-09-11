@@ -65,3 +65,36 @@ test('concuerda el singular y el plural', () => {
   match(avisoDelPuntoDeRetorno(fueraDelPuntoDeRetorno([...dos.keys()], leer(dos), () => null))!,
     /2 fuentes marcadas/);
 });
+
+test('lee var.unsaved.chsafes, que se enumeraba en todos lados y en ningun codigo', () => {
+  // El filtro era `endsWith('.safe')`, asi que la clave que el docblock, el
+  // CHANGELOG e INV-001 nombran como parte de las cincuenta quedaba afuera de la
+  // unica funcion que las mira. Una auditoria conto tres cifras distintas en el
+  // mismo commit: 50 en el inventario, 51 en el clasificador y 49 aca.
+  const num = new Map([['var.unsaved.chsafes', 1]]);
+  const f = fueraDelPuntoDeRetorno([...num.keys()], (r) => num.get(r) ?? null, () => null);
+  deepStrictEqual(f.protegidas.map((p) => p.fuente), ['var.unsaved.chsafes']);
+});
+
+test('«todavia no llego» NO es «apagado»: lo desconocido cuenta como protegido', () => {
+  // **El falso negativo iba en la direccion peligrosa.** El codigo ponia `?? 0`,
+  // asi que un safe que el almacen no confirmo --lo normal durante el volcado
+  // inicial, en cada arranque-- contaba como apagado, el aviso salia null, y la
+  // aplicacion daba a entender que se puede deshacer todo.
+  //
+  // Si no sabemos, no prometemos: errar por exceso muestra un aviso de mas;
+  // errar por defecto promete una vuelta atras que puede no existir.
+  const f = fueraDelPuntoDeRetorno(['i.8.safe'], () => null, () => null);
+  deepStrictEqual(f.protegidas.map((p) => p.fuente), ['i.8']);
+  strictEqual(f.protegidas[0]!.sinConfirmar, true, 'y se distingue de un safe marcado');
+  strictEqual(avisoDelPuntoDeRetorno(f) !== null, true, 'el aviso sale');
+});
+
+test('un safe confirmado en apagado si se descarta', () => {
+  // La contraprueba: sin ella, el test de arriba solo probaria que avisamos
+  // siempre, que no es lo mismo que avisar cuando corresponde.
+  const num = new Map([['i.8.safe', 0]]);
+  const f = fueraDelPuntoDeRetorno([...num.keys()], (r) => num.get(r) ?? null, () => null);
+  deepStrictEqual(f.protegidas, []);
+  strictEqual(avisoDelPuntoDeRetorno(f), null);
+});

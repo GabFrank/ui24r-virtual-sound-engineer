@@ -51,6 +51,14 @@ function permitidas(): readonly string[] {
   return salida;
 }
 
+test('el inventario esta donde se lo espera y tiene las 6732 claves', () => {
+  // **Sin esto, dos de los tres tests de abajo pasan con el archivo vacio**:
+  // miden el conjunto vacio y lo celebran. Lo encontro una auditoria, y el
+  // archivo hermano --el de cobertura-- ya tenia este centinela. El que vigila
+  // lo ESCRIBIBLE no lo tenia, que es el peor de los dos para no tenerlo.
+  strictEqual(readFileSync(INVENTARIO, 'utf8').trim().split('\n').length, 6732);
+});
+
 test('ninguna entrada de linea es escribible', () => {
   // `l.*` es lo que entra por las RCA. Lo decide el usuario, y la aplicacion no
   // lo toca hasta que alguien decida lo contrario a proposito.

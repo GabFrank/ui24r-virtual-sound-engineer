@@ -32,6 +32,14 @@ export interface Protegida {
   readonly ruta: string;
   /** El prefijo de lo que protege: `i.8`, `m`. */
   readonly fuente: string;
+  /**
+   * Si el estado confirmado todavía no trajo esta clave.
+   *
+   * Se informa como protegida igual --no prometer es más seguro que prometer de
+   * más-- pero quien lea tiene que poder distinguir «el operador lo marcó» de
+   * «no sabemos todavía».
+   */
+  readonly sinConfirmar: boolean;
   /** El nombre que la consola le da a esa fuente, si tiene. */
   readonly nombre: string | null;
 }
@@ -70,13 +78,26 @@ export function fueraDelPuntoDeRetorno(
 ): FueraDelPuntoDeRetorno {
   const protegidas: Protegida[] = [];
   for (const r of rutas) {
-    if (!r.endsWith('.safe')) continue;
-    // **Encendido, no «distinto de cero».** Es un interruptor y la consola lo
-    // publica como 0 o 1; leerlo con un umbral invitaría a discutir qué pasa
-    // con 0,5, que no ocurre.
-    if ((leer(r) ?? 0) < 0.5) continue;
-    const fuente = r.slice(0, -'.safe'.length);
-    protegidas.push({ ruta: r, fuente, nombre: leerTexto(`${fuente}.name`) });
+    // **`var.unsaved.chsafes` se enumeraba en todos lados y no se leía en
+    // ninguno.** El filtro era `endsWith('.safe')`, así que la clave que el
+    // docblock, el CHANGELOG y INV-001 nombran como parte de las cincuenta
+    // quedaba afuera de la única función que las mira. Lo encontró una
+    // auditoría contando tres cifras distintas en el mismo commit: 50 en el
+    // inventario, 51 en el clasificador y 49 acá.
+    if (!r.endsWith('.safe') && r !== 'var.unsaved.chsafes') continue;
+    const v = leer(r);
+    // **«Todavía no llegó» no es «apagado», y decían lo mismo.** El código
+    // ponía `?? 0`, así que un safe que el almacén no confirmó --lo normal
+    // durante el volcado inicial, en cada arranque-- contaba como apagado: el
+    // aviso salía `null` y la aplicación daba a entender que se puede deshacer
+    // todo. **El falso negativo iba en la dirección peligrosa.**
+    //
+    // Ahora lo desconocido se informa como protegido: si no sabemos, no
+    // prometemos. Errar por exceso muestra un aviso de más; errar por defecto
+    // promete una vuelta atrás que puede no existir.
+    if (v !== null && v < 0.5) continue;
+    const fuente = r === 'var.unsaved.chsafes' ? r : r.slice(0, -'.safe'.length);
+    protegidas.push({ ruta: r, fuente, nombre: leerTexto(`${fuente}.name`), sinConfirmar: v === null });
   }
   protegidas.sort((a, b) => a.ruta.localeCompare(b.ruta));
   return { protegidas, sinRestaurar: [...SIN_RESTAURAR_MEDIDO] };

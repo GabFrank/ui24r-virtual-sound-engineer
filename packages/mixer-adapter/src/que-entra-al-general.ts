@@ -40,13 +40,21 @@ export interface FuenteDelGeneral {
    *
    * **Existe porque acá había un umbral inventado.** Decía
    * `FADER_CERRADO = 0.001`, «el fader por debajo del cual una fuente no aporta
-   * nada audible», sin cita ni medición. Pasado por `faderADb` --que vive en
-   * este mismo paquete y sale del cliente de la consola-- **a los dos lados de
-   * ese umbral hay −90 dB**: 0,0009 daba «cerrada» y 0,002 daba «abierta», y las
-   * dos aportan exactamente lo mismo. No separaba nada.
+   * nada audible», **sin cita ni medición**. Sigue siendo razón suficiente para
+   * sacarlo: un umbral que nadie midió no separa nada que alguien pueda
+   * defender.
    *
-   * Peor: 0,001 es el corte de pantalla de la consola, y `conversiones.ts`
-   * --tres días antes, mismo paquete-- advierte por escrito contra usarlo.
+   * > **Y el argumento con el que se sacó era falso, lo encontró una
+   * > auditoría.** Se dijo que «a los dos lados de ese umbral hay −90 dB, así
+   * > que no separa nada». Eso es cierto de lo que devuelve `faderADb` y **no
+   * > de la consola**: la función recorta en `FADER_DB_MINIMO = -90`. Sin el
+   * > recorte, 0,0009 da −103,1 dB y 0,002 da −95,9: **siete decibeles**, no
+   * > «exactamente lo mismo».
+   * >
+   * > O sea que se reemplazó un umbral inventado por un argumento construido
+   * > sobre otra constante de la misma clase —`FADER_DB_MINIMO` es el único
+   * > extremo de `conversiones.ts` **sin cita de procedencia**— y se presentó
+   * > como medición. La conclusión sobrevive; el razonamiento no.
    *
    * Se quitó el umbral y se expone el número. **Quien necesite un piso lo pone
    * con un valor que alguien haya medido**, en decibeles, que es la unidad en la

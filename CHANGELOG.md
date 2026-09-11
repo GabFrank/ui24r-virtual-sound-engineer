@@ -76,6 +76,46 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Una ruta que la consola no manda estaba viva en producción.** El panel de
+  telemetría traducía `m.mute` a «el silencio general», y **el general no tiene
+  silencio: tiene `m.dim`**. Esa rama era inalcanzable y `m.dim` caía al último
+  `return`, así que el operador veía **la clave cruda** justo en el evento que
+  más importa leer rápido. La guarda de rutas fabricadas no lo había visto
+  porque barre `packages/` y esto vive en `apps/`.
+
+- **Y el argumento con el que retiré un umbral era falso.** Dije que «a los dos
+  lados de `FADER_CERRADO = 0.001` hay −90 dB, así que no separa nada». Eso es
+  cierto de lo que devuelve `faderADb` y **no de la consola**: la función
+  **recorta** en −90. Sin el recorte, 0,0009 da −103,1 y 0,002 da −95,9 —
+  **siete decibeles**, no «exactamente lo mismo». Reemplacé un umbral inventado
+  por un argumento construido sobre otra constante de la misma clase, y lo
+  presenté como medición. **La conclusión sobrevive; el razonamiento no.**
+
+- **Tres cuentas distintas de los «safe» en el mismo commit: 50, 51 y 49.** El
+  inventario dice 50; el clasificador agarraba 51 porque su patrón era un
+  prefijo y se llevaba puesto `var.unsaved.mutegroups` —que **no es un safe**,
+  son los grupos de silencio, que el módulo de al lado declara como un hueco que
+  el código no mira—; y la única función que los lee veía 49, porque filtraba
+  por `.safe` y **nunca miraba `var.unsaved.chsafes`**, la clave que yo
+  enumeraba en el CHANGELOG, en el docblock y en INV-001.
+
+- **«Todavía no llegó» contaba como «apagado».** Un safe que el almacén no
+  confirmó —lo normal durante el volcado inicial, en cada arranque— se leía como
+  apagado: el aviso salía vacío y la aplicación daba a entender que se puede
+  deshacer todo. **El falso negativo iba en la dirección peligrosa.** Ahora lo
+  desconocido cuenta como protegido y se distingue de lo marcado: si no sabemos,
+  no prometemos.
+
+- **El piso de cobertura nació setenta y dos claves viejo.** Se escribió 5334,
+  que era la cobertura de **dos commits antes**. Con ese colchón, la categoría
+  `SAFE` entera —o `PHANTOM`, o `VCA`— podía dejar de reconocerse con todo en
+  verde. **Un piso con colchón no es un piso.**
+
+- **Y dos de los tres tests de lo escribible pasaban con el inventario vacío**:
+  medían el conjunto vacío y lo celebraban. Les faltaba el centinela que el test
+  hermano sí tenía — y el que vigila lo escribible es el peor de los dos para no
+  tenerlo.
+
 - **Las rutas fabricadas en los tests dejaron de depender de que alguien mire.**
   Ya habían aparecido tres veces: los tests inventan una ruta, el clasificador
   la agarra por prefijo, y el test pasa **probando el patrón y no el

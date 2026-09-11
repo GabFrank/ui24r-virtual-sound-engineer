@@ -62,7 +62,12 @@ function describirRuta(path: string): string {
     return `el canal ${n}`;
   }
   if (path === 'm.mix') return 'el fader general';
-  if (path === 'm.mute') return 'el silencio general';
+  // **`m.mute` no existe en esta consola.** El general no tiene silencio: tiene
+  // `m.dim`, que baja el nivel sin cortarlo. Esta rama era inalcanzable y
+  // `m.dim` caía al `return path` del final, así que el panel le mostraba al
+  // operador la clave cruda justo en el evento que más importa leer rápido.
+  // Lo encontró una auditoría barriendo rutas fabricadas contra el inventario.
+  if (path === 'm.dim') return 'la atenuación del general';
   if (path === 'var.currentSnapshot') return 'la instantánea activa de la consola';
   if (path.startsWith('hw.')) return `la ganancia de entrada ${path.split('.')[1] ?? ''}`.trim();
   return path;

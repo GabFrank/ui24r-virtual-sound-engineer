@@ -44,7 +44,12 @@ const PATRONES: readonly Patron[] = [
   // 4 efectos, 2 del reproductor, 2 de línea, el general, y
   // `var.unsaved.chsafes`.
   { re: /^[a-z]+\.?\d*\.safe$/, kind: 'SAFE' },
-  { re: /^var\.unsaved\./, kind: 'SAFE' },
+  // **`var.unsaved.chsafes` y nada más.** El patrón era `/^var\.unsaved\./`, un
+  // prefijo, y agarraba también `var.unsaved.mutegroups` — que **no es un
+  // safe**: son los grupos de silencio, que el módulo de al lado declara como un
+  // hueco que el código no mira. Dos commits de la misma noche se contradecían
+  // sobre la misma clave. Lo encontró una auditoría.
+  { re: /^var\.unsaved\.chsafes$/, kind: 'SAFE' },
 
   // --- Envíos a la matriz, ARRIBA de las familias ---
   //

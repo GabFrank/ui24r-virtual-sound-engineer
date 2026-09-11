@@ -41,12 +41,21 @@ test('la cobertura del clasificador no retrocede', () => {
   const porciento = (100 * cubiertas) / todas.length;
 
   // **Un piso, no una igualdad.** Subir la cobertura es bienvenido y no tiene
-  // que romper nada; bajarla es una regresión y tiene que doler. El valor sale
-  // de la corrida del 2026-09-11: 5334 de 6732.
+  // que romper nada; bajarla es una regresión y tiene que doler.
+  //
+  // **Este número nació viejo y lo encontró una auditoría.** Se escribió 5334,
+  // que era la cobertura de **dos commits antes** del que lo escribió, y para
+  // cuando se midió ya iba en 5406: setenta y dos claves de colchón. Con eso,
+  // la categoría `SAFE` entera --o `PHANTOM`, o `VCA`-- podía dejar de
+  // reconocerse sin que nada se pusiera rojo, y ninguna de esas es escribible,
+  // así que el test de lo permitido tampoco las ve.
+  //
+  // **Un piso con colchón no es un piso.** Si se sube la cobertura, este número
+  // se sube en el mismo commit.
   strictEqual(
-    cubiertas >= 5334, true,
+    cubiertas >= 5406, true,
     `el clasificador nombra ${cubiertas} de ${todas.length} (${porciento.toFixed(1)} %) `
-    + 'y el piso es 5334. Si bajó, algo dejó de reconocerse.',
+    + 'y el piso es 5406. Si bajó, algo dejó de reconocerse.',
   );
 });
 

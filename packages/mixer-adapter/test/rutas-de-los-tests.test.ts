@@ -27,8 +27,8 @@ const INVENTARIO = join(RAIZ, 'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 
  */
 const DELIBERADAS = new Map<string, string>([
   ['a.30.eq.peak.12', 'el borde del prefijo: `a.30` no es `a.3`, y hay que probarlo'],
-  ['m.eq.b1.gain', 'la ruta que la lista blanca de INV-008 uso durante meses. Un '
-    + 'parametrico de salida entraria por el mismo camino; esta consola no tiene uno'],
+  ['m.eq.easy', 'una asercion NEGATIVA: que una ruta inexistente en el general se '
+    + 'rechace. Existe como `l.N.eq.easy` y `i.N.eq.easy`, no como `m.eq.easy`'],
   ['m.eq.b3.gain', 'la clausula de Q de INV-004 solo se dispara sobre un parametrico '
     + 'de salida, que la Ui24R no tiene. El test dice cual es la forma que la activa'],
   ['i.mix', 'una ruta MAL FORMADA a proposito: familia sin indice de canal. Prueba '

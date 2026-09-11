@@ -274,3 +274,12 @@ test('los envios a efectos y a la matriz dejan de ser desconocidos', () => {
   // conector que uno no ve.
   strictEqual(clasificarRuta('hwoutaux.6.src'), null);
 });
+
+test('los grupos de silencio NO son un safe', () => {
+  // El patron era `/^var\.unsaved\./`, un prefijo, y agarraba tambien
+  // `var.unsaved.mutegroups` -- que no es un safe: son los grupos de silencio,
+  // que `loQueNoSeVe()` declara como un hueco que el codigo NO mira. Dos commits
+  // de la misma noche se contradecian sobre la misma clave.
+  strictEqual(clasificarRuta('var.unsaved.chsafes'), 'SAFE');
+  strictEqual(clasificarRuta('var.unsaved.mutegroups'), null, 'es un hueco declarado, no un safe');
+});
