@@ -38,7 +38,15 @@ export interface ContextoSeguridad {
   /** Rutas ya tocadas alguna vez en esta sesión. */
   readonly rutasYaTocadas: ReadonlySet<string>;
   readonly hayTakeDeSoundcheckActivo: boolean;
-  /** Buses sobre los que el perfil de amplificación permite escribir. */
+  /**
+   * Prefijos de los buses sobre los que el perfil permite ecualizar.
+   *
+   * **Prefijos de bus --`m`, `a.3`--, no rutas completas.** Un bus de salida en
+   * esta consola son setenta claves de ecualización: el general es un gráfico de
+   * 31 bandas por lado. Enumerarlas era inviable, y la lista terminó durante
+   * meses con una sola ruta inventada, `m.eq.b1.gain`, que el aparato no publica.
+   * Se traduce desde `PAProfile.outputBuses` con `prefijosPermitidos`.
+   */
   readonly busesDeSalidaPermitidos: ReadonlySet<string>;
   readonly confianza: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT_DATA';
   /** El usuario aprobó explícitamente, con una acción deliberada. */

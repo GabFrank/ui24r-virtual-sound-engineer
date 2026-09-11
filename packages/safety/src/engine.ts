@@ -2,6 +2,7 @@ import {
   ownership, esEscribible, verificarLimite,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
+import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta } from '@vse/mixer-adapter';
 import type { ParameterKind } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
@@ -238,7 +239,19 @@ export class SafetyEngine {
     // del sistema de amplificación declara. Escribir en otro bus podría estar
     // tocando un monitor.
     if (c.kind === 'OUTPUT_EQ') {
-      if (!ctx.busesDeSalidaPermitidos.has(c.path)) {
+      // **Se compara el BUS, no la ruta completa, y el cambio no es cosmético.**
+      // Antes era `busesDeSalidaPermitidos.has(c.path)`: igualdad exacta contra
+      // un conjunto que el único test del proyecto llenaba con
+      // `m.eq.b1.gain` --una ruta que **no existe en la consola**--. El
+      // ecualizador de un bus de salida no es paramétrico: el general es un
+      // gráfico de 31 bandas por lado (`m.eq.peak.l.0`…`.30`), setenta claves en
+      // total. Enumerarlas en una lista blanca no era viable, y por eso la lista
+      // terminó con una ruta inventada que nadie ejercitó contra el aparato.
+      //
+      // El perfil del sistema de amplificación declara **buses**, que es lo que
+      // un técnico sabe decir; `prefijosPermitidos` traduce, y esa traducción
+      // está contrastada contra las 6732 claves del inventario.
+      if (!ecualizacionPermitida(c.path, ctx.busesDeSalidaPermitidos)) {
         salida.push({
           codigo: 'BUS_NO_PERMITIDO',
           invariante: 'INV-008',
@@ -250,7 +263,16 @@ export class SafetyEngine {
       // Un filtro estrecho de realce en un bus de salida es el camino corto al
       // acople. Las dos constantes existían en el dominio desde el principio y
       // ninguna regla las consultaba.
-      if (c.q !== undefined && c.q < Q_MINIMO_SALIDA) {
+      // **Sobre esta consola esta regla no se dispara nunca, y hay que decirlo.**
+      // El ecualizador de salida es gráfico: no tiene factor de calidad, así que
+      // `c.q` es `undefined` siempre. La cláusula sigue teniendo sentido para un
+      // paramétrico de salida, que la Ui24R no tiene, y por eso se conserva.
+      //
+      // El peligro que INV-004 quiere evitar --un realce estrecho sobre el
+      // sistema-- en un gráfico de 31 bandas lo acota el realce máximo de abajo,
+      // que sí se consulta. `admiteFactorDeCalidad` deja el dato al lado del
+      // código en vez de en una nota al pie.
+      if (c.q !== undefined && admiteFactorDeCalidad(c.path) && c.q < Q_MINIMO_SALIDA) {
         salida.push({
           codigo: 'Q_DEMASIADO_ESTRECHO',
           invariante: 'INV-004',

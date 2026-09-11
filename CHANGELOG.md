@@ -33,6 +33,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **La lista blanca de INV-008 comparaba contra una ruta que no existe, y era el
+  único camino por el que el motor aprobaba una escritura de sala.** Declaraba
+  `busesDeSalidaPermitidos: new Set(['m.eq.b1.gain'])` —un solo elemento— con
+  igualdad exacta de ruta completa. Esa ruta no existe: el ecualizador de salida
+  de esta consola **no es paramétrico**. El general es un **gráfico de 31 bandas
+  por lado**, setenta claves en total. Enumerarlas en una lista blanca no era
+  viable, y por eso terminó con un nombre inventado que nadie ejercitó contra el
+  aparato.
+
+  Ahora el perfil declara **buses** —que es lo que un técnico sabe decir— y la
+  traducción a prefijos vive en un solo lugar, contrastada contra las 6732 claves
+  del inventario. Autorizar un bus para ecualizar **no** autoriza a mover su
+  nivel, y la matriz —que no tiene ecualizador, y eso también está medido— no
+  llega a la lista. Tres tests fallan con el código viejo.
+
+- **Y arrastraba una cláusula de INV-004 que no se puede cumplir.** «Q ≥ 0,7 en
+  salidas» se comprueba con `if (c.q !== undefined && …)`, y un ecualizador
+  gráfico **no tiene factor de calidad**: la regla no se dispara nunca. Es la
+  forma nueva de «la constante que nadie consulta»: la condición que nunca se
+  cumple. Queda dicho en la invariante, con un test que lo fija, y lo que sí
+  protege contra el mismo peligro en un gráfico es el realce máximo.
+
 - **RETRACTADO: el aviso de realimentación nunca falló. La sala no estaba en
   silencio.** Se dijo que el detector marcaba una banda sostenida con todo
   apagado y que eso lo invalidaba en una sala real. Había un **Bluetooth

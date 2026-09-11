@@ -16,3 +16,4 @@ export * from './rules/limits.ts';
 export * from './rules/confidence.ts';
 export * from './rules/scores.ts';
 export * from './rules/validacion.ts';
+export * from './rules/buses-de-salida.ts';

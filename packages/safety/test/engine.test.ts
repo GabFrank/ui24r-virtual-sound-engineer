@@ -163,12 +163,12 @@ test('INV-019: las escrituras de seguridad se reconocen aparte', () => {
 test('INV-008: la ecualización de salida solo va a los buses declarados', () => {
   const e = new SafetyEngine();
   const permitido: CambioPropuesto = {
-    kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+    kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
     valorPropuesto: -2, valorEsperado: 0,
   };
   assert.equal(e.evaluar([permitido], contexto(), ok).permitido, true);
 
-  const otroBus = { ...permitido, path: 'a.5.eq.b1.gain' };
+  const otroBus = { ...permitido, path: 'a.5.eq.peak.12' };
   const v = e.evaluar([otroBus], contexto(), ok);
   assert.equal(v.permitido, false);
   assert.match(
@@ -278,11 +278,15 @@ test('INV-019: con el paro activo, un retroceso pasa y un cambio normal no', () 
 
 // --- Q mínimo y realce máximo en buses de salida ---
 
-test('INV-004: un filtro estrecho en un bus de salida se rechaza', () => {
+test('INV-004: un filtro estrecho en un bus PARAMETRICO se rechaza', () => {
+  // La ruta es paramétrica a propósito. Sobre esta consola no existe un
+  // ecualizador de salida así, pero la cláusula de INV-004 sigue teniendo
+  // sentido para uno que lo tenga, y el test dice cuál es la forma que la
+  // dispara.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
     [{
-      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      kind: 'OUTPUT_EQ', path: 'm.eq.b3.gain', unidad: 'dB',
       valorPropuesto: -3, valorEsperado: 0, q: 0.4,
     }],
     contexto(),
@@ -294,11 +298,33 @@ test('INV-004: un filtro estrecho en un bus de salida se rechaza', () => {
   }
 });
 
+test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar', () => {
+  // **El hallazgo, fijado para que no se olvide.** El ecualizador de salida de
+  // esta consola es un grafico de 31 bandas: no tiene factor de calidad, asi que
+  // `q` es `undefined` siempre y la regla no se ejecuta nunca. Es la forma nueva
+  // de «la constante que nadie consulta»: acá es «la condicion que nunca se
+  // cumple».
+  //
+  // Lo que SI protege contra el mismo peligro en un grafico es el realce
+  // maximo, y eso lo cubre el test de al lado. Este test existe para que quien
+  // lea INV-004 no crea que esta cubierta en este aparato.
+  const motor = new SafetyEngine();
+  const v = motor.evaluar(
+    [{
+      kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
+      valorPropuesto: -3, valorEsperado: 0, q: 0.4,
+    }],
+    contexto(),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.equal(v.permitido, true, 'una atenuacion en una banda del grafico pasa');
+});
+
 test('INV-004: la correccion de sala atenua, no realza', () => {
   const motor = new SafetyEngine();
   const v = motor.evaluar(
     [{
-      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
       valorPropuesto: 3, valorEsperado: 0, q: 1.4,
     }],
     contexto(),
@@ -314,7 +340,7 @@ test('una atenuacion con Q ancho en un bus declarado pasa', () => {
   const motor = new SafetyEngine();
   const v = motor.evaluar(
     [{
-      kind: 'OUTPUT_EQ', path: 'm.eq.b1.gain', unidad: 'dB',
+      kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
       valorPropuesto: -2, valorEsperado: 0, q: 1.4,
     }],
     contexto(),

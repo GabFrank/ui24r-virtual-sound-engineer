@@ -166,7 +166,14 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
     rutasConMedicionPosterior: new Set(),
     rutasYaTocadas: new Set(),
     hayTakeDeSoundcheckActivo: false,
-    busesDeSalidaPermitidos: new Set(['m.eq.b1.gain']),
+    // **Un PREFIJO de bus, y con la forma que el aparato tiene.** Acá decía
+    // `new Set(['m.eq.b1.gain'])` -- una ruta completa, y encima inventada: el
+    // ecualizador del general es un grafico de 31 bandas por lado
+    // (`m.eq.peak.l.0`…`.30`), sin `.b1` y sin `.gain`. Era el UNICO elemento
+    // del conjunto y el unico camino por el que el motor aprueba una escritura
+    // de sala, asi que el diseño de la lista blanca de INV-008 nunca se probo
+    // contra la forma real. Lo encontro una auditoria.
+    busesDeSalidaPermitidos: new Set(['m']),
     confianza: 'HIGH',
     aprobacionExplicita: true,
     ...parcial,
