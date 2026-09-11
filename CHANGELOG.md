@@ -4,6 +4,33 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ## [Sin publicar]
 
+### Agregado
+
+- **La primera realimentación de verdad, medida.** Los tres umbrales del
+  detector estaban marcados como «elegidos, no medidos» y «sin validar contra
+  una realimentación real» desde el primer día. Ahora hay una, provocada a
+  propósito con el usuario en la sala y la mano en el monitor.
+
+  La variable no era el fader —dos intentos con 24 dB de recorrido no movieron
+  nada— sino **la ganancia del previo**. Subiéndola, el lazo arrancó en **~9 kHz**
+  y **2 dB de ganancia produjeron 43 de nivel**. El usuario lo escuchó: «sonó
+  exactamente así».
+
+  Y es la primera medición de espectro del proyecto con el fondo limpio: 0,00 dB
+  en las 122 bandas, con control positivo.
+
+  **Lo que le dice a los umbrales.** El último paso estable daba **8,2 dB** de
+  exceso sobre las vecinas y la fuga **19,4**. `MARGEN_SOBRE_VECINAS_DB` vale 9:
+  cae entre los dos, pero **a 0,8 dB del estable**. Y `PISO_UTIL_DB = 12` deja
+  afuera el último paso estable, que estaba en 12,8 — el detector empieza a mirar
+  cuando el fenómeno ya está encima.
+
+  Lo que separa limpio es **el crecimiento**, que es lo que la regla «no cayó
+  como debía» ya intenta capturar. Ninguna resonancia sube 43 dB por 2 de causa.
+
+  **Es una sala, un micrófono y una corrida.** No es una ley: es el primer punto
+  de una curva que no existe.
+
 ### Corregido
 
 - **RETRACTADO: el aviso de realimentación nunca falló. La sala no estaba en
