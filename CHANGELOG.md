@@ -46,6 +46,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **El recorrido guiado: en qué orden se ajusta la banda.** Primero el cimiento
+  de graves y las voces al final, porque todo lo que viene después se equilibra
+  contra lo que ya está puesto. **El orden propuesto no sale de la intuición de
+  quien programa**: está en [orden-del-soundcheck.md](docs/orden-del-soundcheck.md)
+  con las tres fuentes de oficio que coinciden familia por familia, y un test
+  compara la tabla del documento contra la del código para que no puedan
+  separarse en silencio.
+
+  Y es una propuesta, no una imposición: las tres fuentes describen una banda de
+  rock, y un trío de cuerdas o un grupo de candombe no encajan. El usuario
+  reordena y lo que elija queda guardado. **Un canal agregado después no
+  desaparece del recorrido** —sumar un micrófono a mitad del soundcheck es lo
+  normal— y lo que el catálogo no supo clasificar va al final y no al principio:
+  lo que no se sabe no puede meterse en el medio del cimiento.
+
+- **Cada etapa declara si su ley está medida, en un solo lugar.** Hoy lo está
+  sólo la ganancia. El día que se mida otra alcanza con cambiar esa tabla; si el
+  dato estuviera repartido por las pantallas, alguna seguiría diciendo «sin
+  medir» después de la medición, o peor, al revés.
+
 - **El segundo camino: qué pareja monitor↔micrófono está más expuesta.** El
   analizador dice que algo se sostiene a nueve kilohercios pero no dice de dónde
   sale; la geometría dice qué pareja está más expuesta pero no dice a qué
@@ -389,7 +409,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **951**. Los diez bloques son
+  auditorías, **961**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 

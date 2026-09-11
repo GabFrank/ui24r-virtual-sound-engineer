@@ -22,7 +22,7 @@ instantánea de la consola.
 | 3 | Empezar la sesión eligiendo banda y local | **construido** |
 | 4 | Asignar qué entrada es qué instrumento | **construido** |
 | 5 | **Armar el escenario**: dónde está cada fuente, micrófono, monitor y caja | **falta entero** |
-| 6 | **Recorrido guiado, instrumento por instrumento** | **falta entero** |
+| 6 | **Recorrido guiado, instrumento por instrumento** | orden y etapas construidos; falta la pantalla |
 | 7 | Por cada instrumento: ganancia | construido, y **medido** |
 | 8 | Por cada instrumento: **puerta** | **la ley del umbral no está medida** |
 | 9 | Por cada instrumento: **compresor** | **las leyes no están medidas** |
@@ -35,6 +35,25 @@ instantánea de la consola.
 El paso 5 va **antes** del recorrido guiado a propósito: lo que la aplicación
 sabe del espacio cambia lo que puede proponer en los pasos siguientes, y sobre
 todo cambia lo que puede **explicar**.
+
+**Las cinco leyes que faltan se miden antes de la primera entrega.** Decidido con
+el usuario el 2026-09-11, y no es un detalle de cronograma: cambia qué es el
+recorrido guiado. La alternativa era un recorrido que lleva a la banda por las
+seis etapas ajustando sola la única medida y anotando a mano las otras cinco —
+útil, y a la vez un soundcheck a medias que se quedaría así. Se eligió medirlas.
+
+Eso las convierte en **trabajo presencial de la ruta crítica**: puerta y
+compresor encadenados, ecualizador de canal, y envíos a efecto y a monitor con
+el dato de dónde derivan. Hasta entonces el recorrido existe, ordena y explica,
+pero sólo la ganancia se aplica sola.
+
+### El orden del recorrido
+
+Lo publica [orden-del-soundcheck.md](orden-del-soundcheck.md), con las tres
+fuentes de oficio de las que sale. La aplicación **propone**; el usuario
+reordena arrastrando y lo que elija queda guardado en el perfil de la banda. La
+propuesta no puede salir de la intuición de quien programa: o se la respalda o
+no se la propone.
 
 ## Cómo actúa
 
