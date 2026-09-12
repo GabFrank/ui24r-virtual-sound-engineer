@@ -134,3 +134,58 @@ y por qué, en vez de estimarlo.
   usuario).
 - Una tarea se cierra documentada, commiteada y empujada, y **sólo así se inicia
   la otra**.
+
+---
+
+# Estado al cierre del 2026-09-12
+
+## Del bloque 1, las mediciones
+
+| # | Estado |
+|---|---|
+| **94** | **Hecha.** La ley del envío a auxiliar queda **acotada**, no medida: no se desvía de `faderADb` más de 0,31 dB —un escalón del medidor— sobre 27,87 dB. Con esa cota se pudo declarar un límite en decibeles, que es lo que habilitó ADR-028 |
+| **95** | **Hecha.** `post` y `postproc` son independientes, y con `postproc = 1` **el ecualizador mueve el monitor dB por dB** |
+| **96 / 96a / 96b** | **Hechas.** El medidor del bus de efectos toma **después** del procesador —cola de 1170 ms, canales descorrelacionados con fuente mono—, lo que cerró un pendiente del `protocol-spec` §4.4. La ley del envío queda acotada en 0,25 dB, **con la linealidad del reverb sin poder decidirse** |
+| **97** | **Hecha, y el resultado es negativo.** Las dos leyes que estaban escritas quedan **refutadas**: con `E·(1−a)` y `R = 1/a` el exceso despejado va de 10,0 a 25,6 en la misma corrida con fuente y umbral quietos. Y **no es culpa del instrumento**: el medidor de reducción se calibró contra la caída real de nivel y sigue hasta 24,34 dB con 0,35 dB de desvío |
+| **98** | **Renumerada.** Este número quedó para **la superficie del compresor**, umbral × relación, que es lo que el resultado negativo de la 97 pedía. La puerta —que era el 98 original— sigue pendiente y hay una nota de colisión en el documento |
+| **99 / 100** | **Pendientes.** El ecualizador y el de-esser |
+
+## Del bloque 2
+
+| # | Estado |
+|---|---|
+| **101** | **No se hace, y ahora se sabe por qué.** Dependía de la 97, y la 97 refutó las leyes que iban a entrar. `raw-map.ts` conserva la del umbral en `INFERIDO` con una nota de que está refutada; ninguna entrada sale de `INFERIDO` |
+| **102** | **Hecha**, en ADR-028. Y después **auditada**: la lista blanca aceptaba `i.99.aux.99.value` y el alias `i.03.aux.1.value` esquivaba el techo. Corregido con `esNivelDeEnvioAMonitor`, que exige forma canónica y rango real |
+
+## Del bloque 3
+
+| # | Estado |
+|---|---|
+| **91** | **Hecho.** El plano se acerca hasta donde el dedo sirve, con el tope **derivado** de `INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM`. La cifra que lo justifica: en una sala de 12 × 8 m sobre un lienzo de tablet, **un dedo vale un metro justo** |
+| **92** | **Desbloqueado**, y el bloqueo estaba mal diagnosticado. Falta la pantalla, no el dato |
+| **103** | **Pendiente.** La pantalla por QR, ahora con los pedidos por integrante que el usuario agregó |
+| **104** | **Parcial.** Salió del plano y del rango de movimiento; la pasada completa por la interfaz sigue pendiente |
+
+## Y lo que no estaba en el plan y ocupó la mitad de la noche
+
+**Una auditoría robusta de seis auditores** sobre el cuerpo de mediciones, que el
+usuario autorizó «cuando creas conveniente». El momento se eligió con una razón:
+lo que seguía —el barrido 2-D— se apoyaba en la rodilla, la pendiente y la
+calibración del medidor, así que un error ahí se multiplicaba por una dimensión.
+
+El informe está en `docs/pedidos/02-auditoria-robusta.md` con su estado. Los
+siete hallazgos de severidad alta quedaron arreglados, y **lo que salió al
+arreglarlos no estaba en ningún informe**: `tools/` nunca entraba al chequeo de
+tipos, un instrumento que sólo podía confirmar, el motor estallando con la suite
+en verde, y tres veces la misma divergencia entre un test y una herramienta.
+
+**Y el rectángulo de rango de movimiento**, que el usuario eligió: «rectángulo
+que se estira». Dos veces me equivoqué y los tests lo encontraron — una vez con
+un caso físico (quien canta se agacha) y otra mezclando una esfera con una caja.
+
+**Además, el contrato del 98 pasó por su propio auditor de expectativas antes de
+escribir el guion**, y lo desarmó: tenía una expectativa infalsable, dos que
+pasaban o fallaban según cómo se leyeran, una con la tolerancia a la mitad —que
+habría hecho descartar una corrida buena— y ~23 de 48 puntos en zonas ciegas. Y
+el auditor **encontró un resultado**: `−20·log₁₀(a)` no es la ley, es el **techo**
+de la reducción, y las mesetas de la 97 son ese techo.
