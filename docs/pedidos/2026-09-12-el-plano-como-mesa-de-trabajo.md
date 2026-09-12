@@ -1,6 +1,6 @@
 # El plano como mesa de trabajo, no como instrumento de medición
 
-**Decisiones del usuario en la madrugada del 2026-09-13.** Las citas textuales
+**Decisiones del usuario en la madrugada del 2026-09-12.** Las citas textuales
 están en [`00-lo-que-dijo-el-usuario.md`](00-lo-que-dijo-el-usuario.md).
 
 ---

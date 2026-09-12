@@ -1,6 +1,6 @@
 # Hallazgo: capturas huérfanas que el validador no ve
 
-**Encontrado el 2026-09-13**, mientras se agregaba el paso del plano al flujo
+**Encontrado el 2026-09-12**, mientras se agregaba el paso del plano al flujo
 visual. **No se arregla en esa tarea**: un hallazgo en medio de una tarea va
 como tarea nueva, y mezclarlo habría juntado una medición de la consola con una
 limpieza de archivos.

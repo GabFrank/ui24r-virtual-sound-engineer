@@ -1,4 +1,4 @@
-# Plan de la madrugada del 2026-09-13
+# Plan de la madrugada del 2026-09-12
 
 **Pedido del usuario**, textual en [`00-lo-que-dijo-el-usuario.md`](00-lo-que-dijo-el-usuario.md):
 «*primero haz la lista de todo lo que vas a desarrollar en esta madrugada, ya sea
@@ -82,7 +82,7 @@ se mueve medio metro es inventar precisión que las entradas no tienen. Por eso
 `Rango` no tiene campo de centro: para que nadie pueda leer un número único
 donde no lo hay.
 
-**El usuario lo revocó en el acto**, el 2026-09-13: «*al creae el
+**El usuario lo revocó en el acto**, el 2026-09-12: «*al creae el
 instrumento/microfono, se indica si es fijo o tiene rango de movimiento, punto
 final*». Implementado la misma noche, en tres partes:
 

@@ -24,7 +24,7 @@ export interface LineaDeExposicion {
  *
  * **Cuando el rango colapsa se muestra el número solo.** Antes salía «unos 1,20
  * m» incluso con los extremos idénticos, defendido con que «un solo número
- * invita a leerlo como una medición». Lo vetó el usuario el 2026-09-13: «*al
+ * invita a leerlo como una medición». Lo vetó el usuario el 2026-09-12: «*al
  * crear el instrumento/microfono, se indica si es fijo o tiene rango de
  * movimiento, punto final*».
  *

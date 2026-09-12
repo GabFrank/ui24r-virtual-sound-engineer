@@ -61,7 +61,7 @@ test('la distancia no baja de cero, y eso es lo que dice «pueden estar en el mi
   // alcanza para tocarse, y la regla de recortar en cero no se ejercitaba.
   // **Y la segunda versión de este test se rompió sola al cambiar una
   // constante.** Pedía `r.max > 1.0`, que con `FIJO` en 0,10 daba 1,1 y pasaba;
-  // el 2026-09-13 `FIJO` pasó a valer 0 y el máximo quedó en 1,0 exacto. El
+  // el 2026-09-12 `FIJO` pasó a valer 0 y el máximo quedó en 1,0 exacto. El
   // umbral estaba calibrado contra el valor de la constante, no contra la regla.
   // Ahora se fija la regla: el máximo **es** la distancia más las dos dudas.
   const cuna = emplazar(PUNTO(2, 1, 0.2), 'FIJO');

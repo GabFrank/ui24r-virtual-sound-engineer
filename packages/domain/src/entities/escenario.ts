@@ -97,7 +97,7 @@ import type { BusRef, PAComponentSpec } from './venue.ts';
  * **La incertidumbre mide lo que NO sabemos de su posición, y eso tiene dos
  * fuentes distintas: cuánto se mueve, y con cuánta precisión se lo pudo
  * marcar.** Una auditoría señaló que la tabla parece contradecirse —`FIJO` duda
- * más que `EN_PIE`—. **Ese reparo quedó resuelto el 2026-09-13 sacándole la
+ * más que `EN_PIE`—. **Ese reparo quedó resuelto el 2026-09-12 sacándole la
  * incertidumbre a `FIJO`, no explicándola**: la fijeza declara *cuánto se
  * mueve* algo, y nada más. Cuán bien se lo puede medir es otra cosa, va por el
  * tercer argumento de {@link emplazar}, y la declara quien coloca la ficha.
@@ -125,7 +125,7 @@ export type Fijeza =
  *   en el centro del vaivén, y no hay motivo para creer que lo esté. Errar
  *   ancho ensancha la conclusión; errar angosto la falsifica.
  * - `FIJO` = **cero, en posición y en orientación.** Decisión del usuario el
- *   2026-09-13: «*al crear el instrumento/microfono, se indica si es fijo o
+ *   2026-09-12: «*al crear el instrumento/microfono, se indica si es fijo o
  *   tiene rango de movimiento, punto final*». Si el usuario declara que algo es
  *   fijo, el sistema no le discute la declaración.
  *

@@ -296,7 +296,7 @@ async function recorrer(contexto, tamanio) {
   // **El plano del escenario, que hasta acá no se capturaba en ningún ancho.**
   // Veintisiete pasos y cien capturas archivadas, y ninguna de esta pantalla:
   // por eso nadie vio que la geometría decía «unos 1,20 m» para algo declarado
-  // fijo. El usuario la pidió el 2026-09-13 y no había forma de dársela sin
+  // fijo. El usuario la pidió el 2026-09-12 y no había forma de dársela sin
   // abrir la aplicación a mano.
   //
   // Se llega desde el local, que a esta altura ya está guardado con sus

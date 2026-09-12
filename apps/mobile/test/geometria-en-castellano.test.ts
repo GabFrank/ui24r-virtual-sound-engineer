@@ -44,7 +44,7 @@ function pareja(
 }
 
 test('sin rango, la distancia va como número; con rango, como rango', () => {
-  // **Este test fijaba lo contrario y lo vetó el usuario el 2026-09-13:** «al
+  // **Este test fijaba lo contrario y lo vetó el usuario el 2026-09-12:** «al
   // crear el instrumento/microfono, se indica si es fijo o tiene rango de
   // movimiento, punto final». Decía «la distancia se muestra siempre como
   // rango, aunque colapse», y exigía «unos 1,20 m» para dos extremos idénticos.

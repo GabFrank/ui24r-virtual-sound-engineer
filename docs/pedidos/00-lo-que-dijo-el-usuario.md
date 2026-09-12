@@ -197,7 +197,7 @@ dice fijo, es fijo, y la distancia se muestra como número. El error de medició
 modelo: es de quien coloca la ficha, y para eso ya estaba el cuarto argumento de
 `emplazar()`, que sigue existiendo.
 
-## Sobre el plano, la madrugada del 2026-09-13
+## Sobre el plano, la madrugada del 2026-09-12
 
 > Ok, entiendo mejor tus dudas pero antes quiero hacerte una pregunta, que
 > verdaderamente cambiarja si algo esta a exactamente 1 metro o 1.10?  Si esta a
@@ -226,7 +226,7 @@ modelo: es de quien coloca la ficha, y para eso ya estaba el cuarto argumento de
 
 1. **«No por suposición, sino porque tenés certeza y prueba»** es una regla de
    trabajo, no un comentario sobre el plano. Está anotada como tal en
-   [`2026-09-13-el-plano-como-mesa-de-trabajo.md`](2026-09-13-el-plano-como-mesa-de-trabajo.md).
+   [`2026-09-12-el-plano-como-mesa-de-trabajo.md`](2026-09-12-el-plano-como-mesa-de-trabajo.md).
 2. **El reproche de «antes de vetar, expliquemos y decidamos juntos»** era
    justo: el usuario había decidido sobre un problema que yo le describí a
    medias, y yo implementé en diez minutos.
