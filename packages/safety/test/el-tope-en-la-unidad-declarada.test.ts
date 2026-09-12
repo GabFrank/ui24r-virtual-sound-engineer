@@ -69,6 +69,10 @@ test('control positivo: con el delta en crudo el tope no se dispara', () => {
   const ctx = {
     kind: 'PREAMP_GAIN' as const, acumuladoEnSesion: 0,
     hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    // La ganancia del previo declara su tope en decibeles, y ahora
+    // `verificarLimite` lo compara: la otra mitad de este episodio era que el
+    // campo `unidad` existia y no lo leia nadie.
+    unidad: 'dB',
   };
   // Lo que el motor calculaba antes: 0,985 - 0 = 0,985, contra un tope de 3.
   assert.equal(

@@ -463,6 +463,9 @@ export class SafetyEngine {
       acumuladoEnSesion: ctx.acumuladoPorRuta.get(c.path) ?? 0,
       hayMedicionPosterior: ctx.rutasConMedicionPosterior.has(c.path),
       esPrimerCambioDelParametro: !ctx.rutasYaTocadas.has(c.path),
+      // La unidad que declara quien propone, para que `verificarLimite` pueda
+      // comparar especies antes de comparar numeros.
+      unidad: c.unidad,
     });
 
     if (!limite.permitido) {

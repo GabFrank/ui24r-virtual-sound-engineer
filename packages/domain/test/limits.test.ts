@@ -9,7 +9,7 @@ import {
 test('INV-004: un cambio dentro del límite se permite', () => {
   const r = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 2, acumuladoEnSesion: 0,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
   });
   assert.equal(r.permitido, true);
 });
@@ -17,7 +17,7 @@ test('INV-004: un cambio dentro del límite se permite', () => {
 test('INV-004: un cambio que supera el límite por transacción se rechaza', () => {
   const r = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 4, acumuladoEnSesion: 0,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
   });
   assert.equal(r.permitido, false);
   assert.equal(r.permitido === false && r.codigo, 'DELTA_CAP');
@@ -28,19 +28,19 @@ test('INV-004: tres cambios de tres decibeles no suman nueve', () => {
   // impide moverse nueve decibeles cumpliendo la regla tres veces.
   const primero = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 3, acumuladoEnSesion: 0,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
   });
   assert.equal(primero.permitido, true);
 
   const segundo = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 3, acumuladoEnSesion: 3,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: false,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: false, unidad: 'dB',
   });
   assert.equal(segundo.permitido, true);
 
   const tercero = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 3, acumuladoEnSesion: 6,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: false,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: false, unidad: 'dB',
   });
   assert.equal(tercero.permitido, false);
   assert.equal(tercero.permitido === false && tercero.codigo, 'CUMULATIVE_CAP');
@@ -49,7 +49,7 @@ test('INV-004: tres cambios de tres decibeles no suman nueve', () => {
 test('INV-004: sin medición intermedia no se vuelve a mover el mismo parámetro', () => {
   const r = verificarLimite({
     kind: 'CHANNEL_FADER', deltaSolicitado: 1, acumuladoEnSesion: 1,
-    hayMedicionPosterior: false, esPrimerCambioDelParametro: false,
+    hayMedicionPosterior: false, esPrimerCambioDelParametro: false, unidad: 'dB',
   });
   assert.equal(r.permitido, false);
   assert.equal(r.permitido === false && r.codigo, 'SIN_MEDICION_INTERMEDIA');
@@ -58,7 +58,7 @@ test('INV-004: sin medición intermedia no se vuelve a mover el mismo parámetro
 test('un parámetro sin límite declarado no se escribe', () => {
   const r = verificarLimite({
     kind: 'FX', deltaSolicitado: 0.1, acumuladoEnSesion: 0,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
   });
   assert.equal(r.permitido, false);
   assert.equal(r.permitido === false && r.codigo, 'SIN_LIMITE_DECLARADO');
@@ -67,7 +67,7 @@ test('un parámetro sin límite declarado no se escribe', () => {
 test('INV-004: el fader general tiene el límite más estrecho', () => {
   const r = verificarLimite({
     kind: 'MASTER_FADER', deltaSolicitado: 2, acumuladoEnSesion: 0,
-    hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
   });
   assert.equal(r.permitido, false);
 });
@@ -126,6 +126,7 @@ test('INV-004: el tope acumulado no bloquea el movimiento que deshace', () => {
     kind: 'CHANNEL_FADER' as const,
     hayMedicionPosterior: true,
     esPrimerCambioDelParametro: false,
+    unidad: 'dB',
   };
   const volver = verificarLimite({ ...base, deltaSolicitado: -3, acumuladoEnSesion: 6 });
   assert.equal(volver.permitido, true);
@@ -141,6 +142,7 @@ test('INV-004: el tope es simetrico', () => {
     kind: 'CHANNEL_FADER' as const,
     hayMedicionPosterior: true,
     esPrimerCambioDelParametro: false,
+    unidad: 'dB',
   };
   // -6 acumulado, -3 mas: quedaria en -9, fuera del tope de 6.
   assert.equal(
@@ -183,4 +185,43 @@ test('INV-005: el ritmo y el maximo siguen a la exencion', () => {
     maximoDeParametros('ASSISTED', 'MUTE_COMPONENTE', ['PA_BUS_MUTE']),
     Number.POSITIVE_INFINITY);
   assert.equal(maximoDeParametros('ASSISTED', 'MUTE_COMPONENTE', ['CHANNEL_FADER']), 4);
+});
+
+test('INV-004: un tope no se compara contra un numero de otra especie', () => {
+  // **La mitad que faltaba del episodio de INV-004.** La otra --comparar
+  // decibeles contra crudo-- se cerro el 2026-09-11 haciendo obligatorias las
+  // magnitudes. Esta la encontro una auditoria de seguridad el 2026-09-12: el
+  // campo `unidad` existia, se copiaba al diario, y lo unico que hacia era
+  // aparecer en los mensajes de error. Nadie lo comparaba contra el tope.
+  //
+  // El filtro pasa-altos tiene su tope en OCTAVAS y vale 1. Un llamador que
+  // declare decibeles esta diciendo otra cosa, y 0,5 dB pasaba el tope de una
+  // octava porque 0,5 < 1.
+  const enOctavas = verificarLimite({
+    kind: 'HPF', deltaSolicitado: 0.5, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'octavas',
+  });
+  assert.equal(enOctavas.permitido, true);
+
+  const enDecibeles = verificarLimite({
+    kind: 'HPF', deltaSolicitado: 0.5, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+  });
+  assert.equal(enDecibeles.permitido, false);
+  assert.equal(enDecibeles.permitido === false && enDecibeles.codigo, 'UNIDAD_NO_DECLARADA');
+
+  // Y el silencio de canal, cuyo tope esta en CANALES: declarar dB ahi diria
+  // que se silencian dos decibeles.
+  const canales = verificarLimite({
+    kind: 'CHANNEL_MUTE', deltaSolicitado: 1, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+  });
+  assert.equal(canales.permitido, false);
+  assert.equal(canales.permitido === false && canales.codigo, 'UNIDAD_NO_DECLARADA');
+
+  // **Lo que esto NO cierra**, y hay que decirlo: nada ata `magnitudPropuesta`
+  // al `valorPropuesto` que va al cable. El motor juzga lo que el llamador
+  // declara. Comparar la unidad hace que declarar mal sea un error visible en
+  // vez de uno silencioso; atar la magnitud al crudo necesita las leyes de
+  // conversion verificadas, y para el compresor la que habia quedo refutada.
 });

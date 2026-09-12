@@ -200,7 +200,9 @@ export function pacingMs(
 
 export type ResultadoLimite =
   | { readonly permitido: true }
-  | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP' | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA'; readonly mensaje: string };
+  | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP'
+    | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA';
+    readonly mensaje: string };
 
 export interface ContextoCambio {
   readonly kind: ParameterKind;
@@ -220,6 +222,29 @@ export interface ContextoCambio {
   /** Si hay una medición posterior a la última transacción sobre este parámetro. */
   readonly hayMedicionPosterior: boolean;
   readonly esPrimerCambioDelParametro: boolean;
+  /**
+   * La unidad en que quien propone dice que están sus magnitudes.
+   *
+   * **Se compara contra la declarada, y antes no se comparaba con nada.** El
+   * campo `unidad` de `CambioPropuesto` existía, se copiaba al diario, y lo
+   * único que hacía era aparecer en los mensajes de error de este archivo. Así
+   * que un llamador podía declarar `dB` sobre un parámetro cuyo tope está en
+   * octavas o en canales, y el tope se comparaba igual: un número contra otro
+   * de otra especie.
+   *
+   * Es la mitad que faltaba del episodio de INV-004. La otra mitad --comparar
+   * decibeles contra crudo-- se cerró el 2026-09-11 haciendo obligatorias las
+   * magnitudes; ésta la encontró una auditoría de seguridad el 2026-09-12, y la
+   * demostró midiendo: una escritura de recorrido completo, crudo 0 a 1,
+   * aprobada bajo un techo de −6 dB declarando magnitudes −31 a −30.
+   *
+   * Lo que esto **no** cierra, y hay que decirlo: nada ata `magnitudPropuesta`
+   * al `valorPropuesto` que va al cable. El motor juzga lo que el llamador
+   * declara. Comparar la unidad hace que declarar mal sea un error visible en
+   * vez de uno silencioso, y atar la magnitud al crudo necesita las leyes de
+   * conversión verificadas, que para varios parámetros todavía no están.
+   */
+  readonly unidad: string;
 }
 
 export function verificarLimite(c: ContextoCambio): ResultadoLimite {
@@ -229,6 +254,14 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
       permitido: false,
       codigo: 'SIN_LIMITE_DECLARADO',
       mensaje: `no hay límite declarado para ${c.kind}: no se escribe`,
+    };
+  }
+  if (c.unidad !== lim.unidad) {
+    return {
+      permitido: false,
+      codigo: 'UNIDAD_NO_DECLARADA',
+      mensaje: `${c.kind} tiene su tope en ${lim.unidad} y el cambio declara ${c.unidad}: `
+        + 'comparar los dos numeros seria comparar especies distintas',
     };
   }
   const delta = Math.abs(c.deltaSolicitado);

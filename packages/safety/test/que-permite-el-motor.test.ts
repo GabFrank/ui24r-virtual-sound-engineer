@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SafetyEngine } from '../src/engine.ts';
 import { clasificarRuta } from '@vse/mixer-adapter';
+import { LIMITES } from '@vse/domain';
 import type { CambioPropuesto } from '../src/types.ts';
 import { contexto } from './helpers.ts';
 
@@ -44,8 +45,20 @@ function permitidas(): readonly string[] {
   for (const path of claves) {
     const kind = clasificarRuta(path);
     if (kind === null) continue;
-    const cambio = { kind, path, unidad: 'dB', valorPropuesto: 1, valorEsperado: 0,
-  magnitudPropuesta: 1, magnitudEsperada: 0 } as CambioPropuesto;
+    // **La unidad sale de LIMITES y no es `dB` para todo.** Estaba `dB` fijo, y
+    // una auditoria lo marco como «un test verde sobre un mundo que no es el
+    // que corre»: `HPF` declara su tope en octavas y `CHANNEL_MUTE` en canales.
+    // Mientras el motor no comparaba la unidad, el mentiroso pasaba; desde que
+    // la compara, este fixture habria rechazado 72 rutas por declarar mal.
+    //
+    // Se lee de la tabla en vez de escribirse acá para que no se separen: si
+    // alguien cambia la unidad de un tope, este test sigue midiendo la puerta
+    // que corre.
+    const cambio = {
+      kind, path, unidad: LIMITES[kind]?.unidad ?? 'dB',
+      valorPropuesto: 1, valorEsperado: 0,
+      magnitudPropuesta: 1, magnitudEsperada: 0,
+    } as CambioPropuesto;
     const v = motor.evaluar([cambio], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
     if (v.permitido) salida.push(path);
   }
