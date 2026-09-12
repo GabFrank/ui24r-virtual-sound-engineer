@@ -53,10 +53,11 @@ Tres líneas independientes, todas en el mismo sentido:
 | Dispersión entre 100 Hz, 1 kHz y 10 kHz | 0,23 dB (lo que dio el medidor de entrada) | **7,7 dB** |
 
 La caída completa, byte a byte: 136 → 119 (133 ms) → 99 (333 ms) → 50 (699 ms)
-→ 16 (999 ms) → 0 (1170 ms). Midiendo el T20 sobre esa curva, **el RT60 del
-efecto es de unos 2,1 s**. Es un dato del efecto que salió de regalo y **no es
-el objetivo de esta medición**: vale como orden de magnitud, no como
-especificación.
+→ 16 (999 ms) → 0 (1170 ms). **Lo medido es la curva; cualquier RT60 que se
+saque de ahí es una cuenta mía sobre ella, no una cifra que la corrida imprima.**
+Como orden de magnitud sirve para elegir el asentamiento del ítem 96b —se
+tomaron 6 s, unas cinco veces los 1170 ms de la cola— y para nada más: no es una
+medición de tiempo de reverberación y no debe citarse como tal.
 
 **El reparo del auditor queda resuelto sin control positivo.** Avisó que «un
 procesador transparente es indistinguible de no estar», y tenía razón en
@@ -75,8 +76,8 @@ régimen es un factor constante a frecuencia fija, **y un factor constante se
 cancela en las diferencias**. Pero eso impone tres condiciones que la corrida
 del auxiliar no tenía:
 
-1. **Asentamiento de varios RT60 por punto**, no los 2,5 s del auxiliar. Con
-   RT60 ≈ 2,1 s, eso son 6 s o más.
+1. **Asentamiento de varias colas por punto**, no los 2,5 s del auxiliar. La
+   cola medida tarda 1170 ms en llegar a cero, así que el ítem 96b tomó 6 s.
 2. **Comprobar la linealidad**, corriendo la ley entera a dos niveles absolutos
    distintos y verificando que las formas son paralelas. Una curva sola, por
    limpia que salga, no lo prueba.
@@ -109,7 +110,8 @@ sabía hacerlo bien**.
   son tipo 1 y pueden comportarse distinto.
 - **Nada sobre `+4` y `+5`**, los bytes del bloque dinámico del bus. `busEstereo`
   no los expone y esta corrida no los miró.
-- **El RT60 de 2,1 s es un orden de magnitud**, sacado de la cola de un corte con
-  el medidor instantáneo, no una medición de tiempo de reverberación.
+- **Nada sobre el tiempo de reverberación del efecto.** Lo medido es una curva
+  de caída con el medidor instantáneo tras cortar el envío. Sirve para elegir un
+  asentamiento; no es un RT60 y no debe citarse como tal.
 - **Nada sobre qué escucha el operador.** El retorno del bus al general es otra
   etapa y no está en este camino.

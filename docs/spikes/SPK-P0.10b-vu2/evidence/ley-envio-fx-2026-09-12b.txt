@@ -1,0 +1,83 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T05:36:44.974Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-envio-fx.ts 10 1 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-envio-fx.ts sha256:69a53cbf524ccc58
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> efecto 2 (f.1), tono de 1000 Hz a -1 dBFS
+asentamiento 6000 ms + ventana 2000 ms por punto
+resolucion 0.3334 dB por escalon
+
+--- fader del canal 0.7647, bajando ---
+crudo      | izq dB   | der dB   | disp izq | testigo  | n
+    1.0000 |   -25.99 |   -30.99 |     0.00 |   -37.66 |  45
+    0.9000 |   -30.66 |   -35.66 |     0.00 |   -37.66 |  46
+    0.8000 |   -34.66 |   -39.66 |     0.00 |   -37.66 |  46
+    0.7647 |   -35.99 |   -40.99 |     0.00 |   -37.66 |  45
+    0.7000 |   -38.66 |   -43.33 |     0.00 |   -37.66 |  44
+    0.6000 |   -42.66 |   -47.66 |     0.00 |   -37.66 |  45
+    0.5000 |   -47.66 |   -52.66 |     0.00 |   -37.66 |  47
+    0.4000 |   -54.33 |   -59.00 |     0.00 |   -37.66 |  46
+
+--- fader del canal 0.7647, subiendo ---
+crudo      | izq dB   | der dB   | disp izq | testigo  | n
+    0.4000 |   -54.33 |   -59.00 |     0.00 |   -37.66 |  45
+    0.5000 |   -47.66 |   -52.66 |     0.00 |   -37.66 |  44
+    0.6000 |   -42.66 |   -47.66 |     0.00 |   -37.66 |  44
+    0.7000 |   -38.66 |   -43.33 |     0.00 |   -37.66 |  45
+    0.7647 |   -35.99 |   -40.99 |     0.00 |   -37.66 |  45
+    0.8000 |   -34.66 |   -39.66 |     0.00 |   -37.66 |  46
+    0.9000 |   -30.66 |   -35.66 |     0.00 |   -37.66 |  45
+    1.0000 |   -25.99 |   -30.99 |     0.00 |   -37.66 |  46
+
+--- fader del canal 0.5500, bajando ---
+crudo      | izq dB   | der dB   | disp izq | testigo  | n
+    1.0000 |   -34.99 |   -39.99 |     0.00 |   -37.66 |  45
+    0.9000 |   -39.66 |   -44.66 |     0.00 |   -37.66 |  45
+    0.8000 |   -43.66 |   -48.66 |     0.00 |   -37.66 |  44
+    0.7647 |   -44.99 |   -49.99 |     0.00 |   -37.66 |  46
+    0.7000 |   -47.33 |   -52.33 |     0.00 |   -37.66 |  44
+    0.6000 |   -51.66 |   -56.33 |     0.00 |   -37.66 |  47
+    0.5000 |   -56.66 |   -61.66 |     0.00 |   -37.66 |  45
+    0.4000 |   -63.33 |   -68.00 |     0.00 |   -37.66 |  45
+
+--- fader del canal 0.5500, subiendo ---
+crudo      | izq dB   | der dB   | disp izq | testigo  | n
+    0.4000 |   -63.33 |   -68.00 |     0.00 |   -37.66 |  46
+    0.5000 |   -56.66 |   -61.66 |     0.00 |   -37.66 |  40
+    0.6000 |   -51.66 |   -56.33 |     0.00 |   -37.66 |  45
+    0.7000 |   -47.33 |   -52.33 |     0.00 |   -37.66 |  45
+    0.7647 |   -44.99 |   -49.99 |     0.00 |   -37.66 |  44
+    0.8000 |   -43.66 |   -48.66 |     0.00 |   -37.66 |  45
+    0.9000 |   -39.66 |   -44.66 |     0.00 |   -37.66 |  46
+    1.0000 |   -34.99 |   -39.99 |     0.00 |   -37.66 |  46
+
+=== IDA Y VUELTA: si no coinciden, se midio la cola y no la ley ===
+fader 0.7647: histeresis maxima 0.00 dB = 0.00 escalones
+fader 0.5500: histeresis maxima 0.00 dB = 0.00 escalones
+
+=== LINEALIDAD: las dos curvas tienen que ser PARALELAS ===
+crudo      | atenuacion a fader alto | a fader bajo | diferencia | segun faderADb
+    1.0000 |                    0.00 |         0.00 |       0.00 |           0.00
+    0.9000 |                   -4.67 |        -4.67 |      -0.00 |          -4.71
+    0.8000 |                   -8.67 |        -8.67 |      -0.00 |          -8.68
+    0.7647 |                  -10.00 |       -10.00 |      -0.00 |         -10.00
+    0.7000 |                  -12.67 |       -12.34 |      -0.33 |         -12.44
+    0.6000 |                  -16.67 |       -16.67 |      -0.00 |         -16.56
+    0.5000 |                  -21.67 |       -21.67 |      -0.00 |         -21.62
+    0.4000 |                  -28.34 |       -28.34 |      -0.00 |         -28.18
+
+separacion maxima entre las dos curvas: 0.33 dB = 1.00 escalones
+  Dentro de un escalon = el reverb es lineal en este tramo y la ley se puede afirmar.
+  Fuera = no es lineal y esta corrida NO mide la ley del envio.
+
+desvio maximo contra faderADb: 0.23 dB = 0.68 escalones
+  Esto solo significa algo si la linealidad de arriba paso.
+
+restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

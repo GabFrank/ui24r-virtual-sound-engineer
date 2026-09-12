@@ -239,6 +239,16 @@ cita es una medición que nadie va a encontrar cuando la necesite.
   el medidor toma **después** del procesador: cola de 1170 ms, izquierda y
   derecha descorrelacionadas con fuente mono, y 7,7 dB de dispersión entre 100 Hz
   y 10 kHz.
+- `evidence/controles-tras-96a-2026-09-12.txt` — la restauración tras el ítem 96a,
+  releída por HTTP.
+- `evidence/ley-envio-fx-2026-09-12.txt` y
+  `evidence/ley-envio-fx-2026-09-12b.txt` — **la ley del envío a
+  efectos**, dos corridas completas de cuatro series cada una: dos niveles de
+  fader por ida y vuelta, con 6 s de asentamiento por punto: unas cinco veces
+  los 1170 ms que tarda la cola en llegar a cero, porque el medidor toma después
+  del reverb. El envío no se desvía de `faderADb`
+  más de 0,25 dB en ninguno de los dieciséis puntos. **La prueba de linealidad
+  no pudo decidir**: una corrida la falló y la otra cayó justo en el límite.
 - `evidence/post-y-postproc-2026-09-12.txt` — **qué hacen `post` y `postproc` en
   el audio**: las cuatro combinaciones, cada una con el ecualizador plano,
   realzado y con el fader bajado. Las banderas son independientes y hacen lo que
