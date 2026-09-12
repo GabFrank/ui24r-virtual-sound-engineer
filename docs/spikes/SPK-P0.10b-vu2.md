@@ -221,6 +221,19 @@ Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
 cita es una medición que nadie va a encontrar cuando la necesite.
 
 - `../SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt` — captura archivada (también en la carpeta del spike hermano)
+- `evidence/superficie-del-compresor-2026-09-12b.txt` — **la superficie del
+  compresor, umbral × relación.** 112 puntos útiles de 112, las siete
+  expectativas del ítem 98 cumplidas. Resuelve el enigma que la 97 dejó
+  abierto: la discrepancia entre sus dos cortes era **la saturación**, no una
+  ley distinta. `−20·log₁₀(a)` es el **techo** de la reducción, confirmado
+  dentro de 0,10 dB en las tres relaciones que llegaron a aplanarse, y
+  `E·(1−a)` queda como **aproximación de rodilla**: el exceso implicado es
+  constante dentro de un factor 1,21 cerca del cruce y se rompe hasta 1,92 al
+  bajar el umbral. De paso cierra qué son los bytes `+3` y `+4`.
+- `evidence/superficie-del-compresor-2026-09-12.txt` — **la misma medición,
+  invalidada por el agente a mitad de camino** al escribir a la consola creyendo
+  que la corrida había terminado. Archivada porque sus diez filas reproducen el
+  corte de la 97 y porque el error vale la pena estar escrito.
 - `../SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt` — el techo real del medidor: 255, no 239. **Y este documento afirmaba el 239 dos veces, ciento veinte líneas antes de esta línea.** Corregido el 2026-09-12
 - `evidence/ley-envio-aux-2026-09-12.txt` — **la ley del envío a un auxiliar**, del
   canal 10 al auxiliar 3, con tono de 1 kHz a −12 dBFS. 22 valores. El testigo del

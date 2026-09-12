@@ -1,0 +1,94 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T16:04:26.398Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/superficie-del-compresor.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/superficie-del-compresor.ts sha256:c635396e7e9b1136
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 98 — LA SUPERFICIE DEL COMPRESOR: UMBRAL x RELACION ===
+canal 10 (i.9), tono de 1000 Hz a -1 dBFS
+escalon del medidor de nivel:     0.333401 dB
+escalon del medidor de reduccion: 0.666801 dB
+piso del medidor de reduccion:    0.9840 dB
+tolerancia mismo medidor:   0.6668 dB
+tolerancia cruzando medidores: 1.3336 dB
+
+=== ESTADO DEL BANCO, LEIDO DEL APARATO ===
+   6665 claves leidas por HTTP
+   hw.9.gain                0.2508445026
+   i.9.mix                  0.7647058824
+   i.9.mute                 0
+   i.9.src                  hw.9
+   i.9.dyn.threshold        0.875
+   i.9.dyn.ratio            1
+   i.9.dyn.bypass           0
+   i.9.dyn.softknee         0
+   i.9.dyn.gain             0.75
+   i.9.dyn.outgain          0.3333333333
+   i.9.dyn.hold             (ausente)
+   i.9.gate.enabled         1
+   i.9.gate.thresh          0
+   i.9.gate.depth           0
+   i.9.deesser.enabled      0
+   i.9.deesser.freq         0.773310034
+   i.9.deesser.threshold    0.46875
+   m.afs.enabled            1
+   m.mix                    0.7643020595
+   AVISO: la puerta esta HABILITADA en este canal. Su atenuacion se leeria
+   como compresion, y el testigo `pre` no la delata. Se vigila el bit 7 de +5.
+
+=== PISO DE RUIDO DEL CANAL, con el tono apagado ===
+   pre -Infinity dB, entrada -Infinity dB, byte 0, 69 cuadros
+   Sin esta cifra, un piso de instrumento es indistinguible de una
+   saturacion del compresor, que es lo que esta corrida vino a decidir.
+
+supresor del general: estaba en 1, se apaga para medir
+
+=== PRECONDICION DE MONTAJE ===
+   pre = -37.66 dB, esperado -37.66 +-0.333
+   PASA. El montaje es comparable con la 97.
+
+=== ASENTAMIENTO, en un punto profundo (u = 0,14, a = 0,05) ===
+   Los tiempos de ataque y relajacion NO se midieron nunca (C5 de la 97),
+   asi que los 6 s no tienen respaldo y hay que comprobarlos.
+     2801 ms -> entrada -62.00 dB
+     4801 ms -> entrada -61.94 dB
+     6802 ms -> entrada -62.00 dB
+    10801 ms -> entrada -62.00 dB
+   deriva entre 6 y 10 s: 0.00 dB -> ventana de asentamiento 3000 ms
+
+=== LA REJILLA ===
+umbral |   a  | sent |  entrada | caida | informada | resid | pre    | dinE   | dinS   | byte | puerta | n
+0.1400 | 0.90 | baja |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.66 |  124 | ok     |  44
+0.1400 | 0.70 | baja |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.99 |  118 | ok     |  44
+0.1400 | 0.50 | baja |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  47
+0.1400 | 0.35 | baja |   -46.66 |  9.00 |      8.99 | -0.02 | -37.66 | -37.66 | -46.90 |  100 | ok     |  44
+0.1400 | 0.25 | baja |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.33 |   92 | ok     |  45
+0.1400 | 0.15 | baja |   -53.66 | 16.00 |     15.65 | -0.35 | -37.66 | -37.66 | -53.74 |   79 | ok     |  46
+0.1400 | 0.10 | baja |   -56.66 | 19.00 |     18.99 | -0.02 | -37.66 | -37.66 | -56.66 |   70 | ok     |  46
+0.1400 | 0.05 | baja |   -62.00 | 24.34 |     24.32 | -0.02 | -37.66 | -37.66 | -62.00 |   54 | ok     |  45
+0.1400 | 0.05 | sube |   -62.00 | 24.34 |     24.32 | -0.02 | -37.66 | -37.66 | -62.00 |   54 | ok     |  44
+0.1400 | 0.10 | sube |   -56.66 | 19.00 |     18.99 | -0.02 | -37.66 | -37.66 | -56.89 |   70 | ok     |  45
+0.1400 | 0.15 | sube |   -53.66 | 16.00 |     15.65 | -0.35 | -37.66 | -37.66 | -53.66 |   79 | ok     |  45
+0.1400 | 0.25 | sube |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.33 |   92 | ok     |  47
+0.1400 | 0.35 | sube |   -46.66 |  9.00 |      8.99 | -0.02 | -37.66 | -37.66 | -46.76 |  100 | ok     |  45
+0.1400 | 0.50 | sube |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  46
+0.1400 | 0.70 | sube |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.99 |  118 | ok     |  43
+0.1400 | 0.90 | sube |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.66 |  124 | ok     |  43
+  -> referencia de u=0.14: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.2600 | 0.90 | baja |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.74 |  124 | ok     |  45
+0.2600 | 0.70 | baja |   -37.66 | -0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  41
+0.2600 | 0.50 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.99 |  127 | ok     |  45
+0.2600 | 0.35 | baja |   -37.66 | -0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.67 |  127 | ok     |  44
+0.2600 | 0.25 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.87 |  127 | ok     |  47
+0.2600 | 0.15 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.76 |  127 | ok     |  45
+0.2600 | 0.10 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.70 |  127 | ok     |  47
+0.2600 | 0.05 | baja |   -37.66 | -0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.94 |  127 | ok     |  40
+0.2600 | 0.05 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  45
+
+SIGTERM recibida: se restaura antes de salir.
+
+
+# salida del proceso: 143

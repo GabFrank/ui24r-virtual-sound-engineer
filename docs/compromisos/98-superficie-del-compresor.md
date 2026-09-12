@@ -109,7 +109,7 @@ podría seguir al **umbral** es exactamente lo que mide S1.
 
 ## Las precondiciones, verificadas antes del primer punto
 
-**Si alguna no se cumple, no se corre.** La rejidad entera depende de ellas: que
+**Si alguna no se cumple, no se corre.** La rejilla entera depende de ellas: que
 `u = 0,55` esté sobre el cruce y que `u = 0,14` dé 38 dB de exceso son
 consecuencias del nivel de la fuente.
 
@@ -406,3 +406,255 @@ WebSocket que escribió.
 
 La 97 llama «ítem 98» al umbral de la puerta, y este documento es el 98 sobre
 otra cosa. Queda dicho para que nadie busque lo que no está acá.
+
+---
+
+# Evidencia
+
+- `docs/spikes/SPK-P0.10b-vu2/evidence/superficie-del-compresor-2026-09-12b.txt`
+  — **la corrida válida.** 112 puntos útiles de 112, cero anulados.
+- `docs/spikes/SPK-P0.10b-vu2/evidence/superficie-del-compresor-2026-09-12.txt`
+  — **invalidada por mí a mitad de camino**, y archivada igual. Ver abajo.
+
+# La primera corrida, invalidada por mí a mitad de camino
+
+`docs/spikes/SPK-P0.10b-vu2/evidence/superficie-del-compresor-2026-09-12.txt`
+**no sirve, y queda archivada igual** porque lo que muestra vale la pena.
+
+## Qué hice
+
+Lancé la corrida en segundo plano, y **un minuto después decidí que había
+terminado** a partir de dos señales, las dos malas:
+
+1. El archivo de evidencia **existía**. `medir.mjs` lo escribe **mientras**
+   corre, no al final.
+2. `pgrep -fl "node|afplay"` **no encontró el proceso**. Con `ps aux | grep`
+   estaba ahí, midiendo. El patrón falló en silencio.
+
+Y con eso le escribí a la consola —umbral 0,875 y relación 1— creyendo que
+restauraba. La contaminación se ve en el archivo: el bloque de `u = 0,26` tiene
+`entrada = −37,66` y caída 0,00 en todas sus filas, que es lo que pasa con el
+umbral en 0,875.
+
+Segunda consecuencia: escribí `m.afs.enabled = 1` **con el tono de 1 kHz
+sonando**, y el supresor del general aprendió un notch de −18 dB en 1000 Hz.
+Borrado y comprobado releyendo por HTTP.
+
+## Lo que me deja sin excusa
+
+**El arnés me daba la señal buena y no la usé.** Al lanzar en segundo plano me
+había dicho «serás notificado cuando termine», y la notificación llegó justo
+después de que yo hubiera arruinado la corrida. Sustituí una señal inequívoca
+por dos inferencias débiles.
+
+Es el patrón que la auditoría de anoche encontró seis veces y nombré yo mismo:
+**un control que sólo puede confirmar.** «El archivo existe» y «`pgrep` no
+encuentra nada» no distinguen «terminó» de «está corriendo»; la notificación sí.
+
+## Lo que la corrida alcanzó a medir, y es mucho
+
+Diez filas, y las ocho del umbral 0,14 son **exactamente** el corte de la 97:
+
+| `a` | 0,9 | 0,7 | 0,5 | 0,35 | 0,25 | 0,15 | 0,10 | 0,05 |
+|---|---|---|---|---|---|---|---|---|
+| caída medida | 1,00 | 3,00 | 6,00 | 9,00 | 11,67 | 16,00 | 19,00 | 24,34 |
+| la 97 | 1,00 | 3,00 | 6,00 | — | 11,67 | 16,00 | 19,00 | 24,34 |
+
+**S5a se reproduce al centésimo en siete de siete puntos**, y el `9,00` es un
+punto que la 97 no tenía. O sea que el montaje es el mismo y el método da lo
+mismo dos días distintos.
+
+Y las otras cuatro cosas que se pueden leer de esas diez filas:
+
+- **La precondición de montaje pasó exacta**: `pre = −37,66`, el mismo valor de
+  las tres corridas de la 97.
+- **El asentamiento no hacía falta que fuera de 6 s.** A 2,8 · 4,8 · 6,8 y
+  10,8 s la lectura dio −62,00 · −61,94 · −62,00 · −62,00: deriva de 0,00 dB
+  entre 6 y 10 s. La comprobación era necesaria y el resultado es que el
+  compresor se asienta rápido.
+- **La histéresis es 0,00** en los dos puntos que alcanzó a medir en los dos
+  sentidos.
+- **El testigo `pre` no se movió** en ninguna de las diez filas: −37,66 en todas.
+
+Y una que no esperaba: **`dinEntrada` es igual a `pre` en las diez filas**
+(−37,66) mientras `dinSalida` sigue a `entrada`. Eso es evidencia sobre la
+tensión abierta de qué son los bytes `+3` y `+4`: apunta a que son la entrada y
+la salida del bloque dinámico, como el cliente los rotula.
+
+## Y el estado del banco, que se archivó por primera vez
+
+La corrida registró `hw.9.gain = 0,2508445026`, que **ninguna corrida del
+proyecto había registrado nunca**. Desde acá, cualquier medición futura puede
+comprobar que el montaje es el mismo en vez de suponerlo.
+
+También quedó registrado que **`i.9.gate.enabled = 1` con `gate.thresh = 0`**, y
+el bit 7 de `+5` dio «abierta» en las diez filas. La puerta está habilitada y su
+umbral en el fondo, así que no actuó — pero ahora se sabe en vez de suponerse, y
+la vigilancia del bit queda en el guion.
+
+---
+
+# Resultados
+
+**112 puntos útiles de 112, cero anulados.** Las siete expectativas pasaron, la
+columna de control dio 0,00 exacto en sus dieciséis puntos, el testigo `pre` se
+quedó en −37,66 dB en **las 112 filas**, y la histéresis entre los dos sentidos
+no pasó de 0,33 dB — un escalón — con máximo en el punto más profundo.
+
+## La superficie
+
+Caída de `entrada` en dB, promedio de los dos sentidos. Los umbrales van de
+menos a más profundo hacia la derecha.
+
+| `a` \ umbral | 0,55 | 0,50 | 0,4672 | 0,42 | 0,35 | 0,26 | 0,14 |
+|---|---|---|---|---|---|---|---|
+| **0,9** | 0,00 | 0,33 | 0,67 | 0,67 | 0,70 | 1,00 | 1,00 |
+| **0,7** | 0,00 | 1,00 | 1,67 | 2,30 | 2,67 | 3,00 | 3,00 |
+| **0,5** | 0,00 | 1,96 | 2,67 | 4,00 | 5,00 | 5,67 | 6,00 |
+| **0,35** | 0,00 | 2,33 | 3,67 | 5,67 | 7,33 | 8,34 | 9,00 |
+| **0,25** | 0,00 | 3,00 | 4,67 | 7,00 | 9,34 | 11,00 | 11,67 |
+| **0,15** | 0,00 | 3,33 | 5,33 | 8,45 | 11,67 | 14,43 | 16,00 |
+| **0,10** | 0,00 | 3,62 | 6,00 | 9,34 | 13,36 | 17,00 | 19,00 |
+| **0,05** | 0,00 | 3,83 | 6,33 | 10,32 | 15,34 | 20,64 | 24,33 |
+
+## 1. El montaje se reproduce, dos días después
+
+**S5a dio 0,00 dB de diferencia en seis de siete puntos**, y 0,02 en el séptimo:
+
+| `a` | 0,9 | 0,7 | 0,5 | 0,25 | 0,15 | 0,10 | 0,05 |
+|---|---|---|---|---|---|---|---|
+| medido | 1,00 | 3,00 | 6,00 | 11,67 | 16,00 | 19,00 | 24,32 |
+| la 97 | 1,00 | 3,00 | 6,00 | 11,67 | 16,00 | 19,00 | 24,34 |
+
+Eso es más que una expectativa cumplida: dice que **el método da lo mismo en
+corridas distintas de días distintos**, con la precondición de `pre = −37,66`
+verificada antes de empezar. Es la primera vez que este proyecto puede afirmar
+reproducibilidad de una medición del compresor, y es lo que le da peso a todo lo
+demás de abajo.
+
+## 2. `−20·log₁₀(a)` es el techo, confirmado donde se pudo probar
+
+**Tres relaciones llegaron a aplanarse** —el último paso del barrido, entre
+`u = 0,26` y `u = 0,14`, es menor que un escalón— y ahí el techo coincide:
+
+| `a` | máxima medida | `−20·log₁₀(a)` | diferencia | último paso |
+|---|---|---|---|---|
+| **0,9** | 1,00 | 0,92 | **+0,08** | 0,00 → aplanada |
+| **0,7** | 3,00 | 3,10 | **−0,10** | 0,00 → aplanada |
+| **0,5** | 6,00 | 6,02 | **−0,02** | 0,33 → aplanada |
+| 0,35 | 9,00 | 9,12 | −0,12 | 0,66 → sigue subiendo |
+| 0,25 | 11,67 | 12,04 | −0,37 | 0,67 → sigue subiendo |
+| 0,15 | 16,00 | 16,48 | −0,48 | 1,57 → sigue subiendo |
+| 0,10 | 19,00 | 20,00 | −1,00 | 2,00 → sigue subiendo |
+| 0,05 | 24,33 | 26,02 | −1,69 | 3,69 → sigue subiendo |
+
+Las tres que se aplanaron caen dentro de **0,10 dB**, que es un tercio de un
+escalón del medidor. Las cinco de abajo **no llegaron a su techo**, y por eso su
+«déficit» no es un déficit: sus curvas siguen subiendo en el umbral más profundo
+de la rejilla, así que el techo no se probó para ellas. Eso es un límite de
+alcance de esta corrida, no un resultado sobre el aparato.
+
+**Y hay que decir lo que esto NO prueba.** Que el techo aparezca donde se pudo
+medir es una **forma** consistente con la hipótesis, no la saturación probada:
+para eso hay que mostrar que el techo no es del instrumento, repitiendo con la
+fuente 10 dB más baja, donde los techos en dB tienen que quedar iguales y las
+lecturas absolutas no. Está en el contrato y sigue pendiente.
+
+## 3. `E·(1−a)` es una aproximación de rodilla, y se ve exactamente dónde deja de valer
+
+Si la reducción fuera `E·(1−a)` con `E` el exceso, entonces `reducción/(1−a)`
+tendría que dar **el mismo número** para todas las relaciones de un mismo
+umbral. Despejado, excluyendo los puntos saturados y las reducciones de menos de
+1 dB —donde una lectura de 0,33 arrastra ±100 %—:
+
+| umbral | puntos | exceso implicado | factor |
+|---|---|---|---|
+| **0,50** | 7 | 3,33 a 4,04 | **1,21** |
+| **0,4672** | 7 | 5,34 a 6,67 | **1,25** |
+| 0,42 | 7 | 7,68 a 10,87 | 1,41 |
+| 0,35 | 7 | 8,90 a 16,15 | 1,81 |
+| 0,26 | 6 | 11,34 a 21,72 | 1,92 |
+| 0,14 | 4 | 15,56 a 25,61 | 1,65 |
+
+**Cerca de la rodilla el modelo se sostiene** —factor 1,21 y 1,25, que con estas
+reducciones es lo que la cuantización sola puede producir— **y se rompe
+progresivamente al bajar el umbral**, hasta casi el doble en `u = 0,26`.
+
+O sea: `reducción = E·(1−a)` no es «la ley del compresor», es **su límite de
+señal chica**.
+
+## 4. Y con eso, el enigma de la 97 queda resuelto
+
+La 97 dejó dos cortes que no se reconciliaban: con el umbral en 0,14 la relación
+`−20·log₁₀(a)` encajaba dentro de 0,48 dB, y con el umbral en 0,4672 predecía
+6,02 dB donde se midieron 2,98. **Ésa era la pregunta que esta corrida vino a
+decidir: si la discrepancia era la ley o la saturación.**
+
+Es la saturación, y se ve en una fila de la tabla:
+
+| | `u = 0,14` | `u = 0,4672` |
+|---|---|---|
+| caída con `a = 0,5` | **6,00 dB** | **2,67 dB** |
+| techo de `a = 0,5` | 6,02 | 6,02 |
+| ¿saturado? | **sí, está en el techo** | **no, está en la rampa** |
+
+La 97 comparó **un punto saturado contra un punto de la rampa** con un modelo
+que no tiene saturación, y concluyó que el modelo estaba mal. Lo está —eso sigue
+en pie y la tabla del punto 3 lo reconfirma con mejores datos—, pero **esa
+discrepancia concreta no era una ley distinta: era el techo.**
+
+Y el 2,98 de la 97 aparece en esta corrida en el mismo lugar: la reducción
+**informada** en `u = 0,4672`, `a = 0,5` es **2,98 dB**, con la caída real en
+2,67. Los dos instrumentos y las dos corridas cierran.
+
+## 5. Los bytes `+3` y `+4` del bloque dinámico
+
+Una tensión documentada y sin resolver: el cliente los rotula entrada y salida
+del bloque dinámico, y una auditoría había medido que `+3` se anula con
+`gate.enabled = 0` y `+4` con `dyn.bypass = 1`. Esta corrida los registró en los
+112 puntos y el resultado no deja lugar a duda:
+
+- **`dinEntrada` es igual a `pre` en 112 de 112 filas** (−37,66 dB exacto).
+- **`dinSalida` sigue a `entrada` en 112 de 112**, con desvío máximo de **0,34 dB**
+  —un escalón—.
+
+O sea que **son la entrada y la salida del bloque dinámico, como el cliente los
+rotula**. La observación de la auditoría es compatible: los dos son el par de
+medidores de ese bloque, y cada uno se anula con el bloque que lo alimenta.
+
+Esto salió gratis, de registrar dos bytes que llegaban en el mismo cuadro. Fue
+una recomendación del auditor de expectativas y valió la pena.
+
+## 6. Lo que la corrida midió de paso
+
+- **El compresor se asienta rápido.** A 2,8 · 4,8 · 6,8 y 10,8 s la lectura dio
+  −61,85 · −62,00 · −62,00 · −62,00: deriva de 0,00 dB entre 6 y 10 s. La
+  comprobación hacía falta —los tiempos no se midieron nunca— y su resultado es
+  que la ventana podía bajar a 3 s. **No es una medición de ataque**: dice que a
+  los 2,8 s ya estaba dentro de medio escalón del valor final.
+- **El cruce estimado se confirma.** `u = 0,55`, que la rejilla puso 0,8 dB
+  **por encima** del cruce, dio **0,00 dB exacto en sus dieciséis puntos**. La
+  relación por sí sola no hace nada por debajo del umbral.
+- **El piso de ruido del canal es el piso del medidor**: con el tono apagado,
+  `pre` y `entrada` dan `−Infinity` (byte 0) en 68 cuadros. La guarda de los
+  6 dB sobre el piso nunca se activó porque el punto más profundo quedó en
+  −62 dB, dieciocho por encima del fondo de escala.
+- **La puerta no actuó**, y ahora se sabe en vez de suponerse: `gate.enabled = 1`
+  con `gate.thresh = 0`, y el bit 7 de `+5` dio «abierta» en las 112 filas.
+- **Y `hw.9.gain = 0,2508445026` quedó archivado**, que ninguna corrida del
+  proyecto había registrado. Desde acá, cualquier medición futura puede
+  comprobar que el montaje es el mismo en vez de suponerlo.
+
+## Lo que sigue
+
+1. **La misma rejilla con la fuente 10 dB más baja.** Es lo que separa «el techo
+   es del compresor» de «el techo es del instrumento».
+2. **Umbrales más profundos que 0,14**, para que las cinco relaciones que no
+   llegaron a su techo lleguen.
+3. **Los tiempos** (C5 de la 97), que siguen sin medirse.
+
+**Y lo que no se hace**, por si la tentación vuelve: no se publica ninguna
+pendiente del umbral. Con seis umbrales ordenados y la rampa a la vista, sale
+una recta impecable — y la 97 ya sacó tres por sustitución que quedaron
+retiradas. Si de acá sale una pendiente, sale de una corrida diseñada para
+medirla, con la fuente movida y `pre` de testigo.
