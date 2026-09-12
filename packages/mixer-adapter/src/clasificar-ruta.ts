@@ -205,10 +205,23 @@ export interface OpcionesDeClasificacion {
    *
    * INV-008 admite un solo routing escribible: los envíos hacia ese bus. Cuál
    * es lo tiene que decir SPK-P0.5, así que no se puede escribir un número acá.
-   * Sin este dato **todo** `i.N.aux.M.value` es un envío de monitor y no se
-   * escribe nunca, que es el lado seguro: el caso permitido por la invariante
-   * era hasta ahora inexpresable, y el patrón que decía cubrirlo cubría otra
-   * cosa.
+   * Sin este dato, todo `i.N.aux.M.value` se clasifica como envío de monitor.
+   *
+   * **Eso era el lado seguro y ADR-028 lo dio vuelta, el 2026-09-12.** Mientras
+   * `MONITOR_AUX_SEND` no se escribía, no pasar este dato sólo cerraba de más.
+   * Ahora el envío de monitor **sí** se escribe, así que no pasarlo hace que los
+   * veinticuatro envíos hacia el bus de análisis se traten como envíos de
+   * monitor **escribibles**, con los topes y el techo de un monitor en vez de
+   * los de un bus de medición.
+   *
+   * **Y nadie en producción pasa este dato.** El motor llama a `clasificarRuta`
+   * sin opciones. Lo encontró una auditoría de fidelidad, que además señaló que
+   * este comentario y `docs/safety-invariants.md` seguían afirmando lo
+   * contrario después del cambio que los desmentía.
+   *
+   * Consecuencia práctica hoy: ninguna, porque ningún camino de la aplicación
+   * propone todavía un cambio de envío. Consecuencia el día que lo proponga:
+   * real, y por eso queda escrita acá y no en la cabeza de nadie.
    */
   readonly busDeAnalisis?: number;
 }

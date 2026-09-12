@@ -3,12 +3,19 @@
  *
  * Esto no es documentación: es la regla que ejecuta el Safety Engine antes de
  * cada escritura. El músico que usa esto depende de sus monitores para tocar.
- * Un asistente que "ayuda" moviendo un envío de monitor lo deja sin referencia
- * en pleno show, y por eso los monitores son de la categoría que la aplicación
- * nunca escribe.
  *
- * Hay un test que enumera todas las rutas escribibles y verifica que ninguna
- * pertenezca a esa categoría.
+ * **Este encabezado decía que los monitores son «la categoría que la aplicación
+ * nunca escribe» y que hay un test que lo verifica. Las dos cosas dejaron de ser
+ * ciertas con ADR-028** —el usuario autorizó el ajuste de monitores— y el
+ * comentario sobrevivió al cambio que lo desmentía, treinta líneas más abajo en
+ * este mismo archivo. Lo encontró una auditoría de fidelidad el 2026-09-12.
+ *
+ * Lo que vale ahora: del envío a monitor se escribe **sólo el nivel por canal**,
+ * `i.N.aux.M.value`. El fader del bus —`a.N.mix`, el volumen entero de la cuña—
+ * cae bajo el mismo `kind` y **no** se escribe: eso lo decide la lista blanca
+ * del motor, no este archivo. La propiedad por clase no alcanza para expresarlo,
+ * que es la misma distancia entre clase y ruta que INV-008 e INV-010 ya pagaron
+ * una vez.
  */
 
 export type Owner =
@@ -75,8 +82,17 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
     nota: 'Solo durante medición por componente, con restauración garantizada' },
   { kind: 'SNAPSHOT', owner: 'SYSTEM', escribible: true, nota: 'Solo el prefijo propio' },
 
-  { kind: 'MONITOR_AUX_SEND', owner: 'USER_ONLY', escribible: false,
-    nota: 'El músico depende de sus monitores para tocar' },
+  // **Abierto el 2026-09-12 por ADR-028.** El usuario lo autorizó eligiendo
+  // «*Sí, y también para el ajuste normal de monitores*», o sea no sólo para
+  // diagnosticar un acople. Su propio método empieza por ahí: «*Si el acople es
+  // muy fuerte entonces bajo el nivel del auxiliar o pa*».
+  //
+  // Se abrió recién cuando hubo con qué acotarlo: la ley del envío quedó medida
+  // el 2026-09-12 --no se desvía de `faderADb` más de 0,25 dB sobre 28 dB-- y
+  // sin esa ley no se podía declarar un límite en decibeles, que es lo que
+  // INV-004 exige para dejar escribir cualquier cosa.
+  { kind: 'MONITOR_AUX_SEND', owner: 'CHANNEL_ASSISTANT', escribible: true,
+    nota: 'Se ajusta el monitor del músico, con techo en donde estaba (ADR-028)' },
   { kind: 'MASTER_FADER', owner: 'USER_ONLY', escribible: false, nota: '' },
   { kind: 'MASTER_MUTE', owner: 'USER_ONLY', escribible: false, nota: '' },
   // **Abierto el 2026-09-11 por ADR-027.** El bloqueo existía pensando en un

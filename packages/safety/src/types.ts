@@ -65,6 +65,40 @@ export interface ContextoSeguridad {
   readonly rutasConMedicionPosterior: ReadonlySet<string>;
   /** Rutas ya tocadas alguna vez en esta sesión. */
   readonly rutasYaTocadas: ReadonlySet<string>;
+  /**
+   * Techo por ruta, en la unidad declarada: hasta dónde se puede subir.
+   *
+   * **Existe por una regla que puso el usuario con estas palabras**, eligiendo
+   * entre opciones, sobre hasta dónde volver a subir un envío después de haberlo
+   * bajado para cazar un acople: «*Hasta donde estaba antes de que yo lo bajara,
+   * y ni un paso más*» (2026-09-11).
+   *
+   * Es una regla que el motor tiene que poder hacer cumplir, no una nota en un
+   * documento. Se llena con el valor que la ruta tenía **la primera vez que el
+   * asistente la tocó en esta sesión**.
+   *
+   * **Y eso NO es lo que dijo el usuario, aunque se le parezca.** Él dijo «antes
+   * de que **yo** lo bajara»: su ancla es el valor previo a que **él** bajara la
+   * cuña. Ésta se ancla en la primera vez que entró **el asistente**. Las dos
+   * coinciden sólo cuando el que bajó fue el asistente; si el usuario ya bajó a
+   * mano y después entra la aplicación, el techo se fija en el valor ya bajado y
+   * el techo del usuario queda inalcanzable.
+   *
+   * La regla del usuario, tal como la dijo, necesita seguir los cambios externos
+   * para saber qué valor había antes de que él lo moviera, y eso hoy no existe.
+   * **Esta es la operacionalización del agente**, y una auditoría de fidelidad
+   * la encontró firmada como «palabras del usuario» — la tercera vez que un «yo»
+   * suyo se convierte en autoridad de la aplicación.
+   *
+   * **En la unidad declarada del cambio, no en crudo.** Se compara contra
+   * `magnitudPropuesta`, que va en decibeles para este tipo. Poner acá el crudo
+   * de la consola (0 a 1) reproduce el defecto que INV-004 pagó durante meses:
+   * un tope inalcanzable por comparar unidades distintas.
+   *
+   * Una ruta que no figura acá no tiene techo propio y se rige sólo por los
+   * topes de {@link LIMITES}.
+   */
+  readonly techoPorRuta: ReadonlyMap<string, number>;
   readonly hayTakeDeSoundcheckActivo: boolean;
   /**
    * Prefijos de los buses sobre los que el perfil permite ecualizar.

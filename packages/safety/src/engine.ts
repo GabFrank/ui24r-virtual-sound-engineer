@@ -258,6 +258,79 @@ export class SafetyEngine {
       });
     }
 
+    // **El envío a monitor, con el techo que puso el usuario.** ADR-028.
+    //
+    // Eligiendo entre opciones, el usuario fijó hasta dónde volver a subir un
+    // envío que se bajó para cazar un acople: «*Hasta donde estaba antes de que
+    // yo lo bajara, y ni un paso más*». Eso no es un tope de magnitud --de eso
+    // se ocupa INV-004-- sino un **techo absoluto por ruta**.
+    //
+    // **Cómo se llena ese techo es decisión del agente y difiere de lo que el
+    // usuario dijo**: ver `techoPorRuta` en `ContextoSeguridad`.
+    //
+    // **Que no haya tope al bajar también es decisión del agente.** Al usuario
+    // se le preguntó una sola cosa, «techo al subir»; nunca se le ofreció un
+    // piso y no dijo nada al respecto. El razonamiento --bajar de más molesta al
+    // músico, subir de más le puede arruinar el oído o disparar el acople que se
+    // estaba cazando-- es mío. La primera versión de este comentario lo firmaba
+    // como «deliberada y del usuario», y lo encontró una auditoría de fidelidad.
+    //
+    // Una ruta sin entrada en `techoPorRuta` no tiene techo propio: es la
+    // primera vez que se la toca y todavía no hay «donde estaba».
+    if (c.kind === 'MONITOR_AUX_SEND') {
+      // **Sólo el nivel, y esto casi se abre de más.** `clasificar-ruta` mete
+      // cinco hojas bajo este `kind` --`value`, `mute`, `pan`, `post` y
+      // `postproc`-- porque INV-010 razona sobre el conjunto de rutas de
+      // monitor, y ahí las cinco cuentan. Pero abrir el `kind` las abriría las
+      // cinco, y **el usuario autorizó el nivel**: «Sí, y también para el ajuste
+      // normal de monitores».
+      //
+      // `post` y `postproc` no son nivel: deciden si el envío se deriva antes o
+      // después del fader y del procesamiento. La medición 95 del 2026-09-12
+      // mostró qué significa eso en el audio --con `postproc = 1` el monitor
+      // sigue al ecualizador dB por dB-- así que escribirlas es recablear el
+      // monitor del músico, no ajustarlo. `mute` lo deja sin nada y `pan` lo
+      // mueve de lado.
+      //
+      // Lo encontró el test que cuenta las rutas escribibles, que existe
+      // exactamente para esto: el salto habría sido de +1200 en vez de +240.
+      // **Lista blanca, no lista negra.** La primera versión comprobaba
+      // `/\.value$/`, o sea protegía por lo que la ruta **no** es. Bajo este
+      // `kind` cae también `a.N.mix` --el fader del auxiliar entero, el volumen
+      // de esa cuña-- y quedaba rechazado sólo por no terminar en `.value`, que
+      // es un accidente del nombre y no una regla. Se nombra lo que se abre.
+      if (!/^i\.\d+\.aux\.\d+\.value$/.test(c.path)) {
+        salida.push({
+          codigo: 'PARAMETRO_NO_ESCRIBIBLE',
+          invariante: 'INV-010',
+          mensaje: 'del envío a monitor sólo se escribe el nivel del canal '
+            + `(\`i.N.aux.M.value\`): \`mute\`, \`pan\`, \`post\`, \`postproc\` y el `
+            + `fader del bus son del usuario (${c.path})`,
+          path: c.path,
+        });
+      }
+      const techo = ctx.techoPorRuta.get(c.path);
+      if (techo !== undefined && c.magnitudPropuesta > techo) {
+        salida.push({
+          codigo: 'DELTA_EXCEDIDO',
+          invariante: 'INV-010',
+          mensaje: `el envío a monitor no sube más allá de donde estaba: `
+            + `${c.magnitudPropuesta} ${c.unidad} pedidos contra un techo de ${techo}`,
+          path: c.path,
+        });
+      }
+      // Y no durante el show, por el mismo motivo que ADR-027: el usuario
+      // autorizó el soundcheck, y el modo live es una función que no existe.
+      if (ctx.sessionState === 'SHOW') {
+        salida.push({
+          codigo: 'ESTADO_DE_SESION',
+          invariante: 'INV-010',
+          mensaje: `el envío a monitor no se escribe durante el show, y la sesión está en ${ctx.sessionState}`,
+          path: c.path,
+        });
+      }
+    }
+
     // La ganancia de entrada solo se toca durante la configuración de canales,
     // y nunca con una toma grabada: la grabación es posterior al preamplificador,
     // así que cambiarla haría que la toma deje de representar al show.

@@ -165,6 +165,7 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
     acumuladoPorRuta: new Map(),
     rutasConMedicionPosterior: new Set(),
     rutasYaTocadas: new Set(),
+    techoPorRuta: new Map(),
     hayTakeDeSoundcheckActivo: false,
     // **Un PREFIJO de bus, y con la forma que el aparato tiene.** Acá decía
     // `new Set(['m.eq.b1.gain'])` -- una ruta completa, y encima inventada: el

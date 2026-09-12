@@ -103,15 +103,28 @@ test('no confunde rutas parecidas', () => {
   strictEqual(clasificarRuta('m.mix'), 'MASTER_FADER');
 });
 
-test('INV-010: ninguna ruta de auxiliar de monitor es escribible', () => {
-  // El test estatico que la invariante promete desde el principio.
-  const rutas = ['i.1.aux.1.value', 'i.23.aux.6.value', 'a.1.mix'];
-  for (const r of rutas) {
+test('INV-010 tras ADR-028: el nivel del envio se escribe, el bus de monitor no', () => {
+  // **Este test decia que NINGUNA ruta de auxiliar de monitor es escribible, y
+  // ADR-028 abrio el nivel.** Lo que sigue cerrado es el bus: `a.N.mix` es el
+  // fader del auxiliar entero, o sea el volumen general de esa cuna, y eso el
+  // usuario no lo autorizo.
+  for (const r of ['i.1.aux.1.value', 'i.23.aux.6.value']) {
     const kind = clasificarRuta(r);
-    strictEqual(kind !== null, true, r);
-    strictEqual(esEscribible(kind!), false, r);
-    strictEqual(ownership(kind!).owner, 'USER_ONLY', r);
+    strictEqual(kind, 'MONITOR_AUX_SEND', r);
+    strictEqual(esEscribible(kind!), true, r);
+    strictEqual(ownership(kind!).owner, 'CHANNEL_ASSISTANT', r);
   }
+  // **El fader del bus cae bajo el MISMO `kind`, y ahí está el filo.**
+  // `a.N.mix` es el volumen entero de esa cuña y clasifica como
+  // `MONITOR_AUX_SEND`, así que a nivel de propiedad figura escribible: la
+  // protección real es la lista blanca del motor, que sólo deja pasar
+  // `i.N.aux.M.value`. Este test fija esa asimetría para que nadie lea
+  // «escribible» y saque la conclusión de que el bus se puede tocar.
+  strictEqual(clasificarRuta('a.1.mix'), 'MONITOR_AUX_SEND');
+  strictEqual(
+    esEscribible('MONITOR_AUX_SEND'), true,
+    'la propiedad es por clase y no distingue: quien decide es el motor',
+  );
 });
 
 test('toda clase que el clasificador produce existe en el registro de propiedad', () => {

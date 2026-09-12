@@ -19,9 +19,17 @@ test('INV-010: ningún parámetro de la categoría solo del usuario es escribibl
   }
 });
 
-test('INV-010: los envíos de monitores nunca son escribibles', () => {
-  assert.equal(ownership('MONITOR_AUX_SEND').owner, 'USER_ONLY');
-  assert.equal(esEscribible('MONITOR_AUX_SEND'), false);
+// **Este test decía «nunca» y lo abrió ADR-028.** El usuario lo autorizó
+// eligiendo «Sí, y también para el ajuste normal de monitores», y se abrió
+// recién cuando la ley del envío quedó medida: sin ella no hay límite en
+// decibeles que declarar, e INV-004 rechaza todo parámetro sin límite.
+//
+// **Lo que INV-010 protege ahora no es «nunca», y vive en el motor**: sólo la
+// hoja `.value`, con techo en donde estaba el envío y fuera del show. Sus tests
+// están en `packages/safety/test/`.
+test('ADR-028: el envío a monitor es escribible por el asistente de canal', () => {
+  assert.equal(ownership('MONITOR_AUX_SEND').owner, 'CHANNEL_ASSISTANT');
+  assert.equal(esEscribible('MONITOR_AUX_SEND'), true);
 });
 
 test('INV-009: el fader general no es escribible', () => {
@@ -58,10 +66,19 @@ test('un parámetro no declarado lanza en vez de asumir que se puede escribir', 
   );
 });
 
-test('los únicos routings escribibles son el bus de análisis y el reproductor', () => {
+test('qué routings son escribibles, y el envío a monitor entró por ADR-028', () => {
   const routings: ParameterKind[] = [
     'ANALYSIS_BUS_SEND', 'PLAYER_SEND', 'MONITOR_AUX_SEND', 'FX', 'SUBGROUP', 'VCA',
   ];
   const escribibles = routings.filter(esEscribible);
-  assert.deepEqual(escribibles.sort(), ['ANALYSIS_BUS_SEND', 'PLAYER_SEND']);
+  assert.deepEqual(
+    escribibles.sort(), ['ANALYSIS_BUS_SEND', 'MONITOR_AUX_SEND', 'PLAYER_SEND'],
+    'si esta lista crece, algo que era del usuario dejó de serlo',
+  );
+  // **Y los que siguen cerrados importan tanto como los que se abrieron.** Un
+  // envío a efecto, un subgrupo o un VCA mueven el sonido de un canal por un
+  // camino que el operador no está mirando.
+  assert.deepEqual(
+    routings.filter((k) => !esEscribible(k)).sort(), ['FX', 'SUBGROUP', 'VCA'],
+  );
 });

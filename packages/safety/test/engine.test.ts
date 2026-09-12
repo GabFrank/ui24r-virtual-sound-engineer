@@ -23,20 +23,61 @@ test('un cambio razonable pasa', () => {
   assert.equal(v.permitido, true);
 });
 
-test('INV-008: un envío de monitor nunca se escribe', () => {
+// **Este test decía «un envío de monitor nunca se escribe» y lo abrió ADR-028.**
+// El usuario lo autorizó eligiendo «Sí, y también para el ajuste normal de
+// monitores», y se abrió recién cuando la ley del envío quedó medida: sin ella
+// no se puede declarar un límite en decibeles, que es lo que INV-004 exige.
+//
+// Lo que queda protegido no es «nunca»: es el techo que puso el usuario y el
+// show. Los tres tests de abajo fijan eso.
+test('ADR-028: un envío de monitor se puede ajustar durante el soundcheck', () => {
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -6, valorEsperado: -10,
-  magnitudPropuesta: -6, magnitudEsperada: -10,
+    valorPropuesto: -6, valorEsperado: -7,
+    magnitudPropuesta: -6, magnitudEsperada: -7,
   }], contexto(), ok);
+  assert.equal(v.permitido, true, motivos(v).join(', '));
+});
+
+test('ADR-028: el envío de monitor no sube más allá de donde estaba', () => {
+  const e = new SafetyEngine();
+  // El usuario: «Hasta donde estaba antes de que yo lo bajara, y ni un paso más».
+  const ctx = contexto({ techoPorRuta: new Map([['i.3.aux.1.value', -6]]) });
+  const subirDeMas = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: -5, valorEsperado: -6,
+    magnitudPropuesta: -5, magnitudEsperada: -6,
+  }], ctx, ok);
+  assert.equal(subirDeMas.permitido, false);
+  assert.ok(motivos(subirDeMas).includes('INV-010'));
+
+  // Hasta el techo exacto, sí: «hasta donde estaba» lo incluye.
+  const justo = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: -6, valorEsperado: -7,
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }], ctx, ok);
+  assert.equal(justo.permitido, true, motivos(justo).join(', '));
+
+  // Y bajar no tiene techo: la asimetría es del usuario y es deliberada.
+  const bajar = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: -8, valorEsperado: -7,
+    magnitudPropuesta: -8, magnitudEsperada: -7,
+  }], ctx, ok);
+  assert.equal(bajar.permitido, true, motivos(bajar).join(', '));
+});
+
+test('ADR-028: el envío de monitor no se toca durante el show', () => {
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: -6, valorEsperado: -7,
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }], contexto({ sessionState: 'SHOW' }), ok);
   assert.equal(v.permitido, false);
-  assert.ok(motivos(v).includes('INV-008'));
-  assert.match(
-    v.permitido === false ? v.rechazos[0]!.mensaje : '',
-    /monitores/,
-    'el mensaje explica por qué, no solo que está prohibido',
-  );
+  assert.ok(motivos(v).includes('INV-010'));
 });
 
 test('INV-008: el fader general tampoco', () => {

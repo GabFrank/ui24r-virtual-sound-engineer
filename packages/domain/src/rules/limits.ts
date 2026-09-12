@@ -43,6 +43,24 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * abiertos cuando aparece un acople.
    */
   CHANNEL_MUTE: { porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales' },
+  /**
+   * El envío a un monitor, en decibeles.
+   *
+   * **Se pudo declarar recién el 2026-09-12**, cuando la ley del envío quedó
+   * medida: `i.N.aux.M.value` no se desvía de `faderADb` más de 0,25 dB sobre
+   * 28 dB de recorrido. Antes de eso no había forma de convertir un pedido en
+   * decibeles a un crudo, e INV-004 rechaza --con razón-- todo parámetro sin
+   * límite declarado.
+   *
+   * **Más apretado que el fader de canal a propósito.** El fader de canal lo
+   * escucha el operador, que está mirando; el monitor lo escucha el músico, que
+   * está tocando y no puede avisar. Tres decibeles de golpe en una cuña son
+   * mucho más de lo que parecen desde la consola.
+   *
+   * El techo de «hasta donde estaba» es una regla aparte y vive en el motor:
+   * ver `techoPorRuta` en `ContextoSeguridad`.
+   */
+  MONITOR_AUX_SEND: { porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB' },
 };
 
 /** Factor de calidad mínimo en salidas: filtros estrechos sin evidencia, no. */

@@ -92,12 +92,40 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // realimentacion. Son **exactamente +24**, los veinticuatro `i.N.mute` de la
   // consola, y el test de abajo lo comprueba por separado: si el salto hubiera
   // traido algo mas, este numero cuadraria igual y el otro no.
+  // 690 -> 930: ADR-028 abrio el envio a monitor. Son **exactamente +240**, los
+  // `i.N.aux.M.value` de veinticuatro canales por diez auxiliares, y nada mas.
+  //
+  // **Este test evito que fueran +1200.** `clasificar-ruta` mete cinco hojas
+  // bajo `MONITOR_AUX_SEND` --value, mute, pan, post y postproc-- y abrir el
+  // `kind` las abria las cinco. El usuario autorizo el nivel; `post` y
+  // `postproc` deciden si el envio se deriva antes o despues del procesamiento,
+  // o sea que escribirlas es recablear el monitor y no ajustarlo. El motor
+  // ahora rechaza toda hoja que no sea `.value`.
   const n = permitidas().length;
   strictEqual(
-    n, 690,
-    `el motor permite ${n} rutas del inventario y se esperaban 690. `
+    n, 930,
+    `el motor permite ${n} rutas del inventario y se esperaban 930. `
     + 'Si subio, algo que se rechazaba ahora se escribe.',
   );
+});
+
+test('lo unico que ADR-028 abrio son los niveles de envio a monitor', () => {
+  // Mismo principio que el test de ADR-027: la cuenta sola no alcanza, hay que
+  // mirar QUE entro.
+  const niveles = permitidas().filter((p) => /^i\.\d+\.aux\.\d+\.value$/.test(p));
+  strictEqual(niveles.length, 240, 'veinticuatro canales por diez auxiliares');
+
+  // Y ninguna otra hoja del envio: ni el silencio, ni el paneo, ni las dos
+  // banderas de derivacion, que son las que deciden si ecualizar mueve el
+  // monitor del musico (medicion 95 del 2026-09-12).
+  const otrasHojas = permitidas().filter(
+    (p) => /^i\.\d+\.aux\.\d+\./.test(p) && !p.endsWith('.value'),
+  );
+  deepStrictEqual(otrasHojas, [], 'del envio a monitor, solo el nivel');
+
+  // Y nada de los envios del reproductor, que INV-010 trata aparte.
+  const delReproductor = permitidas().filter((p) => /^p\.\d+\.aux\./.test(p));
+  deepStrictEqual(delReproductor, [], 'los envios del reproductor siguen cerrados');
 });
 
 test('lo unico que ADR-027 abrio son los silencios de canal', () => {

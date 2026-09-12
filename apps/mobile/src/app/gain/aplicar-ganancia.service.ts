@@ -116,6 +116,12 @@ export class AplicarGananciaService {
       acumuladoPorRuta: new Map(),
       rutasConMedicionPosterior: new Set(),
       rutasYaTocadas: new Set(),
+      // **Vacío, y por el mismo motivo que los tres de arriba.** El techo de
+      // «hasta donde estaba antes de que yo lo bajara» (ADR-028) se llena con el
+      // valor que la ruta tenía la primera vez que el asistente la tocó, y eso
+      // también sale del historial de la sesión, que todavía no existe. Este
+      // servicio además sólo aplica ganancia, que no tiene techo propio.
+      techoPorRuta: new Map(),
       hayTakeDeSoundcheckActivo: false,
       // **Vacío, y hay que decir por qué en vez de dejarlo pasar por obvio.**
       // La traducción de `PAProfile.outputBuses` a prefijos existe
