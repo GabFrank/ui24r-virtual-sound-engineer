@@ -197,3 +197,42 @@ dice fijo, es fijo, y la distancia se muestra como número. El error de medició
 modelo: es de quien coloca la ficha, y para eso ya estaba el cuarto argumento de
 `emplazar()`, que sigue existiendo.
 
+## Sobre el plano, la madrugada del 2026-09-13
+
+> Ok, entiendo mejor tus dudas pero antes quiero hacerte una pregunta, que
+> verdaderamente cambiarja si algo esta a exactamente 1 metro o 1.10?  Si esta a
+> 20cm de altura o 50? Es solo para tener un registro muy cool de nuestro
+> espacio o porque verdaderamente te va a servir para alguna medicion precisa?
+> Si realmente va a servir (no por suposición si no que porque tenes cerreza y
+> prueba de que sera asi) entonces habilita altira, rango etc, si no, entonces
+> simplifica, si es fijo lo marcamos asi y con el dedo posicionamos, el cm nos
+> ayuda a tener jna idea del espacio, si no es fijo, cual es el rango de
+> movimento? Y ahi punto final
+
+> ahi me confundiste, que tiene que ver la yema del dedo?😂 estamos hablado de
+> drag and drop no? posicionamos un equipo, luego al posicionar el otro vemos la
+> distancia que hay entre uno y otro, talvez movemos un poco mas, cambia la
+> distancia, o talvez en tiempo real, ai hay verios equipos vemos la distancia
+> del que estamos moviendo contra los demas, al seleccionar un equill aparecen
+> las distancias contra los demas. Si el equipl es movil entonces se ve el rango
+> (que al registrar seteamos), puede ser un rectangulo editable. En fin, todavia
+> no entiendo lo se la yema del dedo
+
+> antes se vetar, explicam mejor y tomemos una decisión juntos
+
+> ok, no olvides de documentar estaa ultimas decisiones tomadas
+
+**Lectura mía, discutible.** Las tres cosas que dejan estos mensajes:
+
+1. **«No por suposición, sino porque tenés certeza y prueba»** es una regla de
+   trabajo, no un comentario sobre el plano. Está anotada como tal en
+   [`2026-09-13-el-plano-como-mesa-de-trabajo.md`](2026-09-13-el-plano-como-mesa-de-trabajo.md).
+2. **El reproche de «antes de vetar, expliquemos y decidamos juntos»** era
+   justo: el usuario había decidido sobre un problema que yo le describí a
+   medias, y yo implementé en diez minutos.
+3. **El plano no es un instrumento de medición, es una mesa de trabajo.** Todo
+   mi razonamiento sobre la precisión del dedo asumía que se suelta la ficha a
+   ciegas. Con la distancia a la vista mientras se arrastra, el que mide es el
+   usuario y el plano es dónde lo anota. El emoji del mensaje es el acuse de lo
+   absurdo que sonaba.
+
