@@ -150,3 +150,26 @@ De sesiones previas a ésta, conservadas porque no fueron revocadas:
 Y las que salieron de la forma de trabajar, no de una frase: restaurar siempre la
 consola y comprobarlo **por un camino distinto del que escribió**, y preguntar
 antes de tocar la alimentación fantasma (INV-007).
+
+---
+
+## Del 2026-09-12, ya de noche
+
+> de paso, la line que viene de la scarlet esta en el canal 10
+
+> ahora entiendo, y no tenemos ningun parlante conectado a ningun auxiliar
+> entonces no existe ningún peligro.
+
+> ok, hagamos asi, primero haz la lista de todo lo que vas a desarrollar en esta
+> madrugada, ya sea mediciones o del producto. Puede ser bastante extenso porque
+> tienen mas o menos 10 horas para trabajar hasta que volvamos a hablar. Después
+> de la lista, commit, push y a trabajar
+
+**Lectura mía, discutible.** Lo segundo cierra el hueco que quedaba del reparto
+de la madrugada anterior: el usuario había autorizado hacer ruido con la Scarlett,
+el B2 y los Rokit, pero los auxiliares seguían siendo una incógnita porque sus
+faders están en 0,904 y 0,373 y eso, con una cuña enchufada, es sonido en la sala.
+No hay cuña enchufada. Los filtros que el supresor tiene plantados en `a.0`
+—199,98 Hz, 999,97 Hz a −18 dB, 8190 Hz, 4226 Hz— son entonces de fechas viejas,
+de cuando sí había monitores conectados. **Eso último es inferencia mía: el
+usuario no dijo de dónde salieron esos filtros.**
