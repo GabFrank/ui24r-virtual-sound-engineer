@@ -5,6 +5,32 @@
 la misma forma. El informe completo está en el hilo de esa consulta; acá queda
 el protocolo operativo y lo que lo sostiene.
 
+**Pero la pregunta la hizo el usuario, y con una propuesta propia que este
+documento no registraba.** Corregido el 2026-09-12 tras una auditoría de
+fidelidad: atribuirle el origen sólo a la consultoría borraba de dónde salió el
+problema y quién propuso primero una solución.
+
+> Ok, estuve pensando en los errores repetidos que estamos cometiendo... que
+> cambio en nuestro workflow podria ayudar a evitar esos errores? separar en
+> agentes de medicion, de interpretación y de documentación trabajado en
+> paralelo, no solo al final de cada commit, que opinas? ayudaria?
+
+**Qué se hizo con esa propuesta.** Se adoptó la mitad y se cambió la otra, y el
+motivo lo dio el propio usuario en el mismo intercambio:
+
+> En la teoría, siempre estuviste en lo correcto, el problema es en la práctica,
+> cuando necesitaste aplicar eso, es donde te equivocabas o donde no aplicabas.
+
+- **Adoptado: auditores separados por función**, que es su idea. Uno mira la
+  procedencia de lo escrito y otro fija expectativas independientes.
+- **Cambiado: no en paralelo sino en momentos distintos.** Él propuso que
+  trabajaran a la vez; la consultoría mostró que lo decisivo no es cuándo
+  trabajan sino **qué han visto**: un auditor que recibe la conclusión ya heredó
+  el encuadre, trabaje en paralelo o al final. De ahí sale el compromiso previo.
+- **Su diagnóstico —teoría bien, práctica mal— y el de la consultoría —el agente
+  produce la solución y el criterio— no son el mismo.** No se resolvió cuál
+  explica mejor lo que pasa, y conviene no darlo por resuelto.
+
 **Qué reemplaza.** El flujo de producción y auditoría, y las reglas de
 verificación que entren en conflicto con él. Las reglas técnicas del proyecto y
 las autorizaciones sobre commits y publicación siguen como están.

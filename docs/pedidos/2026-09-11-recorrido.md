@@ -44,6 +44,16 @@ supuso ninguna. Cuatro se le preguntaron al usuario; las respuestas:
 | ¿Qué canales entran al recorrido? | **Todo lo asignado, y el usuario puede sacar a mano** lo que no corresponda recorrer. La aplicación no adivina cuál sobra: no hay ningún dato que lo diga |
 | ¿De dónde se agarra una fila? | **De un asidero al costado.** Deja la fila entera libre para desplazar la lista, que es lo que permite llegar a la fila 20 de 24 |
 | ¿Qué hace «restaurar el orden propuesto»? | **Olvida el orden guardado**, no lo congela. Así la propuesta sigue acompañando: si mañana el catálogo aprende a clasificar los toms, el recorrido mejora solo |
+| ¿Dónde vive el lugar de un monitor? | **En el escenario del local**, no en el perfil del equipo. El mismo sistema en dos salas está en dos lugares distintos |
+| ¿Cómo se carga el canal de un micrófono? | **Desde el plano**: tocás el micrófono y elegís su canal entre los que ya tienen instrumento asignado |
 
-Las otras cinco se deciden en el proyecto y quedan declaradas como decisión
-propia en el contrato.
+*(Las dos últimas filas faltaban. Estaban implementadas y funcionando, pero como
+afirmaciones de diseño sin procedencia: si alguien las cuestionaba, no había
+dónde leer que las había decidido el usuario. Lo encontró una auditoría de
+fidelidad el 2026-09-12.)*
+
+Las otras se deciden en el proyecto y quedan declaradas como decisión propia en
+el contrato.
+
+**El original de todas estas frases está en
+[`00-lo-que-dijo-el-usuario.md`](00-lo-que-dijo-el-usuario.md).**

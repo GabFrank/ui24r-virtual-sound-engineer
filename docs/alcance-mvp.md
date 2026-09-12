@@ -155,6 +155,18 @@ puro, no necesita la consola ni la sala, y arranca dando **diagnóstico** —qu�
 filtra en qué, qué pareja es la más acoplada— sin proponer ni escribir nada. Para
 cuando haya sesión de mediciones, ya está listo para alimentarla.
 
+## Sobre el tamaño
+
+El usuario lo dijo así, y conviene tenerlo a mano cuando algo se quiera recortar
+por largo:
+
+> No te preocupes con el tamanho del MVP, porque lo que estamos construyendo de
+> por si es gigante, y sera divertido hacerlo.
+
+**Eso no autoriza a agregar cualquier cosa**: lo que queda fuera sigue fuera por
+sus motivos. Lo que retira es un motivo en particular — que algo cueste mucho
+tiempo no alcanza, por sí solo, para dejarlo afuera.
+
 ## Qué queda dentro
 
 - Ganancia asistida y automática.
@@ -171,6 +183,21 @@ cuando haya sesión de mediciones, ya está listo para alimentarla.
   convierte en diagnóstico.
 - La instantánea final, y el registro de qué se cambió y por qué.
 
+### La pantalla para la banda
+
+Idea del usuario el 2026-09-12: **una pantalla de sólo lectura, accesible por QR,
+donde la banda ve el progreso del soundcheck y a quién le toca.** Fija —
+disponible siempre que la aplicación esté abierta— y servida sobre la red local,
+que según él suele ser un router externo.
+
+Entra al MVP porque resuelve un problema real del soundcheck —que nadie tenga que
+preguntar cuándo le toca, y que quien se queda sin monitor dos segundos entienda
+por qué— y porque **no depende de ninguna ley sin medir**. Lo que no hace: los
+músicos no piden nada desde ahí, por ahora.
+
+Su detalle está en
+[`pedidos/2026-09-12-diagnostico-y-mediciones.md`](pedidos/2026-09-12-diagnostico-y-mediciones.md).
+
 ## Qué queda fuera, y por qué
 
 | Fuera | Motivo |
@@ -182,7 +209,7 @@ cuando haya sesión de mediciones, ya está listo para alimentarla.
 | Retardo y polaridad de salida | Alineación de sistema; no hace falta para mezclar una banda |
 | Grabación multipista y pendrive | No aparece en el camino de punta a punta |
 | Supresor de realimentación de la consola | Solo lectura. Es el único campo que un recall **no** devuelve |
-| **Parámetros internos de los efectos** (`par1`…`par6`) | Su significado **cambia según el tipo de efecto** y son seis sin nombre por cada uno: la medición más larga del MVP y la de resultado menos claro. Decidir el tiempo de caída de un reverb es gusto, no técnica |
+| **Parámetros internos de los efectos** (`par1`…`par6`) | Su significado **cambia según el tipo de efecto** y son seis sin nombre por cada uno: la medición de resultado menos claro. Decidir el tiempo de caída de un reverb es gusto, no técnica. **Y esto recorta un pedido explícito del usuario**, que nombró los efectos entre lo que tiene que entrar al MVP: entra cuánto manda cada canal a cada efecto y qué efecto es, no cómo suena por dentro. Queda declarado como recorte, y se puede volver a preguntar. *(Y el argumento de que era «la medición más larga» se retira: el usuario dijo «no te preocupes con el tamaño del MVP».)* |
 | Curvas de corrección de micrófono | El escenario necesita el **patrón polar**, que es de catálogo. La curva medida sigue siendo fase futura |
 | Automix | Mueve ganancias por su cuenta; se superpone con lo que hace la aplicación |
 | Concurrencia con **otro operador** | Congelado donde está: medido y funcionando. En este escenario hay un solo operador |

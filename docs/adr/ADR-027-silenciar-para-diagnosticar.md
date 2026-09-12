@@ -2,9 +2,16 @@
 
 **Estado:** Aceptada
 **Fecha:** 2026-09-11
-**Origen:** Decisión del usuario, al diseñar el diagnóstico de realimentación.
-Revierte, para el soundcheck, la postura de que el silencio de canal es
+**Origen:** Propuesta del agente, **aceptada por el usuario** —«tomo tu
+recomendación»— con el argumento que él aportó y que es el que sostiene la
+decisión. Revierte, para el soundcheck, la postura de que el silencio de canal es
 territorio exclusivo del usuario.
+
+**Corregido el 2026-09-12 tras una auditoría de fidelidad.** La primera versión
+decía «Origen: decisión del usuario» y «el usuario lo planteó así», invirtiendo
+la autoría en la decisión que más poder nuevo concede. Y citaba al usuario con
+una frase entre comillas que **el usuario nunca dijo**. El original está en
+[`docs/pedidos/00-lo-que-dijo-el-usuario.md`](../pedidos/00-lo-que-dijo-el-usuario.md).
 
 ## Contexto
 
@@ -14,9 +21,14 @@ abiertos; la geometría dice qué pareja monitor↔micrófono está más expuest
 Ninguna de las dos puede decir **cuál canal cierra el lazo**.
 
 Hay una tercera que sí puede, y es un experimento en vez de una correlación:
-**silenciar un candidato y ver si la banda sostenida se cae.** El usuario lo
-planteó así, y agregó el argumento que faltaba: *total es un soundcheck y eso es
-normal en estas condiciones*.
+**silenciar un candidato y ver si la banda sostenida se cae.**
+
+Lo propuso el agente. El usuario lo aceptó y aportó **el argumento que lo
+sostiene**, que es sobre el motivo del bloqueo y no sobre el experimento:
+
+> Este bloqueo solo existe pensando en algun modo live, para un soundcheck es
+> legitimo tenerlo totalmente abierto, recuerda que el modo live es una feature
+> muy muy futura (si es que llegamos a eso algun dia)
 
 El motor de seguridad no lo permitía. `CHANNEL_MUTE` estaba como `USER_ONLY` y no
 escribible: de las 6732 claves de la consola, **ninguna ruta de silencio de canal
@@ -30,9 +42,19 @@ soundcheck, silenciar un canal para probar algo es lo más normal del oficio.
 
 Se abre `CHANNEL_MUTE` a la aplicación, **con estas condiciones**:
 
-1. **Sólo en los estados de configuración y de mezcla**, nunca en los estados en
-   vivo (`FULL_BAND`, `RINGOUT`, `SHOW`). Es la misma forma de la restricción que
-   INV-006 ya aplica a la ganancia.
+1. **En todo estado menos `SHOW`.** El usuario dijo «para un soundcheck es
+   legítimo tenerlo totalmente abierto» y el único estado que corresponde al modo
+   live del que habló es el show.
+
+   **La primera versión cerraba también `FULL_BAND` y `RINGOUT`, y era más
+   estrecha que la autorización.** Los dos son etapas del soundcheck —prueba de
+   banda completa y caza de realimentación— según `docs/session-lifecycle.md`. Y
+   `RINGOUT` es literalmente el estado de cazar acoples: **el diagnóstico que
+   este ADR existe para habilitar quedaba rechazado justo donde más aplica.**
+   Nadie lo notaba porque todavía no lo llama ninguna pantalla.
+
+   Tampoco era «la misma forma que INV-006», como decía: la ganancia usa lista
+   blanca de un estado y esto usa lista negra. Son formas inversas.
 2. **Con punto de retorno** antes de la transacción, como cualquier otra
    escritura (INV-001).
 3. **Con confirmación de cada escritura** por la conexión testigo, y restauración

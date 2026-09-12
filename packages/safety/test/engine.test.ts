@@ -438,20 +438,25 @@ test('ADR-027: se puede silenciar un canal en configuración de canales', () => 
   assert.strictEqual(v.permitido, true, `rechazado: ${JSON.stringify(v)}`);
 });
 
-test('ADR-027: NO se puede silenciar durante un show', () => {
-  // Es la condición que el ADR pone: el argumento del usuario era explícito
-  // sobre el soundcheck, y durante un show dejar un canal mudo, aunque sea un
-  // segundo, es otra cosa.
-  for (const estado of ['FULL_BAND', 'RINGOUT', 'SHOW'] as const) {
-    const v = silenciar(3, estado);
-    assert.strictEqual(v.permitido, false, `${estado} tendría que rechazar`);
-    // El veredicto es una unión: los rechazos sólo existen en la rama negativa.
-    if (v.permitido) continue;
+test('ADR-027: NO se puede silenciar durante el show, y sí en todo el soundcheck', () => {
+  // **La primera versión cerraba también `FULL_BAND` y `RINGOUT`, y estaba
+  // mal.** Los dos son etapas del soundcheck --prueba de banda completa y caza
+  // de realimentación--, no del modo live, y el usuario autorizó el soundcheck
+  // entero. `RINGOUT` es literalmente el estado de cazar acoples: el
+  // diagnóstico quedaba rechazado justo donde más aplica. Lo encontró una
+  // auditoría comparando la regla contra lo que el usuario había dicho.
+  const v = silenciar(3, 'SHOW');
+  assert.strictEqual(v.permitido, false, 'durante el show no');
+  if (!v.permitido) {
     assert.ok(v.rechazos.some((r) => r.codigo === 'ESTADO_DE_SESION'),
-      `${estado}: ${JSON.stringify(v.rechazos)}`);
+      JSON.stringify(v.rechazos));
   }
-  // Control positivo: mezclando sí se puede, que no está en vivo.
-  assert.strictEqual(silenciar(3, 'MIX').permitido, true);
+  // Y los dos que antes estaban cerrados por error, sobre todo el de cazar
+  // acoples, que es para lo que esto existe.
+  for (const estado of ['FULL_BAND', 'RINGOUT', 'MIX', 'ROOM_OBSERVE'] as const) {
+    assert.strictEqual(silenciar(3, estado).permitido, true,
+      `${estado} es soundcheck y tendría que permitir`);
+  }
 });
 
 test('ADR-027: de a un canal por vez', () => {

@@ -43,6 +43,7 @@
 | [logging.md](logging.md) | Formato del registro estructurado |
 | [domain-model.md](domain-model.md) | Entidades y relaciones. Se genera desde los tipos |
 | [pedidos/00-lo-que-dijo-el-usuario.md](pedidos/00-lo-que-dijo-el-usuario.md) | Lo que el usuario dijo, textual y sin glosa. Todo lo demás es interpretación |
+| [pedidos/01-auditoria-de-fidelidad.md](pedidos/01-auditoria-de-fidelidad.md) | Los 24 hallazgos de contrastar los documentos derivados contra ese original: la cita inventada, la autoría invertida, la restricción de más |
 | [piloto-de-deteccion.md](piloto-de-deteccion.md) | Cuántos defectos sembrados se detectan, por familia: la medida que distingue mejorar de cambiar de disfraz |
 | [protocolo-de-verificacion.md](protocolo-de-verificacion.md) | Cómo se verifica acá: el contrato antes de implementar, los dos auditores y cuándo interviene cada uno |
 | [orden-del-soundcheck.md](orden-del-soundcheck.md) | En qué orden el recorrido guiado lleva a la banda, y de qué fuentes sale ese orden |

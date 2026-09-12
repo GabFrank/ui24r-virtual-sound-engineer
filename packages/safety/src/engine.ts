@@ -1,5 +1,4 @@
 import {
-  ESTADOS_EN_VIVO,
   ownership, esEscribible, verificarLimite,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
@@ -232,18 +231,29 @@ export class SafetyEngine {
       return salida;
     }
 
-    // **El silencio de canal, sólo fuera de los estados en vivo.** ADR-027 lo
-    // abrió para el diagnóstico de realimentación: silenciar un candidato y ver
-    // si la banda sostenida se cae es la única forma de pasar de indicios a un
-    // experimento. Pero el argumento del usuario era explícito sobre el
-    // soundcheck —«total es un soundcheck y eso es normal en estas
-    // condiciones»—, y durante un show dejar un canal mudo, aunque sea un
-    // segundo, es otra cosa.
-    if (c.kind === 'CHANNEL_MUTE' && ESTADOS_EN_VIVO.includes(ctx.sessionState)) {
+    // **El silencio de canal, en todo estado menos el show.** ADR-027 lo abrió
+    // para el diagnóstico de realimentación: silenciar un candidato y ver si la
+    // banda sostenida se cae es la única forma de pasar de indicios a un
+    // experimento.
+    //
+    // **La primera versión de esta guarda cerraba también `FULL_BAND` y
+    // `RINGOUT`, y estaba mal.** Los dos son etapas del soundcheck —prueba de
+    // banda completa y caza de realimentación—, no del modo live, y el usuario
+    // autorizó el soundcheck entero. Peor: `RINGOUT` es literalmente el estado
+    // de cazar acoples, así que el diagnóstico que ADR-027 existe para habilitar
+    // quedaba rechazado justo donde más aplica. Lo encontró una auditoría de
+    // fidelidad, comparando la regla contra lo que el usuario había dicho.
+    //
+    // **Y el comentario citaba al usuario con una frase que el usuario nunca
+    // dijo.** Era una paráfrasis mía entre comillas, en el comentario que
+    // justifica una guarda de seguridad. Lo que dijo está en
+    // `docs/pedidos/00-lo-que-dijo-el-usuario.md`, y lo que dijo es que el
+    // bloqueo sólo existía pensando en el modo live.
+    if (c.kind === 'CHANNEL_MUTE' && ctx.sessionState === 'SHOW') {
       salida.push({
         codigo: 'ESTADO_DE_SESION',
         invariante: 'INV-006',
-        mensaje: `el silencio de canal sólo se escribe fuera de los estados en vivo, y la sesión está en ${ctx.sessionState}`,
+        mensaje: `el silencio de canal no se escribe durante el show, y la sesión está en ${ctx.sessionState}`,
         path: c.path,
       });
     }

@@ -1,6 +1,8 @@
 # Compromisos: la pantalla del recorrido guiado
 
-**Escrito antes de implementar**, según `docs/protocolo-de-verificacion.md`.
+**Escrito antes de implementar**, según `docs/protocolo-de-verificacion.md`. Lo
+que este contrato le atribuye al usuario se puede contrastar contra
+[`docs/pedidos/00-lo-que-dijo-el-usuario.md`](../pedidos/00-lo-que-dijo-el-usuario.md).
 
 **Segunda versión.** La primera la auditó el auditor de procedencia y encontró
 quince problemas — antes de que existiera una línea de código, que es para lo
@@ -30,9 +32,9 @@ persista**, aunque un docblock de `1a0f703` decía que quedaba guardado.
 | C7 | La etapa de ganancia navega a `sesion/ganancia`, que ya existe | Que duplique esa pantalla, o que lleve a una pantalla congelada por estado | **Decisión propia** (navegar en vez de duplicar), con la dependencia de C2 |
 | C8 | **La pantalla no presenta el orden como prescrito por el oficio**: dice que es una propuesta y que seis de sus trece puestos son decisión del proyecto | Cualquier texto que atribuya el orden a una autoridad externa sin la salvedad | **Pedido del usuario** (que la propuesta no sea al azar), y el error ya cometido en `94e9c5b` |
 | C9 | El recorrido **no llama a la consola**: navega y registra | Cualquier escritura originada en esta pantalla | **Obligación, no decisión**: `CONTRIBUTING.md` «Reglas que no se negocian» punto 4, verificada por `npm run validate:limites` |
-| C11 | Se puede **sacar un canal del recorrido** y volver a traerlo; lo sacado se guarda junto con el orden | Que no se pueda sacar, o que al reabrir vuelva a estar adentro | **Decisión del usuario**, `docs/pedidos/2026-09-11-recorrido.md` |
-| C12 | El orden se guarda **al soltar la fila**, y un arrastre que vuelve al mismo lugar **no escribe nada** | Salir sin guardar y perder el orden; o que un arrastre nulo deje la pantalla sucia | **Decisión del usuario**, mismo archivo |
-| C13 | Se arrastra **desde un asidero**, y la fila entera sigue sirviendo para desplazar la lista | Que arrastrar la fila 3 desplace la página, o que no se llegue a la fila 20 de 24 | **Decisión del usuario**, mismo archivo |
+| C11 | Se puede **sacar un canal del recorrido** y volver a traerlo; lo sacado se guarda junto con el orden | Que no se pueda sacar, o que al reabrir vuelva a estar adentro | **Decisión del usuario** que se pueda sacar a mano; que lo sacado se **persista** y se pueda **traer de vuelta** es **derivación** |
+| C12 | El orden se guarda **al soltar la fila**, y un arrastre que vuelve al mismo lugar **no escribe nada** | Salir sin guardar y perder el orden; o que un arrastre nulo deje la pantalla sucia | **Decisión del usuario** guardar al soltar; que el arrastre nulo no escriba es **decisión propia** |
+| C13 | Se arrastra **desde un asidero**, y la fila entera sigue sirviendo para desplazar la lista | Que arrastrar la fila 3 desplace la página, o que no se llegue a la fila 20 de 24 | **Decisión del usuario** el asidero; el motivo y la consecuencia son **del proyecto** |
 | C14 | «Restaurar el orden propuesto» **olvida** el orden guardado, no lo congela | Que después de restaurar, corregir la clasificación de un canal no mueva el orden | **Decisión del usuario**, mismo archivo |
 | C15 | **Guardar el orden no pisa nada ni se pierde**, en las dos direcciones: ni la asignación de canales borra el orden, ni el arrastre borra un cambio hecho en perfiles | Guardar un orden, ir a canales sin reiniciar, volver, y que el orden no esté; o editar la banda en perfiles durante una sesión, arrastrar, y perder el nombre | **Derivación de un defecto verificado**: `band.service.ts` hace spread sobre su propia señal cacheada |
 | C10 | El paso nuevo entra en el camino de usuario verificado (`tools/visual/flujo.mjs`, hoy 27 pasos) y en el registro estructurado de `docs/logging.md` | Que el flujo visual no lo recorra, o que no quede registro de qué se recorrió | **Obligación**: `CONTRIBUTING.md`, definición de terminado |
@@ -123,6 +125,14 @@ Todo esto lo encontró el auditor de procedencia antes de implementar:
    documento que no dice lo que se le atribuía** (el kit de batería).
 9. **La migración que decía hacer falta no hace falta**: `band_profile` guarda el
    documento entero en una columna JSON.
+
+### Y lo que cambió después de la auditoría de fidelidad
+
+**Tres compromisos decían «Decisión del usuario» y contenían derivaciones.** C11,
+C12 y C13 mezclaban lo que el usuario eligió con lo que se dedujo de ahí. Es el
+mismo error que este documento ya se había corregido a sí mismo en el punto 2 de
+abajo —«C3 decía pedido del usuario y era inferencia»— y que había quedado vivo
+en otras tres filas. Lo encontró una auditoría el 2026-09-12.
 
 ### Y lo que cambió después del contraste
 
