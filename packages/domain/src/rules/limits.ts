@@ -24,6 +24,20 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
   OUTPUT_EQ: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
   HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas' },
   OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms' },
+  // **Declarado y hoy inerte, a propósito y con su riesgo dicho.**
+  // `MASTER_FADER` es `USER_ONLY` con `escribible: false` (INV-009), así que el
+  // motor lo rechaza por propiedad antes de llegar acá y este tope no se evalúa
+  // nunca. Se conserva porque es la decisión de cuánto se movería **si** alguna
+  // vez se abriera, y borrarlo perdería esa decisión.
+  //
+  // El riesgo, que una auditoría marcó: **es un camino de 1 dB listo para el día
+  // que alguien invierta el `escribible`**. Si eso pasa, el fader general queda
+  // escribible con tope sin que nadie haya decidido abrirlo, porque el tope ya
+  // estaba. La regla es que abrir `MASTER_FADER` necesita su propio ADR, igual
+  // que la necesitó el envío a monitor; y el usuario ya decidió que la
+  // aplicación pueda bajar el general para cazar un acople --«Los dos, con
+  // techo»--, así que ese ADR está pendiente y no ausente. Ver
+  // `docs/backlog/decision-bajar-buses-para-cazar-acoples.md`.
   MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB' },
   /**
    * **El silencio no tiene magnitud: es binario.** Un tope de «cuánto se mueve»

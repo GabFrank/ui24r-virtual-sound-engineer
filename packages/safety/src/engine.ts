@@ -329,7 +329,12 @@ export class SafetyEngine {
           path: c.path,
         });
       }
-      const techo = ctx.techoPorRuta.get(c.path);
+      // **Sin `?.` esto estalla con un llamador sin tipos.** Falla cerrado --el
+      // `evaluar` no devuelve permiso-- pero el registro que alguien lee después
+      // de un show dice `TypeError` en vez de decir qué se rechazó y por qué.
+      // Lo marcó una auditoría de seguridad, y el caso real ya ocurrió:
+      // `tools/inventario/permisos.ts` estalló así durante cuatro días.
+      const techo = ctx.techoPorRuta?.get(c.path);
       if (techo !== undefined && c.magnitudPropuesta > techo) {
         salida.push({
           codigo: 'DELTA_EXCEDIDO',
@@ -341,6 +346,29 @@ export class SafetyEngine {
       }
       // Y no durante el show, por el mismo motivo que ADR-027: el usuario
       // autorizó el soundcheck, y el modo live es una función que no existe.
+      //
+      // **Sólo `SHOW`, y no `ESTADOS_EN_VIVO`.** El dominio define
+      // `ESTADOS_EN_VIVO = ['FULL_BAND', 'RINGOUT', 'SHOW']` y ninguna regla de
+      // seguridad lo consulta; una auditoría lo marcó preguntando si para el
+      // envío a monitor se había heredado el criterio sin razonarlo. Se razonó
+      // ahora, y la respuesta es que para **este** parámetro corresponde `SHOW`
+      // solo:
+      //
+      // - `FULL_BAND` es el soundcheck con la banda entera tocando, que es
+      //   **exactamente cuándo se ajusta un monitor**. Cerrarlo dejaría la
+      //   categoría abierta sólo cuando no hay nadie toando, o sea inútil para
+      //   lo que el usuario pidió.
+      // - `RINGOUT` es la caza de acoples, que es el otro momento en que el
+      //   usuario baja un monitor a propósito.
+      // - `SHOW` es el público en la sala. Ahí el operador no está mirando la
+      //   pantalla de la aplicación y un cambio sorpresa en la cuña de un
+      //   músico no tiene quien lo atrape.
+      //
+      // Lo que separa a los dos primeros del tercero no es «en vivo» sino
+      // **quién está mirando**. `ESTADOS_EN_VIVO` sirve para otras cosas --avisar
+      // de una escritura, exigir confirmación-- y usarlo acá cerraría el caso
+      // principal. Si alguna vez hace falta un criterio más fino, es una
+      // decisión de producto y va con su ADR.
       if (ctx.sessionState === 'SHOW') {
         salida.push({
           codigo: 'ESTADO_DE_SESION',

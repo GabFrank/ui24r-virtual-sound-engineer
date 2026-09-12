@@ -322,3 +322,98 @@ El método correcto ya existe y está probado: el de
 `calibrar-medidor-de-reduccion.ts`, que mide la caída de nivel con `ratio = 1`
 como referencia en vez de despejar el exceso de una rodilla calculada. El
 barrido 2-D tiene que usar ése.
+
+---
+
+# Estado, al cierre del 2026-09-12
+
+## Arreglado
+
+**Los siete de severidad alta.**
+
+1. **El techo del medidor** es 255 en los cinco lugares, incluido `gain.ts`. El
+   0 dB de ahí es el **cero de la escala** y no su techo; la conducta del
+   asistente no cambia y lo que se retiró es la justificación.
+2. **El guion que podía encender el supresor.** `estadoPorHttpExigido` falla si
+   la lectura trae menos de mil claves, y `exigirClave` lanza si la clave no
+   vino —sobre un mapa vacío también, que es lo que la hace suficiente sola—.
+   **Una guarda estática encontró 16 sitios donde el auditor había visto 4**,
+   porque barre el árbol entero: tres más que suponían `m.afs.enabled`, dos que
+   suponían el fader general, tres la ganancia del previo, y **dos que escribían
+   `var.currentSnapshot`**.
+3. **Los argumentos.** `argumentos.ts` no tiene función que devuelva un valor
+   dudoso, y el rango es obligatorio. El caso que hacía daño —`""` dando un tono
+   a 0 dBFS de cuatro minutos— ahora aborta antes de conectar.
+   **Y la restauración**: `conRestauracion` tapa la excepción *y* la señal.
+   Ninguno de los **47** guiones que escriben la tenía —el auditor dijo diez
+   porque le dieron diez—, así que hay un trinquete que sólo puede encoger; va
+   el primero convertido.
+4. **Las leyes refutadas del compresor** quedan marcadas en `raw-map.ts`, en
+   `protocol-spec` §4.4 y §6.3, y en los tres tests que las fijaban. «No
+   probado» y «refutado» dejan de ser lo mismo.
+5. **El orden de la cola `VU2`** en la matriz de capacidades, que era el
+   retirado y haría saltear la sección del reproductor.
+6. **La unidad del tope se compara**, que era la mitad que faltaba de INV-004.
+7. **La lista blanca es canónica y acotada**, y el alias con ceros ya no esquiva
+   el techo. Con dos tests que fallan contra la guarda vieja.
+
+**Y lo que salió de arreglar eso, que no estaba en ningún informe:**
+
+- **`tools/` no entraba al chequeo de tipos.** Es la raíz de dos hallazgos de la
+  auditoría y de un bug mío. Al entrar encontró **un instrumento que sólo podía
+  confirmar** (`barrido-testigo.ts` esperaba un objeto que no era promesa, así
+  que informaba «SI» en todas las filas), un archivo con error de sintaxis, y un
+  estrechamiento mal resuelto.
+- **El motor estallaba** al recibir el código de rechazo nuevo, con la suite en
+  verde: lo encontró una herramienta, no un test. La tabla de traducción ahora
+  es exhaustiva por tipo.
+- **Tres veces la misma divergencia** entre el test del conteo y la herramienta
+  del inventario. Ahora hay una sola definición.
+- **El reparto de lo escribible por categoría** está fijado: el total de 930
+  podía cuadrar con el conjunto equivocado.
+
+**Correcciones de cifras**: el exceso de la 97 (6 → 7,09 dB, y la fila que
+«encajaba» pasa de 0,38 a 1,10 escalones), el peor caso de la 94 (0,48 → 0,64),
+el sesgo sistemático del medidor de reducción, el par de frecuencias de los
+7,7 dB, la cita de la 95 que la 94 ya había retirado, el residuo sobre-leído de
+la 94, la acotación vuelta identidad en el índice del spike, y el alcance que le
+faltaba a la última sección de la 97.
+
+**Tres atribuciones**: el ancla del techo firmada como palabras del usuario (van
+cinco), la misma ancla derogada en la tabla de ADR-028, y —al revés— una decisión
+del usuario presentada como pendiente.
+
+**Y una donde los auditores se contradijeron.** Uno dijo que el «0,05 dB sobre
+38» del spec era un redondeo favorable; el otro lo recalculó. Recalculado da
+38,2411 y 0,051 por los dos caminos: **el error está en el archivo de
+evidencia**, que imprimió 38,25 y 0,06. No hay que tomar a un auditor al pie de
+la letra.
+
+## Sin arreglar, y por qué
+
+- **46 guiones sin `conRestauracion`.** Convertirlos de golpe es un cambio
+  mecánico grande sobre código que habla con un aparato real, y romper un
+  instrumento en silencio es peor que la deuda. El trinquete impide que crezca y
+  obliga a sacar de la lista lo que se convierta.
+- **Nueve guiones con el valor previo escrito a mano.** Misma razón, y el
+  primero ya se convirtió: `ley-envio-aux.ts` lee el fader del aparato antes de
+  empezar. La guarda de `restaurar-sin-adivinar` no los ve porque busca `??`, no
+  literales.
+- **`magnitudPropuesta` no está atada al crudo que va al cable.** Comparar la
+  unidad hace que declarar mal sea visible; atarla necesita las leyes de
+  conversión verificadas, y la del compresor acaba de quedar refutada. Hay que
+  cerrarlo **antes del primer llamador**, y el primer llamador está en el plan:
+  la pantalla por QR.
+- **`techoPorRuta` no tiene productor.** La regla «sólo si la app bajó» está en
+  el motor y nadie llena el mapa. Declarado en ADR-028 y en las invariantes;
+  entra con el llamador.
+- **El límite acumulado es inerte** por el mismo motivo, y está declarado.
+
+## Y el barrido 2-D
+
+Sigue suspendido, y por menos razones que antes: de las tres que lo bloqueaban,
+**dos están cerradas** —la lectura que podía encender el supresor, y la
+restauración ante una caída—. Queda la primera: el exceso tiene que medirse con
+el método de `calibrar-medidor-de-reduccion.ts` y no despejarse de una rodilla,
+porque la rodilla arrastra 1,09 dB de sesgo del piso del medidor. Está escrito
+en `docs/backlog/las-leyes-del-compresor-no-se-conocen.md`.

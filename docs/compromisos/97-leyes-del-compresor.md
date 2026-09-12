@@ -346,3 +346,31 @@ Lo que **no** hay que hacer es ajustar una curva a los doce puntos de un solo
 umbral y publicarla. Este proyecto tiene documentado lo que pasa: los tres
 barridos de 84,5 dB eran rectas impecables, y lo que los delató fue que no
 coincidían entre sí.
+
+## Lo que NO prueba la calibración del medidor
+
+Las tres secciones anteriores de este documento llevan su lista de alcance y
+esta se quedó sin una. Lo notó una auditoría de sobre-afirmación, con la
+consecuencia concreta: «el medidor de reducción está verificado hasta 24 dB» se
+va a citar sin ninguna de las cuatro condiciones en que se midió.
+
+- **Un canal.** El 10, la línea de la Scarlett (`i.9`). Nada sobre los otros
+  veintitrés.
+- **Un umbral.** Crudo 0,14. La corrida barrió la **relación** con el umbral
+  quieto, así que lo que quedó calibrado es el medidor a lo largo de una recta
+  vertical de la superficie, no la superficie.
+- **Una frecuencia y un nivel de fuente.** 1 kHz, y el nivel con que quedó el
+  banco. La balística del medidor de reducción no se tocó.
+- **Una dirección.** No se midió de vuelta, así que una histéresis del medidor
+  —si la hubiera— no se habría visto.
+
+Lo que **sí** vale, y es lo que el ítem necesitaba: entre 0 y 24,34 dB de
+reducción informada, con la caída real leída por otro instrumento, el medidor de
+reducción no se desvía más de 0,35 dB, **y no se degrada** al pasar de los 11 dB
+donde terminaba su verificación anterior. Con eso el instrumento deja de estar
+bajo sospecha y la refutación de la ley se sostiene.
+
+Y el desvío es **sistemáticamente negativo** en los doce puntos no nulos, o sea
+que el medidor informa siempre algo menos que la caída real. Compatible con
+truncado a su rejilla de 0,6668 dB. Quien use el medidor de reducción para
+afirmar «se comprimió X» está afirmando «se comprimió al menos X».
