@@ -20,10 +20,25 @@
  * dos entradas de línea**, que van al final de todo. La cuenta cierra sin
  * resto: `8 + 6·24 + 6·2 + 7·6 + 7·4 + 5·10 + 5·2 + 6·2 = 306`.
  *
- * El tamaño del general lo declara el **byte 6** de la cabecera: la consola
- * hace `l = e += 5*charCodeAt(6)` justo antes de leer las entradas de línea.
- * El byte 5 vale 2 y no se sabe qué es. La cantidad de entradas de línea **no
- * está en la cabecera**: se deduce de los bytes que sobran.
+ * **El tamaño del general: este comentario decía el byte 6 y el código sigue el
+ * 5.** Los dos números valen 2 en esta consola, así que la contradicción no se
+ * manifiesta, y por eso convivió. Lo encontró una auditoría de coherencia
+ * cruzada.
+ *
+ * Las dos lecturas tienen origen: el cliente oficial hace
+ * `l = e += 5*charCodeAt(6)` justo antes de leer las entradas de línea, y el
+ * nombrado de DigiMixer pone el general en el 5 y las líneas en el 6. **Se
+ * sigue el 5**, y el razonamiento largo está donde se usa, no acá: el orden de
+ * DigiMixer coincide con el de las secciones en la trama, y su autor dice que
+ * Soundcraft le entregó la documentación del protocolo.
+ *
+ * Lo que no se puede hacer es lo que hacía este párrafo: afirmar el 6 acá,
+ * seguir el 5 abajo, y de paso declarar «el byte 5 no se sabe qué es» sobre un
+ * byte que el código lee como autoridad. Si aparece un modelo donde difieran,
+ * se decide midiendo.
+ *
+ * La cantidad de entradas de línea **no está en la cabecera**: se deduce de los
+ * bytes que sobran.
  *
  * Por eso acá **no hay ninguna cuenta escrita a mano**: escribirlas sería
  * volver a la trampa del enrutamiento identidad, que coincide hasta que
@@ -128,11 +143,24 @@ function busEstereo(b: readonly number[], o: number): MedidorBusEstereo {
 }
 
 /**
- * El bloque de un auxiliar.
+ * El bloque del reproductor de medios.
  *
- * La consola lo lee como una tira mono: `setVU(n=+0, q=+1, 0, 0, …)`. Medido
- * el 2026-09-09 moviendo `a.0.mix`: el `+1` siguió al fader y el `+0` no.
- * Los bytes `+2` y `+3` no los usa la tira. `+4` lleva reducción e indicador.
+ * **Usa el formato de 6 de las entradas**, no el de los buses: `+0` previo,
+ * `+1` entrada, `+2` salida, `+5` reducción con el indicador de puerta en el
+ * bit alto. Es la primera sección de la cola, antes de los subgrupos.
+ *
+ * **Y saltearla es un error caro.** Una medición del 2026-09-12 calculó a mano
+ * el desplazamiento del bus de efectos, se salteó esta sección, y leyó el byte
+ * 247 --el centinela de «sin reducción»-- como si fuera un nivel. La tabla
+ * resultante se veía perfectamente consistente: cinco filas idénticas, testigo
+ * estable, 56 a 58 tramas. Lo que la delató fue que 247 es un número con
+ * significado, no un nivel. De ahí la regla del módulo: los desplazamientos se
+ * calculan acá y nadie los reimplementa.
+ *
+ * *(Acá estaba el docblock del auxiliar, sobre esta función. Quien lo leyera se
+ * llevaba el mapa de bytes del auxiliar creyendo que era el del reproductor
+ * --y saltearse el reproductor es justo el defecto de arriba--. Lo encontró una
+ * auditoría de coherencia cruzada.)*
  */
 function reproductor(b: readonly number[], o: number): MedidorReproductor {
   const crudoReduccion = b[o + 5] ?? 0;
@@ -145,6 +173,18 @@ function reproductor(b: readonly number[], o: number): MedidorReproductor {
   };
 }
 
+/**
+ * El bloque de un auxiliar, y de cada mitad del general.
+ *
+ * La consola lo lee como una tira mono: `setVU(n=+0, q=+1, 0, 0, …)`. Medido el
+ * 2026-09-09 moviendo `a.0.mix`: el `+1` siguió al fader y el `+0` no, o sea
+ * `+0` antes del fader del bus y `+1` después. Los bytes `+2` y `+3` no los usa
+ * la tira. `+4` lleva la reducción en sus siete bits bajos y el indicador de
+ * puerta en el alto.
+ *
+ * El general son **dos** de estos bloques, izquierdo y derecho, y por eso
+ * comparten función: en la trama tienen la misma forma.
+ */
 function busMono(b: readonly number[], o: number): MedidorBusMono {
   const crudoReduccion = b[o + 4] ?? 0;
   return {

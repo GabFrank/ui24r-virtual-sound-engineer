@@ -26,9 +26,22 @@
  *    de graves; una suma es plana. El medidor de entrada dio 0,23 dB de
  *    dispersión entre 100 Hz, 1 kHz y 10 kHz.
  *
- * **Se informan los siete bytes crudos siempre**, sin promediar izquierda con
+ * **Se informan CINCO de los siete bytes**, sin promediar izquierda con
  * derecha: un reverb descorrelaciona los canales y promediarlos en silencio
  * mete un error que depende del nivel.
+ *
+ * **Cinco y no siete, y esto decia siete.** `decodificarVuBuses` decodifica
+ * `+0..+3` y `+6`; **`+4` y `+5` --la entrada y la salida del bloque dinamico
+ * del bus-- no los decodifica nunca**, porque la consola solo los dibuja para
+ * la tira seleccionada. La omision es deliberada y esta documentada en la
+ * biblioteca; lo que estaba mal es este comentario, que prometia siete.
+ *
+ * Consecuencia sobre el control negativo de la pregunta 1 --«con el bus
+ * aislado, los siete bytes tienen que caer al piso»--: **cubre cinco de
+ * siete**. No invalida la medicion 96a, cuyas conclusiones son todas sobre
+ * `+0..+3`, y deja abierto que el bloque dinamico del bus pudiera estar
+ * actuando sin que esa corrida lo viera. Lo encontro una auditoria de
+ * instrumentos.
  *
  * Uso:
  *   node --experimental-strip-types tools/spikes/p0-10b-vu/bytes-del-bus-de-efecto.ts 10 1 192.168.0.78

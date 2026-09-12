@@ -39,7 +39,7 @@ describiendo pasos que ya no existen.
 | `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
 | `ds-tablet.png` | Sistema de diseño completo a 1280 px |
 | `flujo-tablet-*.png` | Los 28 pasos del camino de usuario en tablet |
-| `flujo-telefono-*.png` | Los mismos 24 pasos en teléfono |
+| `flujo-telefono-*.png` | Los mismos **28** pasos en teléfono |
 
 De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
 vez de salir a la red, igual que el simulador responde el protocolo de la

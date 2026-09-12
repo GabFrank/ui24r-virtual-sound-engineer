@@ -27,8 +27,8 @@ instantánea de la consola.
 | 8 | Por cada instrumento: **puerta** | **la ley del umbral no está medida** |
 | 9 | Por cada instrumento: **compresor** | **las leyes no están medidas** |
 | 10 | Por cada instrumento: **ecualizador de canal** | **las leyes no están medidas** |
-| 11 | Por cada instrumento: **cuánto manda a cada efecto** | **la ley del envío no está medida** |
-| 12 | Envíos de monitor por auxiliar | **la ley del envío no está medida** |
+| 11 | Por cada instrumento: **cuánto manda a cada efecto** | **la ley del envío está acotada, no medida** (96b, 2026-09-12): no se desvía de `faderADb` más de 0,25 dB sobre 28 dB de recorrido, **con la linealidad del reverb sin poder decidirse** |
+| 12 | Envíos de monitor por auxiliar | **la ley del envío está acotada, no medida** (94, 2026-09-12): no se desvía de `faderADb` más de 0,31 dB —un escalón del medidor— sobre 27,87 dB. Con esa cota se pudo declarar un límite en decibeles y ADR-028 abrió las 240 rutas |
 | 13 | Guardar la instantánea al terminar | **construido** |
 | 14 | Cerrar la sesión con su registro exportable | **construido** |
 
