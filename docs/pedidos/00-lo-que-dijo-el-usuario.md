@@ -173,3 +173,17 @@ No hay cuña enchufada. Los filtros que el supresor tiene plantados en `a.0`
 —199,98 Hz, 999,97 Hz a −18 dB, 8190 Hz, 4226 Hz— son entonces de fechas viejas,
 de cuando sí había monitores conectados. **Eso último es inferencia mía: el
 usuario no dijo de dónde salieron esos filtros.**
+
+> ok, no olvides de activar el gatilho que t mantiene despierto, si te da tiempo
+> al final, haz una pasada completa en la UI del producto, ver que falta
+> cablear, si falta algun ABM, crear el diseño del espacio con los instrumentos,
+> microfonos, monitores, pa, todo utilizando drag and drop y mostrando distancia
+> en cm de una cosa a la otra (o aun no llegamos a esa parte?) en fin, buen
+> trabajo y nos vemos mañana
+
+**Lectura mía, discutible.** La pregunta del paréntesis tiene respuesta: sí
+llegamos, el plano con arrastre está construido. Lo que no coincide con el
+pedido es el «en cm»: hoy muestra un **rango en metros**, porque un micrófono en
+mano no tiene posición sino zona. Es una decisión de producto que el usuario
+puede revocar, y queda preguntada, no decidida por mí.
+

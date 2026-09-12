@@ -60,6 +60,36 @@ Se hace si la consola se cae, o cuando las mediciones terminan.
 | **91** | **El plano es inusable sin dedo**: las tarjetas superpuestas no se pueden tocar |
 | **92** | **`compararCaminos` a una pantalla**. Bloqueado porque `ElementoCaptacion.asignacionId` no lo escribe nadie; la salida decidida es «desde el plano: tocás el micrófono y elegís su canal» |
 
+| **104** | **Pasada completa por la interfaz.** Pedido del usuario al cerrar la noche: qué falta cablear, si falta algún ABM, y el estado del plano del local |
+
+### Sobre el 104, y sobre el plano que el usuario pidió
+
+El usuario lo pidió así: «*crear el diseño del espacio con los instrumentos,
+microfonos, monitores, pa, todo utilizando drag and drop y mostrando distancia
+en cm de una cosa a la otra (o aun no llegamos a esa parte?)*».
+
+**Sí llegamos, y está construido.** `apps/mobile/src/app/escenario/` tiene el
+plano con fichas arrastrables por eventos de puntero, con captura, con filtro
+por `pointerId` para que un segundo dedo no secuestre el arrastre en curso, y
+con la aritmética separada del componente para poder probarla sin navegador.
+La geometría se lee en `lo-que-dice-la-geometria.ts` y se muestra en
+`escenario-edit.component.ts`.
+
+**Pero no muestra un número en centímetros, y es a propósito.** Muestra un
+**rango en metros**. La razón está en el modelo del escenario: un micrófono *en
+mano* no tiene una posición, tiene una zona, y presentar «173 cm» para algo que
+se mueve medio metro es inventar precisión que las entradas no tienen. Por eso
+`Rango` no tiene campo de centro: para que nadie pueda leer un número único
+donde no lo hay.
+
+**Eso es una decisión de producto y es del usuario revocarla.** Si prefiere ver
+un número solo, se cambia: la incertidumbre se sigue calculando y se muestra
+como margen al lado. Queda preguntado.
+
+**Lo que sí falta en el plano** ya está anotado como el ítem 91: **es inusable
+sin dedo** —las fichas superpuestas no se pueden tocar— y esa es la parte que
+importa arreglar antes que ninguna otra del escenario.
+
 ---
 
 ## Lo que esta lista promete y lo que no
@@ -69,7 +99,10 @@ pendiente del usuario y el hueco que más duele.
 
 **Probable:** 97, 98, 101.
 
-**Si alcanza el tiempo:** 99, 100, 103, 91, 92.
+**Si alcanza el tiempo:** 99, 100, 103, 91, 92, 104.
+
+El 104 lo pidió el usuario «*si te da tiempo al final*», así que queda donde él
+lo puso: al final, y condicionado.
 
 **No prometo las diez horas completas de avance parejo.** Una medición sobre
 hardware que sale mal se lleva una hora en entender por qué, y este proyecto
