@@ -218,3 +218,22 @@ cita es una medición que nadie va a encontrar cuando la necesite.
 
 - `evidence/constantes-mixer-html-2026-09-09.txt` — captura archivada
 - `evidence/techo-medidor-2026-09-09.txt` — el techo real del medidor: 255, no 239
+- `evidence/ley-envio-aux-2026-09-12.txt` — **la ley del envío a un auxiliar**, del
+  canal 10 al auxiliar 3, con tono de 1 kHz a −12 dBFS. 22 valores. El testigo del
+  canal no derivó 0,00 dB, y el fader del canal no movió el auxiliar: `post = 0`
+  manda de verdad. Rango útil: 18 dB, y ahí está su límite — ver abajo.
+- `evidence/ley-envio-aux-caliente-2026-09-12.txt` — **corrida fallida, archivada
+  a propósito.** Se pasó `""` como lista de valores para saltear ese argumento y
+  llegar al siguiente; `??` no cae al valor por defecto con una cadena vacía, así
+  que barrió un solo punto. Queda porque el guion **la archivó igual, sin
+  quejarse**: ése era el defecto real, y se corrigió agregando una guarda que
+  aborta con menos de cinco puntos.
+- `evidence/controles-del-bus-2026-09-12.txt` — **los controles de esa medición**:
+  la restauración releída por HTTP, el censo de quién más alimenta el auxiliar,
+  el estado del supresor al terminar, el enlace estéreo y la dinámica del canal.
+  Existe porque la primera versión los corrió desde un borrador y citó cifras
+  que no estaban archivadas en ningún lado.
+- `evidence/ley-envio-aux-caliente-2026-09-12b.txt` — la misma medición con el
+  tono más caliente —a −1 dBFS en vez de −12—, para estirar el rango útil y ver
+  si el desvío contra `faderADb` crece por encima de la resolución del medidor.
+  El testigo del canal lo confirma: pasó de −48,66 a −37,66 dB.

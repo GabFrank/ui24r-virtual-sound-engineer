@@ -1,0 +1,49 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T04:57:54.499Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/controles-del-bus.ts 10 2 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/controles-del-bus.ts sha256:aeee182d327c1fdf
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> auxiliar 3 (a.2), 6665 claves leidas
+
+=== 1. RESTAURACION, releida por HTTP ===
+   i.9.aux.2.value      0
+   i.9.mix              0.7647058824
+   hw.9.gain            0.2508445026
+
+=== 2. QUIEN MAS ALIMENTA EL AUXILIAR 3 ===
+   i.1.aux.2.value = 0.3547239459   (canal 2, "BAJO OKU", silencio=0)
+   i.15.aux.2.value = 0.2968868138   (canal 16, "DJEMBES", silencio=1)
+   i.18.aux.2.value = 0.7561213738   (canal 19, "DJEMBE MARCOS", silencio=0)
+   canales que mandan algo: 3
+   Con senal en ellos, el piso del barrido es la suma y no el envio.
+
+=== 3. EL SUPRESOR DEL BUS ===
+   a.2.afs.enabled = 0
+   filtros plantados: 0   (0 = no aprendio nada)
+
+=== 4. ENLACE ESTEREO Y SILENCIOS ===
+   a.2.stereoIndex        -1
+   a.3.stereoIndex        -1
+   a.2.mute               0
+   a.2.mix                0
+   i.9.aux.2.mute         0
+   i.9.aux.2.post         0
+   i.9.aux.2.postproc     1
+   settings.auxsendpoint  1
+
+=== 5. DINAMICA Y PUERTA DEL CANAL ===
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.gate.enabled       1
+   i.9.gate.thresh        0
+   i.9.gate.depth         0
+   ratio 1 = 1:1, o sea el compresor esta puesto y no comprime (VtoRATIO = 1/a).
+   depth 0 = atenuacion MAXIMA de la puerta (VtoGATE_DEPTH = 60a - 60), escala invertida.
+
+
+# salida del proceso: 0
