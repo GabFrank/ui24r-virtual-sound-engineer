@@ -124,7 +124,7 @@ npm run validate:templates  # acentos graves y llamadas desde plantilla
 npm run validate:limites    # límites entre paquetes
 
 npm run build:dev -w mobile          # compilación con la galería de diseño
-node tools/visual/flujo.mjs          # 25 pasos del camino de usuario, 2 anchos
+node tools/visual/flujo.mjs          # 27 pasos del camino de usuario, 2 anchos
 node tools/visual/capture.mjs        # escenarios del protocolo + sistema de diseño
 node tools/mixer-sim/src/server.mjs  # simulador de la consola
 ```

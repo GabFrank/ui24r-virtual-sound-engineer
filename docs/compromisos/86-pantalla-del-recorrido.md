@@ -35,7 +35,7 @@ persista**, aunque un docblock de `1a0f703` decía que quedaba guardado.
 | C13 | Se arrastra **desde un asidero**, y la fila entera sigue sirviendo para desplazar la lista | Que arrastrar la fila 3 desplace la página, o que no se llegue a la fila 20 de 24 | **Decisión del usuario**, mismo archivo |
 | C14 | «Restaurar el orden propuesto» **olvida** el orden guardado, no lo congela | Que después de restaurar, corregir la clasificación de un canal no mueva el orden | **Decisión del usuario**, mismo archivo |
 | C15 | **Guardar el orden no pisa nada ni se pierde**, en las dos direcciones: ni la asignación de canales borra el orden, ni el arrastre borra un cambio hecho en perfiles | Guardar un orden, ir a canales sin reiniciar, volver, y que el orden no esté; o editar la banda en perfiles durante una sesión, arrastrar, y perder el nombre | **Derivación de un defecto verificado**: `band.service.ts` hace spread sobre su propia señal cacheada |
-| C10 | El paso nuevo entra en el camino de usuario verificado (`tools/visual/flujo.mjs`, hoy 25 pasos) y en el registro estructurado de `docs/logging.md` | Que el flujo visual no lo recorra, o que no quede registro de qué se recorrió | **Obligación**: `CONTRIBUTING.md`, definición de terminado |
+| C10 | El paso nuevo entra en el camino de usuario verificado (`tools/visual/flujo.mjs`, hoy 27 pasos) y en el registro estructurado de `docs/logging.md` | Que el flujo visual no lo recorra, o que no quede registro de qué se recorrió | **Obligación**: `CONTRIBUTING.md`, definición de terminado |
 
 ## De dónde sale el orden, y qué es decisión
 

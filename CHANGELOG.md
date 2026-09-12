@@ -46,6 +46,37 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **Los blancos táctiles se miden, en cada paso y en los dos anchos.** El sistema
+  de diseño promete 48 píxeles como mínimo en dos lugares y **nada lo
+  comprobaba**: el recorrido visual medía un único rectángulo, el del paro, y el
+  resto de la promesa vivía en la palabra de quien escribió cada pantalla. Ya
+  había fallado en silencio — un blanco declarado de 48 que medía 26,7 porque el
+  dibujo se estiraba.
+
+  **La primera corrida dio cinco avisos y ninguno era un blanco chico**: los
+  cinco eran el mismo error de la comprobación, que medía la caja del elemento y
+  no el área que recibe el toque. Hay dos mecanismos legítimos que las separan
+  —un enlace con un pseudoelemento estirado sobre toda su fila, y una casilla
+  dentro de la etiqueta que la alterna— y **tratarlos como excepciones habría
+  vaciado la comprobación**. No son elementos que incumplen y se perdonan: son
+  elementos cuyo blanco real es otro.
+
+  Con el área efectiva medida: **27 pasos, dos anchos, cero incumplimientos**. Y
+  con control positivo, porque una comprobación que no falla nunca no comprueba
+  nada: achicando a propósito la etiqueta de una casilla, el área efectiva cae a
+  44 píxeles y la comprobación la acusa en los dos anchos.
+
+- **El recorrido guiado entró en el camino de usuario verificado.** Era la
+  obligación que quedó sin cumplir del contrato de esa pantalla, y un auditor la
+  había predicho antes de que se escribiera: el recorrido visual no visitaba ni
+  canales ni recorrido, así que la pantalla nueva no se capturaba en ningún ancho.
+  Se capturan el bloqueo por estado y el estado vacío; la lista con filas necesita
+  canales asignados, y asignar canales necesita la consola. Queda declarado.
+
+- **La tabla de números en letras del validador llegaba hasta veinticinco.** Al
+  pasar el recorrido de 25 a 27 pasos, el validador contó bien y no supo leer la
+  palabra. Ahora llega a veintinueve.
+
 - **La pantalla del recorrido, y el primer ciclo completo del protocolo de
   verificación.** Se llega desde la sesión y sólo en configuración de canales,
   porque el recorrido toca ganancia e INV-006 la confina ahí. Se arrastra desde

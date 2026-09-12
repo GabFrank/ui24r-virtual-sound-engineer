@@ -12,7 +12,7 @@
 
 import { spawn } from 'node:child_process';
 import { connect } from 'node:net';
-import { mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,10 +24,39 @@ const OUT = join(AQUI, 'out');
 const DIST = join(RAIZ, 'apps', 'mobile', 'dist', 'mobile', 'browser');
 const PUERTO_WEB = 4321;
 
+/**
+ * El mínimo táctil, en píxeles.
+ *
+ * Sale de `--tap-min` en `apps/mobile/src/styles/_tokens.scss` y de
+ * `docs/design-system.md`, que lo promete en dos lugares. Se comprueba contra
+ * la ficha al arrancar: dos números que dicen lo mismo y pueden separarse son
+ * un defecto esperando.
+ */
+const TAP_MIN_PX = 48;
+
 const TAMANIOS = [
   { id: 'tablet', width: 1280, height: 900 },
   { id: 'telefono', width: 390, height: 844 },
 ];
+
+/**
+ * El 48 de acá y el de la ficha tienen que ser el mismo.
+ *
+ * Este archivo no puede leer una ficha CSS en tiempo de ejecución del navegador
+ * sin cargar la aplicación, así que se lo comprueba contra el archivo de
+ * tokens al arrancar. Es el mismo patrón con que el editor del escenario ata su
+ * blanco táctil, y existe por el mismo motivo.
+ */
+function comprobarLaFicha() {
+  const tokens = readFileSync(join(RAIZ, 'apps', 'mobile', 'src', 'styles', '_tokens.scss'), 'utf8');
+  const m = /--tap-min:\s*(\d+)px/.exec(tokens);
+  if (m === null) throw new Error('no existe la ficha --tap-min en _tokens.scss');
+  if (Number(m[1]) !== TAP_MIN_PX) {
+    throw new Error(
+      `la ficha --tap-min vale ${m[1]} px y flujo.mjs comprueba contra ${TAP_MIN_PX}: se separaron`,
+    );
+  }
+}
 
 const procesos = [];
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -124,6 +153,79 @@ async function recorrer(contexto, tamanio) {
       fallos.push(
         `paso ${n} (${nombre}): «${desborde.donde}» ${desborde.modo} en horizontal, ` +
         `${desborde.ancho} px de contenido en ${desborde.visible} de ancho`,
+      );
+    }
+
+    // **Los blancos táctiles, medidos.** El sistema de diseño promete 48 píxeles
+    // como mínimo en dos lugares, y hasta ahora nada lo comprobaba: se medía un
+    // único rectángulo, el del paro en diálogo, y el resto de la promesa vivía
+    // en la palabra de quien escribió cada pantalla.
+    //
+    // Ya falló una vez y en silencio: en el editor del escenario, un blanco
+    // declarado de 48 medía **26,7** en una tablet angosta, porque el dibujo se
+    // estiraba y una unidad de dibujo no era un píxel de pantalla. Por eso se
+    // mide `getBoundingClientRect()`, que devuelve el rectángulo **dibujado**,
+    // después de cualquier transformación — y no el tamaño nominal del estilo.
+    const chicos = await p.evaluate((minimo) => {
+      const INTERACTIVOS = 'button, a[href], input, select, textarea, [role="button"], [tabindex]';
+
+      /**
+       * El rectángulo que de verdad recibe el toque.
+       *
+       * 1. **El enlace estirado.** Un `<a>` con un `::after` absoluto y pegado a
+       *    los cuatro bordes cubre toda su fila: es el patrón con que una fila
+       *    de tabla entera se vuelve un enlace. El enlace mide el ancho de su
+       *    texto y se toca la fila.
+       * 2. **La casilla dentro de una etiqueta.** Tocar el `<label>` alterna la
+       *    casilla: ése es el blanco, no los 22 píxeles del cuadradito.
+       *
+       * Si no hay ninguno de los dos, devuelve la caja propia.
+       */
+      const areaEfectiva = (el, propia) => {
+        const despues = getComputedStyle(el, '::after');
+        const pegado = despues.position === 'absolute'
+          && ['top', 'right', 'bottom', 'left'].every((l) => despues[l] === '0px');
+        if (pegado && el.offsetParent !== null) return el.offsetParent.getBoundingClientRect();
+        const etiqueta = el.closest('label');
+        if (etiqueta !== null && el.matches('input, select, textarea')) {
+          return etiqueta.getBoundingClientRect();
+        }
+        return propia;
+      };
+      const malos = [];
+      for (const el of document.querySelectorAll(INTERACTIVOS)) {
+        if (el.tabIndex < 0) continue;
+        if (el.matches('input[type=hidden]')) continue;
+        const r = el.getBoundingClientRect();
+        // Lo invisible o de tamaño cero no se puede tocar. Los textos sólo para
+        // lectores de pantalla miden un píxel y esconden su contenido a
+        // propósito: el desborde ya los exceptúa por lo mismo.
+        if (r.width <= 1 || r.height <= 1) continue;
+        if (getComputedStyle(el).visibility === 'hidden') continue;
+        // Un enlace en medio de una oración tiene el alto de la línea y no es un
+        // objetivo táctil en el sentido de la regla: agrandarlo rompería el
+        // párrafo. **Es una decisión, no algo que el sistema de diseño diga.**
+        if (el.tagName === 'A' && el.closest('p, li') !== null) continue;
+        // **Lo que se mide es el área que recibe el toque, no la caja del
+        // elemento**, y hay dos mecanismos legítimos que las separan. Los dos
+        // aparecieron la primera vez que esto corrió, y tratarlos como
+        // excepciones habría vaciado la comprobación: no son elementos que
+        // incumplen y se perdonan, son elementos cuyo blanco real es otro.
+        const efectivo = areaEfectiva(el, r);
+        if (efectivo.width >= minimo && efectivo.height >= minimo) continue;
+        const clase = String(el.className || '').split(' ')[0];
+        malos.push({
+          donde: `${el.tagName.toLowerCase()}${clase ? '.' + clase : ''}`,
+          texto: (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24),
+          ancho: Math.round(efectivo.width), alto: Math.round(efectivo.height),
+        });
+      }
+      return malos;
+    }, TAP_MIN_PX);
+    for (const c of chicos) {
+      fallos.push(
+        `paso ${n} (${nombre}) en ${tamanio.id}: «${c.donde}${c.texto ? ' · ' + c.texto : ''}» `
+        + `mide ${c.ancho}×${c.alto} px y el mínimo es ${TAP_MIN_PX}`,
       );
     }
 
@@ -267,11 +369,40 @@ async function recorrer(contexto, tamanio) {
   await esperar(400);
   await paso(17, 'sesion-setup', 'avance de estado según la tabla de transiciones');
 
+  // **El recorrido guiado, en los dos anchos.** Hasta acá `flujo.mjs` no visitaba
+  // ni canales ni recorrido, así que la pantalla nueva no se capturaba en ningún
+  // ancho y sus blancos táctiles no se medían. Era una obligación del contrato
+  // de esa pantalla que quedó sin cumplir, y un auditor lo predijo antes de que
+  // se escribiera.
+  //
+  // **Lo que se puede capturar sin consola es el bloqueo por estado y el estado
+  // vacío**: el recorrido se arma con los canales asignados, y asignar canales
+  // necesita la consola. La lista con filas y el arrastre quedan fuera de este
+  // camino, y eso está declarado en `docs/compromisos/93-blancos-tactiles.md`.
+  // Se navega por clic y no por `goto`: el servidor estático de este recorrido
+  // no resuelve rutas profundas, y un `goto` a `/sesion/recorrido` devuelve 404
+  // en vez de cargar la aplicación.
+  await p.click('[data-atajo="recorrido"]');
+  await p.waitForSelector('ui-empty');
+  await paso(18, 'recorrido-otro-estado', 'el recorrido dice por qué no se puede en este estado');
+
+  await p.click('ui-page-header ui-button button');
+  await p.waitForSelector('[data-estado="CALIBRATING"]');
+  await p.click('[data-estado="CALIBRATING"]');
+  await esperar(400);
+  await p.click('[data-estado="CHANNEL_SETUP"]');
+  await esperar(400);
+  await p.click('[data-atajo="recorrido"]');
+  await p.waitForSelector('ui-empty');
+  await paso(19, 'recorrido-vacio', 'el recorrido sin canales asignados dice qué falta');
+  await p.click('ui-page-header ui-button button');
+  await p.waitForSelector('[data-estado]');
+
   await p.click('[data-destino="historial"]');
-  await paso(18, 'historial', 'la sesión en curso ya figura en el historial');
+  await paso(20, 'historial', 'la sesión en curso ya figura en el historial');
 
   await p.click('[data-destino="ajustes"]');
-  await paso(19, 'ajustes', 'ajustes: consola, actualización y datos');
+  await paso(21, 'ajustes', 'ajustes: consola, actualización y datos');
 
   // El registro persistente tiene que tener algo dentro para este punto: se
   // vienen guardando bandas, locales y una sesión. La comprobación existe
@@ -283,23 +414,23 @@ async function recorrer(contexto, tamanio) {
   await lineas.first().waitFor({ timeout: 5000 }).catch(() => { /* el conteo lo dice */ });
   const eventos = await lineas.count();
   if (eventos === 0) fallos.push('el registro guardado no devolvió ningún evento');
-  await paso(20, 'registro', 'el registro guardado, con lo que hizo la aplicación');
+  await paso(22, 'registro', 'el registro guardado, con lo que hizo la aplicación');
 
   // --- Cierre ---
   await p.click('[data-destino="sesion"]');
   await p.click('ui-page-header ui-button button');
   await p.waitForSelector('ui-dialog[titulo="Cerrar la sesión"] [open]');
-  await paso(21, 'cerrar', 'confirmación de cierre: no se puede reabrir');
+  await paso(23, 'cerrar', 'confirmación de cierre: no se puede reabrir');
   await p.click('ui-dialog[titulo="Cerrar la sesión"] [pie] ui-button:last-child button');
   await esperar(500);
-  await paso(22, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
+  await paso(24, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
 
   await p.click('[data-destino="historial"]');
   // La tabla y la lista de tarjetas coexisten en el árbol; solo una es
   // visible según el ancho. Se elige la que de verdad se ve.
   await p.locator('tbody tr, a.tarjeta').locator('visible=true').first().click();
   await esperar(400);
-  await paso(23, 'detalle', 'detalle de la sesión cerrada, solo lectura');
+  await paso(25, 'detalle', 'detalle de la sesión cerrada, solo lectura');
 
   // --- Prueba de conexión ---
   //
@@ -308,7 +439,7 @@ async function recorrer(contexto, tamanio) {
   // otro paso.
   await p.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/diagnostico`, { waitUntil: 'networkidle' });
   await p.waitForSelector('ui-page-header');
-  await paso(24, 'diagnostico', 'prueba de conexión: mide y no escribe');
+  await paso(26, 'diagnostico', 'prueba de conexión: mide y no escribe');
 
   // --- INV-019: el paro tiene que poder tocarse también con un diálogo abierto ---
   //
@@ -344,7 +475,7 @@ async function recorrer(contexto, tamanio) {
   });
   if (paroAlcanzable !== null) fallos.push(`INV-019 en diálogo: ${paroAlcanzable}`);
 
-  await paso(25, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
+  await paso(27, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
 
   await p.close();
   return fallos;
@@ -387,6 +518,7 @@ function navegadorDisponible() {
 }
 
 async function main() {
+  comprobarLaFicha();
   if (!existsSync(DIST)) {
     console.error(`No existe ${DIST}. Ejecutar primero: npm run build:dev -w mobile`);
     process.exit(1);

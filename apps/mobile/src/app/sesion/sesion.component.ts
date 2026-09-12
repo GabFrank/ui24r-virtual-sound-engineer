@@ -73,7 +73,7 @@ import { ESTADOS, ESTADOS_EN_VIVO } from './estados';
                 <p class="dato">{{ c.banda?.asignaciones?.length ?? 0 }} asignados</p>
               </ui-card>
             </a>
-            <a class="atajo" routerLink="/sesion/recorrido">
+            <a class="atajo" data-atajo="recorrido" routerLink="/sesion/recorrido">
               <ui-card titulo="Recorrido" subtitulo="En qué orden se ajusta la banda">
                 @if (permiteGanancia()) {
                   <ui-badge tono="ok">Se puede recorrer</ui-badge>
