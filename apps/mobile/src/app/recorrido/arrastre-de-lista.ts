@@ -38,9 +38,15 @@ export interface ArrastreDeLista {
 /**
  * Cuántos píxeles tiene que moverse el dedo para que cuente como arrastre.
  *
- * Es el mismo umbral que usa el plano del escenario, y por el mismo motivo:
- * separa tocar de arrastrar. Sin él, apoyar el dedo en el asidero y levantarlo
+ * Separa tocar de arrastrar: sin él, apoyar el dedo en el asidero y levantarlo
  * cuenta como gesto y ensucia el dato.
+ *
+ * **Es el mismo número que usa el plano del escenario, y hay un test que los
+ * compara.** Un docblock anterior lo afirmaba sin nada que lo atara, y una
+ * auditoría comprobó que era cierto **hoy** y que podía dejar de serlo en
+ * silencio. No se importa de allá porque acoplaría dos pantallas que no tienen
+ * relación; se declara acá y se comprueba que no se separen, que es el mismo
+ * patrón con que este repositorio ata el blanco táctil a su ficha de diseño.
  */
 export const UMBRAL_DE_ARRASTRE_PX = 8;
 
@@ -66,6 +72,19 @@ export function destinoDelArrastre(a: ArrastreDeLista, ahoraY: number): number |
   return recortar(a.desde + saltos, 0, Math.max(0, a.cuantas - 1));
 }
 
+/**
+ * Recorta, y trata lo que no es un número finito como el mínimo.
+ *
+ * **La guarda de `NaN` quedó pendiente en un barrido de mutaciones**: el auditor
+ * rastreó los tres llamadores y no encontró camino vivo desde la pantalla
+ * —`clientY` y la altura del rectángulo son finitos—, pero no declaró
+ * equivalencia por no haber encontrado contraejemplo, que es lo correcto.
+ *
+ * Se resuelve fijándola con un caso en vez de borrarla: la firma declara
+ * `number`, que incluye `NaN`, y estas funciones son de la interfaz exportada.
+ * El criterio del proyecto es que una defensa **inalcanzable** se saca; ésta es
+ * alcanzable desde afuera, así que se prueba.
+ */
 function recortar(v: number, min: number, max: number): number {
   if (!Number.isFinite(v)) return min;
   return Math.min(max, Math.max(min, v));

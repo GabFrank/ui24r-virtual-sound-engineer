@@ -169,11 +169,19 @@ export function ordenPropuesto(
 }
 
 function puestoDe(i: Instrumento | null): number {
-  // **Sin `?? PUESTO_DESCONOCIDO` al final**, que era inalcanzable: la tabla es
-  // un `Record` total sobre `FuenteId`, así que toda fuente clasificada tiene
-  // puesto. Una auditoría lo probó borrándolo y ningún test cambió. Dejarlo
-  // hacía parecer que había una defensa donde no hacía falta ninguna, y el
-  // comentario que lo justificaba describía una rama que no puede ejecutarse.
+  // **Las dos mitades de esta guarda no son igual de alcanzables, y la que los
+  // tests cubrían era la que la pantalla no puede producir.** Un barrido de
+  // mutaciones lo delató: borrar `i.fuente === null` dejaba las 983 pruebas en
+  // verde, y con eso un canal sin clasificar sale **primero** de la lista —lo
+  // contrario exacto de lo que este archivo promete—.
+  //
+  // El motivo es que `instrumentoDeAsignacion()`, que es lo único que la
+  // pantalla pasa acá, **nunca devuelve `null`**: para un texto que el catálogo
+  // no reconoce devuelve `{ fuente: null, … }`. O sea que la rama viva es la
+  // segunda, y era la única sin test.
+  //
+  // Se deja el `i === null` porque la firma lo admite y alguien puede llamar
+  // con eso; lo que cambió es que ahora las dos tienen su caso.
   if (i === null || i.fuente === null) return PUESTO_DESCONOCIDO;
   return PUESTO_POR_FUENTE[i.fuente];
 }
@@ -251,6 +259,28 @@ export function recorridoDeLaBanda(
     fuera: propuesto.filter((p) => afuera.has(p.asignacionId)),
     ordenPropio: ordenGuardado !== null,
   };
+}
+
+/**
+ * Saca del orden y de la lista de excluidos los identificadores que ya no
+ * existen.
+ *
+ * **Hace falta porque los muertos no se limpian solos y uno de los dos arreglos
+ * tiene consecuencia visible.** Un auditor lo encontró: quitar la asignación de
+ * un canal y volver a asignarla **acuña un identificador nuevo**, así que un
+ * canal que el usuario sacó del recorrido, desasignó y volvió a asignar
+ * **vuelve adentro** — la decisión del usuario se revierte sola y sin aviso. Y
+ * los dos arreglos crecen sin techo dentro del documento de la banda.
+ *
+ * Se poda **al guardar** y no al leer: leer no escribe, y podar en la lectura
+ * dejaría el disco con basura que reaparece en cada apertura.
+ */
+export function podarIdsMuertos(
+  ids: readonly ChannelAssignmentId[],
+  asignaciones: readonly ChannelAssignment[],
+): readonly ChannelAssignmentId[] {
+  const vivos = new Set(asignaciones.map((a) => a.id));
+  return ids.filter((id) => vivos.has(id));
 }
 
 /**

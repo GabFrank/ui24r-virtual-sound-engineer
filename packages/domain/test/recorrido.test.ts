@@ -268,7 +268,7 @@ test('cada etapa declara si su ley está medida, y hoy sólo lo está la gananci
 
 // --- El recorrido completo, y lo que un auditor pidió comprobar ------------
 
-import { moverPaso, normalizarBanda, recorridoDeLaBanda } from '../src/index.ts';
+import { moverPaso, normalizarBanda, podarIdsMuertos, recorridoDeLaBanda } from '../src/index.ts';
 
 const CATALOGO: Record<string, Instrumento | null> = {
   Bombo: como('BOMBO'), Bajo: como('BAJO'), Guitarra: como('GUITARRA'),
@@ -386,4 +386,38 @@ test('una banda sin los campos nuevos se lee sin romperse', () => {
   // Y una que ya los tiene no se toca.
   const nueva = { ...vieja, ordenDelRecorrido: ['x'], fueraDelRecorrido: ['y'] };
   strictEqual(normalizarBanda(nueva as never), nueva as never, 'devuelve el mismo objeto');
+});
+
+test('un instrumento con fuente en NULO va al final, no al principio', () => {
+  // **Es la rama que la pantalla realmente produce**, y era la única sin test.
+  // `instrumentoDeAsignacion()` nunca devuelve `null`: para un texto que el
+  // catálogo no reconoce devuelve `{ fuente: null, … }`. Un barrido de
+  // mutaciones mostró que borrar esa mitad de la guarda dejaba toda la suite en
+  // verde, y con eso el canal sin clasificar salía PRIMERO.
+  const sinClasificar: Instrumento = {
+    fuente: null, variante: null, rol: null, textoOriginal: 'zzz talkback qwerty',
+  };
+  const r = ordenPropuesto(
+    [canal(1, 'raro'), canal(2, 'Voz')],
+    (a) => (a.instrumento === 'raro' ? sinClasificar : como('VOZ')),
+  );
+  deepStrictEqual(r.map((p) => p.etiqueta), ['Voz', 'raro'], 'lo no clasificado va al final');
+  strictEqual(r[1]?.puestoPropuesto, PUESTO_DESCONOCIDO);
+  // Y la otra mitad de la guarda, la del instrumento ausente, sigue cubierta.
+  strictEqual(ordenPropuesto([canal(1, 'x')], () => null)[0]?.puestoPropuesto, PUESTO_DESCONOCIDO);
+});
+
+test('los identificadores muertos se podan, para que una decisión no se revierta sola', () => {
+  // **Quitar y volver a asignar un canal acuña un identificador nuevo.** Sin
+  // podar, un canal que el usuario sacó del recorrido, desasignó y reasignó
+  // vuelve adentro: su decisión se revierte sin aviso. Y los arreglos crecen sin
+  // techo dentro del documento de la banda. Lo encontró una auditoría.
+  const vivas = [canal(1, 'Voz'), canal(2, 'Bombo')];
+  const conMuertos = ['ch_1', 'ch_99', 'ch_2'] as ChannelAssignmentId[];
+  deepStrictEqual(podarIdsMuertos(conMuertos, vivas), ['ch_1', 'ch_2'], 'se va el que no existe');
+  // El orden de los que quedan no se toca.
+  deepStrictEqual(podarIdsMuertos(['ch_2', 'ch_1'] as ChannelAssignmentId[], vivas), ['ch_2', 'ch_1']);
+  // Control positivo: sin muertos, no se pierde nadie.
+  deepStrictEqual(podarIdsMuertos(['ch_1', 'ch_2'] as ChannelAssignmentId[], vivas), ['ch_1', 'ch_2']);
+  deepStrictEqual(podarIdsMuertos([], vivas), []);
 });

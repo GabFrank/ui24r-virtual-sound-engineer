@@ -46,6 +46,65 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **La pantalla del recorrido, y el primer ciclo completo del protocolo de
+  verificación.** Se llega desde la sesión y sólo en configuración de canales,
+  porque el recorrido toca ganancia e INV-006 la confina ahí. Se arrastra desde
+  un asidero —la fila entera queda libre para desplazar la lista, que es lo que
+  permite llegar a la fila 20 de 24—, se guarda al soltar, se pueden sacar y
+  traer canales, y «volver al orden propuesto» **olvida** el orden guardado en
+  vez de congelarlo, para que la propuesta siga acompañando si el catálogo
+  mejora. Las cuatro son decisiones del usuario, registradas en
+  `docs/pedidos/2026-09-11-recorrido.md`.
+
+  **Lo nuevo no es la pantalla: es que el criterio de corrección se fijó antes
+  que la solución.** Un auditor registró sus expectativas y diez casos
+  reservados sin ver ninguna implementación, y después contrastó. De las cinco
+  trampas que había nombrado —arrastre que no funciona con el dedo, persistir
+  números de canal, la pantalla reordenando por su cuenta, una migración
+  innecesaria, y etapas con la cadena escrita— **no cayó ninguna**, y el caso
+  que reservó para delatar la tercera ya es un test del repositorio.
+
+- **Un canal sin clasificar salía primero de la lista, con las 983 pruebas en
+  verde.** La guarda que lo manda al final tiene dos mitades y **los tests
+  cubrían la que la pantalla no puede alcanzar**: el clasificador nunca devuelve
+  un instrumento ausente, devuelve uno con la fuente en nulo. Borrar esa mitad no
+  rompía nada. Lo delató un barrido de mutaciones, y es lo contrario exacto de lo
+  que ese archivo promete.
+
+- **Un canal sacado del recorrido volvía solo.** Quitar la asignación de un canal
+  y reasignarla acuña un identificador nuevo, así que la exclusión que el usuario
+  había hecho se revertía sin aviso — y los dos arreglos crecían sin techo dentro
+  del documento de la banda. Ahora se podan al guardar, no al leer: leer no
+  escribe.
+
+- **La etapa de ganancia no llevaba a ningún lado.** La función de navegación
+  existía y **no la llamaba nadie**: las etapas eran texto inerte dentro de un
+  contenedor oculto para lectores de pantalla. Era el compromiso más visible del
+  contrato y quedó como código muerto hasta que el contraste lo buscó.
+
+- **Dos de los seis distintivos de etapa renderizaban el mismo texto.** Recortar
+  a dos letras daba `A ` tanto para «A efectos» como para «A monitores». Lo
+  encontró contar, no leer.
+
+- **Un segundo dedo reemplazaba el arrastre en curso.** Tres de los cuatro
+  manejadores filtraban por puntero y el de apoyar no, así que el primer dedo
+  quedaba huérfano y su gesto se perdía en silencio — mientras el mensaje del
+  commit afirmaba lo contrario. El precedente del que se copió la lección tiene
+  la misma ausencia: viajó con su agujero adentro.
+
+- **El botón de sacar seguía activo durante un arrastre**, y como el índice se
+  captura al apoyar y no se revalida, movía la fila equivocada.
+
+- **«Un solo camino de escritura» era falso: hay tres.** El defecto que el
+  compromiso nombraba estaba cerrado, y el mismo defecto en la dirección inversa
+  estaba abierto: editar la banda en perfiles durante una sesión dejaba la caché
+  vieja, y el primer arrastre habría reescrito el perfil entero desde ella,
+  pisando el nombre y los integrantes. El compromiso escrito así lo habría dado
+  por cubierto.
+
+- **Y un umbral duplicado con un docblock que afirmaba que era compartido.** Era
+  cierto ese día y nada lo ataba.
+
 - **Hice un documento para no inventar el orden, y después inventé el acuerdo
   entre las fuentes.** Es el hallazgo más caro de esta tanda y no fue un detalle
   de cita: el documento existe justamente para eso. Una auditoría bajó las tres
@@ -457,7 +516,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **966**. Los diez bloques son
+  auditorías, **987**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 

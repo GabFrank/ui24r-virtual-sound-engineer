@@ -34,7 +34,7 @@ persista**, aunque un docblock de `1a0f703` decía que quedaba guardado.
 | C12 | El orden se guarda **al soltar la fila**, y un arrastre que vuelve al mismo lugar **no escribe nada** | Salir sin guardar y perder el orden; o que un arrastre nulo deje la pantalla sucia | **Decisión del usuario**, mismo archivo |
 | C13 | Se arrastra **desde un asidero**, y la fila entera sigue sirviendo para desplazar la lista | Que arrastrar la fila 3 desplace la página, o que no se llegue a la fila 20 de 24 | **Decisión del usuario**, mismo archivo |
 | C14 | «Restaurar el orden propuesto» **olvida** el orden guardado, no lo congela | Que después de restaurar, corregir la clasificación de un canal no mueva el orden | **Decisión del usuario**, mismo archivo |
-| C15 | **Hay un solo camino de escritura** a `BandProfile`, y guardar el orden no puede perderse cuando después se asigna un canal | Guardar un orden, ir a canales sin reiniciar, cambiar algo, volver, y que el orden no esté | **Derivación de un defecto verificado**: `band.service.ts:126` hace spread sobre su propia señal cacheada |
+| C15 | **Guardar el orden no pisa nada ni se pierde**, en las dos direcciones: ni la asignación de canales borra el orden, ni el arrastre borra un cambio hecho en perfiles | Guardar un orden, ir a canales sin reiniciar, volver, y que el orden no esté; o editar la banda en perfiles durante una sesión, arrastrar, y perder el nombre | **Derivación de un defecto verificado**: `band.service.ts` hace spread sobre su propia señal cacheada |
 | C10 | El paso nuevo entra en el camino de usuario verificado (`tools/visual/flujo.mjs`, hoy 25 pasos) y en el registro estructurado de `docs/logging.md` | Que el flujo visual no lo recorra, o que no quede registro de qué se recorrió | **Obligación**: `CONTRIBUTING.md`, definición de terminado |
 
 ## De dónde sale el orden, y qué es decisión
@@ -123,3 +123,12 @@ Todo esto lo encontró el auditor de procedencia antes de implementar:
    documento que no dice lo que se le atribuía** (el kit de batería).
 9. **La migración que decía hacer falta no hace falta**: `band_profile` guarda el
    documento entero en una columna JSON.
+
+### Y lo que cambió después del contraste
+
+**C15 estaba mal enunciado.** Decía «hay un solo camino de escritura» y **hay
+tres**: este servicio dos veces, y el repositorio directamente desde dos
+pantallas de perfiles. El defecto que el compromiso nombraba estaba cerrado; el
+mismo defecto **en la dirección inversa** estaba abierto, y el compromiso escrito
+así lo habría dado por cubierto. Reescrito como lo que de verdad se promete:
+que guardar el orden no pise nada ni se pierda, en las dos direcciones.

@@ -18,6 +18,12 @@ import {
   destinoDelArrastre, desplazamientoVisual, ordenEnVuelo, type ArrastreDeLista,
 } from './arrastre-de-lista';
 
+/** Los seis distintivos cortos, todos distintos entre sí. Hay un test. */
+const CORTO_DE_ETAPA: Readonly<Record<EtapaDeInstrumento, string>> = {
+  GANANCIA: 'Gan', PUERTA: 'Pue', ECUALIZADOR: 'Ecu',
+  COMPRESOR: 'Com', ENVIO_A_EFECTOS: 'Efe', ENVIO_A_MONITORES: 'Mon',
+};
+
 const NOMBRE_DE_ETAPA: Readonly<Record<EtapaDeInstrumento, string>> = {
   GANANCIA: 'Ganancia',
   PUERTA: 'Puerta',
@@ -87,12 +93,19 @@ const NOMBRE_DE_ETAPA: Readonly<Record<EtapaDeInstrumento, string>> = {
                   <strong>{{ pasos()[i]!.etiqueta }}</strong>
                   <span class="canal">canal {{ pasos()[i]!.canal }}</span>
                 </div>
-                <div class="etapas" aria-hidden="true">
+                <div class="etapas">
                   @for (e of etapas; track e.id) {
-                    <span class="etapa" [class.medida]="e.medida" [title]="e.titulo">{{ e.corto }}</span>
+                    @if (e.id === 'GANANCIA') {
+                      <button type="button" class="etapa medida enlace"
+                              [attr.aria-label]="'Ajustar la ganancia de ' + pasos()[i]!.etiqueta"
+                              (click)="irAGanancia()">{{ e.corto }}</button>
+                    } @else {
+                      <span class="etapa" [title]="e.titulo + ' — la ley no está medida'">{{ e.corto }}</span>
+                    }
                   }
                 </div>
-                <ui-button variante="sutil" (pulsado)="sacar(pasos()[i]!.asignacionId)">Sacar</ui-button>
+                <ui-button variante="sutil" [deshabilitado]="levantada() !== null"
+                           (pulsado)="sacar(pasos()[i]!.asignacionId)">Sacar</ui-button>
               </div>
             }
           </div>
@@ -174,6 +187,8 @@ const NOMBRE_DE_ETAPA: Readonly<Record<EtapaDeInstrumento, string>> = {
       background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
     }
     .etapa.medida { background: var(--ok-tenue); color: var(--ok); border-color: var(--ok); }
+    .etapa.enlace { cursor: pointer; text-decoration: underline; font: inherit;
+                    font-size: var(--txt-xxs); min-height: var(--tap-min); }
     .leyenda { display: flex; flex-direction: column; gap: var(--sp-2); }
     .renglon { display: flex; gap: var(--sp-3); align-items: center; }
     .pendiente { color: var(--warn); font-size: var(--txt-sm); }
@@ -193,9 +208,11 @@ export class RecorridoComponent {
   readonly etapas = ETAPAS_EN_ORDEN.map((id) => ({
     id,
     titulo: NOMBRE_DE_ETAPA[id],
-    // Dos letras alcanzan para distinguirlas en una fila angosta, y el nombre
-    // entero está en la leyenda de abajo.
-    corto: NOMBRE_DE_ETAPA[id].slice(0, 2),
+    // **Escritas, no recortadas.** Recortar a dos letras daba `'A '` para «A
+    // efectos» y `'A '` para «A monitores»: dos de las seis renderizaban lo
+    // mismo. Lo encontró una auditoría contando distintivos, no leyendo el
+    // código.
+    corto: CORTO_DE_ETAPA[id],
     // **Se lee del dominio, no de una lista escrita acá.** El día que una ley se
     // mida, esta pantalla cambia sola.
     medida: LEY_MEDIDA[id],
@@ -257,6 +274,13 @@ export class RecorridoComponent {
   });
 
   alApoyar(ev: PointerEvent, indice: number): void {
+    // **Un segundo dedo sobre otro asidero no reemplaza el arrastre en curso.**
+    // Los otros tres manejadores filtraban por puntero y éste no, así que el
+    // primer dedo quedaba huérfano: su `pointerup` se descartaba y el gesto se
+    // perdía en silencio. Lo encontró una auditoría, y el precedente del plano
+    // del escenario tiene la misma ausencia — la lección había viajado con su
+    // agujero adentro.
+    if (this.arrastre() !== null) return;
     const filas = this.lista()?.nativeElement.querySelectorAll('.fila');
     // **El alto se mide, no se supone.** Una constante escrita acá se separaría
     // del estilo en cuanto alguien cambiara un relleno, y el arrastre saltaría

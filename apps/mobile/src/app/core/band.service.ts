@@ -4,6 +4,7 @@ import {
   type BandProfile, type BandProfileId, type ChannelAssignment,
   type ChannelProfileType, type Instrumento, type MusicalRole,
 } from '@vse/domain';
+import { podarIdsMuertos } from '@vse/domain';
 import type { ChannelAssignmentId, BandMemberId } from '@vse/domain';
 import { Logger } from './logger';
 import { Repositorios } from './repos/repositorios';
@@ -146,13 +147,32 @@ export class BandService {
     orden: readonly ChannelAssignmentId[] | null,
     fuera: readonly ChannelAssignmentId[],
   ): Promise<void> {
-    const banda = this._banda();
-    if (banda === null) {
+    const enCache = this._banda();
+    if (enCache === null) {
       this.log.warn('system', 'recorrido_sin_banda', {});
       return;
     }
+    // **Se relee antes de escribir, y no es una precaución de más.** Hay tres
+    // caminos de escritura al perfil de banda: éste, la asignación de canales, y
+    // las pantallas de perfiles, que escriben por el repositorio sin tocar esta
+    // caché. Un auditor señaló la dirección que faltaba: editar la banda en
+    // perfiles durante una sesión deja esta caché vieja, y el primer arrastre en
+    // el recorrido reescribiría el perfil entero desde ella, **pisando el nombre
+    // y los integrantes recién guardados**.
+    //
+    // Releer cuesta una lectura del almacén local por arrastre y cierra esa
+    // puerta. La puerta general --que tres pantallas escriban la misma entidad
+    // por caminos distintos-- sigue abierta y es una tarea aparte.
+    const banda = (await this.repos.banda(enCache.id)) ?? enCache;
+    // **Se podan los identificadores muertos al guardar.** Quitar la asignación
+    // de un canal y volver a asignarla acuña un identificador nuevo, así que un
+    // canal que el usuario sacó del recorrido, desasignó y reasignó volvería
+    // adentro solo: su decisión se revertiría sin aviso. Y los dos arreglos
+    // crecerían sin techo dentro del documento de la banda.
     const actualizada: BandProfile = {
-      ...banda, ordenDelRecorrido: orden, fueraDelRecorrido: fuera,
+      ...banda,
+      ordenDelRecorrido: orden === null ? null : podarIdsMuertos(orden, banda.asignaciones),
+      fueraDelRecorrido: podarIdsMuertos(fuera, banda.asignaciones),
     };
     await this.repos.guardarBanda(actualizada);
     this._banda.set(actualizada);

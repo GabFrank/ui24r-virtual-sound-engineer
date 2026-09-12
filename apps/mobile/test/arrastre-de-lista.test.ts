@@ -4,6 +4,7 @@ import {
   destinoDelArrastre, desplazamientoVisual, ordenEnVuelo, UMBRAL_DE_ARRASTRE_PX,
   type ArrastreDeLista,
 } from '../src/app/recorrido/arrastre-de-lista.ts';
+import { UMBRAL_DE_ARRASTRE_PX as UMBRAL_DEL_PLANO } from '../src/app/escenario/plano.ts';
 
 /**
  * La aritmética del arrastre, probada sin navegador.
@@ -75,7 +76,29 @@ test('las demás filas se corren en vuelo para mostrar dónde va a caer', () => 
   deepStrictEqual(ordenEnVuelo(4, 3, -2), [3, 0, 1, 2]);
 });
 
-test('el umbral es más chico que una fila: ningún arrastre intencional se pierde', () => {
-  ok(UMBRAL_DE_ARRASTRE_PX < ALTO / 2);
-  ok(UMBRAL_DE_ARRASTRE_PX > 0);
+test('el umbral es el MISMO que el del plano, no uno parecido', () => {
+  // Estaban declarados dos veces, cada uno con su ocho, y un docblock afirmaba
+  // que eran el mismo. Era cierto y nada lo ataba. Ahora se reexporta.
+  strictEqual(UMBRAL_DE_ARRASTRE_PX, UMBRAL_DEL_PLANO);
+  strictEqual(UMBRAL_DE_ARRASTRE_PX, 8, 'y vale ocho, contra el número y no contra sí mismo');
+  ok(UMBRAL_DE_ARRASTRE_PX < ALTO / 2, 'más chico que media fila: no se pierde ningún arrastre');
+});
+
+test('el borde exacto del umbral cuenta como arrastre', () => {
+  // `<` y no `<=`: a exactamente ocho píxeles el gesto ya es un arrastre. Un
+  // barrido de mutaciones encontró que los tests saltaban el borde --usaban
+  // umbral menos uno y umbral más uno-- así que las dos versiones pasaban.
+  const a = arrastre(2);
+  ok(destinoDelArrastre(a, 500 + UMBRAL_DE_ARRASTRE_PX) !== null, 'justo en el umbral, sí');
+  ok(destinoDelArrastre(a, 500 - UMBRAL_DE_ARRASTRE_PX) !== null, 'y hacia arriba también');
+});
+
+test('un número que no es finito no se propaga a la cuenta', () => {
+  // La firma declara `number`, que incluye NaN, y estas funciones son de la
+  // interfaz exportada. Un barrido dejó esta guarda como pendiente --sin
+  // contraejemplo desde la pantalla y sin demostración de equivalencia--; se
+  // resuelve fijándola en vez de borrándola.
+  const a = arrastre(2);
+  strictEqual(destinoDelArrastre({ ...a, agarreY: NaN }, 500), 0);
+  strictEqual(desplazamientoVisual({ ...a, agarreY: NaN }, 500), -2 * ALTO);
 });

@@ -21,8 +21,8 @@ instantánea de la consola.
 | 2 | Cargar el local y el sistema de amplificación | **construido** |
 | 3 | Empezar la sesión eligiendo banda y local | **construido** |
 | 4 | Asignar qué entrada es qué instrumento | **construido** |
-| 5 | **Armar el escenario**: dónde está cada fuente, micrófono, monitor y caja | **falta entero** |
-| 6 | **Recorrido guiado, instrumento por instrumento** | orden y etapas construidos; falta la pantalla |
+| 5 | **Armar el escenario**: dónde está cada fuente, micrófono, monitor y caja | **construido** |
+| 6 | **Recorrido guiado, instrumento por instrumento** | **construido**; falta que entre en el camino de usuario verificado |
 | 7 | Por cada instrumento: ganancia | construido, y **medido** |
 | 8 | Por cada instrumento: **puerta** | **la ley del umbral no está medida** |
 | 9 | Por cada instrumento: **compresor** | **las leyes no están medidas** |
