@@ -159,11 +159,26 @@ Los desvíos de la corrida caliente, en orden de barrido:
 2⁻¹³. Y **crece monótonamente en los últimos tres** —0,12 → 0,25 → 0,31— justo
 hasta donde el barrido se corta porque el medidor toca el piso.
 
-Un residuo unilateral y creciente, truncado por el piso del instrumento, es la
-firma de **una diferencia de ley real que la corrida alcanzó a ver y no a
-resolver**. No es la firma de dos curvas iguales. «No se pudo distinguir» sigue
-siendo la acotación correcta; presentarla sin el patrón de signos era elegir la
-mitad del dato que convenía.
+Un residuo unilateral y creciente, truncado por el piso del instrumento, **es
+estructura y no dispersión**. Y hay **dos** explicaciones compatibles con lo
+medido: una diferencia de ley, o un efecto del medidor cerca de su piso.
+
+**Los datos favorecen la segunda, y este párrafo afirmaba la primera.** Decía
+que era «la firma de una diferencia de ley real». Dos cosas lo desmienten, y las
+encontró una auditoría de sobre-afirmación:
+
+- **El residuo máximo de cada corrida cae en su byte más bajo, no en el mismo
+  crudo**: 0,28 dB en el byte 2,9 (crudo 0,56) en la fría, 0,31 dB en el byte
+  5,4 (crudo 0,40) en la caliente. Una diferencia entre dos leyes es función del
+  crudo y se reproduciría crudo por crudo; lo que ordena estos datos es la
+  cercanía al piso del medidor.
+- **En la corrida de −12 dBFS los residuos NO son todos del mismo signo** —hay
+  dos negativos arriba—. «Los catorce tienen el mismo signo» es cierto de la
+  corrida caliente, y este documento lo presentaba como propiedad del fenómeno.
+
+«No se pudo distinguir» sigue siendo la acotación correcta. Presentarla sin el
+patrón de signos era elegir la mitad del dato que convenía; presentar el patrón
+como prueba de una diferencia de ley es el mismo error en la otra dirección.
 
 ## Lo que se puede afirmar
 
@@ -173,9 +188,21 @@ catorce puntos comparados**, sobre 27,87 dB desde el tope. Eso es todo.
 La primera versión decía «un asistente que convierta dB a crudo con `dbAFader`
 no se va a equivocar más de un escalón en ese tramo», y son tres saltos de más:
 se midió crudo → dB y la afirmación es sobre la inversa, cuyo error depende de
-la pendiente local; catorce puntos no acotan un tramo continuo; y cada lectura
-lleva ±0,167 dB de cuantización, así que el peor caso compatible con lo medido
-es ~0,48 dB, **más de un escalón**.
+la pendiente local; catorce puntos no acotan un tramo continuo; y la cuantización
+del instrumento agranda el peor caso.
+
+**Y ese peor caso estaba mal calculado: contaba una lectura y son dos.** Decía
+«cada lectura lleva ±0,167 dB, así que el peor caso es ~0,48 dB». La cantidad
+medida es la **atenuación**, o sea la diferencia entre el byte en el crudo *c* y
+el byte en el crudo 1,0, así que arrastra hasta **±0,3334** —dos veces medio
+escalón—. Peor caso: 0,3064 + 0,3334 = **~0,64 dB**, todavía más de un escalón.
+
+Es exactamente el hallazgo que el proyecto tiene registrado en
+`docs/backlog/hallazgo-umbral-de-una-diferencia.md`, aplicado acá a una **cifra
+publicada** en vez de a un criterio de falsación. Matiz honesto: la lectura de
+referencia (byte 89,0) no oscila y la del extremo sí, así que el peor caso real
+está entre 0,48 y 0,64; con la regla registrada del proyecto se publica 0,64.
+Lo encontró una auditoría de aritmética.
 
 ## Lo que NO prueba
 

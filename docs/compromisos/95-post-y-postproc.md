@@ -22,9 +22,23 @@ consola difundió cero rutas más).
 
 ## Lo que ya se sabe, de la medición 94
 
-**`post = 0` aísla de verdad.** Cuatro posiciones del fader del canal 10
-—0,765 / 0,50 / 0,30 / 0,765— y el auxiliar 3 leyó `−59,00 dB` las cuatro.
-Evidencia: `ley-envio-aux-caliente-2026-09-12b.txt`.
+**`post = 0` aísla.** Cuatro posiciones del fader del canal 10 —0,765 / 0,50 / 0,30 /
+0,765— y el auxiliar 3 quedó dentro de **0,15 dB**: −58,91 / −58,85 / −59,00 /
+−59,00. Menos de medio escalón del medidor. En la corrida fría la dispersión es
+de 0,06 dB. Evidencia: `ley-envio-aux-caliente-2026-09-12b.txt` y
+`ley-envio-aux-2026-09-12.txt`.
+
+**Este párrafo decía «leyó −59,00 dB las cuatro» y esa cifra no está en el
+archivo que citaba.** Sale de `ley-envio-aux-caliente-2026-09-12.txt` —sin
+sufijo—, la corrida de **un solo punto** que la medición 94 declara inservible y
+archiva como defecto. La 94 ya había corregido exactamente esto, con nombre y
+apellido, y la corrección no se propagó hasta acá: **la encontraron tres
+auditores por separado el 2026-09-12.** Es el patrón que la auditoría nombró
+como «una corrección se aplica donde se descubrió y no donde se propagó».
+
+Y «de verdad» era de más: cuatro lecturas dentro de 0,15 dB dicen que si el
+fader mueve el envío, lo mueve menos de lo que el instrumento resuelve. No
+dicen que no lo mueva.
 
 Eso mata de paso una duda que el auditor había levantado: `settings.auxsendpoint`
 vale 1 y **no pisa** al `post` del envío.

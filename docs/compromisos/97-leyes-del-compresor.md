@@ -163,13 +163,35 @@ canal 9, ni el supresor.
 | # | Qué se midió | Resultado |
 |---|---|---|
 | 1 | Pendiente del umbral **por la rodilla**, fuentes separadas 29,65 dB medidos | **95,6 ± 6,3** dB por unidad |
-| 2 | Ley de la razón a **6 dB** de exceso | Encaja con `E(1−a)`: desvío máximo 0,25 dB = **0,38 escalones** |
-| 3 | La misma a **18 dB** de exceso | **No encaja**: desvío máximo 4,48 dB = **6,72 escalones** |
+| 2 | Ley de la razón a **6 dB nominales** de exceso (7,09 reales, ver abajo) | Con el exceso nominal daba 0,25 dB = 0,38 escalones; **con el real, 0,73 dB = 1,10 escalones** |
+| 3 | La misma a **18 dB nominales** (19,09 reales) | **No encaja**: 4,48 dB con el nominal, **5,14 dB = 7,70 escalones** con el real |
 | 4 | Pendiente del umbral **por sustitución**, tres relaciones | **22,2 / 32,1 / 47,3** dB por unidad |
 
-**Ninguna de las dos pendientes se puede publicar.** 95,6 y 22,2 difieren por un
-factor de cuatro, y la de sustitución **depende de la relación**, cosa que una
-ley del umbral no puede hacer.
+**El exceso «de 6 dB» era de 7,09, y la fila 2 cambia de veredicto.** Una
+auditoría de aritmética lo despejó: la rodilla se definió como «el primer crudo
+con reducción > 0», y este mismo documento calcula que hace falta
+`0,984/(1−a)` = **1,09 dB de exceso** para que el medidor salga de cero con
+a = 0,1. O sea que en la rodilla la señal ya estaba 1,09 dB sobre el umbral, y
+bajar 6 dB más da 7,09 de exceso real, no 6.
+
+Con los excesos reales el desvío de la fila 2 pasa de 0,38 a **1,10 escalones**,
+por encima del umbral de un escalón que corresponde a una lectura sola. Y el
+cociente esperado de C3 pasa de 3,00 a 19,09/7,09 = **2,69**, contra los 1,58 a
+2,42 medidos: sigue sin encajar.
+
+**La conclusión no cambia: se refuerza.** El ajuste que parecía bueno a 6 dB era
+todavía peor de lo publicado. Lo que hay que retirar es la idea de que el modelo
+funcionaba en un extremo y fallaba en el otro; falla en los dos.
+
+**Ninguna de las dos pendientes se puede publicar**, y la de sustitución por una
+razón más que la que estaba escrita. 95,6 y 22,2 difieren por un factor de
+cuatro, y la de sustitución **depende de la relación**, cosa que una ley del
+umbral no puede hacer. Y además **está trazada a través de una saturación**: el
+guion toma el primer y el último punto útil, y la curva 2:1 está clavada en
+5,65 dB desde u = 0,30 hacia abajo —cinco filas idénticas—, así que las tres
+pendientes (22,2 / 32,1 / 47,3) son rectas por una meseta y **no son
+utilizables**. Lo que esa corrida sí sostiene, y es lo concluyente, es que las
+tres curvas **no coinciden**.
 
 ## Lo que sí queda establecido, y es un negativo
 
@@ -276,9 +298,23 @@ creyendo medir un bloque.
 | Hasta 11 dB, donde ya estaba verificado | 7 | 0,35 dB = **0,52 escalones** |
 | **Arriba de 11 dB, donde no lo estaba** | 5 | 0,35 dB = **0,52 escalones** |
 
-Sigue la caída real hasta **24,34 dB de reducción** dentro de medio escalón, y la
-precisión **no se degrada** en el tramo sin verificar. El testigo `pre` no se
-movió 0,00 dB en los trece puntos.
+Sigue la caída real hasta **24,34 dB de reducción** con un desvío máximo de
+0,35 dB —**0,52 escalones**, no «medio escalón», que es lo que decía acá dos
+líneas debajo de la tabla que dice 0,52— y la precisión **no se degrada** en el
+tramo sin verificar. El testigo `pre` no se movió más que la resolución del
+instrumento en los trece puntos: 0,00 dB leídos, que con un paso de 0,3334 es
+una cota y no un cero.
+
+**Y el desvío es sistemático en un sentido, que es distinto de ser ruido.** Los
+doce residuos no nulos de la evidencia son **todos negativos** (−0,02 y −0,35,
+ninguno positivo): el medidor de reducción informa siempre **algo menos** que la
+caída real, que es lo que se espera de un truncado a su propia rejilla de
+0,6668 dB.
+
+Esto no cambia la conclusión —el error del ítem 97 no está en el medidor— y hay
+que decirlo igual, porque un sesgo de un signo no es dispersión. Es el mismo
+patrón que la medición 94 se obligó a reportar de sus propios residuos, y acá se
+reportaba sólo el máximo. Lo encontró una auditoría de sobre-afirmación.
 
 **Mi hipótesis era falsa.** Iba a explicar cuatro observaciones con un
 instrumento defectuoso, y el instrumento está bien. **El error está en la ley**,

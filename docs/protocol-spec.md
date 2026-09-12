@@ -416,7 +416,13 @@ Dos trampas de escala que costaron una corrida cada una, y que conviene tener es
 
 **La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
 
-**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera de esta sesión se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+
+> **REFUTADAS contra el aparato el 2026-09-12.** No son «leídas y sin verificar»: se verificaron y no describen este compresor. Con `VtoTHRESH(a) = −90 + 96a`, `VtoRATIO(a) = 1/a` y una rodilla dura, el exceso despejado va de **10,0 a 25,6 dB en la misma corrida, con fuente y umbral quietos** — tiene que ser constante y no lo es. Las pendientes por sustitución dependen de la relación (22,2 / 32,1 / 47,3 dB por unidad) y los cocientes dan 1,58 a 2,42 donde el modelo pide 3,00. **Y no es culpa del instrumento**: el medidor de reducción se calibró contra la caída real de nivel y sigue hasta 24,34 dB con 0,35 dB de desvío, igual en el tramo que ya estaba verificado y en el que no.
+>
+> Lo que sí sigue valiendo de este párrafo es el **sentido** de `VtoRATIO`: el crudo 1 no comprime. Eso está medido aparte —con `a = 1` y el umbral en 0,14 la reducción informada es 0,00 y `entrada = pre`— así que la advertencia se sostiene por una medición y no por la fórmula.
+>
+> Aparece otra relación que encaja en un corte, `−20·log₁₀(a)`, dentro de 0,48 dB hasta a = 0,15. **No se declara ley**: con otro umbral predice 6,02 donde se midieron 2,98. Lo que falta es el barrido de **umbral × relación**, que da la superficie en vez de dos cortes. Detalle en `docs/compromisos/97-leyes-del-compresor.md`.
 
 **Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
 
@@ -449,7 +455,7 @@ La correspondencia entre lo que muestra el medidor y un **nivel digital real** n
 
 Todo lo demás de 4.3 son **diferencias** —forma, recorrido, balística, respuesta en frecuencia, repetibilidad, techo— y las diferencias no dependen de la ganancia analógica del camino. Por eso quedaron contestadas sin el bucle y el nivel absoluto no.
 
-De la cola de `VU2` está ubicada cada sección (§4.3) y falta el papel de cada byte dentro de los bloques de subgrupo y efecto.
+De la cola de `VU2` está ubicada cada sección (§4.2) y el papel de cada byte **ya está medido en los dos bloques**: el subgrupo el 2026-09-09 y el efecto el 2026-09-12 por la medición 96a (`+0/+1` no siguen al fader del bus, `+2/+3` sí, y el medidor toma después del procesador). **Lo que sigue abierto es la otra mitad**: a cuántos dB equivale un escalón de esos bytes. La 96b los convierte con la escala del medidor de **canal**, que no está medida sobre este bloque, así que todas sus cifras en dB heredan esa suposición.
 
 ---
 
@@ -665,14 +671,21 @@ Ida y vuelta sobre los escalones: **exacta**, error 0 dB sobre un rango de 63 dB
 
 ### 6.3 Otros rangos
 
-Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el aparato**: salen del código de la consola.
+Obtenidos ejecutando las funciones extraídas del código de la consola.
 
-| Parámetro | Rango | Función |
-|---|---|---|
-| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` |
-| Q | 0,05 … 15 | `0,05·300^V` |
-| Umbral de compresor | −90 … +6 dB | lineal |
-| Relación de compresor | — | `1/V` |
+**«No probado» y «refutado» no son lo mismo, y este encabezado los confundía.**
+Decía «ninguno probado contra el aparato», que después del 2026-09-12 es falso
+para dos filas: las dos del compresor se probaron **y no pasaron**. Un lector
+que ve «no probado» supone que la fórmula es lo mejor que hay; con «refutado»
+sabe que usarla es peor que no tener nada. Lo encontró una auditoría de
+coherencia.
+
+| Parámetro | Rango | Función | Estado |
+|---|---|---|---|
+| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | sin probar |
+| Q | 0,05 … 15 | `0,05·300^V` | sin probar |
+| Umbral de compresor | −90 … +6 dB | lineal | **REFUTADA** por la medición 97 (2026-09-12). El rango de esta fila *es* la fórmula refutada evaluada en 0 y en 1, así que tampoco es un rango medido |
+| Relación de compresor | — | `1/V` | **REFUTADA** en su forma. El **sentido** sí está medido: el crudo 1 no comprime |
 
 ---
 
@@ -694,6 +707,6 @@ Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia 
 - **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala, su recorrido, su balística, su respuesta en frecuencia y su techo ya están medidos; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
 - **La reconexión con cortes de red reales en los otros dos modos**: apagar el router y cambiar la IP de la tablet. El corte de red inalámbrica sí está medido, 20 de 20 ciclos.
 - **La transición de señal a silencio en `VU2`.**
-- **El papel de cada byte dentro de un bloque de subgrupo o de efecto.** Las secciones ya están ubicadas; lo que falta es cuál es el nivel y si hay pre y post.
+- **A cuántos dB equivale un escalón de los bytes de un bloque de subgrupo o de efecto.** Qué byte es el nivel y si hay previo y posterior **ya está medido** —el subgrupo el 2026-09-09, el efecto el 2026-09-12 por la 96a—, y este punto pedía las dos cosas. Falta la escala: la 96b convierte esos bytes con la del medidor de canal, que no está medida sobre este bloque.
 - **El mapeo `canal → entrada física` con el enrutamiento cambiado.** Medido el 2026-09-09: `src` vale `hw.0`…`hw.19` en los canales 1 a 20 y **`none` en el 21 al 24**, o sea que la segunda mitad de la frase vieja —«`i.N` y `hw.N` coinciden»— es falsa para esos cuatro. Con el enrutamiento por defecto coinciden en los veinte primeros y por eso es fácil no notar la diferencia; el código sigue armando `hw.${canal-1}` (R-24).
 - **Todo lo de SPK-P0.2b y P0.2c:** ecualizador, compresor, puerta, deesser, salidas, retardos, matriz, instantáneas, reproductor, grabación.

@@ -69,7 +69,7 @@ negativo: poner `i.9.fx.1.value = 0` y confirmar que el bus cae al piso.
 **4. Si el medidor toma después del procesador, hay un método que esquiva el
 problema entero: sustitución.** En vez de creerle a la linealidad del medidor a
 través de un reverb, **anular**: por cada valor de envío, compensar con
-`i.9.mix` —cuya ley está medida y cierra en 0,06 dB— hasta que el medidor del
+`i.9.mix` —cuya ley está medida y cierra en 0,05 dB— hasta que el medidor del
 bus vuelva a la misma lectura. La ley sale de dB de fader conocidos contra crudo
 de envío. **Y se autovalida: si no se puede anular, el procesador no es
 invariante y la ley no existe como esta pregunta la plantea.**

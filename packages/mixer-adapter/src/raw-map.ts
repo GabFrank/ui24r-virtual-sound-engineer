@@ -80,13 +80,36 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   lineal('i.N.eq.b1.q', 'Q', 0.3, 10, 'DESCONOCIDO', 'SPK-P0.2b'),
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
-  // entradas salen de mediciones. Las funciones reales estan leidas del
-  // `mixer.html` de la consola y escritas en `protocol-spec.md` §4.4.
+  // entradas salen de mediciones. Las funciones de abajo estan **leidas del
+  // `mixer.html` de la consola**, no medidas, y por eso van en estado INFERIDO.
   //
-  // La del ratio es la que mas dano hace: el crudo 1 es **1:1, o sea sin
-  // comprimir**, no el maximo. Suponerlo al reves costo una corrida entera de
-  // esta sesion, hecha con el compresor puesto en "no comprimir" y concluyendo
-  // que la reduccion no se veia.
+  // La del ratio importa por un motivo practico: el crudo 1 es **1:1, o sea sin
+  // comprimir**, no el maximo. Suponerlo al reves costo una corrida entera,
+  // hecha con el compresor puesto en "no comprimir" y concluyendo que la
+  // reduccion no se veia.
+  //
+  // **Y el 2026-09-12 la medicion 97 REFUTO el modelo que estas dos describen.**
+  // `docs/compromisos/97-leyes-del-compresor.md`: con `VtoTHRESH(a) = -90 + 96a`,
+  // `VtoRATIO(a) = 1/a` y una rodilla dura, el exceso despejado va de 10,0 a
+  // 25,6 dB **en la misma corrida, con fuente y umbral quietos**. Tiene que ser
+  // constante y no lo es. Y no es culpa del instrumento: el medidor de reduccion
+  // se calibro contra la caida real de nivel y sigue hasta 24,34 dB con 0,35 dB
+  // de desvio.
+  //
+  // **Por que la entrada se queda igual.** `INFERIDO` ya impide escribir por
+  // `aRaw()`, que es lo unico que podria sonar en la sala. Lo que hace falta
+  // decir --y faltaba-- es que `fromRaw`, `fisicoMin` y `fisicoMax` de estas dos
+  // entradas **se calculan con una ley refutada**: los -90 y +6 de `threshold`
+  // son esa ley evaluada en 0 y en 1. O sea que leer un umbral por acá y
+  // mostrarlo en decibeles muestra un numero que el aparato no respalda.
+  //
+  // Sacarlas seria peor: dejaria el parametro sin entrada, y una ruta sin
+  // entrada no tiene unidad declarada, que es lo que INV-004 usa para rechazar.
+  // Entran de vuelta con ley medida cuando el barrido de umbral x relacion este
+  // hecho, que es el siguiente paso que la 97 declara.
+  //
+  // Lo encontro una auditoria de coherencia cruzada: la refutacion habia entrado
+  // a la medicion y no a los dos lugares que la implementan.
   deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
   deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
   deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
@@ -96,11 +119,24 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   deLaConsola('i.N.dyn.outgain', 'dB', (a) => 72 * a - 24, (db) => (db + 24) / 72),
   deLaConsola('i.N.deesser.freq', 'Hz', (a) => 2000 * Math.pow(7.5, a),
     (hz) => Math.log(hz / 2000) / Math.log(7.5)),
-  // `i.N.dyn.ratio` **no esta en la tabla, a proposito.** Su funcion se conoce
-  // --`VtoRATIO(a) = 1/a`-- pero el crudo minimo no: en 0 la razon es infinita,
-  // asi que no hay rango fisico que declarar sin inventarlo, y una entrada con
-  // el rango inventado es justamente lo que se acaba de sacar de aca. Entra
-  // cuando SPK-P0.2b mida hasta donde llega el crudo contra el aparato.
+  // `i.N.dyn.ratio` **no esta en la tabla, a proposito**, y ahora hay dos
+  // razones en vez de una.
+  //
+  // La primera: en 0 la razon seria infinita, asi que no hay rango fisico que
+  // declarar sin inventarlo, y una entrada con el rango inventado es justamente
+  // lo que se saco de aca.
+  //
+  // La segunda, del 2026-09-12: **`VtoRATIO(a) = 1/a` no describe este
+  // aparato.** Este comentario decia «su funcion se conoce», que era demasiado.
+  // La medicion 97 refuto el modelo entero: con `R = 1/a` el exceso despejado no
+  // es constante, las pendientes por sustitucion dependen de la relacion
+  // (22,2 / 32,1 / 47,3) y los cocientes salen 1,58 a 2,42 donde el modelo pide
+  // 3,00. Aparece otra relacion que encaja en un corte --`-20*log10(a)`, dentro
+  // de 0,48 dB hasta a = 0,15-- y **no se declara ley**: con otro umbral predice
+  // 6,02 donde se midieron 2,98.
+  //
+  // O sea que hoy no se conoce la funcion. Lo que hace falta es el barrido de
+  // umbral x relacion, que da la superficie en vez de dos cortes.
 ];
 
 const PORPATH = new Map(RAW_MAP.map((e) => [e.path, e]));

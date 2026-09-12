@@ -77,10 +77,16 @@ siquiera se dijo del auxiliar, donde la medición era más limpia.
 - **Nada sobre la linealidad del reverb mejor que un escalón.** Es el límite de
   este montaje, no un detalle.
 - **Un bus de cuatro y un `fxtype` de dos.** `f.2` y `f.3` son tipo 1.
-- **Una sola frecuencia.** 96a midió 7,7 dB de dispersión entre 100 Hz y 10 kHz
-  en este bus: la ganancia del reverb depende de la frecuencia, y aunque un
-  factor constante se cancele en las diferencias, **nadie comprobó que la ley del
-  envío sea la misma a 100 Hz**.
+- **Una sola frecuencia.** 96a midió 7,7 dB de dispersión **entre 1 kHz y
+  10 kHz** en este bus —entre 100 Hz y 10 kHz son 2,4 dB, y entre 100 Hz y 1 kHz
+  5,3—. La ganancia del reverb depende de la frecuencia, y aunque un factor
+  constante se cancele en las diferencias, **nadie comprobó que la ley del envío
+  sea la misma a 100 Hz**.
+
+  *(Este punto decía «entre 100 Hz y 10 kHz» y reasignaba el par de frecuencias:
+  los 7,7 dB salen de los bytes 136 y 112,8, que son 1 kHz y 10 kHz. La 96a lo
+  dice bien. El argumento sobrevive porque 100 Hz contra 1 kHz siguen siendo
+  5,3 dB; la cifra estaba mal atribuida. Auditoría de procedencia.)*
 - **Nada sobre cómo suena.** Los parámetros internos del efecto están fuera del
   MVP por decisión declarada.
 - **Nada sobre el retorno del efecto al general**, que es otra etapa.
