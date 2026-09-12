@@ -40,10 +40,32 @@ deja como estaba; y **un filtro de −18 dB con Q=7 en la frecuencia de un tono 
 prueba es firma de medición, no de una fecha real** — una nota anterior atribuía
 uno de esos a «fechas viejas» y probablemente era de otra corrida.
 
-**Y el segundo campo de un filtro es la ganancia, no el Q.** El orden es
-`freq, gain, Q`, y una ranura vacía dice `1000, 116, 0`: mil hercios, **Q 116**,
-ganancia cero. Leer el 116 como ganancia —o el Q como ganancia en un filtro
-real— es un error que ya se cometió al imprimir un archivo de evidencia.
+**El segundo campo de un filtro es el Q y el tercero la ganancia.** El orden es
+`freq, Q, gain, tipo`. Lo dice el volcado crudo, que es el árbitro:
+`docs/spikes/SPK-P0.1/evidence/prueba-A-pasivo.txt` tiene
+`m.afs.eq.1^376.4693603516,7.0,-6.0,2` —un notch de −6 dB con Q 7, porque un Q
+de −6 no existe— y una ranura vacía dice `1000, 116, 0, 0`: mil hercios,
+**Q 116**, ganancia cero, o sea un filtro tan estrecho que no hace nada.
+
+**Este párrafo decía lo contrario, y se refutaba a sí mismo en el mismo
+renglón**: afirmaba que el orden era `freq, gain, Q` y a continuación que el 116
+de una ranura vacía era el Q, que es el segundo campo. Las dos cosas no pueden
+ser ciertas a la vez. Nadie lo notó porque estaba escrito con seguridad, y el
+guion que imprimía la evidencia obedeció a la frase equivocada: imprimió
+«7,0 dB Q=−18,0» para filtros que son de −18 dB con Q 7. Lo encontró una
+auditoría de instrumentos el 2026-09-12 mirando el volcado crudo.
+
+**La única defensa fue que el 116 es un número con significado**: no hay
+ganancia de 116 dB. Un campo que no puede ser lo que se dice que es, es la clase
+de pista que este proyecto ya aprendió a mirar —fue la misma que delató el byte
+247 leído como nivel cuando era el centinela de «sin reducción»—.
+
+Consecuencia sobre evidencia ya archivada:
+`docs/spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt` tiene las
+etiquetas invertidas. **Los filtros que muestra son los correctos y las dos
+columnas están cambiadas de nombre**: donde dice `7.0 dB  Q=-18` hay que leer
+−18 dB con Q 7. El archivo no se reescribe —es evidencia archivada— y queda
+anotado acá, que es donde alguien lo va a buscar.
 
 **`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
 por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y

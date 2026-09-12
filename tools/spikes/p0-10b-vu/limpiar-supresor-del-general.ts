@@ -49,11 +49,26 @@ async function filtros(): Promise<{ i: number; texto: string }[]> {
 function mostrar(etiqueta: string, xs: { i: number; texto: string }[]): void {
   console.log(`${etiqueta}: ${xs.length} filtro(s)`);
   for (const x of xs) {
-    // **El orden del CSV es freq, gain, Q.** La primera version leyo `db` y `q`
-    // al reves e imprimio «7,0 dB Q=-18» para un filtro de -18 dB con Q=7. Los
-    // filtros eran los correctos y la etiqueta no, que en un archivo de
-    // evidencia es peor que no tenerla.
-    const [hz, ganancia, q] = x.texto.split(',');
+    // **El orden del CSV es `freq, Q, gain, tipo`.** Lo dice el volcado crudo,
+    // que es el arbitro: `docs/spikes/SPK-P0.1/evidence/prueba-A-pasivo.txt`
+    // tiene `m.afs.eq.1^376.4693603516,7.0,-6.0,2` --un notch de -6 dB con Q 7,
+    // porque un Q de -6 no existe-- y la ranura vacia es `1000,116,0,0`, que es
+    // exactamente lo que el docblock de VACIA de este mismo archivo lee bien:
+    // «mil hercios, Q 116, ganancia cero».
+    //
+    // **Este comentario decia lo contrario y el codigo lo seguia.** Afirmaba
+    // «el orden es freq, gain, Q» y presentaba el error como ya corregido,
+    // contradiciendo al docblock de VACIA veinte lineas mas arriba. Los dos
+    // comentarios del archivo se contradecian entre si y el codigo obedecio al
+    // equivocado: se imprimio «7,0 dB Q=-18,0» para filtros de -18 dB con Q 7.
+    //
+    // Es la forma que este proyecto ya tiene nombrada: **el error vive en la
+    // capa que justifica, no en la que implementa.** Un docblock escrito con
+    // seguridad, que contradice otro del mismo archivo, y nadie mira el dato
+    // crudo porque el comentario suena convencido. La unica defensa fue que el
+    // 116 de una ranura vacia es un numero con significado: no hay ganancia de
+    // 116 dB, asi que ese campo tiene que ser el Q.
+    const [hz, q, ganancia] = x.texto.split(',');
     console.log(`   eq.${x.i}  ${Number(hz).toFixed(1).padStart(9)} Hz  `
       + `${Number(ganancia).toFixed(1).padStart(6)} dB  Q=${Number(q).toFixed(1)}`);
   }
