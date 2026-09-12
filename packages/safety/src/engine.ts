@@ -3,7 +3,7 @@ import {
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
-import { clasificarRuta } from '@vse/mixer-adapter';
+import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
 import type { ParameterKind } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
@@ -305,7 +305,21 @@ export class SafetyEngine {
       // `kind` cae también `a.N.mix` --el fader del auxiliar entero, el volumen
       // de esa cuña-- y quedaba rechazado sólo por no terminar en `.value`, que
       // es un accidente del nombre y no una regla. Se nombra lo que se abre.
-      if (!/^i\.\d+\.aux\.\d+\.value$/.test(c.path)) {
+      //
+      // **Y la lista blanca es una función, no una expresión regular.** Lo era,
+      // y una auditoría midió lo que dejaba pasar: `i.24.aux.0.value` --un canal
+      // que esta consola no tiene--, `i.99.aux.99.value` y
+      // `i.0003.aux.0000000001.value`. El `\d+` sin cota es correcto para
+      // *clasificar* por familia y no sirve para *permitir*.
+      //
+      // Lo grave era el alias: `techoPorRuta`, `acumuladoPorRuta` y
+      // `rutasYaTocadas` se indexan por la **cadena cruda**, así que con un
+      // techo puesto en `i.3.aux.1.value` pedir `i.03.aux.1.value` pasaba --la
+      // misma ruta que suena en la sala, alcanzada por una clave que el estado
+      // no reconoce--. `esNivelDeEnvioAMonitor` exige la forma canónica y los
+      // rangos reales, que es la única forma con la que el estado por ruta
+      // puede contar.
+      if (!esNivelDeEnvioAMonitor(c.path)) {
         salida.push({
           codigo: 'PARAMETRO_NO_ESCRIBIBLE',
           invariante: 'INV-010',

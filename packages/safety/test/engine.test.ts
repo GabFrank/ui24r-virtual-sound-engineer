@@ -40,6 +40,53 @@ test('ADR-028: un envío de monitor se puede ajustar durante el soundcheck', () 
   assert.equal(v.permitido, true, motivos(v).join(', '));
 });
 
+test('ADR-028: la lista blanca exige la forma canonica y el rango real', () => {
+  const e = new SafetyEngine();
+  const pedir = (path: string, ctx = contexto()) => e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path, unidad: 'dB',
+    valorPropuesto: -6, valorEsperado: -7,
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }], ctx, ok);
+
+  // **Los cuatro que pasaban.** La guarda era `/^i\.\d+\.aux\.\d+\.value$/`,
+  // con `\d+` sin cota, y una auditoria midio lo que dejaba entrar. Escribir a
+  // una ruta que la consola no publica es escribir a ciegas, que es la razon por
+  // la que el motor rechaza una ruta desconocida.
+  for (const path of [
+    'i.24.aux.0.value',                 // esta consola tiene 24 canales: 0 a 23
+    'i.99.aux.99.value',
+    'i.03.aux.1.value',                 // cero a la izquierda
+    'i.0003.aux.0000000001.value',
+    'i.3.aux.10.value',                 // hay 10 auxiliares: 0 a 9
+  ]) {
+    assert.equal(pedir(path).permitido, false, `${path} no tendria que pasar`);
+  }
+
+  // Y los extremos canonicos sI pasan: si esto falla, la guarda cerro de mas.
+  for (const path of ['i.0.aux.0.value', 'i.23.aux.9.value']) {
+    const v = pedir(path);
+    assert.equal(v.permitido, true, `${path}: ${motivos(v).join(', ')}`);
+  }
+});
+
+test('ADR-028: un alias con ceros no esquiva el techo de la ruta real', () => {
+  const e = new SafetyEngine();
+  // **El hallazgo que justifica la forma canonica.** `techoPorRuta`,
+  // `acumuladoPorRuta` y `rutasYaTocadas` se indexan por la cadena cruda. Con la
+  // guarda vieja, un techo puesto en `i.3.aux.1.value` no protegia nada contra
+  // `i.03.aux.1.value`: es la MISMA ruta que suena en la sala, alcanzada por una
+  // clave que el estado por ruta no reconoce. Pasaba pidiendo 0 dB contra un
+  // techo de -6.
+  const ctx = contexto({ techoPorRuta: new Map([['i.3.aux.1.value', -6]]) });
+  const porElAlias = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.03.aux.1.value', unidad: 'dB',
+    valorPropuesto: 0, valorEsperado: -6,
+    magnitudPropuesta: 0, magnitudEsperada: -6,
+  }], ctx, ok);
+  assert.equal(porElAlias.permitido, false);
+  assert.ok(motivos(porElAlias).includes('INV-010'));
+});
+
 test('ADR-028: el envío de monitor no sube más allá de donde estaba', () => {
   const e = new SafetyEngine();
   // El usuario: «Hasta donde estaba antes de que yo lo bajara, y ni un paso más».

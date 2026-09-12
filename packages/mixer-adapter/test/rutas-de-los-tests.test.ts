@@ -57,6 +57,23 @@ const DELIBERADAS = new Map<string, string>([
   ['m.eq.easy', 'una asercion NEGATIVA: que una ruta inexistente en el general se '
     + 'rechace. Existe como `l.N.eq.easy` y `i.N.eq.easy`, no como `m.eq.easy`'],
   ['i.mix', 'una ruta MAL FORMADA a proposito: familia sin indice de canal'],
+
+  // **Las cinco de abajo existen para probar que NO se escriben.** Son las que
+  // pasaban la lista blanca de ADR-028 cuando era `/^i\.\d+\.aux\.\d+\.value$/`
+  // con `\d+` sin cota, y las encontro una auditoria de seguridad. Que no esten
+  // en el inventario es exactamente el punto: el motor tiene que rechazarlas.
+  //
+  // Este test las atrapo al agregarlas, que es la interaccion buena entre dos
+  // guardas: una impide inventar rutas y la otra prueba que las inventadas se
+  // rechacen, asi que la segunda tiene que declararse ante la primera.
+  ['i.24.aux.0.value', 'esta consola tiene 24 canales, 0 a 23. Prueba que el canal '
+    + 'fuera de rango se rechace en vez de escribirse a ciegas'],
+  ['i.99.aux.99.value', 'los dos indices fuera de rango a la vez'],
+  ['i.3.aux.10.value', 'hay 10 auxiliares, 0 a 9: el borde de arriba'],
+  ['i.03.aux.1.value', 'el ALIAS con cero a la izquierda. Es la misma ruta que suena '
+    + 'en la sala y el estado por ruta se indexa por cadena cruda, asi que con la '
+    + 'guarda vieja esquivaba el techo puesto en `i.3.aux.1.value`'],
+  ['i.0003.aux.0000000001.value', 'el mismo alias llevado al extremo'],
 ]);
 
 /** Los archivos donde puede esconderse una ruta: código y pruebas, no compilados. */

@@ -250,3 +250,51 @@ export function clasificarRuta(
 export function esEnvioDeMonitor(path: string): boolean {
   return clasificarRuta(path) === 'MONITOR_AUX_SEND';
 }
+
+/**
+ * Cuántas tiras de entrada tiene esta consola, y cuántos auxiliares.
+ *
+ * **No son números elegidos: salen del inventario de claves observadas**
+ * (`docs/inventario/3.4.8318-ui24-2026-09-11/keys-observed.txt`), y hay un test
+ * que los compara contra ese archivo. Escritos acá porque el inventario es un
+ * archivo de texto y esto se ejecuta; si el firmware cambia, el test falla antes
+ * de que alguien se entere por el sonido.
+ */
+export const CANALES_DE_ENTRADA = 24;
+export const AUXILIARES = 10;
+
+/**
+ * Si una ruta es **exactamente** un nivel de envío a monitor de esta consola.
+ *
+ * **Por qué no alcanza la expresión regular del clasificador.** Los patrones de
+ * este archivo usan `\d+` sin cota, a propósito: clasifican por familia y una
+ * cota de más dejaría claves sin clasificar cuando cambie el firmware. Para
+ * **permitir una escritura** eso no sirve, y una auditoría midió cuánto:
+ * `i.24.aux.0.value` --un canal que esta consola no tiene--, `i.99.aux.99.value`
+ * y `i.0003.aux.0000000001.value` pasaban la lista blanca de ADR-028.
+ *
+ * Dos problemas distintos, y el segundo es el grave:
+ *
+ * 1. **Escribir a una ruta que la consola no publica es escribir a ciegas**, que
+ *    es la razón por la que el motor rechaza una ruta desconocida.
+ * 2. **El alias con ceros esquiva el techo.** El techo por ruta, el acumulado y
+ *    las rutas ya tocadas se indexan por la **cadena cruda**. Con un techo
+ *    puesto en `i.3.aux.1.value`, pedir `i.03.aux.1.value` pasaba: es la misma
+ *    ruta que suena en la sala, alcanzada por una clave que el estado no
+ *    reconoce.
+ *
+ * Así que acá se exige la **forma canónica**: sin ceros a la izquierda, sin
+ * espacios, en minúsculas, y con los dos índices dentro del rango real. Es lo
+ * mismo que la consola publica, y por eso es también la forma con la que el
+ * estado por ruta puede contar.
+ */
+export function esNivelDeEnvioAMonitor(ruta: string): boolean {
+  const m = /^i\.(\d+)\.aux\.(\d+)\.value$/.exec(ruta);
+  if (m === null) return false;
+  const [canal, aux] = [m[1]!, m[2]!];
+  // **Forma canónica: el número tiene que volver a escribirse igual.** Un `0`
+  // solo es válido; `00` y `03` no, porque la consola no los publica así y el
+  // estado por ruta los contaría como otra ruta.
+  if (String(Number(canal)) !== canal || String(Number(aux)) !== aux) return false;
+  return Number(canal) < CANALES_DE_ENTRADA && Number(aux) < AUXILIARES;
+}

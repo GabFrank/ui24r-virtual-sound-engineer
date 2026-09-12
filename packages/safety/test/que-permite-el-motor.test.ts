@@ -109,6 +109,52 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   );
 });
 
+/**
+ * El reparto completo de lo escribible, por categoria.
+ *
+ * **Una auditoria midio por que el total no alcanza**: intercambiar `i.N.pan`
+ * (24) por `hw.N.gain` (24) deja el 930 en pie y **todas** las aserciones de
+ * familia en verde, porque cada una mira su propia familia y ninguna mira el
+ * conjunto. Y quedaban sin fijar seis familias grandes: el ecualizador de canal
+ * (504), el del general (66), el filtro pasa-altos (48), el fader, el silencio
+ * y la ganancia del previo.
+ *
+ * Esto fija el reparto entero. Un cambio que mueva una ruta de una categoria a
+ * otra falla acá aunque el total cuadre.
+ */
+const REPARTO_ESPERADO: ReadonlyMap<string, number> = new Map([
+  // El ecualizador del canal es la mayoria de lo escribible, y es el corazon
+  // del producto: corregir el timbre de un canal es para lo que existe.
+  ['CHANNEL_EQ', 504],
+  // ADR-028. Veinticuatro canales por diez auxiliares.
+  ['MONITOR_AUX_SEND', 240],
+  // Solo los filtros del general, nada de bypass ni de recall de preset.
+  ['OUTPUT_EQ', 66],
+  ['HPF', 48],
+  // ADR-026: la ganancia del previo, solo en configuracion de canales.
+  ['PREAMP_GAIN', 24],
+  ['CHANNEL_FADER', 24],
+  // ADR-027: el silencio de canal, para el diagnostico de realimentacion.
+  ['CHANNEL_MUTE', 24],
+]);
+
+test('el reparto de lo escribible por categoria es exactamente el declarado', () => {
+  const h = new Map<string, number>();
+  for (const path of permitidas()) {
+    const kind = clasificarRuta(path);
+    if (kind === null) continue;
+    h.set(kind, (h.get(kind) ?? 0) + 1);
+  }
+  // Se comparan los dos mapas enteros, ordenados, para que falte y sobre se
+  // vean las dos. Un `for` sobre el esperado no veria una categoria nueva.
+  const orden = (m: ReadonlyMap<string, number>) => [...m].sort(([a], [b]) => a.localeCompare(b));
+  deepStrictEqual(orden(h), orden(REPARTO_ESPERADO));
+
+  // Y que la suma sea el total que el otro test vigila: si los dos numeros se
+  // separan, uno de los dos se actualizo sin mirar.
+  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 930);
+});
+
 test('lo unico que ADR-028 abrio son los niveles de envio a monitor', () => {
   // Mismo principio que el test de ADR-027: la cuenta sola no alcanza, hay que
   // mirar QUE entro.

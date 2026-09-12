@@ -1,6 +1,11 @@
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { test } from 'node:test';
-import { clasificarRuta, esEnvioDeMonitor } from '../src/clasificar-ruta.ts';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  clasificarRuta, esEnvioDeMonitor, esNivelDeEnvioAMonitor,
+  CANALES_DE_ENTRADA, AUXILIARES,
+} from '../src/clasificar-ruta.ts';
 import { OWNERSHIP, esEscribible, ownership } from '@vse/domain';
 
 test('INV-010: un envio a auxiliar de monitor se clasifica como tal', () => {
@@ -295,4 +300,48 @@ test('los grupos de silencio NO son un safe', () => {
   // de la misma noche se contradecian sobre la misma clave.
   strictEqual(clasificarRuta('var.unsaved.chsafes'), 'SAFE');
   strictEqual(clasificarRuta('var.unsaved.mutegroups'), null, 'es un hueco declarado, no un safe');
+});
+
+test('las cantidades de canales y auxiliares salen del inventario, no de la memoria', () => {
+  // **La lista blanca de ADR-028 depende de estos dos números**, así que no
+  // pueden ser recuerdos. Se comparan contra el inventario de claves observadas
+  // del firmware: si la consola cambia, esto falla antes de que alguien se
+  // entere por el sonido.
+  const inventario = join(
+    import.meta.dirname, '..', '..', '..',
+    'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 'keys-observed.txt',
+  );
+  const claves = readFileSync(inventario, 'utf8').split('\n');
+
+  const canales = new Set<number>();
+  const auxes = new Set<number>();
+  for (const k of claves) {
+    const m = /^i\.(\d+)\.aux\.(\d+)\.value$/.exec(k.trim());
+    if (m === null) continue;
+    canales.add(Number(m[1]));
+    auxes.add(Number(m[2]));
+  }
+
+  strictEqual(canales.size, CANALES_DE_ENTRADA,
+    `el inventario tiene ${canales.size} canales con envío y la constante dice ${CANALES_DE_ENTRADA}`);
+  strictEqual(auxes.size, AUXILIARES,
+    `el inventario tiene ${auxes.size} auxiliares y la constante dice ${AUXILIARES}`);
+  // Y que sean 0..N-1 sin huecos: el rango de la guarda supone eso.
+  strictEqual(Math.max(...canales), CANALES_DE_ENTRADA - 1);
+  strictEqual(Math.max(...auxes), AUXILIARES - 1);
+});
+
+test('esNivelDeEnvioAMonitor acepta exactamente las rutas del inventario', () => {
+  const inventario = join(
+    import.meta.dirname, '..', '..', '..',
+    'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 'keys-observed.txt',
+  );
+  const claves = readFileSync(inventario, 'utf8').split('\n').map((l) => l.trim());
+
+  // Del inventario entero, las que la función acepta tienen que ser exactamente
+  // las 240 hojas `.value` del envío a monitor. Ni una más.
+  const aceptadas = claves.filter((k) => k !== '' && esNivelDeEnvioAMonitor(k));
+  const esperadas = claves.filter((k) => /^i\.\d+\.aux\.\d+\.value$/.test(k));
+  deepStrictEqual(aceptadas.sort(), esperadas.sort());
+  strictEqual(aceptadas.length, 240);
 });
