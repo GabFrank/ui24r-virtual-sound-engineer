@@ -65,14 +65,42 @@ console.log(`   canales que mandan algo: ${otros}`);
 console.log('   Con senal en ellos, el piso del barrido es la suma y no el envio.');
 
 console.log('');
-console.log('=== 3. EL SUPRESOR DEL BUS ===');
-console.log(`   a.${aux}.afs.enabled = ${e.get(`a.${aux}.afs.enabled`) ?? '—'}`);
-let filtros = 0;
-for (let i = 0; i < 12; i++) {
-  const f = e.get(`a.${aux}.afs.eq.${i}`) ?? '';
-  if (f !== '' && !f.startsWith(FILTRO_VACIO)) { console.log(`   a.${aux}.afs.eq.${i} = ${f}`); filtros++; }
-}
-console.log(`   filtros plantados: ${filtros}   (0 = no aprendio nada)`);
+console.log('=== 3. LOS SUPRESORES: EL DEL BUS Y EL DEL GENERAL ===');
+// **Este control miraba SOLO el del bus, y era el que no podia aprender.**
+// `a.2.afs.enabled` vale 0, o sea apagado: por ahi no iba a aparecer nunca un
+// filtro. Y mientras las tres corridas archivadas imprimian «filtros plantados:
+// 0 (0 = no aprendio nada)», el supresor del GENERAL estaba aprendiendo seis
+// filtros de -18 dB en 1000, 100 y 10000 Hz --las tres frecuencias de los tonos
+// de medicion-- y desplazando los tres del usuario.
+//
+// O sea que los tres archivos `controles-*` no sostienen lo que parecian
+// sostener. Lo encontro una auditoria de instrumentos, y el defecto es de forma:
+// **un control que mira donde no puede pasar nada solo puede confirmar.** El
+// tono sale por el general, asi que el general es donde hay que mirar.
+//
+// El orden de las columnas es `freq, Q, gain, tipo`: lo dice el volcado crudo
+// --`376.47,7.0,-6.0,2` es un notch de -6 dB con Q 7, porque un Q de -6 no
+// existe-- y una ranura vacia es `1000,116,0,0`, con 116 de Q.
+const mostrarFiltros = (prefijo: string): number => {
+  console.log(`   ${prefijo}.afs.enabled = ${e.get(`${prefijo}.afs.enabled`) ?? '—'}`);
+  let n = 0;
+  for (let i = 0; i < 12; i++) {
+    const f = e.get(`${prefijo}.afs.eq.${i}`) ?? '';
+    if (f === '' || f.startsWith(FILTRO_VACIO)) continue;
+    const [hz, q, ganancia] = f.split(',');
+    console.log(`   ${prefijo}.afs.eq.${i}  ${Number(hz).toFixed(1).padStart(9)} Hz  `
+      + `${Number(ganancia).toFixed(1).padStart(6)} dB  Q=${Number(q).toFixed(1)}`);
+    n++;
+  }
+  console.log(`   filtros plantados en ${prefijo}: ${n}`);
+  return n;
+};
+const filtrosBus = mostrarFiltros(`a.${aux}`);
+const filtrosGeneral = mostrarFiltros('m');
+console.log(`   TOTAL: ${filtrosBus} en el bus + ${filtrosGeneral} en el general.`);
+console.log('   Los tonos de medicion salen por el GENERAL, asi que es ahi donde el');
+console.log('   supresor aprende. Si este numero crece entre dos corridas, la medicion');
+console.log('   le planto filtros al usuario y hay que borrarlos con m.afs.clearlive.');
 
 console.log('');
 console.log('=== 4. ENLACE ESTEREO Y SILENCIOS ===');
@@ -83,10 +111,18 @@ for (const k of [`a.${aux}.stereoIndex`, `a.${aux + 1}.stereoIndex`, `a.${aux}.m
 }
 
 console.log('');
-console.log('=== 5. DINAMICA Y PUERTA DEL CANAL ===');
+console.log('=== 5. DINAMICA Y PUERTA: DEL CANAL Y DEL BUS ===');
+// **Faltaba la del bus, y la ley del auxiliar se mide SOBRE ese bus.** Este
+// control miraba solo el dinamico del canal; si el del bus estuviera actuando,
+// comprimiria el barrido entero y la curva saldria aplastada sin que nada lo
+// dijera. Lo encontro una auditoria de instrumentos.
 for (const k of [`i.${n}.dyn.ratio`, `i.${n}.dyn.threshold`, `i.${n}.dyn.bypass`,
-                 `i.${n}.gate.enabled`, `i.${n}.gate.thresh`, `i.${n}.gate.depth`]) {
+                 `i.${n}.gate.enabled`, `i.${n}.gate.thresh`, `i.${n}.gate.depth`,
+                 `a.${aux}.dyn.ratio`, `a.${aux}.dyn.threshold`, `a.${aux}.dyn.bypass`]) {
   console.log('  ', k.padEnd(22), e.get(k) ?? '—');
 }
-console.log('   ratio 1 = 1:1, o sea el compresor esta puesto y no comprime (VtoRATIO = 1/a).');
+console.log('   ratio 1 = 1:1, o sea el compresor esta puesto y no comprime.');
+console.log('   Ese SENTIDO esta medido (con a=1 la reduccion informada es 0,00 y');
+console.log('   entrada = pre). La FORMULA VtoRATIO = 1/a quedo REFUTADA por la');
+console.log('   medicion 97 del 2026-09-12: ver el backlog.');
 console.log('   depth 0 = atenuacion MAXIMA de la puerta (VtoGATE_DEPTH = 60a - 60), escala invertida.');

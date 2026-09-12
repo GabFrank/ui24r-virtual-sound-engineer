@@ -577,3 +577,31 @@ test('ADR-028: con todo abajo al empezar, la app puede levantar', () => {
   }], contexto(), ok);
   assert.equal(v.permitido, true, motivos(v).join(', '));
 });
+
+test('INV-004: el motor traduce TODO codigo de limite, sin estallar', () => {
+  // **Este test existe por un TypeError que la suite dejo pasar.** Al agregar
+  // `UNIDAD_NO_DECLARADA` a `verificarLimite`, el motor lo recibio y no lo supo
+  // traducir: su tabla era `Record<string, …>` con un `!` al final, asi que
+  // `mapa[codigo]` daba `undefined` y la linea siguiente estallaba leyendo
+  // `.codigo` de undefined.
+  //
+  // **Y la suite quedo en verde**, porque ningun test proponia un cambio con la
+  // unidad mal declarada POR EL MOTOR: el del dominio llama a `verificarLimite`
+  // directo, sin pasar por la traduccion. Lo encontro
+  // `tools/inventario/permisos.ts` al correrlo, o sea una herramienta y no un
+  // test.
+  //
+  // El tipo de la tabla ahora es exhaustivo, asi que un codigo nuevo sin
+  // traduccion es un error de compilacion. Esto cubre la otra mitad: que el
+  // camino se recorra de verdad.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    // El pasa-altos tiene su tope en octavas; declarar decibeles es proponer un
+    // cambio que el motor no puede juzgar.
+    kind: 'HPF', path: 'i.3.eq.hpf.freq', unidad: 'dB',
+    valorPropuesto: 0.5, valorEsperado: 0,
+    magnitudPropuesta: 0.5, magnitudEsperada: 0,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false);
+  assert.ok(motivos(v).includes('INV-004'), motivos(v).join(', '));
+});

@@ -48,7 +48,8 @@ import {
 import type { BulkExternalChange } from '@vse/mixer-adapter';
 import {
   estadoPorHttp, exigirCanalesMuertos, reproductorCallado, busSinEnvios,
-, exigirClave } from '../canal-muerto.ts';
+  exigirClave,
+} from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 

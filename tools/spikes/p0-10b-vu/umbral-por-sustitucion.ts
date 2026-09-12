@@ -140,15 +140,83 @@ await new Promise((r) => setTimeout(r, 2000));
 await t.desconectar();
 
 console.log('=== LA PENDIENTE, de cada curva por separado ===');
+// **La primera version trazaba la recta por una MESETA y no lo decia.** Tomaba
+// el primer y el ultimo punto con reduccion > 0, y en la corrida archivada la
+// curva 2:1 esta clavada en 5,65 dB desde u = 0,30 hacia abajo --cinco filas
+// identicas, el compresor saturado--. Una recta por esos dos extremos atraviesa
+// la saturacion, y las tres pendientes publicadas (22,2 / 32,1 / 47,3) no son
+// utilizables por eso. Lo encontro una auditoria de instrumentos.
+//
+// Ahora la meseta se detecta y se descarta, y si queda saturada se dice en vez
+// de publicar un numero. El docblock prometia «la curva entera, no dos puntos»
+// mientras el codigo computaba exactamente dos; eso tambien cambia.
 for (const c of curvas) {
   const utiles = c.puntos.filter((p) => p.red > 0);
   if (utiles.length < 3) { console.log(`  ${c.nombre}: ${utiles.length} puntos utiles, no alcanza`); continue; }
-  const a = utiles[0]!; const b = utiles[utiles.length - 1]!;
-  const pend = (b.exceso - a.exceso) / (a.u - b.u);
-  console.log(`  ${c.nombre}: ${utiles.length} puntos, pendiente ${pend.toFixed(1)} dB por unidad`);
+
+  // Saturada = la reduccion dejo de moverse aunque el umbral siguiera bajando.
+  // Se compara contra el escalon del medidor: por debajo de eso no hay dato.
+  const sinSaturar = utiles.filter((p, i) => {
+    if (i === 0) return true;
+    return Math.abs(p.red - utiles[i - 1]!.red) > ESCALON / 2;
+  });
+  const descartados = utiles.length - sinSaturar.length;
+  if (descartados > 0) {
+    console.log(`  ${c.nombre}: ${descartados} punto(s) en la meseta, descartados `
+      + `(la reduccion no se movio mas que medio escalon al bajar el umbral)`);
+  }
+  if (sinSaturar.length < 3) {
+    console.log(`  ${c.nombre}: SATURADA. ${sinSaturar.length} punto(s) fuera de la meseta: `
+      + 'no hay pendiente que publicar.');
+    continue;
+  }
+
+  // Y la pendiente por minimos cuadrados sobre los puntos que quedan, no por
+  // los dos extremos: eso es lo que el docblock prometia.
+  const xs = sinSaturar.map((p) => p.u);
+  const ys = sinSaturar.map((p) => p.exceso);
+  const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+  const num = xs.reduce((acc, x, i) => acc + (x - mx) * (ys[i]! - my), 0);
+  const den = xs.reduce((acc, x) => acc + (x - mx) ** 2, 0);
+  const pend = den === 0 ? NaN : -num / den;
+  const residuo = Math.max(...xs.map((x, i) => Math.abs(ys[i]! - (my - pend * (x - mx)))));
+  console.log(`  ${c.nombre}: ${sinSaturar.length} puntos, pendiente ${pend.toFixed(1)} `
+    + `dB por unidad, residuo maximo ${residuo.toFixed(2)} dB`);
 }
 console.log('');
 console.log('=== LAS TRES CURVAS TIENEN QUE COINCIDIR ===');
+// **Y ahora se imprime CUANTO no coinciden, con veredicto.** La version anterior
+// enunciaba la regla, mostraba una tabla, y no imprimia ninguna cifra de
+// discrepancia: en la corrida archivada las tres curvas no coinciden ni de
+// cerca --3,30/3,98/4,06 pasan a 11,30/15,54/21,10-- y nada en la salida lo
+// decia. La pregunta central de la corrida se quedaba sin numero.
+{
+  const porU = new Map<number, number[]>();
+  for (const c of curvas) {
+    for (const p of c.puntos) {
+      if (p.red <= 0) continue;
+      const xs = porU.get(p.u) ?? [];
+      xs.push(p.exceso);
+      porU.set(p.u, xs);
+    }
+  }
+  let peor = 0; let dondePeor = NaN;
+  for (const [u, xs] of porU) {
+    if (xs.length < 2) continue;
+    const d = Math.max(...xs) - Math.min(...xs);
+    if (d > peor) { peor = d; dondePeor = u; }
+  }
+  if (Number.isNaN(dondePeor)) {
+    console.log('  Ningun umbral tiene dos curvas con reduccion: no se puede comparar.');
+  } else {
+    console.log(`  discrepancia maxima entre curvas: ${peor.toFixed(2)} dB en u = ${dondePeor}`
+      + `  (= ${(peor / ESCALON).toFixed(2)} escalones de reduccion)`);
+    console.log(peor <= ESCALON * 2
+      ? '  COINCIDEN dentro de dos escalones: VtoRATIO = 1/a se sostiene aca.'
+      : '  NO COINCIDEN: es VtoRATIO = 1/a la que esta mal, no el medidor.');
+  }
+}
 console.log('Si coinciden, VtoRATIO = 1/a es correcta y la pendiente es la del umbral.');
 console.log('Si no coinciden, el que esta mal es VtoRATIO y no el umbral.');
 console.log('umbral |' + curvas.map((c) => ` ${c.nombre.padStart(8)}`).join(' |'));

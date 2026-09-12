@@ -1,6 +1,8 @@
 import type { MixerDomainAPI, ReadResult, WriteResult, ConnectionState,
   DeviceInfo, BulkExternalChange, PresenciaAjena } from '@vse/mixer-adapter';
-import type { ContextoSeguridad } from '../src/types.ts';
+import type { ContextoSeguridad, CambioPropuesto } from '../src/types.ts';
+import { LIMITES } from '@vse/domain';
+import type { ParameterKind } from '@vse/domain';
 
 /**
  * Mezcladora falsa con memoria, para ejercitar el Safety Engine y el ejecutor
@@ -179,4 +181,41 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
     aprobacionExplicita: true,
     ...parcial,
   };
+}
+
+/**
+ * El cambio con que se recorre el inventario de claves de la consola.
+ *
+ * **Existe para que el test y la herramienta midan la misma puerta.** Estaban
+ * los dos construyendo el cambio a mano, y se separaron dos veces:
+ *
+ * 1. La copia de `tools/inventario/permisos.ts` se quedó sin `techoPorRuta`
+ *    cuando ADR-028 lo agregó al contexto, y la herramienta estalló con un
+ *    `TypeError` desde ese commit sin que nadie se enterara --`tools/` no era
+ *    espacio de trabajo, así que `lint` no lo miraba--.
+ * 2. Las dos declaraban `unidad: 'dB'` para las 6732 claves. Cuando
+ *    `verificarLimite` empezó a comparar la unidad contra la del tope, el test
+ *    se arregló y la herramienta se quedó contando **858 en vez de 930**: el
+ *    pasa-altos declara octavas y el silencio de canal, canales.
+ *
+ * Dos definiciones de la misma cosa pueden separarse en silencio, y las dos
+ * veces se separaron. Ésta es una.
+ *
+ * **La unidad se lee de `LIMITES`, no se escribe acá**, por el mismo motivo: si
+ * alguien cambia la unidad de un tope, esto sigue midiendo la puerta que corre.
+ */
+export function cambioDeInventario(kind: ParameterKind, path: string): CambioPropuesto {
+  return {
+    kind,
+    path,
+    unidad: LIMITES[kind]?.unidad ?? 'dB',
+    // El crudo y la magnitud van con el mismo número a propósito: lo que este
+    // recorrido mide es la **puerta de permiso**, no la conversión. Que un
+    // crudo 1 declarado como 1 dB sea absurdo está dicho acá para que nadie lo
+    // lea como una afirmación sobre unidades.
+    valorPropuesto: 1,
+    valorEsperado: 0,
+    magnitudPropuesta: 1,
+    magnitudEsperada: 0,
+  } as CambioPropuesto;
 }

@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "paths": {
+      "@vse/domain": [
+        "../packages/domain/src/index.ts"
+      ],
+      "@vse/mixer-adapter": [
+        "../packages/mixer-adapter/src/index.ts"
+      ],
+      "@vse/safety": [
+        "../packages/safety/src/index.ts"
+      ],
+      "@vse/assistants": [
+        "../packages/assistants/src/index.ts"
+      ],
+      "@vse/logging": [
+        "../packages/logging/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "mixer-sim/node_modules",
+    "visual/out"
+  ]
+}

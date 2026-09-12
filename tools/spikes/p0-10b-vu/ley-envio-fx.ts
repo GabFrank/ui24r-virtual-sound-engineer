@@ -178,13 +178,32 @@ for (const c of CRUDOS) {
     + `${(A - B).toFixed(2).padStart(10)} | ${ley.toFixed(2).padStart(14)}`);
 }
 console.log('');
+// **El veredicto se computa, no se deja al lector.** Esta corrida imprimia la
+// separacion, enunciaba la regla en prosa, y debajo imprimia el desvio contra
+// `faderADb` con un «esto solo significa algo si la linealidad de arriba paso».
+// En la corrida archivada la linealidad **fallo** --1,24 escalones-- y el
+// numero de abajo se publico igual. Es el orden que la medicion 94 declara
+// inaceptable: la cifra primero y la condicion despues. Lo encontro una
+// auditoria de instrumentos.
+//
+// El umbral son DOS escalones y no uno: la separacion es la diferencia de dos
+// lecturas enteras del medidor, asi que arrastra hasta dos escalones de
+// cuantizacion sin que nada se haya movido. Esta en
+// `docs/backlog/hallazgo-umbral-de-una-diferencia.md`, y se aplica hacia
+// adelante --las corridas ya publicadas con el umbral simple no se retocan.
+const ESCALONES_DE_UNA_DIFERENCIA = 2;
+const linealidadPaso = peorPar <= RESOLUCION_DB * ESCALONES_DE_UNA_DIFERENCIA;
 console.log(`separacion maxima entre las dos curvas: ${peorPar.toFixed(2)} dB `
   + `= ${(peorPar / RESOLUCION_DB).toFixed(2)} escalones`);
-console.log('  Dentro de un escalon = el reverb es lineal en este tramo y la ley se puede afirmar.');
-console.log('  Fuera = no es lineal y esta corrida NO mide la ley del envio.');
+console.log(linealidadPaso
+  ? `  PASA (umbral: ${ESCALONES_DE_UNA_DIFERENCIA} escalones, porque es diferencia de dos lecturas).`
+  : `  FALLA (umbral: ${ESCALONES_DE_UNA_DIFERENCIA} escalones). El reverb no es lineal en este `
+    + 'tramo y esta corrida NO mide la ley del envio.');
 console.log('');
 console.log(`desvio maximo contra faderADb: ${peorLey.toFixed(2)} dB `
   + `= ${(peorLey / RESOLUCION_DB).toFixed(2)} escalones`);
-console.log('  Esto solo significa algo si la linealidad de arriba paso.');
+console.log(linealidadPaso
+  ? '  Vale como acotacion: la linealidad paso.'
+  : '  NO SIGNIFICA NADA: la linealidad de arriba fallo. No citar esta cifra.');
 console.log('');
 console.log('restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.');

@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { SafetyEngine } from '../../packages/safety/src/engine.ts';
 import { clasificarRuta } from '../../packages/mixer-adapter/src/clasificar-ruta.ts';
-import { contexto } from '../../packages/safety/test/helpers.ts';
+import { contexto, cambioDeInventario } from '../../packages/safety/test/helpers.ts';
 
 const claves = readFileSync('docs/inventario/3.4.8318-ui24-2026-09-11/keys-observed.txt', 'utf8').trim().split('\n');
 // **Sin `as`.** La primera version ponia `sessionState: 'CONFIGURANDO_CANALES'`
@@ -38,14 +38,11 @@ const permitidas: string[] = [];
 for (const path of claves) {
   const kind = clasificarRuta(path);
   if (kind === null) continue;
-  // Las magnitudes también faltaban. **No son un relleno**: el motor juzga el
-  // tope y el techo contra `magnitudPropuesta`, así que una herramienta que no
-  // las pase mide otra puerta que la que corre. Van con el mismo valor que el
-  // test guarda, para que las dos cuenten lo mismo.
-  const v = e.evaluar([{
-    kind, path, unidad: 'dB', valorPropuesto: 1, valorEsperado: 0,
-    magnitudPropuesta: 1, magnitudEsperada: 0,
-  }], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
+  // Mismo constructor que el test guarda: ver el docblock de
+  // `cambioDeInventario`. Aca habia una copia a mano y se quedo contando 858 en
+  // vez de 930 cuando el motor empezo a comparar la unidad contra la del tope.
+  const v = e.evaluar([cambioDeInventario(kind, path)], ctx,
+    { conexionPermiteEscribir: true, snapshotVerificado: true });
   if (v.permitido) permitidas.push(path);
 }
 console.log(`rutas que el motor PERMITE escribir: ${permitidas.length}`);

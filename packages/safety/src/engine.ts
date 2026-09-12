@@ -4,7 +4,7 @@ import {
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
-import type { ParameterKind } from '@vse/domain';
+import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
 /**
@@ -469,13 +469,30 @@ export class SafetyEngine {
     });
 
     if (!limite.permitido) {
-      const mapa: Record<string, { codigo: Rechazo['codigo']; inv: string }> = {
+      // **El tipo del mapa es exhaustivo, y antes era `Record<string, …>`.**
+      // Con `string` como clave, agregar un codigo de rechazo en `limits.ts` no
+      // rompia nada al compilar: el `mapa[limite.codigo]!` devolvia `undefined`
+      // y el `!` lo tapaba, asi que el motor estallaba con un `TypeError` en
+      // ejecucion. Paso el 2026-09-12 al agregar `UNIDAD_NO_DECLARADA`, y **la
+      // suite quedo verde**: ningun test proponia un cambio con la unidad mal
+      // declarada POR EL MOTOR --el del dominio llama a `verificarLimite`
+      // directo--. Lo encontro `tools/inventario/permisos.ts` al correrlo.
+      //
+      // Con la clave derivada del tipo, un codigo nuevo sin traduccion es un
+      // error de compilacion. Es la diferencia entre un mapa y una tabla de
+      // traduccion obligatoria.
+      type CodigoDeLimite = Extract<ResultadoLimite, { permitido: false }>['codigo'];
+      const mapa: Record<CodigoDeLimite, { codigo: Rechazo['codigo']; inv: string }> = {
         DELTA_CAP: { codigo: 'DELTA_EXCEDIDO', inv: 'INV-004' },
         CUMULATIVE_CAP: { codigo: 'ACUMULADO_EXCEDIDO', inv: 'INV-004' },
         SIN_MEDICION_INTERMEDIA: { codigo: 'SIN_MEDICION_INTERMEDIA', inv: 'INV-004' },
         SIN_LIMITE_DECLARADO: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
+        // Declarar una unidad distinta de la del tope es proponer un cambio que
+        // el motor no puede juzgar, asi que se rechaza por la misma invariante
+        // que exige que el tope exista.
+        UNIDAD_NO_DECLARADA: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
       };
-      const m = mapa[limite.codigo]!;
+      const m = mapa[limite.codigo];
       salida.push({
         codigo: m.codigo,
         invariante: m.inv,

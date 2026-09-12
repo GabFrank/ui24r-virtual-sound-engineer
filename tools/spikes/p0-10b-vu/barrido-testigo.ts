@@ -157,9 +157,20 @@ for (const { path, delta } of RUTAS) {
   }
 
   const t0 = Date.now();
-  const promesa = testigo.esperar(path, nuevo, VENTANA_MS);
+  const espera = testigo.esperar(path, nuevo, VENTANA_MS);
   principal.enviar(codificarSetd(path, nuevo));
-  const visto = await promesa;
+  // **`esperar()` devuelve un OBJETO, no una promesa**, y esto decia
+  // `await promesa`. Esperar un objeto que no es promesa devuelve el objeto, que
+  // es siempre verdadero: **este guion informaba «SI» en todas las filas**, haya
+  // llegado la confirmacion o no. Un instrumento que solo puede confirmar.
+  //
+  // Lo encontro el chequeo de tipos al agregar `tools/tsconfig.json` --TS2322,
+  // «EsperaDeEscritura no es asignable a boolean»--. `node --check` no lo veia
+  // porque solo mira sintaxis, y `tools/` no era espacio de trabajo, asi que
+  // `npm run lint` no lo miraba. Es la misma raiz por la que
+  // `tools/inventario/permisos.ts` estuvo roto desde ADR-028 sin que nadie se
+  // enterara.
+  const visto = await espera.visto;
   const ms = Date.now() - t0;
 
   // Restaurar SIEMPRE, haya visto o no: lo que importa es dejar la consola
