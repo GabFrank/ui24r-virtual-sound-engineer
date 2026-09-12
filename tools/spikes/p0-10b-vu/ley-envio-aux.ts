@@ -40,24 +40,55 @@ import {
   Ui24rTransport, codificarSetd, decodificarVuCanales, decodificarVuBuses,
   dbDeMedidor, faderADb, VU_ESCALA, MEDIDOR_RANGO_DB,
 } from '@vse/mixer-adapter';
+import { argIndice, argNumero, argTexto, argLista } from '../argumentos.ts';
+import { conRestauracion } from '../con-restauracion.ts';
+import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 
-const canal = Number(process.argv[2] ?? '10');
+// **Los argumentos pasan por `argumentos.ts` y no por `??`.** Este archivo es
+// donde nacio el defecto: `??` no cae al valor por omision con una cadena vacia,
+// asi que pasar `""` para saltear un argumento barria un solo punto y la corrida
+// se archivaba igual. Se arreglo la lista a mano y una auditoria encontro el
+// mismo modismo intacto DOS LINEAS DEBAJO del comentario que lo documentaba, en
+// el nivel de la fuente: con `""` daba `Number('') === 0`, o sea un tono a
+// 0 dBFS --fondo de escala-- durante cuatro minutos.
+//
+// Y ningun indice se validaba: `aux=''` daba `0`, o sea `a.0`, que es
+// exactamente el bus que el docblock de arriba dice que invalida la medicion por
+// su notch de -18 dB en 999,97 Hz contra un tono de 1 kHz.
+const canal = argIndice(2, 'canal', 10, { desde: 1, hasta: 24 });
 const n = canal - 1;
-const aux = Number(process.argv[3] ?? '2');
-const maquina = process.argv[4] ?? '192.168.0.78';
+// El rango arranca en 0 --`a.0` existe-- pero medir por ahi con un tono de 1 kHz
+// es lo que el docblock desaconseja; eso lo avisa la comprobacion del supresor
+// de mas abajo, no el rango.
+const aux = argIndice(3, 'auxiliar', 2, { desde: 0, hasta: 9 });
+const maquina = argTexto(4, '192.168.0.78');
 /**
  * Nivel del tono, en dBFS. Por argumento porque **el rango útil del barrido lo
  * fija la fuente**: con −12 dBFS el medidor del bus llega al piso a los 18 dB
  * de atenuación, y 18 dB no alcanzan para separar la ley del fader de una
  * curva parecida — el desvío entero cabe en un escalón del medidor.
  */
-const NIVEL_FUENTE_DB = Number(process.argv[6] ?? '-12');
+// El rango: -60 es tan bajo que el medidor del bus no sale del piso, y **0 es
+// fondo de escala**, que es el valor que la cadena vacia producia. El tope es
+// -1 porque un tono a 0 dBFS sostenido cuatro minutos no se manda a un aparato
+// del usuario ni a proposito.
+const NIVEL_FUENTE_DB = argNumero(6, 'nivel de la fuente en dBFS', -12,
+  { min: -60, max: -1 });
 const HZ = 1000;
 const FM = 48000;
 const SEGUNDOS = 240;
 
-/** El fader del canal, para restaurarlo después de la prueba de `post`. */
-const FADER_ORIGINAL = 0.7647058824;
+/**
+ * El fader del canal, para restaurarlo después de la prueba de `post`.
+ *
+ * **Se lee del aparato antes de empezar, no se escribe a mano.** Acá había un
+ * `0.7647058824` fijo, que es el 0 dB de la ley del fader: si el usuario tenía
+ * el canal en otra parte, esta medición se lo movía a 0 dB y lo llamaba
+ * restaurar. Lo encontró una auditoría de instrumentos, en nueve guiones a la
+ * vez --el valor previo hardcodeado es de esta familia--.
+ */
+const FADER_ORIGINAL = Number(exigirClave(
+  await estadoPorHttpExigido(maquina), `i.${n}.mix`));
 
 /**
  * Cuánto vale un escalón del medidor, en dB.
@@ -79,22 +110,11 @@ const RESOLUCION_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
  * curva**. Un error de escala da una razón plana contra el polinomio; una
  * curva distinta da una razón que se mueve, y eso sólo se ve con varios puntos.
  */
-// **`??` no cae al valor por defecto con una cadena vacía**, sólo con
-// `null`/`undefined`. Pasar `""` desde la línea de órdenes --para saltear este
-// argumento y llegar al siguiente-- barría un solo punto, el cero, y la corrida
-// se archivaba igual con una tabla de una fila. Se comprueba el vacío a mano.
-const listaCruda = process.argv[5];
-const CRUDOS = ((listaCruda === undefined || listaCruda.trim() === '') ? [
-  '1.0', '0.95', '0.90', '0.85', '0.80', '0.7647058824', '0.72', '0.68', '0.64',
-  '0.60', '0.56', '0.52', '0.48', '0.44', '0.40', '0.36', '0.32', '0.28',
-  '0.24', '0.20', '0.16', '0.12', '0.08', '0.05',
-].join(',') : listaCruda).split(',').map(Number);
-
-if (CRUDOS.length < 5 || CRUDOS.some((x) => !Number.isFinite(x))) {
-  console.error(`lista de valores invalida: ${CRUDOS.length} puntos`);
-  console.error('Un barrido de menos de cinco puntos no dibuja ninguna curva.');
-  process.exit(2);
-}
+const CRUDOS = argLista(5, 'valores del envio', [
+  1.0, 0.95, 0.90, 0.85, 0.80, 0.7647058824, 0.72, 0.68, 0.64,
+  0.60, 0.56, 0.52, 0.48, 0.44, 0.40, 0.36, 0.32, 0.28,
+  0.24, 0.20, 0.16, 0.12, 0.08, 0.05,
+], 5);
 
 function tonoLargo(): string {
   const muestras = FM * SEGUNDOS;
@@ -135,6 +155,28 @@ const maximo = (xs: number[]): number => xs.reduce((s, v) => Math.max(s, v), 0);
 await t.conectar(maquina);
 const ruta = tonoLargo();
 const sonando = spawn('afplay', [ruta]);
+
+/**
+ * Lo que hay que deshacer, pase lo que pase.
+ *
+ * **Y «pase lo que pase» incluye una señal.** Este guion no tenía
+ * `try/finally`, como ninguno de los diez de la tanda, y una auditoría midió lo
+ * que eso costaba: cualquier caída dejaba el envío abierto y `afplay` sonando.
+ * Después lo demostré en vivo --una corrida de prueba pasada por `head -4`
+ * murió y dejó `i.9.aux.2.value` en 0,8--, y ahí quedó claro que `finally` solo
+ * no alcanza: a mí me mató una señal, y `finally` no corre con una señal.
+ * `conRestauracion` tapa las dos puertas.
+ *
+ * El orden importa: primero callar la fuente, después cerrar el envío. Al
+ * revés, el tono sigue sonando por el general mientras se escribe.
+ */
+const restaurar = (): void => {
+  sonando.kill();
+  t.enviar(codificarSetd(`i.${n}.aux.${aux}.value`, 0));
+  t.enviar(codificarSetd(`i.${n}.mix`, FADER_ORIGINAL));
+};
+
+await conRestauracion(restaurar, async () => {
 await new Promise((r) => setTimeout(r, 2500));
 
 console.log(`canal ${canal} (i.${n}) -> auxiliar ${aux + 1} (a.${aux})`);
@@ -214,13 +256,14 @@ for (const f of [FADER_ORIGINAL, 0.5, 0.3, FADER_ORIGINAL]) {
     + `   canal(pre) ${dbDeMedidor(media(testigo) * VU_ESCALA).toFixed(2)} dB`);
 }
 
-sonando.kill();
+});
 
-// --- Restauracion ---
-t.enviar(codificarSetd(`i.${n}.aux.${aux}.value`, 0));
-t.enviar(codificarSetd(`i.${n}.mix`, FADER_ORIGINAL));
+// `conRestauracion` ya llamó a `restaurar`: acá sólo se le da tiempo a que las
+// dos escrituras lleguen antes de cortar el socket.
 await new Promise((r) => setTimeout(r, 1500));
 await t.desconectar();
 
 console.log('');
-console.log('restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.');
+console.log(`restaurado: envio en 0 y fader en ${FADER_ORIGINAL}, el valor que se leyo`);
+console.log('antes de empezar. Por el mismo camino que escribio, asi que la comprobacion');
+console.log('por HTTP va aparte.');
