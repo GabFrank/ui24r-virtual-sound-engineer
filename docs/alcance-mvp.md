@@ -192,8 +192,31 @@ que según él suele ser un router externo.
 
 Entra al MVP porque resuelve un problema real del soundcheck —que nadie tenga que
 preguntar cuándo le toca, y que quien se queda sin monitor dos segundos entienda
-por qué— y porque **no depende de ninguna ley sin medir**. Lo que no hace: los
-músicos no piden nada desde ahí, por ahora.
+por qué— y porque **no depende de ninguna ley sin medir**.
+
+**Y deja de ser sólo de lectura.** El 2026-09-12 el usuario la amplió: «*cada
+integrante selecciona su propio instrumento/voz, mientras se hace el soundcheck
+puede solicitar bajar o subir su retorno, **solamente solicitar**, la app decide
+si aceptar o declinar*». Y eligió, entre opciones, que la aplicación **decida
+sola y le avise** —no que le pase cada pedido para aprobar—.
+
+Tres cosas de ese enunciado que cambian el diseño y conviene no perder:
+
+1. **«Solamente solicitar» es la parte importante.** El músico no escribe en la
+   consola: propone. Lo que decide es el motor de seguridad, con los mismos
+   límites, techo y estados que cualquier otro cambio. Un pedido es un
+   `CambioPropuesto` más, y eso es justamente lo que hace esto barato de
+   construir: la puerta ya está abierta por ADR-028.
+2. **«Cada integrante selecciona su propio instrumento/voz»** ata la pantalla al
+   perfil de la banda que ya existe, y resuelve solo el problema de a qué canal
+   corresponde cada pedido — sin login, sin cuentas.
+3. **Declinar tiene que decir por qué.** Un pedido rechazado sin motivo es peor
+   que no poder pedir: el músico vuelve a pedir. El motor ya devuelve el
+   invariante y el mensaje de cada rechazo; esta pantalla es el primer lugar
+   donde ese mensaje lo lee alguien que no es el operador.
+
+**Lo que sigue sin entrar:** que el músico toque nada que no sea su propio
+retorno.
 
 Su detalle está en
 [`pedidos/2026-09-12-diagnostico-y-mediciones.md`](pedidos/2026-09-12-diagnostico-y-mediciones.md).

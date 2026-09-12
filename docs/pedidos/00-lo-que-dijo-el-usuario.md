@@ -236,3 +236,25 @@ modelo: es de quien coloca la ficha, y para eso ya estaba el cuarto argumento de
    usuario y el plano es dónde lo anota. El emoji del mensaje es el acuse de lo
    absurdo que sonaba.
 
+## Del 2026-09-12, a la mañana
+
+> Sobre los aux, que pasa si al iniciar el soundcheck estan todos abajo? La app
+> podra levantar?
+
+> Bueno ahi encontre algo que puede servir para la vista qr del grupo, cada
+> integrande selecfiona su propio instrumento/voz, mientras se hace el
+> soundcheck puede solicitar bajar o subir su retorno, solamente solicitar, la
+> app decide si aceptar o declinar
+
+De las opciones múltiples:
+
+- El techo del retorno: **«Sólo si la app bajó»** — el techo se anota cuando la
+  aplicación baja un retorno para cazar un acople; si nadie bajó, no hay techo
+- Los pedidos desde el QR: **«Decide sola y te avisa»**
+
+**Lectura mía, discutible.** La primera pregunta encontró un defecto real: el
+techo se anotaba en la primera escritura fuera cual fuera, así que con todo
+abajo la aplicación no podía levantar nada. Es la tercera vez en esta tanda de
+trabajo que una restricción sale más ancha que el permiso, y la primera que la
+encuentra el usuario.
+

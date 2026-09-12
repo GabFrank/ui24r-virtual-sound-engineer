@@ -73,22 +73,31 @@ export interface ContextoSeguridad {
    * bajado para cazar un acople: «*Hasta donde estaba antes de que yo lo bajara,
    * y ni un paso más*» (2026-09-11).
    *
-   * Es una regla que el motor tiene que poder hacer cumplir, no una nota en un
-   * documento. Se llena con el valor que la ruta tenía **la primera vez que el
-   * asistente la tocó en esta sesión**.
+   * **Sólo se anota cuando la aplicación BAJA un envío**, y en ese momento se
+   * guarda el valor que tenía antes de bajarlo. Si nadie bajó nada, la ruta no
+   * figura acá y no tiene techo.
    *
-   * **Y eso NO es lo que dijo el usuario, aunque se le parezca.** Él dijo «antes
-   * de que **yo** lo bajara»: su ancla es el valor previo a que **él** bajara la
-   * cuña. Ésta se ancla en la primera vez que entró **el asistente**. Las dos
-   * coinciden sólo cuando el que bajó fue el asistente; si el usuario ya bajó a
-   * mano y después entra la aplicación, el techo se fija en el valor ya bajado y
-   * el techo del usuario queda inalcanzable.
+   * **La primera versión lo llenaba en la primera escritura, fuera cual fuera, y
+   * eso rompía el caso de uso principal.** Lo encontró el usuario el 2026-09-12
+   * con una pregunta de una línea: «*¿qué pasa si al iniciar el soundcheck están
+   * todos abajo? ¿La app podrá levantar?*». No podía: el techo se anclaba en el
+   * piso y la aplicación no podía subir ni un decibel. El ajuste normal de
+   * monitores —que el usuario autorizó explícitamente— quedaba imposible por una
+   * regla que venía de otro contexto.
    *
-   * La regla del usuario, tal como la dijo, necesita seguir los cambios externos
-   * para saber qué valor había antes de que él lo moviera, y eso hoy no existe.
-   * **Esta es la operacionalización del agente**, y una auditoría de fidelidad
-   * la encontró firmada como «palabras del usuario» — la tercera vez que un «yo»
-   * suyo se convierte en autoridad de la aplicación.
+   * **El contexto importa y se había perdido.** La pregunta que el usuario
+   * respondió con «hasta donde estaba antes de que yo lo bajara» estaba en el
+   * bloque de **diagnóstico de acoples**, entre «provocar el acople» y «acople
+   * combinado». Era el techo para **restaurar algo que se bajó**, no un tope
+   * general. La línea contigua de sus respuestas dice otra cosa: «*Sí, y también
+   * para el ajuste normal de monitores*».
+   *
+   * Decisión del usuario, 2026-09-12: el techo existe **sólo si la app bajó**.
+   *
+   * **Queda una diferencia con sus palabras, y no se tapa.** Él dijo «antes de
+   * que **yo** lo bajara»; esto se ancla en lo que bajó **la aplicación**. Si él
+   * baja a mano, la app no se entera: haría falta seguir los cambios externos, y
+   * eso no existe todavía.
    *
    * **En la unidad declarada del cambio, no en crudo.** Se compara contra
    * `magnitudPropuesta`, que va en decibeles para este tipo. Poner acá el crudo

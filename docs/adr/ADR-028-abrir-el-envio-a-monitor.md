@@ -122,6 +122,33 @@ permitido. Es interpretación mía del «ni un paso más», que la respalda pero
 dice. Hay un test que la fija, porque un `>` contra un `>=` es la clase de
 diferencia que nadie nota hasta que importa.
 
+### El techo sólo existe si la app bajó, y la primera versión rompía el caso principal
+
+**Corregido el 2026-09-12, por una pregunta del usuario de una línea:** *«¿qué
+pasa si al iniciar el soundcheck están todos abajo? ¿La app podrá levantar?»*.
+
+No podía. El techo se anotaba en la **primera escritura, fuera cual fuera**, así
+que con el envío en el piso quedaba clavado ahí y la aplicación no podía subir ni
+un decibel. Comprobado ejecutando el motor: `INV-010 — no sube más allá de donde
+estaba: −88 dB pedidos contra un techo de −90`.
+
+**El contexto se había perdido.** La pregunta que el usuario respondió con «hasta
+donde estaba antes de que yo lo bajara» estaba en el bloque de **diagnóstico de
+acoples**, entre «provocar el acople» y «acople combinado». Era el techo para
+**restaurar algo que se bajó**. La línea contigua de sus respuestas autoriza otra
+cosa: «*Sí, y también para el ajuste normal de monitores*». **Tomé un techo de un
+contexto y lo apliqué a los dos**, y el que rompía era justamente el que él había
+autorizado de forma más amplia.
+
+Decisión del usuario, 2026-09-12: **el techo existe sólo si la app bajó.** Si
+nadie bajó nada, no hay techo y rigen los topes de magnitud.
+
+**Es la tercera vez en esta tanda que una restricción sale más ancha que el
+permiso** —la primera fue el silencio de canal en ADR-027, la segunda el alcance
+de este mismo ADR— y **la primera que la encuentra el usuario y no una
+auditoría**. Vale anotarlo: las tres veces el error no estuvo en implementar mal
+una regla, sino en llevar una regla a un contexto donde nadie la había puesto.
+
 ### El ancla del techo no es la del usuario, y hay que decirlo
 
 El usuario dijo «antes de que **yo** lo bajara»: su ancla es el valor **previo a

@@ -509,3 +509,24 @@ test('ADR-027: de a un canal por vez', () => {
   );
   assert.strictEqual(dos.permitido, false, 'dos canales a la vez tiene que rechazarse');
 });
+
+test('ADR-028: con todo abajo al empezar, la app puede levantar', () => {
+  // **El caso que encontró el usuario el 2026-09-12**, preguntando: «¿qué pasa
+  // si al iniciar el soundcheck están todos abajo? ¿La app podrá levantar?».
+  //
+  // No podía. El techo se anotaba en la primera escritura fuera cual fuera, así
+  // que con el envío en el piso el techo quedaba en el piso y no se podía subir
+  // ni un decibel — justo el ajuste normal de monitores que el usuario había
+  // autorizado. El techo era del bloque de diagnóstico de acoples y se aplicó a
+  // todo.
+  //
+  // Ahora `techoPorRuta` sólo lleva las rutas que la aplicación bajó. Un envío
+  // que nadie bajó no tiene techo.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: -88, valorEsperado: -90,
+    magnitudPropuesta: -88, magnitudEsperada: -90,
+  }], contexto(), ok);
+  assert.equal(v.permitido, true, motivos(v).join(', '));
+});

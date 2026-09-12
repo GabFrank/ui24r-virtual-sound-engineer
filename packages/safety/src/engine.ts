@@ -265,8 +265,14 @@ export class SafetyEngine {
     // yo lo bajara, y ni un paso más*». Eso no es un tope de magnitud --de eso
     // se ocupa INV-004-- sino un **techo absoluto por ruta**.
     //
-    // **Cómo se llena ese techo es decisión del agente y difiere de lo que el
-    // usuario dijo**: ver `techoPorRuta` en `ContextoSeguridad`.
+    // **El techo sólo existe si la aplicación bajó ese envío.** Si nadie bajó
+    // nada, la ruta no figura en `techoPorRuta` y se sube libremente hasta los
+    // topes de magnitud. La primera versión lo anotaba en la primera escritura
+    // fuera cual fuera, y con todos los auxiliares abajo al empezar el
+    // soundcheck la aplicación no podía levantar ninguno: el techo quedaba
+    // clavado en el piso. Lo encontró el usuario preguntando exactamente eso.
+    //
+    // Ver `techoPorRuta` en `ContextoSeguridad` para qué queda sin cubrir.
     //
     // **Que no haya tope al bajar también es decisión del agente.** Al usuario
     // se le preguntó una sola cosa, «techo al subir»; nunca se le ofreció un
