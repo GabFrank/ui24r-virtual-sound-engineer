@@ -58,7 +58,7 @@ Se hace si la consola se cae, o cuando las mediciones terminan.
 |---|---|
 | **103** | **La pantalla por QR para la banda**: sólo lectura, progreso del soundcheck y a quién le toca. Idea del usuario del 2026-09-12 |
 | **91** | **El plano es inusable sin dedo**: las tarjetas superpuestas no se pueden tocar |
-| **92** | **`compararCaminos` a una pantalla**. Bloqueado porque `ElementoCaptacion.asignacionId` no lo escribe nadie; la salida decidida es «desde el plano: tocás el micrófono y elegís su canal» |
+| **92** | **`compararCaminos` a una pantalla**. **El bloqueo estaba mal diagnosticado** y quedó resuelto el 2026-09-12: decía «bloqueado porque `ElementoCaptacion.asignacionId` no lo escribe nadie», y `compararCaminos` **no lee ese campo** — recibe un resolvedor, y lo único que faltaba era escribirlo. Está en `canalDeLaCaptacion`, que sigue la cadena micrófono → fuente → integrante → asignación. Y `asignacionId` **no habría que escribirlo aunque se pudiera**: el escenario es del local y se reusa con cada banda, así que un canal guardado ahí queda viejo la primera vez que toque otra. Falta la pantalla, no el dato |
 
 | **104** | **Pasada completa por la interfaz.** Pedido del usuario al cerrar la noche: qué falta cablear, si falta algún ABM, y el estado del plano del local |
 

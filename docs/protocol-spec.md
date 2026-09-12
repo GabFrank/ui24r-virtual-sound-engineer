@@ -67,17 +67,43 @@ columnas están cambiadas de nombre**: donde dice `7.0 dB  Q=-18` hay que leer
 −18 dB con Q 7. El archivo no se reescribe —es evidencia archivada— y queda
 anotado acá, que es donde alguien lo va a buscar.
 
-**`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
-por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y
-apagado, poniéndolos en 1 y volviéndolos a 0: **la cuenta de filtros no se movió
-nunca**. `clearlive` en cambio funcionó a la primera y de forma comprobable.
+**Los tres disparadores funcionan, y cuál sirve depende de en qué pila cayó el
+filtro.** Medido en tres ocasiones, con resultados distintos que sólo cierran
+juntos:
 
-Que un «borrar todo» no borre todo es de las cosas que hay que medir en vez de
-creer. Lo más plausible es que los fijos se borren desde la pantalla de la
-consola, probablemente con una confirmación de por medio —que es razonable: un
-fijo lo colocó alguien afinando la sala—. Los tres disparadores quedan en 1
-después de usarse y hay que devolverlos a 0 a mano.
-Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt`.
+| Fecha | Situación | `clearlive` | `clearfixed` | `clearall` |
+|---|---|---|---|---|
+| 2026-09-10 | 3 filtros del usuario, supresor encendido y apagado | no movió la cuenta | no movió | no movió |
+| 2026-09-12 | 6 filtros que aprendió durante una medición | **borró los 6** | — | — |
+| 2026-09-12 | 1 filtro aprendido con el supresor **encendido** y un tono sonando | no borró | no borró | **borró el 1** |
+
+**Este párrafo decía «los fijos no se pudieron borrar por protocolo», y es
+falso.** Lo decía porque la primera medición probó los tres sobre filtros que el
+usuario había colocado y ninguno los movió, y de ahí se concluyó que el
+protocolo no podía. La conclusión correcta de esa corrida era más chica: *esos*
+filtros no se borraron con *esos* disparadores.
+
+Lo que las tres juntas dicen:
+
+- **`clearlive` borra lo que el supresor aprendió con el supresor apagado** —o
+  al menos lo que aprendió en la corrida del 12 de setiembre, seis notches de
+  −18 dB en las frecuencias de los tonos de medición—.
+- **`clearall` borra lo que `clearlive` no**, y eso está medido: el único filtro
+  del tercer caso resistió `clearlive` y `clearfixed` y cayó con `clearall`.
+- **Los tres fallan sobre los filtros que colocó el usuario.** Sigue siendo lo
+  más plausible que ésos se borren desde la pantalla de la consola, con una
+  confirmación de por medio, que es razonable: un fijo lo colocó alguien
+  afinando la sala.
+
+Queda sin medir **por qué** un filtro va a una pila o a la otra. La hipótesis que
+los tres casos admiten es que el estado de `m.afs.enabled` en el momento de
+aprender decide la pila: el tercer filtro se aprendió con el supresor
+**encendido** y fue el que necesitó `clearall`. No está probado, y hace falta
+provocarlo a propósito en las dos condiciones.
+
+Los tres disparadores quedan en 1 después de usarse y hay que devolverlos a 0 a
+mano.
+Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt` (primer caso), `spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt` (segundo). El tercero salió de una limpieza no archivada, y queda como lo que es: una observación con fecha, hasta que se provoque a propósito.
 
 ## La consola difunde en un tic de ~34 ms
 
