@@ -43,11 +43,20 @@ function pareja(
   };
 }
 
-test('la distancia se muestra siempre como rango, aunque colapse', () => {
+test('sin rango, la distancia va como número; con rango, como rango', () => {
+  // **Este test fijaba lo contrario y lo vetó el usuario el 2026-09-13:** «al
+  // crear el instrumento/microfono, se indica si es fijo o tiene rango de
+  // movimiento, punto final». Decía «la distancia se muestra siempre como
+  // rango, aunque colapse», y exigía «unos 1,20 m» para dos extremos idénticos.
+  //
+  // Si el usuario declaró que algo es fijo, el número **es** una medición, y
+  // ponerle «unos» adelante es el sistema desconfiando de un dato que el propio
+  // usuario cargó.
   const { lineas } = lineasDeExposicion(ordenDeExposicion([
     pareja('cuna', { min: 10, max: 20 }, { distancia: { min: 1.2, max: 1.2 } }),
   ]));
-  ok(lineas[0]?.detalle.includes('unos 1,20 m'), lineas[0]?.detalle);
+  ok(lineas[0]?.detalle.includes('1,20 m'), lineas[0]?.detalle);
+  ok(!lineas[0]?.detalle.includes('unos'), `sin «unos»: ${lineas[0]?.detalle}`);
   const conDuda = lineasDeExposicion(ordenDeExposicion([
     pareja('cuna', { min: 10, max: 20 }, { distancia: { min: 0.8, max: 1.6 } }),
   ]));

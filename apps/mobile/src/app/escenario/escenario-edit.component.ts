@@ -27,9 +27,9 @@ import {
 } from './lo-que-dice-la-geometria';
 
 const FIJEZAS: readonly { id: Fijeza; etiqueta: string; ayuda: string }[] = [
-  { id: 'FIJO', etiqueta: 'Fijo', ayuda: 'Colgado, atornillado o apoyado y nadie lo toca. No se mueve, pero se mide peor que algo que está al alcance de la mano.' },
-  { id: 'EN_PIE', etiqueta: 'En un pie', ayuda: 'Se puede medir con cinta. Es la puesta que menos duda arrastra.' },
-  { id: 'EN_MANO', etiqueta: 'En la mano', ayuda: 'Micrófono de mano o inalámbrico encima de alguien: se mueve medio metro mientras se canta.' },
+  { id: 'FIJO', etiqueta: 'Fijo', ayuda: 'Colgado, atornillado o apoyado y nadie lo toca. Las distancias se muestran como un número, sin rango.' },
+  { id: 'EN_PIE', etiqueta: 'En un pie', ayuda: 'Alguien lo puede correr sin querer: se cuenta ±5 cm de juego.' },
+  { id: 'EN_MANO', etiqueta: 'En la mano', ayuda: 'Micrófono de mano o inalámbrico encima de alguien: se mueve medio metro mientras se canta, y las distancias se muestran como rango.' },
 ];
 
 const PATRONES: readonly { id: PatronPolar; etiqueta: string }[] = [

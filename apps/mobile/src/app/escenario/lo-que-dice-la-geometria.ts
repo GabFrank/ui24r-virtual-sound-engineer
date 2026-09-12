@@ -19,19 +19,32 @@ export interface LineaDeExposicion {
   readonly empatadaCon: number;
 }
 
+/**
+ * La distancia, en metros con dos decimales —o sea con precisión de centímetro.
+ *
+ * **Cuando el rango colapsa se muestra el número solo.** Antes salía «unos 1,20
+ * m» incluso con los extremos idénticos, defendido con que «un solo número
+ * invita a leerlo como una medición». Lo vetó el usuario el 2026-09-13: «*al
+ * crear el instrumento/microfono, se indica si es fijo o tiene rango de
+ * movimiento, punto final*».
+ *
+ * Tiene razón y el argumento viejo se cae solo: si el usuario declaró que algo
+ * es fijo, **es** una medición, y hedgearla es el sistema desconfiando de un
+ * dato que el propio usuario cargó. El rango sigue apareciendo entero cuando
+ * hay rango de verdad —un micrófono en mano, medio metro de vaivén—, que es
+ * exactamente donde sirve.
+ */
 function metros(min: number, max: number): string {
   const uno = (v: number) => v.toFixed(2).replace('.', ',');
-  // **Siempre con rango, aunque los extremos coincidan.** Un solo número
-  // invita a leerlo como una medición; el rango recuerda de dónde salió. Cuando
-  // colapsa, se muestra igual con la palabra «unos» adelante.
-  return Math.abs(max - min) < 0.005 ? `unos ${uno(min)} m` : `entre ${uno(min)} y ${uno(max)} m`;
+  return Math.abs(max - min) < 0.005 ? `${uno(min)} m` : `entre ${uno(min)} y ${uno(max)} m`;
 }
 
 function grados(min: number, max: number): string {
   const uno = (v: number) => String(Math.round(v));
   if (min <= 0.5 && max >= 179.5) return 'con el ángulo sin determinar';
+  // Mismo criterio que en `metros`: sin rango, el número va solo.
   return Math.abs(max - min) < 1
-    ? `a unos ${uno(min)}° de su eje`
+    ? `a ${uno(min)}° de su eje`
     : `entre ${uno(min)}° y ${uno(max)}° de su eje`;
 }
 

@@ -187,3 +187,13 @@ pedido es el «en cm»: hoy muestra un **rango en metros**, porque un micrófono
 mano no tiene posición sino zona. Es una decisión de producto que el usuario
 puede revocar, y queda preguntada, no decidida por mí.
 
+> ese problema es fácil de solucionar, al creae el instrumento/microfono, se
+> indica si es fijo o tiene rango de movimiento, punto final
+
+**Lectura mía, discutible.** Resuelve de un tajo algo que el modelo venía
+hedgeando: la fijeza declara **cuánto se mueve** algo y nada más. Si el usuario
+dice fijo, es fijo, y la distancia se muestra como número. El error de medición
+—que era el argumento para darle ±10 cm a `FIJO`, más que a `EN_PIE`— no es del
+modelo: es de quien coloca la ficha, y para eso ya estaba el cuarto argumento de
+`emplazar()`, que sigue existiendo.
+

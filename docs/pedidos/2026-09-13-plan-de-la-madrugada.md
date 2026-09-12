@@ -82,9 +82,20 @@ se mueve medio metro es inventar precisión que las entradas no tienen. Por eso
 `Rango` no tiene campo de centro: para que nadie pueda leer un número único
 donde no lo hay.
 
-**Eso es una decisión de producto y es del usuario revocarla.** Si prefiere ver
-un número solo, se cambia: la incertidumbre se sigue calculando y se muestra
-como margen al lado. Queda preguntado.
+**El usuario lo revocó en el acto**, el 2026-09-13: «*al creae el
+instrumento/microfono, se indica si es fijo o tiene rango de movimiento, punto
+final*». Implementado la misma noche, en tres partes:
+
+1. `INCERTIDUMBRE_POR_FIJEZA.FIJO` pasó de ±10 cm y ±10° a **cero**. Era el
+   único número de esa tabla sin origen documental, y el único que hacía que
+   `FIJO` tuviera *más* duda que `EN_PIE`.
+2. El render muestra **el número solo** cuando no hay rango —«1,20 m», no «unos
+   1,20 m»—, y sigue mostrando el rango entero cuando lo hay.
+3. El texto de ayuda de «Fijo» en la pantalla dejó de prometer lo contrario.
+
+Y quedó un hallazgo de regalo: el test que se rompió al cambiar la constante
+pedía `r.max > 1.0`, que con `FIJO = 0,10` daba 1,1. **Estaba calibrado contra
+el valor de la constante, no contra la regla.** Ahora fija la regla.
 
 **Lo que sí falta en el plano** ya está anotado como el ítem 91: **es inusable
 sin dedo** —las fichas superpuestas no se pueden tocar— y esa es la parte que

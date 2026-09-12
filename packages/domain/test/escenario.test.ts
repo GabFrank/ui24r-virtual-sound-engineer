@@ -59,11 +59,17 @@ test('la distancia no baja de cero, y eso es lo que dice «pueden estar en el mi
   // El primer ejemplo que escribí acá tenía el micrófono a 1,43 m y daba 0,83,
   // no 0. El test lo encontró: a metro y medio la duda de medio metro **no**
   // alcanza para tocarse, y la regla de recortar en cero no se ejercitaba.
+  // **Y la segunda versión de este test se rompió sola al cambiar una
+  // constante.** Pedía `r.max > 1.0`, que con `FIJO` en 0,10 daba 1,1 y pasaba;
+  // el 2026-09-13 `FIJO` pasó a valer 0 y el máximo quedó en 1,0 exacto. El
+  // umbral estaba calibrado contra el valor de la constante, no contra la regla.
+  // Ahora se fija la regla: el máximo **es** la distancia más las dos dudas.
   const cuna = emplazar(PUNTO(2, 1, 0.2), 'FIJO');
   const mano = emplazar(PUNTO(2, 1.3, 0.6), 'EN_MANO');
+  const duda = INCERTIDUMBRE_POR_FIJEZA.FIJO.posicionM + INCERTIDUMBRE_POR_FIJEZA.EN_MANO.posicionM;
   const r = distanciaM(cuna, mano);
   strictEqual(r.min, 0, 'el mínimo se recorta en cero: no existe la distancia negativa');
-  ok(r.max > 1.0, `el máximo sigue informando: ${r.max}`);
+  ok(Math.abs(r.max - (0.5 + duda)) < 1e-9, `el máximo es la distancia más las dudas: ${r.max}`);
   strictEqual(puedenSuperponerse(cuna, mano), true);
 
   // Control positivo: el mismo punto, pero con el micrófono en un pie, SÍ se

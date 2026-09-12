@@ -97,11 +97,10 @@ import type { BusRef, PAComponentSpec } from './venue.ts';
  * **La incertidumbre mide lo que NO sabemos de su posición, y eso tiene dos
  * fuentes distintas: cuánto se mueve, y con cuánta precisión se lo pudo
  * marcar.** Una auditoría señaló que la tabla parece contradecirse —`FIJO` duda
- * más que `EN_PIE`— y tenía razón en que había que explicarlo: una caja colgada
- * de una parrilla o atornillada a tres metros de altura **no se mueve nada y se
- * mide pésimo**, mientras que un pie de micrófono se toca con la mano y se
- * puede medir con cinta. Las dos fuentes se suman en un solo número porque
- * aguas abajo se usan para lo mismo.
+ * más que `EN_PIE`—. **Ese reparo quedó resuelto el 2026-09-13 sacándole la
+ * incertidumbre a `FIJO`, no explicándola**: la fijeza declara *cuánto se
+ * mueve* algo, y nada más. Cuán bien se lo puede medir es otra cosa, va por el
+ * tercer argumento de {@link emplazar}, y la declara quien coloca la ficha.
  */
 export type Fijeza =
   /** Atornillado, colgado o apoyado y nadie lo toca: cajas, amplificadores. */
@@ -125,16 +124,28 @@ export type Fijeza =
  *   radio**, no la mitad: el radio honesto sería ±0,25 m si la marca estuviera
  *   en el centro del vaivén, y no hay motivo para creer que lo esté. Errar
  *   ancho ensancha la conclusión; errar angosto la falsifica.
- * - `FIJO.posicionM` = 0,10. **Sin respaldo en ningún documento.** Es el número
- *   que se puso para una caja colgada o atornillada: no se mueve, pero se mide
- *   mal. Lo señaló una auditoría por ser el único de la tabla sin origen.
- * - Los tres de orientación, estimaciones sin respaldo de ningún tipo.
+ * - `FIJO` = **cero, en posición y en orientación.** Decisión del usuario el
+ *   2026-09-13: «*al crear el instrumento/microfono, se indica si es fijo o
+ *   tiene rango de movimiento, punto final*». Si el usuario declara que algo es
+ *   fijo, el sistema no le discute la declaración.
+ *
+ *   **Antes valía 0,10 y era el peor número de esta tabla.** Salía de mezclar
+ *   dos cosas distintas —cuánto se mueve algo y cuán bien se lo puede medir— en
+ *   un solo número, y el resultado era que `FIJO` tenía *más* incertidumbre que
+ *   `EN_PIE`. Una auditoría ya lo había marcado como el único sin origen
+ *   documental, y el comentario que lo defendía —una caja colgada de una
+ *   parrilla no se mueve y se mide pésimo— describía un problema real metido en
+ *   el campo equivocado. **El error de medición no es del modelo: es de quien
+ *   coloca la ficha en el plano**, y para eso está el tercer argumento de
+ *   {@link emplazar}, que sigue existiendo. Quien cuelgue algo a tres metros y
+ *   no pueda medirlo bien, lo declara y listo.
+ * - Los dos de orientación que quedan, estimaciones sin respaldo de ningún tipo.
  *
  * Quien conozca mejor su sala puede sobreescribirlos elemento por elemento:
  * {@link Emplazamiento} lleva la incertidumbre explícita, no la fijeza sola.
  */
 export const INCERTIDUMBRE_POR_FIJEZA: Readonly<Record<Fijeza, { readonly posicionM: number; readonly orientacionGrados: number }>> = {
-  FIJO: { posicionM: 0.10, orientacionGrados: 10 },
+  FIJO: { posicionM: 0, orientacionGrados: 0 },
   EN_PIE: { posicionM: 0.05, orientacionGrados: 10 },
   EN_MANO: { posicionM: 0.50, orientacionGrados: 60 },
 };
