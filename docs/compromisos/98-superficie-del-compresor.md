@@ -69,7 +69,7 @@ propia corrida de calibración:
    fuente de verdad.
 6. **Y se registran `+3` y `+4`**, los medidores del bloque dinámico. Llegan en
    el mismo cuadro y no cuestan nada. Sirven para tres cosas: son un tercer
-   instrumento; `+3` anulándose delataría la puerta; y 54 puntos con las dos
+   instrumento; `+3` anulándose delataría la puerta; y 56 puntos con las dos
    variables barridas son la mejor ocasión que va a haber para **resolver la
    tensión documentada sobre qué son esos dos bytes** —el cliente los rotula
    entrada y salida del bloque, y una auditoría midió que `+3` se anula con
@@ -155,7 +155,12 @@ su techo es 0,92 dB, que **trunca a 0,00 en el medidor de reducción** y son 2,7
 escalones del de nivel. Con la tolerancia de dos escalones, «techo en 0,92» y
 «no pasó nada» son el mismo resultado. Se informa como observación.
 
-Son 63 puntos. A seis segundos por punto, unos siete minutos de tono.
+Son **56 puntos medidos más 7 referencias**, 63 lecturas. A seis segundos por
+punto, y con la vuelta de cada bloque, unos catorce minutos de tono.
+
+*(La primera versión decía 54 y 48 en distintos párrafos, con seis umbrales.
+Con siete son 56 medidos. Cuando un documento lleva la misma cuenta escrita en
+cuatro lugares, tres envejecen.)*
 
 **La columna `u = 0,55` es una columna de control.** Está 0,8 dB **por encima**
 del cruce, así que con rodilla dura no hay compresión para ninguna relación: se
@@ -204,7 +209,7 @@ ley.
 
 ### S2 — El testigo `pre` no se mueve
 
-Más de **0,667 dB** en los 63 puntos. **Ya casi falló una vez**: en
+Más de **0,667 dB** en las 63 lecturas. **Ya casi falló una vez**: en
 `umbral-por-sustitucion` la fila 4:1 / `u = 0,140` tiene `pre = −37,48` contra
 −37,66 en las otras veintinueve, o sea 0,54 escalones.
 
@@ -282,7 +287,7 @@ la 97 estableció, con sus doce residuos no nulos todos negativos— o uno más
 negativo que −1,334, que contradiría la calibración **o delataría una ganancia
 de compensación que sigue a la relación**.
 
-Se informa **el signo de los 48 residuos**, no sólo el máximo. *La primera
+Se informa **el signo de los 56 residuos**, no sólo el máximo. *La primera
 versión usaba un umbral simétrico de ±0,667, que aceptaba un residuo positivo
 que la 97 ya había excluido.*
 
@@ -379,7 +384,7 @@ esto lo perdió en silencio.
 - **Nada sobre la rodilla blanda.** `dyn.softknee` se registra y no se barre. Si
   está encendido, lo que se mide es la superficie **con** esa rodilla.
 - **Un canal, una frecuencia, un nivel de fuente.** Igual que la 97.
-- **Y no se ajusta una curva y se publica.** Ni con 63 puntos. Lo que se busca
+- **Y no se ajusta una curva y se publica.** Ni con 56 puntos. Lo que se busca
   es la **forma** de la superficie y si los cortes de la 97 caen en ella; una
   fórmula sale de acá sólo si se sostiene en los siete umbrales a la vez. Los
   tres barridos de 84,5 dB que este proyecto tuvo que retirar eran rectas
