@@ -5,6 +5,8 @@ import {
 import type { Emplazamiento } from '@vse/domain';
 import {
   aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia, moverArrastre,
+  escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
+  PASO_DE_ZOOM, ZOOM_MINIMO, type Vista,
   precisionDelDedoM, puntaDeLaFlecha, radioIncertidumbrePx,
   BLANCO_MINIMO_PX, type Arrastre, type DimensionesDelLocal, type FichaDelPlano, type PuntoPx,
 } from './plano';
@@ -41,6 +43,25 @@ export interface FichaMovida {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!-- **Los controles de zoom, arriba y no flotando sobre el plano.** Un
+         botón encima del lienzo tapa justo el pedazo de sala que uno quiere
+         mirar, y con el gesto de desplazar desactivado no hay forma de
+         correrlo. -->
+    <div class="mandos">
+      <button type="button" class="zoom" (click)="alejar()"
+              [disabled]="!sePuedeAlejar()" aria-label="Alejar el plano">&minus;</button>
+      <button type="button" class="zoom" (click)="acercar()"
+              [disabled]="!sePuedeAcercar()" aria-label="Acercar el plano">+</button>
+      <button type="button" class="todo" (click)="verTodo()"
+              [disabled]="!sePuedeAlejar()">Ver todo</button>
+      <!-- **La cifra que impide que la pantalla mienta.** Se muestra siempre,
+           también a zoom 1, porque es cuando más hace falta: en una sala de
+           12 por 8 en una tablet el dedo vale un metro justo. -->
+      <span class="dedo" [class.grueso]="precisionM() > 0.05">
+        dedo &asymp; {{ dedoEnCm() }} cm
+      </span>
+    </div>
+
     <svg #lienzo
          [attr.viewBox]="'0 0 ' + anchoPx() + ' ' + altoPx()"
          [attr.aria-label]="resumenParaLector()"
@@ -96,6 +117,19 @@ export interface FichaMovida {
   `,
   styles: [`
     :host { display: block; touch-action: none; }
+    .mandos { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+    /* 48 px de lado: el mismo blanco mínimo que las fichas del plano. Está
+       escrito acá en CSS y en BLANCO_MINIMO_PX en aritmética, y esa
+       repetición tiene su test -- dos números que dicen lo mismo y pueden
+       separarse son un defecto esperando. */
+    .mandos button { min-width: 48px; min-height: 48px; border: 1px solid var(--line);
+                     border-radius: 8px; background: var(--surface-2);
+                     color: inherit; font-size: 1.1rem; }
+    .mandos button:disabled { opacity: .4; }
+    .mandos .todo { min-width: auto; padding: 0 .75rem; font-size: .9rem; }
+    .mandos .dedo { margin-left: auto; font-size: .8rem; opacity: .7;
+                    font-variant-numeric: tabular-nums; }
+    .mandos .dedo.grueso { opacity: 1; color: var(--warn); }
     svg { display: block; width: 100%; height: auto; }
     .sala { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
     .borde-escenario { stroke: var(--signal); stroke-width: 3; }
@@ -178,8 +212,75 @@ export class PlanoEscenarioComponent implements OnDestroy {
     return Math.max(240, Math.min(proporcional, Math.round(this.medido() * 1.6)));
   });
 
-  readonly escala = computed(() =>
-    calcularEscala(this.dimensiones(), this.anchoPx(), this.altoPx(), 28));
+  /**
+   * El margen del plano, en un solo lugar.
+   *
+   * Estaba escrito cuatro veces como literal `28` en llamadas a la escala.
+   * Ahora que el zoom llama a `escalaConVista` y a `zoomUtilMaximo`, un margen
+   * distinto entre las dos haría que el tope de zoom no fuera el tope de la
+   * escala que se dibuja -- y sería invisible.
+   */
+  private readonly MARGEN_PX = 28;
+
+  /**
+   * Qué pedazo del local se está mirando.
+   *
+   * `null` es "el local entero": no se guarda el encuadre completo calculado,
+   * porque las dimensiones son una entrada y pueden cambiar --si el usuario
+   * corrige el ancho de la sala, el encuadre tiene que seguirla en vez de
+   * quedar centrado en un punto que ya no existe.
+   */
+  private readonly vista = signal<Vista | null>(null);
+
+  /** La vista efectiva: la elegida, o el local entero. */
+  readonly vistaActual = computed(() => this.vista() ?? vistaInicial(this.dimensiones()));
+
+  readonly escala = computed(() => escalaConVista(
+    this.dimensiones(), this.anchoPx(), this.altoPx(), this.vistaActual(), this.MARGEN_PX));
+
+  /** Hasta dónde se puede acercar acá. Derivado del lienzo medido. */
+  readonly topeDeZoom = computed(() => zoomUtilMaximo(
+    this.dimensiones(), this.anchoPx(), this.altoPx(), this.MARGEN_PX));
+
+  readonly sePuedeAcercar = computed(() => this.vistaActual().zoom < this.topeDeZoom() - 1e-9);
+  readonly sePuedeAlejar = computed(() => this.vistaActual().zoom > ZOOM_MINIMO + 1e-9);
+
+  /**
+   * Dónde centrar al acercar.
+   *
+   * Sobre la ficha elegida si hay una: acercarse *sobre* lo que se está
+   * mirando es lo que hace que el zoom no desoriente. Si no hay nada elegido,
+   * sobre el centro actual, que a zoom 1 es el medio de la sala.
+   */
+  private puntoParaAcercar(): { x: number; y: number } {
+    const id = this.seleccionada();
+    const f = id === null || id === '' ? undefined
+      : this.fichas().find((x) => x.id === id);
+    if (f !== undefined) return { x: f.emplazamiento.posicion.x, y: f.emplazamiento.posicion.y };
+    return this.vistaActual().centroM;
+  }
+
+  acercar(): void {
+    this.vista.set(acercarSobre(this.vistaActual(), this.puntoParaAcercar()));
+  }
+
+  /**
+   * Aleja alrededor del mismo punto.
+   *
+   * El recorte al mínimo lo hace `escalaConVista`, no esto: tener el límite en
+   * dos lados es tenerlo en ninguno. Lo que sí hace acá es no guardar un zoom
+   * por debajo de 1, para que `sePuedeAlejar` no quede encendido para siempre
+   * con un zoom de 0,3 que la escala está ignorando.
+   */
+  alejar(): void {
+    const v = this.vistaActual();
+    const zoom = Math.max(ZOOM_MINIMO, v.zoom / PASO_DE_ZOOM);
+    if (zoom === ZOOM_MINIMO) { this.verTodo(); return; }
+    this.vista.set({ zoom, centroM: this.puntoParaAcercar() });
+  }
+
+  /** Vuelve al local entero. La salida cuando uno se perdió con el zoom. */
+  verTodo(): void { this.vista.set(null); }
 
   readonly dibujables = computed(() => {
     const e = this.escala();
@@ -218,6 +319,14 @@ export class PlanoEscenarioComponent implements OnDestroy {
 
   /** Cuántos metros vale el dedo acá, para que la pantalla lo pueda decir. */
   readonly precisionM = computed(() => precisionDelDedoM(this.escala()));
+
+  /**
+   * El dedo en centímetros enteros.
+   *
+   * Enteros porque un decimal en una cifra que ya es una estimación del grosor
+   * de una yema sería precisión inventada sobre una aproximación.
+   */
+  readonly dedoEnCm = computed(() => Math.round(this.precisionM() * 100));
 
   /**
    * El plano leído en voz alta.

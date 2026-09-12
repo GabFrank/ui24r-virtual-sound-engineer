@@ -6,8 +6,11 @@ import {
   calcularEscala, aPantalla, aMetros, precisionDelDedoM, radioIncertidumbrePx,
   elDedoEsMasGruesoQueLaDuda, puntaDeLaFlecha, aCentimetros, puntoACentimetros,
   moverArrastre, lineasDeDistancia, UMBRAL_DE_ARRASTRE_PX, BLANCO_MINIMO_PX, YEMA_PX,
+  escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
+  ZOOM_MINIMO, PASO_DE_ZOOM,
   type Arrastre, type FichaDelPlano,
 } from '../src/app/escenario/plano.ts';
+import { INCERTIDUMBRE_POR_FIJEZA } from '@vse/domain';
 import { metros } from '../src/app/escenario/lo-que-dice-la-geometria.ts';
 
 /**
@@ -522,4 +525,169 @@ test('con algo en la mano vuelve el rango, que es donde el rango sirve', () => {
   };
   const l = lineasDeDistancia('a', [fijo, enMano], e, metros, distanciaM)[0]!;
   ok(l.texto.includes('entre'), `con rango: ${l.texto}`);
+});
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * El zoom (ítem 91)
+ *
+ * Las seis expectativas quedaron registradas en
+ * `docs/pedidos/2026-09-12-el-plano-como-mesa-de-trabajo.md` **antes** de
+ * escribir `escalaConVista`. Cada test de acá abajo es una de ellas, en el
+ * mismo orden, y la tercera es la que justifica que el ítem exista: si el zoom
+ * no llega a afinar el dedo hasta la resolución del modelo, no sirve para lo
+ * que se lo pidió.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** Un lienzo de tablet, el que usa el resto del archivo. */
+const LIENZO = { w: 400, h: 800, margen: 24 };
+
+test('1. a zoom 1 la vista no cambia nada del encuadre completo', () => {
+  const sinVista = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const conVista = escalaConVista(
+    DIM, LIENZO.w, LIENZO.h, vistaInicial(DIM), LIENZO.margen);
+  // Los cuatro campos idénticos, no "parecidos": las capturas visuales de
+  // tools/visual/flujo.mjs fijaron este encuadre y el zoom no lo puede mover.
+  deepStrictEqual(conVista, sinVista);
+});
+
+test('1b. un zoom por debajo del mínimo, o roto, cae en el encuadre completo', () => {
+  // **El contrato no cubría el zoom no finito.** Cuando este test lo probó,
+  // esperaba que Infinity se recortara al tope útil y el código lo mandaba al
+  // encuadre completo. Se fijó la regla del código, no la del test, y por una
+  // razón: un zoom no finito es un defecto de quien llama, y el encuadre
+  // completo es el único estado del que se sabe con certeza que muestra la
+  // sala. Recortar un Infinity al tope sería tratar un error como un pedido.
+  const completo = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  for (const zoom of [ZOOM_MINIMO, 0.5, 0, -3, NaN, Infinity, -Infinity]) {
+    const e = escalaConVista(
+      DIM, LIENZO.w, LIENZO.h, { zoom, centroM: { x: 1, y: 2 } }, LIENZO.margen);
+    deepStrictEqual(e, completo, `zoom ${zoom} tendría que dar el encuadre completo`);
+  }
+});
+
+test('2. el dedo se afina monótonamente al acercar', () => {
+  const tope = zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const centro = { x: 4, y: 6 };
+  let anterior = Infinity;
+  for (let zoom = 1; zoom <= tope; zoom *= PASO_DE_ZOOM) {
+    const dedo = precisionDelDedoM(
+      escalaConVista(DIM, LIENZO.w, LIENZO.h, { zoom, centroM: centro }, LIENZO.margen));
+    ok(dedo < anterior, `a zoom ${zoom} el dedo (${dedo}) no bajó de ${anterior}`);
+    anterior = dedo;
+  }
+  // Y que el recorrido sea de verdad, no dos pasos: si el tope quedara en 1 en
+  // esta sala, el test de arriba pasaría sin probar nada.
+  ok(tope > 4, `el tope útil quedó en ${tope}, demasiado chico para probar algo`);
+});
+
+test('3. en el tope, el dedo llega a la resolución más fina del modelo', () => {
+  const tope = zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const dedo = precisionDelDedoM(escalaConVista(
+    DIM, LIENZO.w, LIENZO.h, { zoom: tope, centroM: { x: 4, y: 6 } }, LIENZO.margen));
+  const finoDelModelo = INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM;
+  // Esta es la expectativa que justifica el ítem. Y el tope se DERIVA de esta
+  // misma constante, así que el test también falla si alguien escribe el tope a
+  // mano y se separa de la tabla de fijeza.
+  ok(dedo <= finoDelModelo + 1e-9,
+    `en el tope el dedo vale ${dedo} m y el modelo declara ${finoDelModelo} m`);
+});
+
+test('4. la ida y vuelta se deshace al centímetro con cualquier vista', () => {
+  // Un punto que no es simétrico en ningún eje, para que un espejo rompa.
+  const origen = PUNTO(1.37, 9.42, 1.2);
+  for (const zoom of [1, 2, 5.5, zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen)]) {
+    for (const centroM of [{ x: 4, y: 6 }, { x: 0, y: 0 }, { x: 8, y: 12 }]) {
+      const e = escalaConVista(DIM, LIENZO.w, LIENZO.h, { zoom, centroM }, LIENZO.margen);
+      const vuelta = aMetros(aPantalla(origen, e), e, DIM, origen.z);
+      deepStrictEqual(puntoACentimetros(vuelta), puntoACentimetros(origen),
+        `zoom ${zoom} centro ${centroM.x},${centroM.y} no deshizo la ida`);
+    }
+  }
+});
+
+test('5. el recorte del encuadre nunca deja el local fuera del lienzo', () => {
+  const tope = zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const centrosAbsurdos = [
+    { x: -1000, y: -1000 }, { x: 9999, y: 9999 },
+    { x: NaN, y: NaN }, { x: Infinity, y: -Infinity },
+  ];
+  for (const centroM of centrosAbsurdos) {
+    const e = escalaConVista(DIM, LIENZO.w, LIENZO.h, { zoom: tope, centroM }, LIENZO.margen);
+    // El rectángulo del local tiene que intersecar el rectángulo del lienzo.
+    ok(e.origenX < LIENZO.w && e.origenX + e.anchoPx > 0,
+      `centro ${centroM.x} dejó el local fuera en x: origen ${e.origenX} ancho ${e.anchoPx}`);
+    ok(e.origenY < LIENZO.h && e.origenY + e.altoPx > 0,
+      `centro ${centroM.y} dejó el local fuera en y: origen ${e.origenY} alto ${e.altoPx}`);
+  }
+});
+
+test('6. el blanco táctil es en píxeles CSS y no se mueve con el zoom', () => {
+  // BLANCO_MINIMO_PX y YEMA_PX son píxeles de pantalla: acercar el plano no
+  // cambia cuán grande es un dedo, sólo cuántos metros cubre. Si alguno de los
+  // dos empezara a depender del zoom, las dos cifras que esta pantalla promete
+  // no falsear quedarían falseadas --que es el defecto que ya encontró una
+  // auditoría con el estiramiento del SVG.
+  const cerca = escalaConVista(
+    DIM, LIENZO.w, LIENZO.h,
+    { zoom: zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen), centroM: { x: 4, y: 6 } },
+    LIENZO.margen);
+  const lejos = escalaConVista(DIM, LIENZO.w, LIENZO.h, vistaInicial(DIM), LIENZO.margen);
+  strictEqual(BLANCO_MINIMO_PX, 48);
+  strictEqual(YEMA_PX, 44);
+  // Lo que sí cambia es cuántos metros vale ese dedo, y en la dirección buena.
+  ok(precisionDelDedoM(cerca) < precisionDelDedoM(lejos));
+  // Y el radio de duda dibujado crece con el zoom: 5 cm de duda a tope de zoom
+  // tienen que ser un círculo visible, no un punto.
+  const em = emplazar(PUNTO(4, 6, 1), 'EN_PIE');
+  ok(radioIncertidumbrePx(em, cerca) > BLANCO_MINIMO_PX / 2,
+    'a tope de zoom, 5 cm de duda tendrían que dibujarse más grandes que medio blanco');
+});
+
+test('acercar sobre un punto lo deja quieto en el centro del lienzo', () => {
+  const punto = { x: 2.5, y: 9 };
+  const v = acercarSobre(vistaInicial(DIM), punto);
+  ok(v.zoom > ZOOM_MINIMO);
+  deepStrictEqual(v.centroM, punto);
+  const e = escalaConVista(DIM, LIENZO.w, LIENZO.h, v, LIENZO.margen);
+  const px = aPantalla(PUNTO(punto.x, punto.y, 0), e);
+  // En el medio del lienzo, no del rectángulo del local: el local ya no entra.
+  ok(Math.abs(px.x - LIENZO.w / 2) < 0.001, `x cayó en ${px.x}`);
+  ok(Math.abs(px.y - LIENZO.h / 2) < 0.001, `y cayó en ${px.y}`);
+});
+
+test('el encuadre completo es la salida de vuelta y coincide con la vista inicial', () => {
+  deepStrictEqual(encuadreCompleto(DIM), vistaInicial(DIM));
+});
+
+test('el piso del tope existe: cuando el dedo ya alcanza, el tope es 1', () => {
+  // **Este test empezó con una premisa falsa y la medición la corrigió.** Decía
+  // "en una sala chica el tope es 1", suponiendo que en un local de 1 × 1 m el
+  // dedo ya sería más fino que los 5 cm del modelo. No lo es: da 12,5 cm, y el
+  // tope queda en 2,5. La cuenta está en el comentario de `zoomUtilMaximo` y
+  // sale de correr `calcularEscala`, no de estimarla.
+  //
+  // Lo que sí hace falta probar es que el piso del recorte funciona, y para eso
+  // hay que llegar de verdad a la condición: un lienzo grande, donde el
+  // encuadre completo ya afina el dedo por debajo de la resolución del modelo.
+  const chica = { largo: 1, ancho: 1, alto: 3 };
+  const dedoSinZoom = precisionDelDedoM(calcularEscala(chica, 2000, 2000, 24));
+  ok(dedoSinZoom <= INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM,
+    `la premisa del test tiene que valer: el dedo da ${dedoSinZoom} m`);
+  strictEqual(zoomUtilMaximo(chica, 2000, 2000, 24), ZOOM_MINIMO);
+
+  // Y en la tablet de verdad, con la sala más chica que tiene sentido, el tope
+  // sigue arriba de 1: acercar siempre sirve. Es el argumento del ítem 91.
+  ok(zoomUtilMaximo(chica, LIENZO.w, LIENZO.h, LIENZO.margen) > ZOOM_MINIMO);
+});
+
+test('el dedo sobre una sala de 12 por 8 en una tablet vale un metro justo', () => {
+  // La cifra que hace falta para entender por qué este ítem existe, y sale de
+  // correr la escala: 352 px útiles / 8 m de ancho = 44 px/m, y la yema son 44
+  // px. Un dedo, un metro. En un local así, soltar una ficha con el dedo sin
+  // zoom deja una posición con un metro de ambigüedad -- veinte veces la
+  // incertidumbre que el modelo declara para algo apoyado en el piso.
+  const e = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  strictEqual(e.pxPorMetro, 44);
+  strictEqual(precisionDelDedoM(e), 1);
+  strictEqual(zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen), 20);
 });

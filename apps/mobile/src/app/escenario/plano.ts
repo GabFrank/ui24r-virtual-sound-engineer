@@ -1,4 +1,6 @@
-import { elementosDelEscenario, NULO_DEL_PATRON_GRADOS } from '@vse/domain';
+import {
+  elementosDelEscenario, INCERTIDUMBRE_POR_FIJEZA, NULO_DEL_PATRON_GRADOS,
+} from '@vse/domain';
 import type {
   Emplazamiento, Escenario, PAComponentId, PAComponentSpec, PuntoM,
 } from '@vse/domain';
@@ -567,4 +569,149 @@ export function lineasDeDistancia(
       };
     })
     .sort((a, b) => a.metros - b.metros);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * La vista: zoom y encuadre
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Qué pedazo del local se está mirando.
+ *
+ * **Por qué existe.** {@link precisionDelDedoM} dice la verdad —en una sala de
+ * 12 × 8 m un dedo vale decenas de centímetros— y decirla no la arregla: con dos
+ * fichas superpuestas no hay forma de tocar la de abajo, y arrastrar *empeora*
+ * el dato. El zoom es lo que convierte esa honestidad en capacidad de trabajo.
+ *
+ * **Es una capa encima y no un reemplazo.** {@link calcularEscala} sigue siendo
+ * el encuadre completo, con su firma intacta, porque es el que las capturas de
+ * `tools/visual/flujo.mjs` fijaron. Todo lo demás de este archivo —dibujar,
+ * arrastrar, medir distancias, calcular el grosor del dedo— pasa por
+ * {@link EscalaDelPlano} y por eso no se enteró de que ahora hay zoom.
+ */
+export interface Vista {
+  /** 1 es el local entero. Nunca menos: ver {@link ZOOM_MINIMO}. */
+  readonly zoom: number;
+  /** Qué punto del local queda en el centro del lienzo, en metros. */
+  readonly centroM: { readonly x: number; readonly y: number };
+}
+
+/**
+ * No se puede alejar más allá del local entero.
+ *
+ * Afuera del local no hay nada que mirar. Dejar alejar daría una pantalla donde
+ * todo se ve más chico sin ganar información, y además rompería la promesa de
+ * que el plano dibujado es la sala: aparecería sala donde no hay.
+ */
+export const ZOOM_MINIMO = 1;
+
+/**
+ * Hasta dónde sirve acercar, **derivado y no elegido**.
+ *
+ * El modelo tiene una incertidumbre más fina que todas las que no son cero:
+ * `INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM` = 0,05 m, decisión del usuario del
+ * 2026-09-12. Un dedo más fino que eso no puede mejorar ningún dato, porque no
+ * hay dato en el modelo con esa resolución: `FIJO` declara cero incertidumbre y
+ * su error es de quien puso la marca, no del plano.
+ *
+ * Así que el tope sale de la constante del dominio y del tamaño real del lienzo.
+ * Si alguien cambia la tabla de fijeza, el zoom se ajusta solo; si en cambio
+ * acá hubiera un número escrito a mano, se separarían en silencio, que es el
+ * defecto que este archivo ya documenta en {@link BLANCO_MINIMO_PX}.
+ *
+ * Nunca devuelve menos de {@link ZOOM_MINIMO}: en una sala chica el encuadre
+ * completo ya puede tener el dedo más fino que 5 cm, y ahí el tope es 1 porque
+ * no hace falta acercar nada.
+ */
+export function zoomUtilMaximo(
+  dim: DimensionesDelLocal,
+  lienzoAnchoPx: number,
+  lienzoAltoPx: number,
+  margenPx = 24,
+): number {
+  const base = calcularEscala(dim, lienzoAnchoPx, lienzoAltoPx, margenPx);
+  const finoDelModeloM = INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM;
+  const pxPorMetroNecesarios = YEMA_PX / finoDelModeloM;
+  return Math.max(ZOOM_MINIMO, pxPorMetroNecesarios / base.pxPorMetro);
+}
+
+/** El local entero, centrado: con qué vista abre la pantalla. */
+export function vistaInicial(dim: DimensionesDelLocal): Vista {
+  return { zoom: ZOOM_MINIMO, centroM: { x: dim.ancho / 2, y: dim.largo / 2 } };
+}
+
+/**
+ * La escala que corresponde a una vista.
+ *
+ * **A zoom 1 devuelve exactamente {@link calcularEscala}**, los cuatro campos
+ * idénticos y no "parecidos". Eso tiene su test: es lo que garantiza que
+ * agregar zoom no movió el encuadre completo, que es el único que está medido.
+ *
+ * El centro pedido se recorta al rectángulo del local. A zoom alto eso deja ver
+ * más allá de la pared —en una esquina, tres cuartos de lienzo vacío— y es a
+ * propósito: sin eso no se puede arrastrar algo *contra* la pared sin que el
+ * dedo tape justo el lugar donde va.
+ */
+export function escalaConVista(
+  dim: DimensionesDelLocal,
+  lienzoAnchoPx: number,
+  lienzoAltoPx: number,
+  vista: Vista,
+  margenPx = 24,
+): EscalaDelPlano {
+  const base = calcularEscala(dim, lienzoAnchoPx, lienzoAltoPx, margenPx);
+  const zoom = Number.isFinite(vista.zoom)
+    ? Math.min(
+        Math.max(vista.zoom, ZOOM_MINIMO),
+        zoomUtilMaximo(dim, lienzoAnchoPx, lienzoAltoPx, margenPx),
+      )
+    : ZOOM_MINIMO;
+  if (zoom === ZOOM_MINIMO) return base;
+
+  const pxPorMetro = base.pxPorMetro * zoom;
+  // El centro se recorta a las paredes. `recortar` ya devuelve el mínimo ante un
+  // NaN, así que un centro inventado cae en la esquina del local y el local
+  // sigue tocando el lienzo, que es la expectativa 5 del contrato.
+  const cx = recortar(vista.centroM.x, 0, dim.ancho);
+  const cy = recortar(vista.centroM.y, 0, dim.largo);
+  return {
+    pxPorMetro,
+    // El origen es donde cae la esquina (0,0) del local: se corre para que el
+    // punto (cx, cy) quede en el medio del lienzo.
+    origenX: lienzoAnchoPx / 2 - cx * pxPorMetro,
+    origenY: lienzoAltoPx / 2 - cy * pxPorMetro,
+    anchoPx: dim.ancho * pxPorMetro,
+    altoPx: dim.largo * pxPorMetro,
+  };
+}
+
+/**
+ * Cuánto cambia el zoom cada vez que se toca el botón.
+ *
+ * Un tercio por paso: con el tope derivado de una sala de 12 × 8 m en una
+ * tablet, son unos diez toques de punta a punta. Menos pasos se sentiría brusco
+ * —el plano salta y hay que buscar de nuevo dónde quedó lo que se miraba— y más
+ * pasos es un botón que hay que apretar veinte veces.
+ */
+export const PASO_DE_ZOOM = 4 / 3;
+
+/**
+ * Acerca o aleja alrededor de un punto del local, dejándolo quieto.
+ *
+ * Mantener el punto fijo es lo que hace que el zoom no desoriente: se acerca
+ * *sobre* la ficha que se está mirando, no sobre el medio de la sala. El
+ * recorte final lo hace {@link escalaConVista}, que es el único lugar donde el
+ * zoom se limita —tenerlo en dos lados es tenerlo en ninguno.
+ */
+export function acercarSobre(
+  vista: Vista,
+  puntoM: { readonly x: number; readonly y: number },
+  factor = PASO_DE_ZOOM,
+): Vista {
+  return { zoom: vista.zoom * factor, centroM: { x: puntoM.x, y: puntoM.y } };
+}
+
+/** Vuelve al local entero. Es la salida cuando uno se perdió con el zoom. */
+export function encuadreCompleto(dim: DimensionesDelLocal): Vista {
+  return vistaInicial(dim);
 }

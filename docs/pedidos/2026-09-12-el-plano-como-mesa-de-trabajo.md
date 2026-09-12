@@ -91,3 +91,106 @@ dónde se mueve.
 cubre casi tres metros de sala. Con distancias en vivo eso deja de impedir
 *medir*, pero sigue impidiendo *agarrar* la ficha que se quiere. Es pariente del
 ítem 91 —el plano es inusable sin dedo con fichas superpuestas— y va con él.
+
+## Ítem 91 — el zoom, y su contrato de expectativas
+
+**Por qué existe el ítem.** El plano ya dice cuánto vale un dedo sobre él
+(`precisionDelDedoM`), y en una sala de 12 × 8 m sobre un lienzo de 700 px ese
+número es de decenas de centímetros. La pantalla no miente —lo declara y ofrece
+escribir las coordenadas—, pero *declararlo no lo arregla*: con fichas
+superpuestas no hay forma de tocar la de abajo, y arrastrar empeora el dato en
+vez de mejorarlo. El zoom es lo que convierte la honestidad en capacidad.
+
+**Dónde se acaba el zoom, y por qué ahí.** No en un número elegido por
+comodidad. El modelo tiene una incertidumbre más fina que todas las que no son
+cero: `INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM` = 0,05 m, decisión del usuario
+del 2026-09-12. Un dedo más fino que eso no puede mejorar ningún dato, porque no
+hay dato en el modelo con esa resolución: `FIJO` declara cero y su error es de
+quien puso la marca, no del plano. Así que el tope de zoom se **deriva** de esa
+constante, no se escribe:
+
+    zoomUtilMaximo = (YEMA_PX / 0,05) / pxPorMetro del encuadre completo
+
+**Piso.** Zoom 1 es el local entero y no se puede alejar más. Afuera del local no
+hay nada que mirar, y dejar alejar produciría una pantalla donde el dato se ve
+más chico sin ganar nada.
+
+**Encuadre.** El centro de la vista se recorta al rectángulo del local. A zoom
+alto eso deja ver más allá de la pared —tres cuartos de lienzo vacío en una
+esquina—, y es a propósito: sin eso no se puede arrastrar algo *contra* la pared
+sin que el dedo tape justo el lugar donde va.
+
+### Expectativas registradas antes de implementar
+
+Falsables, y cada una es un test:
+
+1. **A zoom 1, la vista no existe.** `escalaConVista(dim, w, h, vistaInicial(dim))`
+   devuelve exactamente lo mismo que `calcularEscala(dim, w, h)` —los cuatro
+   campos, no "parecido"—. Si difiere, el zoom cambió el encuadre completo, que
+   es el que ya está medido y dibujado en las capturas visuales.
+2. **El dedo se afina monótonamente.** `precisionDelDedoM` estrictamente
+   decreciente al subir el zoom. Si no baja, el zoom es decorativo.
+3. **En el tope, el dedo llega a la resolución del modelo.**
+   `precisionDelDedoM` en `zoomUtilMaximo` ≤ 0,05 m. Esta es la que justifica el
+   ítem: si no se cumple, el zoom no alcanza para lo que se lo pidió y hay que
+   decirlo en vez de publicarlo.
+4. **Ida y vuelta.** `aMetros(aPantalla(p))` devuelve `p` al centímetro, con
+   cualquier zoom y cualquier encuadre. Es la que atrapa un origen mal corrido:
+   un plano que dibuja bien y suelta las fichas en otro lado.
+5. **El recorte no deja el local afuera.** Con el centro pedido en cualquier
+   punto —incluso fuera del local, incluso NaN— el local sigue intersecando el
+   lienzo.
+6. **El blanco táctil no se rompe.** `BLANCO_MINIMO_PX` es en píxeles CSS y no
+   depende del zoom; el test que compara ese número con la ficha dibujada tiene
+   que seguir valiendo con la vista aplicada.
+
+**Lo que este ítem NO hace.** No toca `calcularEscala` ni su firma: el encuadre
+completo sigue siendo el que está, porque es el que las capturas de
+`tools/visual/flujo.mjs` fijaron. El zoom es una capa encima.
+
+### Qué dijeron las expectativas al correrlas
+
+Las seis pasaron. Dos cosas cambiaron después de escribirlas, y las dos van acá
+y no reescritas arriba:
+
+**1. El contrato no cubría un zoom no finito.** Al escribir el test supuse que
+`Infinity` se recortaría al tope útil, y el código lo manda al encuadre
+completo. Se fijó la regla del código: un zoom no finito es un defecto de quien
+llama, y el encuadre completo es el único estado del que se sabe con certeza que
+muestra la sala. Recortar un `Infinity` al tope sería tratar un error como un
+pedido. Esto es un hueco del contrato, no un criterio movido después de ver los
+datos: el contrato no decía nada de un zoom roto.
+
+**2. Una expectativa que escribí de más era falsa, y la cuenta la corrigió.**
+Había agregado "en una sala chica el tope de zoom es 1", suponiendo que en un
+local de 1 × 1 m el dedo ya sería más fino que los 5 cm del modelo. **No lo es:
+da 12,5 cm, y el tope queda en 2,5.** Para que el dedo llegue solo a 5 cm haría
+falta una sala de 40 cm de lado, o un lienzo de 2000 px. El test quedó
+reescrito para probar lo que sí hay que probar —que el piso del recorte
+funciona— llegando de verdad a la condición, y el comentario dice que la premisa
+original era falsa.
+
+**La cifra que justifica el ítem, salida de correr `calcularEscala` y no de
+estimarla:** una sala de 12 × 8 m en un lienzo de 400 px con 24 de margen deja
+352 px útiles de ancho, que dividido 8 m da **44 px por metro**. La yema son 44
+px. **Un dedo, un metro justo** — veinte veces la incertidumbre que el modelo
+declara para algo apoyado en el piso, y de ahí que el tope de zoom en esa sala
+sea exactamente 20. Está fijado en un test con `strictEqual`, los tres números.
+
+**Lo que se cableó.** La escala del componente pasa por la vista, así que
+dibujar, arrastrar, medir distancias y calcular el grosor del dedo se enteraron
+del zoom sin tocarlos: todos pasaban ya por `EscalaDelPlano`. Los mandos van
+arriba del lienzo y no flotando encima —un botón sobre el plano tapa justo el
+pedazo que uno quiere mirar, y con el gesto de desplazar desactivado no hay
+forma de correrlo—, con 48 px de lado, el mismo blanco mínimo que las fichas. Al
+acercar se centra **sobre la ficha elegida** si hay una, para no desorientar.
+
+Y el número del dedo se muestra siempre, en centímetros enteros, en ámbar cuando
+pasa de los 5 cm del modelo. Enteros porque un decimal sobre una estimación del
+grosor de una yema sería precisión inventada.
+
+**Lo que este ítem sigue sin resolver.** Las fichas superpuestas se pueden
+separar acercando, pero dos elementos en la misma posición siguen sin forma de
+elegirse uno u otro; eso es otro ítem. Y el zoom se maneja con botones: el gesto
+de pinza no está, porque el anfitrión desactiva `touch-action` para poder
+arrastrar y habría que reconstruirlo a mano sobre dos punteros.
