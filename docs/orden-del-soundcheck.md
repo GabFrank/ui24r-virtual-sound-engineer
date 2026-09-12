@@ -28,7 +28,7 @@ reproduce al pie de la letra:
 | 4 | Aéreos y platos | de derecha a izquierda del escenario | **no** |
 | 5 | Bajo | | sí, `BAJO` |
 | 6 | Guitarras | de derecha a izquierda del escenario | sí, `GUITARRA` |
-| 7 | Teclados, vientos, cuerdas | | sí, `TECLADO` y `FLAUTA` |
+| 7 | Teclados, vientos, cuerdas | | **parcial**: `TECLADO` y `FLAUTA`; las cuerdas **no** |
 | 8 | Voces | de derecha a izquierda del escenario | sí, `VOZ`, `PALABRA` |
 
 **Y esa fuente no da ningún motivo.** Dice que la mayoría de los operadores
@@ -49,7 +49,7 @@ escenario están dadas **desde el punto de vista de quien toca**, no del públic
   [pro] sin poder justificar por qué.
 - **El motivo que sí da Sweetwater** es otro del que yo le atribuí: empieza por
   el bombo porque ocupa mucho ancho de banda —entre el golpe del parche y sus
-  armónicos—, no porque sea el cimiente de graves. Y sí respalda la segunda
+  armónicos—, no porque sea el cimiento de graves. Y sí respalda la segunda
   mitad: con el redoblante entrando después se pueden quitar las frecuencias que
   chocan.
 - **[Gearank][ge]** publica una lista de entradas casi igual a la de [pro], pero
@@ -92,19 +92,31 @@ Si el usuario los ordena distinto, **su orden manda**.
 
 ## El orden de las etapas dentro de un canal
 
-[The Pro Audio Files][pro] publica también este orden, y el código lo sigue:
-ganancia, puerta, ecualizador, compresor, envíos. La primera versión ponía el
-compresor antes del ecualizador, al revés que la fuente, y lo justificaba con un
-razonamiento propio.
+[The Pro Audio Files][pro] publica una lista —ganancia, fader, puerta,
+ecualizador, compresor, envíos a efecto— y el código sigue ese orden. **Pero la
+fuente la presenta como un orden de importancia, no de ejecución**: la introduce
+diciendo que al revisar cada instrumento hay que ajustar lo siguiente *en orden
+de importancia*. Convertir un ranking en una secuencia temporal **es una decisión
+de este proyecto**, y una versión anterior de esta sección la presentaba como
+hecho de la fuente.
 
-**El fader no es una etapa acá** aunque la fuente lo liste entre la ganancia y la
-puerta: el recorrido ajusta el canal, y el equilibrio entre canales es otra cosa.
+Lo que sí sale de la fuente es **la lista y sus posiciones relativas**, incluida
+la del fader entre la ganancia y la puerta. Lo que no sale es que ése sea el
+orden en que se tocan.
 
-**Y dónde deriva cada envío —antes o después del procesamiento— no está medido.**
+**El fader no es una etapa acá**: el recorrido ajusta el canal, y el equilibrio
+entre canales es otra cosa. También decisión propia.
+
+**Y los envíos a monitor no están en esa lista.** La fuente menciona un solo
+ítem, «envíos a efecto», y sobre los monitores dice lo contrario de un momento
+fijo: que algunos operadores los ajustan mientras el músico toca y otros hacen
+primero la revisión de líneas y vuelven después. Ponerlos como sexta y última
+etapa **es decisión de este proyecto**, y una versión anterior decía que era «lo
+que dice la fuente».
+
+**Dónde deriva cada envío —antes o después del procesamiento— no está medido.**
 `docs/capability-matrix.md` registra que existen tanto `post` como `postproc` en
-las rutas, y el alcance lo tiene entre lo que falta saber. Poner los envíos al
-final es lo que dice la fuente; **afirmar que es porque mandan lo que las etapas
-anteriores dejaron sería construir sobre una ley sin medir**.
+las rutas, y el alcance lo tiene entre lo que falta saber.
 
 ## Fuentes
 
@@ -123,5 +135,8 @@ anteriores dejaron sería construir sobre una ley sin medir**.
   casi igual a la de [pro]; su secuencia de soundcheck es distinta.
 
 Consultadas el 2026-09-11. **Sweetwater devuelve 403 a un cliente que no sea
-navegador**: lo que se verificó es la captura del 2019-07-09 en Wayback, la
-única disponible, y no se sabe si el texto vivo cambió desde entonces.
+navegador**: lo que se verificó es la captura del 2019-07-09 en Wayback. Una
+versión anterior de esta nota decía que era «la única disponible», y el archivo
+tiene al menos dos —también hay una del 2019-07-02—. Era una afirmación universal
+escrita sin comprobarla, justo en la nota que existe para respaldar el rigor del
+resto. No se sabe si el texto vivo cambió desde entonces.

@@ -58,10 +58,19 @@ export const UMBRAL_DE_ARRASTRE_PX = 8;
  *
  * **Se calcula desde el desplazamiento del dedo, no desde su posición
  * absoluta.** Con la posición absoluta, agarrar la fila por abajo la movería un
- * puesto de entrada aunque el dedo no se hubiera movido — que es el defecto que
- * el plano del escenario tuvo y que una auditoría midió en 34 cm.
+ * puesto de entrada aunque el dedo no se hubiera movido. Es el defecto que el
+ * plano del escenario tuvo; allá el error se midió en centímetros de sala,
+ * porque ese plano convierte píxeles a metros. **Acá no hay metros**, y citar
+ * aquella cifra en un archivo que sólo habla de píxeles es mezclar unidades: lo
+ * hacía una versión anterior de este docblock.
  */
 export function destinoDelArrastre(a: ArrastreDeLista, ahoraY: number): number | null {
+  // **Una coordenada rota es un no-gesto, no un destino.** La guarda de recorte
+  // devuelve el mínimo ante un valor no finito, y eso acá significaba **mover la
+  // fila al tope de la lista**: un `NaN` se convertía en un reordenamiento real
+  // en vez de en nada. La función ya tiene un valor para «no hay destino» y es
+  // el que corresponde. Lo señaló un auditor.
+  if (!Number.isFinite(ahoraY) || !Number.isFinite(a.agarreY)) return null;
   const dy = ahoraY - a.agarreY;
   if (Math.abs(dy) < UMBRAL_DE_ARRASTRE_PX) return null;
   if (a.altoDeFila <= 0) return null;

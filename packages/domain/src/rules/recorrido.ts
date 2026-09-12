@@ -29,25 +29,33 @@ import type { ChannelAssignmentId } from '../ids.ts';
 /**
  * Las seis etapas por instrumento, en el orden en que se tocan.
  *
- * **Sale de la misma fuente que la tabla de familias**, que publica ganancia,
- * fader, puerta, ecualizador, compresor y envíos. La primera versión ponía el
- * compresor **antes** del ecualizador —al revés que la fuente— y lo justificaba
- * con un razonamiento propio. Una auditoría lo señaló.
+ * **La lista sale de una fuente; que sea un orden de ejecución, no.** The Pro
+ * Audio Files publica ganancia, fader, puerta, ecualizador, compresor y envíos a
+ * efecto, y la introduce diciendo que es **en orden de importancia**. Convertir
+ * un ranking en una secuencia temporal es decisión de este proyecto. Un docblock
+ * anterior decía que el orden lo publicaba la fuente; lo corrigió un auditor
+ * leyendo el original.
  *
- * El fader no es una etapa acá aunque la fuente lo liste: el recorrido ajusta el
- * canal, y el equilibrio entre canales es otra cosa.
+ * El fader no es una etapa acá: el recorrido ajusta el canal, y el equilibrio
+ * entre canales es otra cosa. También decisión propia.
  *
- * **Y los envíos van al final porque lo dice la fuente, no porque se sepa dónde
- * derivan.** Que manden lo que las etapas anteriores dejaron depende de si el
- * envío se toma antes o después del procesamiento, y eso **no está medido**: las
- * rutas tienen tanto `post` como `postproc`. Afirmarlo sería construir sobre una
- * ley sin medir.
+ * **Y los envíos a monitor no están en la lista de la fuente.** Ella nombra un
+ * solo ítem, los envíos a efecto, y sobre los monitores dice lo contrario de un
+ * momento fijo: que unos los ajustan mientras el músico toca y otros hacen
+ * primero la revisión de líneas. Ponerlos sextos es decisión de este proyecto.
+ *
+ * Y dónde deriva cada envío —antes o después del procesamiento— **no está
+ * medido**: las rutas tienen tanto `post` como `postproc`.
  */
 export type EtapaDeInstrumento =
   | 'GANANCIA'
   | 'PUERTA'
-  | 'COMPRESOR'
+  // **Ecualizador antes que compresor**, igual que en {@link ETAPAS_EN_ORDEN}.
+  // Una corrección anterior llegó al arreglo y no al tipo, así que quien
+  // iterara la unión heredaba el orden viejo mientras el docblock le decía que
+  // estaba bien. Lo encontró un auditor comparando los dos.
   | 'ECUALIZADOR'
+  | 'COMPRESOR'
   | 'ENVIO_A_EFECTOS'
   | 'ENVIO_A_MONITORES';
 
@@ -65,8 +73,8 @@ export const ETAPAS_EN_ORDEN: readonly EtapaDeInstrumento[] = [
  *
  * Al 2026-09-11 sólo la ganancia está medida. Las otras cinco son tareas con el
  * usuario en la sala, y **el usuario decidió que se miden antes de la primera
- * entrega**: el recorrido no está pensado para convivir con etapas bloqueadas
- * para siempre.
+ * entrega** —registrado en `docs/pedidos/2026-09-11-recorrido.md`—: el recorrido
+ * no está pensado para convivir con etapas bloqueadas para siempre.
  */
 export const LEY_MEDIDA: Readonly<Record<EtapaDeInstrumento, boolean>> = {
   GANANCIA: true,
@@ -171,9 +179,11 @@ export function ordenPropuesto(
 function puestoDe(i: Instrumento | null): number {
   // **Las dos mitades de esta guarda no son igual de alcanzables, y la que los
   // tests cubrían era la que la pantalla no puede producir.** Un barrido de
-  // mutaciones lo delató: borrar `i.fuente === null` dejaba las 983 pruebas en
+  // mutaciones lo delató: borrar `i.fuente === null` dejaba **toda la suite** en
   // verde, y con eso un canal sin clasificar sale **primero** de la lista —lo
-  // contrario exacto de lo que este archivo promete—.
+  // contrario exacto de lo que este archivo promete—. (Una versión anterior de
+  // este comentario citaba el número exacto de pruebas de ese día: una cifra que
+  // envejece sola en cada commit y que nadie puede comprobar desde acá.)
   //
   // El motivo es que `instrumentoDeAsignacion()`, que es lo único que la
   // pantalla pasa acá, **nunca devuelve `null`**: para un texto que el catálogo
@@ -286,11 +296,22 @@ export function podarIdsMuertos(
 /**
  * El orden que hay que guardar después de mover una fila.
  *
- * Devuelve `null` cuando **la fila volvió a donde estaba**: un arrastre de
- * desplazamiento neto cero no es un cambio, y escribirlo dejaría una escritura
- * por cada vez que alguien levanta una fila y la suelta. Es el mismo criterio
- * que el resto de la aplicación aplica a los formularios —escribir una letra y
- * borrarla no es un cambio—, traído al gesto.
+ * Devuelve `null` por **dos motivos distintos**, y quien llame no los puede
+ * separar. Está dicho acá porque un docblock anterior sólo nombraba el primero:
+ *
+ * 1. **La fila volvió a donde estaba.** Un arrastre de desplazamiento neto cero
+ *    no es un cambio, y escribirlo dejaría una escritura por cada vez que
+ *    alguien levanta una fila y la suelta. Es el mismo criterio que el resto de
+ *    la aplicación aplica a los formularios —escribir una letra y borrarla no es
+ *    un cambio—, traído al gesto.
+ * 2. **`desde` no es una fila de la lista.** Eso es un error de programación, no
+ *    un gesto: pasa cuando el índice se capturó al apoyar el dedo y la lista se
+ *    acortó mientras tanto.
+ *
+ * Los dos devuelven `null` a propósito, porque la consecuencia es la misma —no
+ * se escribe— y distinguirlos obligaría al llamador a manejar un error que no
+ * puede arreglar. Lo que no se puede hacer es leer un `null` como «el usuario no
+ * quiso mover nada».
  */
 export function moverPaso(
   pasos: readonly PasoDelRecorrido[],

@@ -93,12 +93,28 @@ test('el borde exacto del umbral cuenta como arrastre', () => {
   ok(destinoDelArrastre(a, 500 - UMBRAL_DE_ARRASTRE_PX) !== null, 'y hacia arriba también');
 });
 
-test('un número que no es finito no se propaga a la cuenta', () => {
-  // La firma declara `number`, que incluye NaN, y estas funciones son de la
-  // interfaz exportada. Un barrido dejó esta guarda como pendiente --sin
-  // contraejemplo desde la pantalla y sin demostración de equivalencia--; se
-  // resuelve fijándola en vez de borrándola.
+test('el recorte trata lo no finito como el mínimo, y eso sólo vale para dibujar', () => {
+  // **Este test fijaba el defecto, no el arreglo.** La primera versión afirmaba
+  // que `destinoDelArrastre` con un agarre en NaN devolvía 0, o sea el puesto
+  // más alto de la lista: yo había atado con un test que una coordenada rota se
+  // convirtiera en un reordenamiento real. Un auditor señaló que el destino
+  // correcto ahí es «ningún destino», y el caso vive ahora en el test de abajo.
+  //
+  // Para el desplazamiento visual el mínimo sí corresponde: es sólo dibujo, no
+  // cambia ningún dato, y una fila pegada al tope es preferible a una fila en
+  // una posición indefinida.
   const a = arrastre(2);
-  strictEqual(destinoDelArrastre({ ...a, agarreY: NaN }, 500), 0);
   strictEqual(desplazamientoVisual({ ...a, agarreY: NaN }, 500), -2 * ALTO);
+});
+
+test('una coordenada rota es un no-gesto, no un salto al tope de la lista', () => {
+  // La guarda de recorte devuelve el mínimo ante un valor no finito, y acá eso
+  // significaba **mover la fila al puesto 0**: un NaN se convertía en un
+  // reordenamiento real en vez de en nada. Lo señaló un auditor.
+  const a = arrastre(3);
+  strictEqual(destinoDelArrastre({ ...a, agarreY: NaN }, 500), null);
+  strictEqual(destinoDelArrastre(a, NaN), null);
+  strictEqual(destinoDelArrastre(a, Infinity), null);
+  // Control positivo: una coordenada buena sigue dando destino.
+  ok(destinoDelArrastre(a, 500 + ALTO) !== null);
 });
