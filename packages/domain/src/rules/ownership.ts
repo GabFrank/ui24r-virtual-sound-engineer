@@ -87,8 +87,13 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
   // diagnosticar un acople. Su propio método empieza por ahí: «*Si el acople es
   // muy fuerte entonces bajo el nivel del auxiliar o pa*».
   //
-  // Se abrió recién cuando hubo con qué acotarlo: la ley del envío quedó medida
-  // el 2026-09-12 --no se desvía de `faderADb` más de 0,25 dB sobre 28 dB-- y
+  // Se abrió recién cuando hubo con qué acotarlo: la ley del envío quedó
+  // ACOTADA el 2026-09-12 --no se desvía de `faderADb` más de 0,31 dB, un
+  // escalón del medidor, sobre 27,87 dB de recorrido-- y
+  // **acotada no es medida**: la medición 94 declara indecidible si son la misma
+  // ley. Para declarar un límite en decibeles la cota alcanza. Acá decía «0,25
+  // sobre 28», que es el par del envío a EFECTOS y ademas el anteúltimo punto
+  // en vez del máximo; lo encontró una auditoría.
   // sin esa ley no se podía declarar un límite en decibeles, que es lo que
   // INV-004 exige para dejar escribir cualquier cosa.
   { kind: 'MONITOR_AUX_SEND', owner: 'CHANNEL_ASSISTANT', escribible: true,

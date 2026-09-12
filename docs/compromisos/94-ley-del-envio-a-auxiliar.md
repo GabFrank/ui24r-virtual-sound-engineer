@@ -8,7 +8,7 @@ Lo que este contrato le atribuye al usuario se contrasta contra
 
 `i.N.aux.M.value` va de 0 a 1. **Cuántos dB es eso, no lo sabe nadie.** Sin ese
 eje no se puede declarar un límite en decibeles, e INV-004 rechaza todo
-parámetro sin límite declarado: es lo que mantiene `MONITOR_AUX_SEND` cerrado y
+parámetro sin límite declarado: es lo que mantenía `MONITOR_AUX_SEND` cerrado y
 lo que impide cumplir una decisión que el usuario tomó hace dos días.
 
 ## El banco

@@ -47,8 +47,20 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * El envío a un monitor, en decibeles.
    *
    * **Se pudo declarar recién el 2026-09-12**, cuando la ley del envío quedó
-   * medida: `i.N.aux.M.value` no se desvía de `faderADb` más de 0,25 dB sobre
-   * 28 dB de recorrido. Antes de eso no había forma de convertir un pedido en
+   * **acotada**: `i.N.aux.M.value` no se desvía de `faderADb` más de **0,31 dB
+   * —un escalón del medidor— sobre 27,87 dB** de recorrido.
+   *
+   * Las dos correcciones son de una auditoría. La cifra decía «0,25 dB sobre
+   * 28 dB», que es el par del envío a **efectos** (medición 96b) y no el del
+   * auxiliar: el 0,25 es el anteúltimo punto de la lista, no el máximo, y el 28
+   * redondea 27,87 para arriba. Los dos ajustes iban en la dirección de la
+   * conclusión. ADR-028 dice haberla propagado a tres archivos y quedaron dos
+   * sin tocar, éste entre ellos.
+   *
+   * Y «medida» era de más: lo que hay es una **cota**, que dice que si hay
+   * diferencia con `faderADb` es menor que la resolución del instrumento. No
+   * dice que sean la misma ley --la medición 94 lo declara indecidible-- y para
+   * declarar un límite en decibeles la cota alcanza. Antes de eso no había forma de convertir un pedido en
    * decibeles a un crudo, e INV-004 rechaza --con razón-- todo parámetro sin
    * límite declarado.
    *

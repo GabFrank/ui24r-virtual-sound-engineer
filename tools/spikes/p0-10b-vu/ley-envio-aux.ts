@@ -4,7 +4,9 @@
  * **Por qué hace falta.** `i.N.aux.M.value` va de 0 a 1 y nadie sabe a cuántos
  * decibeles corresponde. Sin ese eje no se puede declarar un límite en dB, e
  * INV-004 rechaza todo parámetro sin límite: es lo que mantiene
- * `MONITOR_AUX_SEND` cerrado a la escritura.
+ * `MONITOR_AUX_SEND` cerrado a la escritura. **Esta medicion es lo que lo abrio**: el mismo
+ * dia, ADR-028 abrio el nivel del envio --240 rutas-- porque con la cota medida se pudo
+ * declarar un limite en decibeles, que es lo que INV-004 exige.
  *
  * **Cómo se separa el envío de todo lo demás.** Con la fuente fija, mover el
  * envío no cambia el nivel del canal y sí el del bus auxiliar. Entonces:

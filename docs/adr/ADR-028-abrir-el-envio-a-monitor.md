@@ -33,8 +33,20 @@ El propio proyecto ya lo había avisado por escrito, en
 `docs/pedidos/2026-09-12-diagnostico-y-mediciones.md`: *«la pregunta fundía dos
 cosas… hay que separarlos al implementarlo»*. Se separaron y **se implementó
 uno**. El otro —bajar el auxiliar o el general para cazar un acople, que es
-literalmente el primer paso del método del usuario— sigue cerrado y necesita su
-propia decisión.
+literalmente el primer paso del método del usuario— sigue cerrado.
+
+**Lo que falta ahí es el ADR y las leyes, no la decisión.** Esto decía «necesita
+su propia decisión» y el usuario ya la había tomado el mismo día, eligiendo
+entre opciones: «*Los dos, con techo*» —el auxiliar y el general—, registrado en
+`docs/pedidos/00-lo-que-dijo-el-usuario.md` y en
+`docs/backlog/decision-bajar-buses-para-cazar-acoples.md`. Lo que falta es medir
+la ley de `a.N.mix` y de `m.mix`, decidir el techo del general, y escribir el
+ADR.
+
+Presentar como no decidido algo que el usuario decidió es la regla dura del
+proyecto invertida: el error habitual es firmar como del usuario una decisión
+del agente, y éste es el mismo error en la otra dirección. Lo encontró una
+auditoría de coherencia.
 
 ## Por qué recién ahora
 
@@ -103,7 +115,7 @@ independientes que el ajuste global `settings.auxsendpoint` no reescribe.
 | Guarda | Qué hace | De dónde sale |
 |---|---|---|
 | **Sólo `i.N.aux.M.value`** | Rechaza toda otra ruta del `kind`, **incluidos los diez `a.N.mix`** | Interpretación mía del alcance del «ajuste normal de monitores» que el usuario autorizó |
-| **Techo por ruta** | No sube más allá del valor que la ruta tenía cuando el asistente la tocó por primera vez, en decibeles | La **regla** es del usuario: «*Hasta donde estaba antes de que yo lo bajara, y ni un paso más*». **Cómo se ancla es decisión del agente y no es lo mismo** — ver abajo |
+| **Techo por ruta** | No sube más allá del valor que la ruta tenía **cuando la aplicación la bajó**, en decibeles; si la aplicación no la bajó, no hay techo | La **regla** es del usuario: «*Hasta donde estaba antes de que yo lo bajara, y ni un paso más*». **Cómo se ancla es decisión del agente y no es lo mismo** — ver abajo. *(Esta celda describía el ancla **derogada**, «cuando el asistente la tocó por primera vez», cuarenta líneas antes de que este mismo ADR la corrigiera. Es la clase de contradicción interna que hace que el lector se lleve la versión que leyó primero.)* |
 | **No durante el show** | `sessionState === 'SHOW'` rechaza | Mismo criterio que ADR-027 |
 
 **La asimetría del techo es decisión del agente, no del usuario.** Al usuario se

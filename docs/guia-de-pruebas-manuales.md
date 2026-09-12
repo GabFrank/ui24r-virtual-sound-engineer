@@ -75,7 +75,7 @@ al canal 10 —rutas `i.9`—.
 | 4.1 | Eco de las escrituras propias | 🚫 | Criterio 3 de SPK-P0.1, y **ya está contestado: no hay eco**. Pero se contestó con un script de spike, no con la aplicación, así que como prueba *de la app* sigue sin poder hacerse. Lo que la app tendrá que probar el día que escriba es el mecanismo elegido: la **segunda conexión testigo**, 27 ms |
 | 4.2 | Ida y vuelta de un parámetro escrito | 🚫 | SPK-P0.2b, paso 5 |
 | 4.3 | Que ninguna otra ruta cambie al escribir | 🚫 | SPK-P0.2b, criterio 8 |
-| 4.4 | Que ningún envío de monitor se toque nunca (INV-010) | 🚫 | Se prueba cuando haya escritura que probar |
+| 4.4 | Del envío a monitor, que sólo se escriba el nivel del canal y sólo fuera del show (INV-010, reescrita por ADR-028) | 🚫 | Se prueba cuando haya escritura que probar. **Esta fila decía «que ningún envío de monitor se toque nunca»**, que dejó de ser cierto el 2026-09-12 |
 
 ## 5. Aplicación en el teléfono
 
