@@ -503,3 +503,68 @@ export function aplicarMovida(estado: EstadoDelPlano, movida: {
     ? { ...estado, escenario: { ...estado.escenario, elementos } }
     : estado;
 }
+
+// --- Distancias en vivo -----------------------------------------------------
+
+/**
+ * Una distancia dibujada entre dos fichas.
+ *
+ * `medio` es dónde va el número, a mitad de la línea.
+ */
+export interface LineaDeDistancia {
+  readonly id: string;
+  readonly desde: PuntoPx;
+  readonly hasta: PuntoPx;
+  readonly medio: PuntoPx;
+  readonly texto: string;
+  /** Para ordenar y para que la pantalla pueda destacar la más cercana. */
+  readonly metros: number;
+}
+
+/**
+ * Las distancias de una ficha contra todas las demás, listas para dibujar.
+ *
+ * **Existe porque el plano no mostraba ninguna.** Dibujaba fichas, su eje y un
+ * círculo de duda, y los números aparecían después en otra tarjeta como ranking
+ * de exposición — nunca como «esto está a 1,80 de aquello». Sin un número a la
+ * vista, nadie puede corregir una posición arrastrando, que es como el usuario
+ * describió que quiere usar esto: «*posicionamos un equipo, luego al posicionar
+ * el otro vemos la distancia que hay entre uno y otro, talvez movemos un poco
+ * mas, cambia la distancia*» (2026-09-12).
+ *
+ * **Y eso cambia qué es el plano.** Deja de ser un instrumento que deduce
+ * posiciones y pasa a ser una mesa donde el usuario arrastra hasta que el
+ * número dice lo que él ya midió. Con el número a la vista, cuán fino sea el
+ * dedo deja de importar.
+ *
+ * Van ordenadas de más cerca a más lejos: la más cercana es la que más suele
+ * importar, y si hay que recortar la lista se recorta por el otro extremo.
+ */
+export function lineasDeDistancia(
+  desdeId: string,
+  fichas: readonly FichaDelPlano[],
+  e: EscalaDelPlano,
+  texto: (min: number, max: number) => string,
+  distancia: (a: Emplazamiento, b: Emplazamiento) => { min: number; max: number },
+): LineaDeDistancia[] {
+  const origen = fichas.find((f) => f.id === desdeId);
+  if (origen === undefined) return [];
+  const desde = aPantalla(origen.emplazamiento.posicion, e);
+  return fichas
+    .filter((f) => f.id !== desdeId)
+    .map((f) => {
+      const hasta = aPantalla(f.emplazamiento.posicion, e);
+      const d = distancia(origen.emplazamiento, f.emplazamiento);
+      return {
+        id: f.id,
+        desde,
+        hasta,
+        medio: { x: (desde.x + hasta.x) / 2, y: (desde.y + hasta.y) / 2 },
+        texto: texto(d.min, d.max),
+        // Se ordena por el mínimo: es la distancia que decide si dos cosas se
+        // pueden tocar, y la que el usuario mira primero.
+        metros: d.min,
+      };
+    })
+    .sort((a, b) => a.metros - b.metros);
+}

@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert/strict';
-import { emplazar, type PuntoM } from '@vse/domain';
+import { emplazar, distanciaM, type PuntoM } from '@vse/domain';
 import {
   calcularEscala, aPantalla, aMetros, precisionDelDedoM, radioIncertidumbrePx,
   elDedoEsMasGruesoQueLaDuda, puntaDeLaFlecha, aCentimetros, puntoACentimetros,
-  moverArrastre, UMBRAL_DE_ARRASTRE_PX, BLANCO_MINIMO_PX, YEMA_PX,
-  type Arrastre,
+  moverArrastre, lineasDeDistancia, UMBRAL_DE_ARRASTRE_PX, BLANCO_MINIMO_PX, YEMA_PX,
+  type Arrastre, type FichaDelPlano,
 } from '../src/app/escenario/plano.ts';
+import { metros } from '../src/app/escenario/lo-que-dice-la-geometria.ts';
 
 /**
  * El mapeo entre el local y la pantalla.
@@ -23,6 +24,17 @@ import {
  */
 
 const DIM = { largo: 12, ancho: 8, alto: 4 };
+
+/** Un punto en metros, corto de escribir. */
+const PUNTO = (x: number, y: number, z: number): PuntoM => ({ x, y, z });
+
+/** Una ficha fija del plano, que es el caso por defecto. */
+function ficha(id: string, posicion: PuntoM): FichaDelPlano {
+  return {
+    id, etiqueta: id, origen: 'CAPTACION',
+    emplazamiento: emplazar(posicion, 'FIJO'),
+  } as FichaDelPlano;
+}
 const P = (x: number, y: number, z: number): PuntoM => ({ x, y, z });
 
 test('la escala hace entrar el local sin deformarlo', () => {
@@ -452,4 +464,62 @@ test('la altura también se redondea al centímetro', () => {
   // La mutación era dejar `z` sin redondear. Ningún test lo notaba porque todas
   // las alturas de prueba ya eran redondas: 1.5, 0, 1.6.
   deepStrictEqual(puntoACentimetros(P(1, 2, 1.66666666)), { x: 1, y: 2, z: 1.67 });
+});
+
+// --- Las distancias en vivo -------------------------------------------------
+
+test('las distancias salen de la ficha elegida hacia las demás, ordenadas', () => {
+  const e = calcularEscala(DIM, 700, 500, 28);
+  const fichas = [
+    ficha('a', PUNTO(1, 1, 0)),
+    ficha('lejos', PUNTO(9, 1, 0)),
+    ficha('cerca', PUNTO(2, 1, 0)),
+  ];
+  const ls = lineasDeDistancia('a', fichas, e, metros, distanciaM);
+  deepStrictEqual(ls.map((l) => l.id), ['cerca', 'lejos'], 'de más cerca a más lejos');
+  // La elegida no se mide contra sí misma.
+  strictEqual(ls.length, 2);
+  // Todas arrancan en el mismo punto: la ficha elegida.
+  deepStrictEqual(ls[0]!.desde, ls[1]!.desde);
+  // Y el número va a mitad de camino.
+  strictEqual(ls[0]!.medio.x, (ls[0]!.desde.x + ls[0]!.hasta.x) / 2);
+});
+
+test('una ficha que no existe no dibuja nada, en vez de romper', () => {
+  const e = calcularEscala(DIM, 700, 500, 28);
+  deepStrictEqual(lineasDeDistancia('fantasma', [ficha('a', PUNTO(1, 1, 0))], e, metros, distanciaM), []);
+});
+
+test('el texto de la distancia usa el MISMO formateador que el informe', () => {
+  // **Dos formateadores que dicen lo mismo y pueden separarse son un defecto
+  // esperando.** El informe de geometría y el plano tienen que decir «1,20 m»
+  // los dos, y el día que uno cambie tiene que cambiar el otro. Por eso el
+  // formateador se pasa por argumento y este test lo ata al de verdad.
+  const e = calcularEscala(DIM, 700, 500, 28);
+  const fichas = [ficha('a', PUNTO(1, 1, 0)), ficha('b', PUNTO(2, 1, 0))];
+  const l = lineasDeDistancia('a', fichas, e, metros, distanciaM)[0]!;
+  const esperado = metros(
+    distanciaM(fichas[0]!.emplazamiento, fichas[1]!.emplazamiento).min,
+    distanciaM(fichas[0]!.emplazamiento, fichas[1]!.emplazamiento).max,
+  );
+  strictEqual(l.texto, esperado);
+});
+
+test('dos cosas fijas dan un número, no un rango: es lo que decidió el usuario', () => {
+  const e = calcularEscala(DIM, 700, 500, 28);
+  const fichas = [ficha('a', PUNTO(1, 1, 0)), ficha('b', PUNTO(2.2, 1, 0))];
+  const l = lineasDeDistancia('a', fichas, e, metros, distanciaM)[0]!;
+  strictEqual(l.texto, '1,20 m');
+  ok(!l.texto.includes('entre'), `sin rango: ${l.texto}`);
+});
+
+test('con algo en la mano vuelve el rango, que es donde el rango sirve', () => {
+  const e = calcularEscala(DIM, 700, 500, 28);
+  const fijo = ficha('a', PUNTO(1, 1, 0));
+  const enMano: FichaDelPlano = {
+    ...ficha('b', PUNTO(3, 1, 0)),
+    emplazamiento: emplazar(PUNTO(3, 1, 0), 'EN_MANO'),
+  };
+  const l = lineasDeDistancia('a', [fijo, enMano], e, metros, distanciaM)[0]!;
+  ok(l.texto.includes('entre'), `con rango: ${l.texto}`);
 });

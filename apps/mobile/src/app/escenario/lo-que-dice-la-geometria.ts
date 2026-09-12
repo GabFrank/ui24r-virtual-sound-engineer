@@ -34,7 +34,7 @@ export interface LineaDeExposicion {
  * hay rango de verdad —un micrófono en mano, medio metro de vaivén—, que es
  * exactamente donde sirve.
  */
-function metros(min: number, max: number): string {
+export function metros(min: number, max: number): string {
   const uno = (v: number) => v.toFixed(2).replace('.', ',');
   return Math.abs(max - min) < 0.005 ? `${uno(min)} m` : `entre ${uno(min)} y ${uno(max)} m`;
 }

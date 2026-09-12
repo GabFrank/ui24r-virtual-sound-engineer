@@ -4,10 +4,12 @@ import {
 } from '@angular/core';
 import type { Emplazamiento } from '@vse/domain';
 import {
-  aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, moverArrastre, precisionDelDedoM,
-  puntaDeLaFlecha, radioIncertidumbrePx,
+  aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia, moverArrastre,
+  precisionDelDedoM, puntaDeLaFlecha, radioIncertidumbrePx,
   BLANCO_MINIMO_PX, type Arrastre, type DimensionesDelLocal, type FichaDelPlano, type PuntoPx,
 } from './plano';
+import { metros } from './lo-que-dice-la-geometria';
+import { distanciaM } from '@vse/domain';
 
 /** Lo que el componente avisa cuando alguien suelta una ficha. */
 export interface FichaMovida {
@@ -58,6 +60,16 @@ export interface FichaMovida {
       <text class="rotulo" [attr.x]="escala().origenX + 6"
             [attr.y]="escala().origenY + escala().altoPx + 16">público</text>
 
+      <!-- **Las distancias, debajo de las fichas.** Se dibujan sólo desde la
+           ficha elegida: todas contra todas serían n² líneas ilegibles. -->
+      @for (d of distancias(); track d.id) {
+        <g class="distancia">
+          <line [attr.x1]="d.desde.x" [attr.y1]="d.desde.y"
+                [attr.x2]="d.hasta.x" [attr.y2]="d.hasta.y" />
+          <text [attr.x]="d.medio.x" [attr.y]="d.medio.y - 4">{{ d.texto }}</text>
+        </g>
+      }
+
       @for (f of dibujables(); track f.ficha.id) {
         <g class="ficha" [class.seleccionada]="f.ficha.id === seleccionada()"
            [class.dedo-grueso]="f.dedoGrueso" [attr.data-ficha]="f.ficha.id">
@@ -95,6 +107,13 @@ export interface FichaMovida {
     .punto.captacion { fill: #4fa87a; }
     .punto.emisor { fill: var(--signal); }
     .blanco { fill: transparent; cursor: grab; }
+    /* La línea es tenue y el número legible: lo que se lee es el número. */
+    .distancia line { stroke: var(--signal); stroke-width: 1; stroke-dasharray: 4 3; opacity: .55; }
+    .distancia text {
+      fill: var(--signal); font-size: 11px; text-anchor: middle;
+      paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px;
+      pointer-events: none;
+    }
     .etiqueta { fill: var(--ink); font-size: 12px; pointer-events: none; }
     .etiqueta.izq { text-anchor: end; }
     .ficha.seleccionada .punto { stroke: var(--ink); stroke-width: 3; }
@@ -177,6 +196,24 @@ export class PlanoEscenarioComponent implements OnDestroy {
         etiquetaALaIzquierda: centro.x > bordeDerecho - 1.5 * e.pxPorMetro,
       };
     });
+  });
+
+  /**
+   * Las distancias de la ficha elegida contra las demás.
+   *
+   * **Se actualizan solas mientras se arrastra**, sin nada especial: el arrastre
+   * emite la posición nueva, el padre la guarda y vuelve por `fichas`, así que
+   * este `computed` se recalcula con la posición en vuelo. Era la condición para
+   * que el plano sirva de mesa de trabajo y no de instrumento de medición.
+   *
+   * Vacío cuando no hay nada elegido: n² líneas no se leen.
+   */
+  readonly distancias = computed(() => {
+    const elegida = this.seleccionada();
+    // `null` y cadena vacía significan lo mismo acá: nada elegido. El
+    // componente emite `''` al tocar el fondo y el padre puede pasar `null`.
+    if (elegida === null || elegida === '') return [];
+    return lineasDeDistancia(elegida, this.fichas(), this.escala(), metros, distanciaM);
   });
 
   /** Cuántos metros vale el dedo acá, para que la pantalla lo pueda decir. */
