@@ -215,8 +215,35 @@ Tres cosas de ese enunciado que cambian el diseño y conviene no perder:
    invariante y el mensaje de cada rechazo; esta pantalla es el primer lugar
    donde ese mensaje lo lee alguien que no es el operador.
 
-**Lo que sigue sin entrar:** que el músico toque nada que no sea su propio
-retorno.
+### Y los pedidos no son sólo sobre el monitor propio
+
+El usuario lo planteó el 2026-09-12, respondiendo a una pregunta con otra:
+
+> *«¿y si un integrante pide para subir el nivel de otro? Ejemplo, 3 monitores,
+> un integrante a la derecha, él puede saber sobre el nivel del monitor de la
+> derecha y un poco del medio, pero no tiene idea del monitor de la izquierda…»*
+
+**El criterio que propone es acústico, no de propiedad: se pide por lo que uno
+escucha, y lo que uno escucha depende de dónde está parado.**
+
+**Y la aplicación ya tiene con qué calcularlo.** El escenario guarda dónde está
+cada monitor y cada persona, y desde el 2026-09-12 el plano muestra distancias.
+La misma geometría que sirve para diagnosticar acoples sirve para decidir quién
+tiene criterio sobre qué monitor: el de la derecha, a metro y medio de su cuña y
+a cuatro de la del medio, opina de las dos; a ocho metros de la de la izquierda,
+no.
+
+Consecuencia de diseño: **la pantalla le ofrece a cada integrante los monitores
+que puede escuchar**, ordenados por cercanía y el propio primero. Un pedido sobre
+algo que no se puede oír se declina con un motivo entendible, que es distinto de
+no poder pedirlo.
+
+**Lo que queda sin decidir:** si «subir mi retorno» sube el canal propio dentro
+de esa cuña o el volumen entero de la cuña. Son cosas distintas con dueños
+distintos —`i.N.aux.M.value` contra `a.N.mix`— y la pregunta quedó abierta.
+
+**Lo que sigue sin entrar:** que el músico toque cualquier cosa que no sea un
+nivel de monitor.
 
 Su detalle está en
 [`pedidos/2026-09-12-diagnostico-y-mediciones.md`](pedidos/2026-09-12-diagnostico-y-mediciones.md).

@@ -258,3 +258,25 @@ abajo la aplicación no podía levantar nada. Es la tercera vez en esta tanda de
 trabajo que una restricción sale más ancha que el permiso, y la primera que la
 encuentra el usuario.
 
+De otra tanda de opciones múltiples, el 2026-09-12:
+
+- Qué atacar con la consola viva: **«Las mediciones que faltan»**
+- Bajar buses para cazar un acople: **«Los dos, con techo»** — el auxiliar y el
+  general
+- El rango de movimiento: **«Rectángulo que se estira»**
+
+Y a la pregunta de si un pedido desde el QR sube el canal propio o toda la cuña,
+respondió con otra cosa:
+
+> Interesante pregunta, y si un integrante pide para subir el nivel de otro?
+> Ejemplo, 3 monitores, un ingreante a la derecha, el puede saber sobre el nivel
+> del monitor de la derecha y un poco del medio, pero no tiene idea del monitor
+> de la izquierda, otro integrante a la izquierda podria salicitar subir o bajar
+> el de otro integrante tambien
+
+**Lectura mía, discutible.** No contesta la pregunta que se le hizo —canal propio
+contra cuña entera— sino que abre otra: **los pedidos no son sólo sobre el
+monitor propio**. El criterio que propone es acústico y no de propiedad: se puede
+pedir por lo que uno **escucha**, y lo que uno escucha depende de dónde está
+parado. La pregunta original sigue abierta.
+

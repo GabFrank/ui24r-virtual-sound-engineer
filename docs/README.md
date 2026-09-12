@@ -9,6 +9,7 @@
 | [backlog/02-backlog.md](backlog/02-backlog.md) | Épicas, historias, criterios de aceptación y dependencias |
 | [backlog/03-orden-implementacion.md](backlog/03-orden-implementacion.md) | Los 126 ítems en orden, esfuerzo, camino crítico y planes B |
 | [backlog/hallazgo-capturas-huerfanas.md](backlog/hallazgo-capturas-huerfanas.md) | Renumerar el flujo visual deja capturas que el validador no ve: comprueba en un solo sentido |
+| [backlog/decision-bajar-buses-para-cazar-acoples.md](backlog/decision-bajar-buses-para-cazar-acoples.md) | El usuario autorizó bajar el auxiliar y el general; qué falta medir y decidir antes de abrirlos |
 | [backlog/hallazgo-umbral-de-una-diferencia.md](backlog/hallazgo-umbral-de-una-diferencia.md) | El umbral de «un escalón» rechaza por construcción cuando se aplica a una diferencia de dos lecturas |
 
 ## Vigentes durante todo el proyecto
