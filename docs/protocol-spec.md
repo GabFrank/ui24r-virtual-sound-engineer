@@ -26,6 +26,25 @@ hace que la consola les ponga un notch de −18 dB a cada uno, y las mediciones
 siguientes salen por esos notches. Cualquier medición acústica por este general
 necesita `m.afs.enabled = 0` mientras dura.
 
+**Los tonos sostenidos de medición hacen que el supresor aprenda, y lo que
+aprende se borra.** Comprobado el 2026-09-12: seis corridas con tonos continuos
+de 100 Hz, 1 kHz y 10 kHz dejaron **seis filtros de −18 dB con Q=7** en el
+general, en esas mismas frecuencias, y desplazaron a los tres que el operador
+tenía de sus fechas. **`clearlive` los borró los seis de una**, comprobado
+releyendo por HTTP, sin tocar `m.afs.enabled`. Evidencia:
+`spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt`.
+
+Dos consecuencias prácticas: **medir con el supresor encendido le modifica el
+sonido al operador**, y por eso desde esa fecha se apaga antes de medir y se
+deja como estaba; y **un filtro de −18 dB con Q=7 en la frecuencia de un tono de
+prueba es firma de medición, no de una fecha real** — una nota anterior atribuía
+uno de esos a «fechas viejas» y probablemente era de otra corrida.
+
+**Y el segundo campo de un filtro es la ganancia, no el Q.** El orden es
+`freq, gain, Q`, y una ranura vacía dice `1000, 116, 0`: mil hercios, **Q 116**,
+ganancia cero. Leer el 116 como ganancia —o el Q como ganancia en un filtro
+real— es un error que ya se cometió al imprimir un archivo de evidencia.
+
 **`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
 por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y
 apagado, poniéndolos en 1 y volviéndolos a 0: **la cuenta de filtros no se movió

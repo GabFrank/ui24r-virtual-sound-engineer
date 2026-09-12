@@ -174,6 +174,13 @@ No hay cuña enchufada. Los filtros que el supresor tiene plantados en `a.0`
 de cuando sí había monitores conectados. **Eso último es inferencia mía: el
 usuario no dijo de dónde salieron esos filtros.**
 
+**Y la inferencia era probablemente falsa.** El 2026-09-12 se comprobó que los
+tonos sostenidos de medición hacen que el supresor aprenda filtros de −18 dB con
+Q=7 en la frecuencia del tono — plantaron seis en el general, cuatro de ellos a
+1 kHz. Esa es exactamente la firma del filtro de 999,97 Hz a −18 dB del auxiliar
+1 que yo había atribuido a fechas viejas. Lo más probable es que sea de una
+sesión de medición anterior, no de una fecha con público.
+
 > ok, no olvides de activar el gatilho que t mantiene despierto, si te da tiempo
 > al final, haz una pasada completa en la UI del producto, ver que falta
 > cablear, si falta algun ABM, crear el diseño del espacio con los instrumentos,

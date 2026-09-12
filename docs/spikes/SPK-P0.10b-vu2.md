@@ -239,6 +239,15 @@ cita es una medición que nadie va a encontrar cuando la necesite.
   el medidor toma **después** del procesador: cola de 1170 ms, izquierda y
   derecha descorrelacionadas con fuente mono, y 7,7 dB de dispersión entre 100 Hz
   y 10 kHz.
+- `evidence/leyes-del-compresor-2026-09-12.txt`,
+  `evidence/ley-de-la-razon-2026-09-12.txt` y
+  `evidence/umbral-por-sustitucion-2026-09-12.txt` — **las leyes del compresor, y
+  el resultado es que las del código no describen el aparato.** La rodilla dio
+  una pendiente de umbral de 95,6 ± 6,3 dB por unidad; la sustitución dio 22,2,
+  32,1 y 47,3 según la relación, y una ley del umbral no puede depender de la
+  relación. La ley de la razón encaja a 6 dB de exceso —0,38 escalones de
+  desvío— y falla a 18. El sospechoso, como hipótesis, es la escala del medidor
+  de reducción por encima de 11 dB, que es donde deja de estar verificada.
 - `evidence/controles-tras-96a-2026-09-12.txt` — la restauración tras el ítem 96a,
   releída por HTTP.
 - `evidence/ley-envio-fx-2026-09-12.txt` y

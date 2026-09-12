@@ -1,0 +1,59 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T13:15:09.346Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-de-la-razon.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-de-la-razon.ts sha256:a0d7771b23a08891
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9), tono de 1000 Hz a -1 dBFS
+rodilla medida en la primera mitad: crudo 0.53
+pendiente medida: 95,6 dB por unidad -> 10.46 milesimas de crudo por dB
+escalon del medidor de reduccion: 0.6668 dB
+supresor del general: estaba en 1, se apaga
+
+--- exceso 6 dB (umbral en crudo 0.4672) ---
+razon crudo |  R = 1/a | reduccion | predicha E(1-a) | desvio | n
+       1.00 |      1.0 |      0.00 |            0.00 |   0.00 |  40
+       0.80 |      1.3 |      0.98 |            1.20 |  -0.22 |  39
+       0.60 |      1.7 |      2.32 |            2.40 |  -0.08 |  40
+       0.50 |      2.0 |      2.98 |            3.00 |  -0.02 |  40
+       0.40 |      2.5 |      3.65 |            3.60 |   0.05 |  47
+       0.30 |      3.3 |      4.32 |            4.20 |   0.12 |  40
+       0.20 |      5.0 |      4.98 |            4.80 |   0.18 |  42
+       0.10 |     10.0 |      5.65 |            5.40 |   0.25 |  42
+
+--- exceso 18 dB (umbral en crudo 0.3417) ---
+razon crudo |  R = 1/a | reduccion | predicha E(1-a) | desvio | n
+       1.00 |      1.0 |      0.00 |            0.00 |   0.00 |  40
+       0.80 |      1.3 |      1.65 |            3.60 |  -1.95 |  40
+       0.60 |      1.7 |      3.65 |            7.20 |  -3.55 |  40
+       0.50 |      2.0 |      4.98 |            9.00 |  -4.02 |  41
+       0.40 |      2.5 |      6.32 |           10.80 |  -4.48 |  43
+       0.30 |      3.3 |      8.32 |           12.60 |  -4.28 |  40
+       0.20 |      5.0 |     10.99 |           14.40 |  -3.41 |  41
+       0.10 |     10.0 |     13.65 |           16.20 |  -2.55 |  41
+
+=== C2: cero en a = 1, y lineal ===
+  exceso 6 dB: en a=1 la reduccion es 0.00 dB (CERO, como predice 1/a)
+     desvio maximo contra E(1-a): 0.25 dB = 0.38 escalones
+  exceso 18 dB: en a=1 la reduccion es 0.00 dB (CERO, como predice 1/a)
+     desvio maximo contra E(1-a): 4.48 dB = 6.72 escalones
+
+=== C3: la reduccion tiene que ESCALAR con el exceso ===
+Sin esto, «proporcional a (1-a)» y «la relacion es 1/a» son lo mismo.
+razon de excesos: 18/6 = 3.00
+razon crudo | reduccion baja | reduccion alta | cociente | esperado
+       0.80 |           0.98 |           1.65 |     1.68 |     3.00
+       0.60 |           2.32 |           3.65 |     1.58 |     3.00
+       0.50 |           2.98 |           4.98 |     1.67 |     3.00
+       0.40 |           3.65 |           6.32 |     1.73 |     3.00
+       0.30 |           4.32 |           8.32 |     1.93 |     3.00
+       0.20 |           4.98 |          10.99 |     2.20 |     3.00
+       0.10 |           5.65 |          13.65 |     2.42 |     3.00
+
+restaurado, supresor incluido. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0
