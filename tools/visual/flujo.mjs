@@ -293,19 +293,37 @@ async function recorrer(contexto, tamanio) {
   await p.click('[data-perfil="locales"]');
   await paso(9, 'local-guardado', 'el local aparece en la lista');
 
+  // **El plano del escenario, que hasta acá no se capturaba en ningún ancho.**
+  // Veintisiete pasos y cien capturas archivadas, y ninguna de esta pantalla:
+  // por eso nadie vio que la geometría decía «unos 1,20 m» para algo declarado
+  // fijo. El usuario la pidió el 2026-09-13 y no había forma de dársela sin
+  // abrir la aplicación a mano.
+  //
+  // Se llega desde el local, que a esta altura ya está guardado con sus
+  // dimensiones: sin tamaño no hay plano sobre el que poner nada, y el botón
+  // está deshabilitado.
+  await p.click('[data-perfil="locales"]');
+  await p.click('a.tarjeta');
+  await p.waitForSelector('ui-card[titulo="Escenario"]');
+  await p.click('ui-card[titulo="Escenario"] ui-button button');
+  await p.waitForSelector('ui-card[titulo="Plano"], ui-empty');
+  await paso(10, 'escenario-plano', 'el plano del local, con las fichas arrastrables');
+  await p.click('[data-destino="perfiles"]');
+  await esperar(300);
+
   // --- Sistema de amplificación ---
   await p.click('[data-perfil="pa"]');
-  await paso(10, 'pa-lista', 'el sistema que se creó junto con el local');
+  await paso(11, 'pa-lista', 'el sistema que se creó junto con el local');
   await p.click('a.tarjeta');
   await p.waitForSelector('#pa-nombre');
   await p.fill('#pa-nombre', 'Cajas propias');
   await p.fill('#pa-cajas', 'Par de 12 pulgadas activas');
   await p.fill('#pa-desde', '1000');
   await p.fill('#pa-hasta', '1500');
-  await paso(11, 'pa-rango-invalido', 'validación: menos de una octava de rango útil');
+  await paso(12, 'pa-rango-invalido', 'validación: menos de una octava de rango útil');
   await p.fill('#pa-desde', '65');
   await p.fill('#pa-hasta', '16000');
-  await paso(12, 'pa-rango-valido', 'rango útil corregido');
+  await paso(13, 'pa-rango-valido', 'rango útil corregido');
 
   // El sistema lo usa el local que se acaba de crear, así que no se puede
   // borrar: un local sin sistema no dice con qué equipo se toca. La
@@ -340,7 +358,7 @@ async function recorrer(contexto, tamanio) {
   // un tiempo de espera agotado que no dice qué pasó.
   const pregunto = await p.locator(`${aviso} [open]`).waitFor({ timeout: 5000 })
     .then(() => true).catch(() => false);
-  await paso(13, 'salir-sin-guardar', 'salir con cambios sin guardar pregunta antes');
+  await paso(14, 'salir-sin-guardar', 'salir con cambios sin guardar pregunta antes');
   if (!pregunto) {
     fallos.push('salir con cambios sin guardar no preguntó nada');
   } else {
@@ -357,17 +375,17 @@ async function recorrer(contexto, tamanio) {
 
   // --- Sesión ---
   await p.click('[data-destino="sesion"]');
-  await paso(14, 'sesion-lista', 'ya se puede empezar una sesión');
+  await paso(15, 'sesion-lista', 'ya se puede empezar una sesión');
   await p.click('ui-empty ui-button button');
   await p.waitForSelector('#ses-banda');
-  await paso(15, 'sesion-elegir', 'elegir banda y local');
+  await paso(16, 'sesion-elegir', 'elegir banda y local');
   await p.click('ui-dialog [pie] ui-button:last-child button');
   await p.waitForSelector('[data-estado]');
-  await paso(16, 'sesion-abierta', 'sesión abierta, con lo que sigue');
+  await paso(17, 'sesion-abierta', 'sesión abierta, con lo que sigue');
 
   await p.click('[data-estado="SETUP"]');
   await esperar(400);
-  await paso(17, 'sesion-setup', 'avance de estado según la tabla de transiciones');
+  await paso(18, 'sesion-setup', 'avance de estado según la tabla de transiciones');
 
   // **El recorrido guiado, en los dos anchos.** Hasta acá `flujo.mjs` no visitaba
   // ni canales ni recorrido, así que la pantalla nueva no se capturaba en ningún
@@ -384,7 +402,7 @@ async function recorrer(contexto, tamanio) {
   // en vez de cargar la aplicación.
   await p.click('[data-atajo="recorrido"]');
   await p.waitForSelector('ui-empty');
-  await paso(18, 'recorrido-otro-estado', 'el recorrido dice por qué no se puede en este estado');
+  await paso(19, 'recorrido-otro-estado', 'el recorrido dice por qué no se puede en este estado');
 
   await p.click('ui-page-header ui-button button');
   await p.waitForSelector('[data-estado="CALIBRATING"]');
@@ -394,15 +412,15 @@ async function recorrer(contexto, tamanio) {
   await esperar(400);
   await p.click('[data-atajo="recorrido"]');
   await p.waitForSelector('ui-empty');
-  await paso(19, 'recorrido-vacio', 'el recorrido sin canales asignados dice qué falta');
+  await paso(20, 'recorrido-vacio', 'el recorrido sin canales asignados dice qué falta');
   await p.click('ui-page-header ui-button button');
   await p.waitForSelector('[data-estado]');
 
   await p.click('[data-destino="historial"]');
-  await paso(20, 'historial', 'la sesión en curso ya figura en el historial');
+  await paso(21, 'historial', 'la sesión en curso ya figura en el historial');
 
   await p.click('[data-destino="ajustes"]');
-  await paso(21, 'ajustes', 'ajustes: consola, actualización y datos');
+  await paso(22, 'ajustes', 'ajustes: consola, actualización y datos');
 
   // El registro persistente tiene que tener algo dentro para este punto: se
   // vienen guardando bandas, locales y una sesión. La comprobación existe
@@ -414,23 +432,23 @@ async function recorrer(contexto, tamanio) {
   await lineas.first().waitFor({ timeout: 5000 }).catch(() => { /* el conteo lo dice */ });
   const eventos = await lineas.count();
   if (eventos === 0) fallos.push('el registro guardado no devolvió ningún evento');
-  await paso(22, 'registro', 'el registro guardado, con lo que hizo la aplicación');
+  await paso(23, 'registro', 'el registro guardado, con lo que hizo la aplicación');
 
   // --- Cierre ---
   await p.click('[data-destino="sesion"]');
   await p.click('ui-page-header ui-button button');
   await p.waitForSelector('ui-dialog[titulo="Cerrar la sesión"] [open]');
-  await paso(23, 'cerrar', 'confirmación de cierre: no se puede reabrir');
+  await paso(24, 'cerrar', 'confirmación de cierre: no se puede reabrir');
   await p.click('ui-dialog[titulo="Cerrar la sesión"] [pie] ui-button:last-child button');
   await esperar(500);
-  await paso(24, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
+  await paso(25, 'cerrada', 'vuelta al estado inicial, con la sesión en el historial');
 
   await p.click('[data-destino="historial"]');
   // La tabla y la lista de tarjetas coexisten en el árbol; solo una es
   // visible según el ancho. Se elige la que de verdad se ve.
   await p.locator('tbody tr, a.tarjeta').locator('visible=true').first().click();
   await esperar(400);
-  await paso(25, 'detalle', 'detalle de la sesión cerrada, solo lectura');
+  await paso(26, 'detalle', 'detalle de la sesión cerrada, solo lectura');
 
   // --- Prueba de conexión ---
   //
@@ -439,7 +457,7 @@ async function recorrer(contexto, tamanio) {
   // otro paso.
   await p.goto(`http://localhost:${PUERTO_WEB}/#/ajustes/diagnostico`, { waitUntil: 'networkidle' });
   await p.waitForSelector('ui-page-header');
-  await paso(26, 'diagnostico', 'prueba de conexión: mide y no escribe');
+  await paso(27, 'diagnostico', 'prueba de conexión: mide y no escribe');
 
   // --- INV-019: el paro tiene que poder tocarse también con un diálogo abierto ---
   //
@@ -475,7 +493,7 @@ async function recorrer(contexto, tamanio) {
   });
   if (paroAlcanzable !== null) fallos.push(`INV-019 en diálogo: ${paroAlcanzable}`);
 
-  await paso(27, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
+  await paso(28, 'paro-en-dialogo', 'INV-019: el paro sigue disponible con un diálogo abierto');
 
   await p.close();
   return fallos;

@@ -2,7 +2,7 @@
 
 Qué se puede hacer hoy con la aplicación, de principio a fin, sin hardware de
 medición. Está verificado automáticamente: `tools/visual/flujo.mjs` recorre
-estos veintisiete pasos en dos anchos de pantalla y falla si alguno se atasca o si
+estos veintiocho pasos en dos anchos de pantalla y falla si alguno se atasca o si
 la consola del navegador registra un error.
 
 ```

@@ -38,7 +38,7 @@ describiendo pasos que ya no existen.
 | `ds-telefono.png` | Sistema de diseño completo a 390 px |
 | `ds-tablet-vertical.png` | Sistema de diseño completo a 834 px |
 | `ds-tablet.png` | Sistema de diseño completo a 1280 px |
-| `flujo-tablet-*.png` | Los 27 pasos del camino de usuario en tablet |
+| `flujo-tablet-*.png` | Los 28 pasos del camino de usuario en tablet |
 | `flujo-telefono-*.png` | Los mismos 24 pasos en teléfono |
 
 De la 16 a la 21 el catálogo de GitHub se responde desde la propia prueba en
@@ -120,7 +120,7 @@ Y el recorrido del camino de usuario, apenas se escribió, encontró tres más:
     Un nombre a medias es peor que una sigla entera; en pantallas angostas dice
     «VSE».
 
-El recorrido de `flujo.mjs` no se lista archivo por archivo: son 27 pasos por
+El recorrido de `flujo.mjs` no se lista archivo por archivo: son 28 pasos por
 cada uno de los dos anchos, con el número y el nombre del paso en el propio
 archivo. `validate-capturas.mjs` comprueba que el índice de arriba nombre todo lo que hay
 guardado, y —**solo si `tools/visual/out/` existe**, o sea si acabás de correr
