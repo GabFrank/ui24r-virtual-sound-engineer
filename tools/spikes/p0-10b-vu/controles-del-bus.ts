@@ -38,8 +38,16 @@ console.log(`canal ${canal} (i.${n}) -> auxiliar ${aux + 1} (a.${aux}), ${e.size
 
 console.log('');
 console.log('=== 1. RESTAURACION, releida por HTTP ===');
-for (const k of [`i.${n}.aux.${aux}.value`, `i.${n}.mix`, `hw.${n}.gain`]) {
-  console.log('  ', k.padEnd(20), e.get(k) ?? '—');
+for (const k of [`i.${n}.aux.${aux}.value`, `i.${n}.mix`, `hw.${n}.gain`,
+                 `i.${n}.aux.${aux}.post`, `i.${n}.aux.${aux}.postproc`]) {
+  console.log('  ', k.padEnd(24), e.get(k) ?? '—');
+}
+// **El ecualizador también, desde la medición 95.** Esa corrida realza las cinco
+// bandas al máximo para generar un cambio de nivel conocido, y dejarlas puestas
+// sería devolverle al usuario un canal ecualizado que él no ecualizó.
+for (let b = 1; b <= 5; b++) {
+  console.log('  ', `i.${n}.eq.b${b}.gain`.padEnd(24), e.get(`i.${n}.eq.b${b}.gain`) ?? '—',
+    e.get(`i.${n}.eq.b${b}.gain`) === '0.5' ? '' : '   <-- NO es plano');
 }
 
 console.log('');

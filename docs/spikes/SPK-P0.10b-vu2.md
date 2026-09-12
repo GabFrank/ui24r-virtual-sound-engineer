@@ -228,6 +228,12 @@ cita es una medición que nadie va a encontrar cuando la necesite.
   que barrió un solo punto. Queda porque el guion **la archivó igual, sin
   quejarse**: ése era el defecto real, y se corrigió agregando una guarda que
   aborta con menos de cinco puntos.
+- `evidence/post-y-postproc-2026-09-12.txt` — **qué hacen `post` y `postproc` en
+  el audio**: las cuatro combinaciones, cada una con el ecualizador plano,
+  realzado y con el fader bajado. Las banderas son independientes y hacen lo que
+  su nombre dice. Confirma de paso la ley del fader por un camino distinto.
+- `evidence/controles-tras-postproc-2026-09-12.txt` — la restauración de esa
+  medición, incluidas las cinco bandas del ecualizador.
 - `evidence/controles-del-bus-2026-09-12.txt` — **los controles de esa medición**:
   la restauración releída por HTTP, el censo de quién más alimenta el auxiliar,
   el estado del supresor al terminar, el enlace estéreo y la dinámica del canal.

@@ -1,0 +1,46 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T05:06:02.575Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/post-y-postproc.ts 10 2 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/post-y-postproc.ts sha256:3816dee53997a9f7
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> auxiliar 3 (a.2)
+tono de 1000 Hz a -1 dBFS, envio fijo en 0.8
+resolucion del medidor: 0.3334 dB por escalon
+
+estado                       | pre (testigo) | entrada (proc) | auxiliar  | n
+post=0 pp=1 eq plano         |        -37.66 |         -37.66 |    -59.00 |  57
+post=0 pp=1 eq realzado      |        -37.66 |         -13.65 |    -34.99 |  57
+post=0 pp=1 fader 0,50       |        -37.66 |         -37.66 |    -59.00 |  56
+post=0 pp=0 eq plano         |        -37.66 |         -37.66 |    -59.00 |  58
+post=0 pp=0 eq realzado      |        -37.66 |         -13.65 |    -59.00 |  56
+post=0 pp=0 fader 0,50       |        -37.66 |         -37.66 |    -59.00 |  56
+post=1 pp=1 eq plano         |        -37.66 |         -37.66 |    -59.00 |  58
+post=1 pp=1 eq realzado      |        -37.66 |         -13.65 |    -34.99 |  56
+post=1 pp=1 fader 0,50       |        -37.66 |         -37.66 |    -70.55 |  57
+post=1 pp=0 eq plano         |        -37.66 |         -37.66 |    -59.00 |  56
+post=1 pp=0 eq realzado      |        -37.66 |         -13.65 |    -59.00 |  55
+post=1 pp=0 fader 0,50       |        -37.66 |         -37.66 |    -70.50 |  57
+
+=== QUE SE MUEVE, EN dB, CONTRA EL ESTADO PLANO DE CADA COMBINACION ===
+combinacion      | cambio | entrada (proc) | auxiliar | veredicto
+post=0 pp=1 eq   | eq realzado | +        24.00 | +  24.00 | LO SIGUE
+post=0 pp=1 eq   | fader 0,50  | +         0.00 | +   0.00 | no lo sigue
+post=0 pp=0 eq   | eq realzado | +        24.00 | +   0.00 | no lo sigue
+post=0 pp=0 eq   | fader 0,50  | +         0.00 | +   0.00 | no lo sigue
+post=1 pp=1 eq   | eq realzado | +        24.00 | +  24.00 | LO SIGUE
+post=1 pp=1 eq   | fader 0,50  | +         0.00 |  -11.55 | LO SIGUE
+post=1 pp=0 eq   | eq realzado | +        24.00 | +   0.00 | no lo sigue
+post=1 pp=0 eq   | fader 0,50  | +         0.00 |  -11.51 | LO SIGUE
+
+«LO SIGUE» = el auxiliar se movio mas de un escalon (0.3334 dB).
+Si «entrada» no se movio en una fila de eq, esa fila NO prueba nada:
+el ecualizador no actuo y el auxiliar quieto no dice si lo sigue o no.
+
+restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0
