@@ -248,6 +248,13 @@ cita es una medición que nadie va a encontrar cuando la necesite.
   relación. La ley de la razón encaja a 6 dB de exceso —0,38 escalones de
   desvío— y falla a 18. El sospechoso, como hipótesis, es la escala del medidor
   de reducción por encima de 11 dB, que es donde deja de estar verificada.
+- `evidence/calibrar-medidor-reduccion-2026-09-12.txt` — **el medidor de reducción
+  contra la caída real de nivel, hasta 24,34 dB.** Extiende la verificación que
+  antes llegaba a 10,80. Desvío máximo 0,35 dB = 0,52 escalones, **igual en el
+  tramo que ya estaba verificado y en el que no**. Refuta la hipótesis de que el
+  medidor fuera el culpable de las contradicciones del ítem 97: el error está en
+  la ley. Y con datos confiables, `E·(1−a)` queda refutado — el exceso despejado
+  va de 10,0 a 25,6 con fuente y umbral fijos.
 - `evidence/controles-tras-96a-2026-09-12.txt` — la restauración tras el ítem 96a,
   releída por HTTP.
 - `evidence/ley-envio-fx-2026-09-12.txt` y

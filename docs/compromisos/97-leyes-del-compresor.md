@@ -248,3 +248,65 @@ Comprobada releyendo por HTTP en las tres corridas: `dyn.threshold = 0,875`,
 `dyn.ratio = 1`, `dyn.attack` y `dyn.release` en su valor, `m.afs.enabled = 1`.
 **Y cero filtros nuevos en el supresor del general**: apagarlo antes de medir
 —decisión del usuario del 2026-09-12— funcionó.
+
+---
+
+# La hipótesis del medidor quedó refutada
+
+**Medido el 2026-09-12**, después del resultado de arriba. Evidencia:
+`evidence/calibrar-medidor-reduccion-2026-09-12.txt`.
+
+## El método
+
+La reducción **real** se lee con **otro instrumento**: el medidor de nivel del
+canal, cuyo recorrido de 80 dB sí está medido contra el aparato. Con fuente y
+umbral fijos se barre la relación, y la caída de `entrada` respecto del punto
+`ratio = 1` —donde no hay compresión— **es** la reducción.
+
+**La referencia es `ratio = 1` y no `dyn.bypass`, a propósito.** Puentear saca el
+bloque entero, incluida su ganancia de compensación, así que la diferencia
+mezclaría la reducción con la compensación y daría un número limpio y
+equivocado. Es el mismo error que ya costó dos corridas: medir la cadena entera
+creyendo medir un bloque.
+
+## El resultado: el medidor está bien
+
+| Tramo | Puntos | Desvío máximo |
+|---|---|---|
+| Hasta 11 dB, donde ya estaba verificado | 7 | 0,35 dB = **0,52 escalones** |
+| **Arriba de 11 dB, donde no lo estaba** | 5 | 0,35 dB = **0,52 escalones** |
+
+Sigue la caída real hasta **24,34 dB de reducción** dentro de medio escalón, y la
+precisión **no se degrada** en el tramo sin verificar. El testigo `pre` no se
+movió 0,00 dB en los trece puntos.
+
+**Mi hipótesis era falsa.** Iba a explicar cuatro observaciones con un
+instrumento defectuoso, y el instrumento está bien. **El error está en la ley**,
+y ahora los datos la constriñen de verdad porque el medidor tiene respaldo.
+
+## Lo que los datos buenos dicen del modelo
+
+| Modelo | Veredicto |
+|---|---|
+| `reducción = E·(1 − a)` con `R = 1/a` | **Refutado.** El exceso despejado va de 10,0 a 25,6 en la misma corrida. No es constante, y tiene que serlo: la fuente y el umbral no se movieron |
+| `reducción = −20·log₁₀(a)` | Encaja **dentro de 0,48 dB hasta a = 0,15**, y se despega después: −1,00 en 0,10 y −1,68 en 0,05 |
+
+**El segundo NO se declara ley, y el motivo es concreto:** en la corrida anterior,
+con el umbral en 0,4672 y `a = 0,5`, la reducción fue 2,98 — y `−20·log₁₀(0,5)`
+es 6,02. **La relación no se sostiene en otro umbral.**
+
+**Lectura mía de las dos corridas juntas, discutible:** a umbral 0,14 la
+reducción ya está saturada —la corrida anterior mostró que cada curva se aplana— y
+el valor de saturación es el que sigue esa curva. Eso explicaría por qué
+`−20·log₁₀(a)` aparece acá y no allá. **Es una lectura, no un resultado.**
+
+## El siguiente paso, y por qué ahora se puede
+
+Un **barrido en dos dimensiones**, umbral × relación, para tener la superficie en
+vez de dos cortes. No se podía hacer antes con confianza porque el instrumento
+estaba bajo sospecha; ahora tiene respaldo hasta 24 dB.
+
+Lo que **no** hay que hacer es ajustar una curva a los doce puntos de un solo
+umbral y publicarla. Este proyecto tiene documentado lo que pasa: los tres
+barridos de 84,5 dB eran rectas impecables, y lo que los delató fue que no
+coincidían entre sí.
