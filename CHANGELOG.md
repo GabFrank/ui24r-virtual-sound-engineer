@@ -46,6 +46,20 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **El almacén del navegador descarta lo que es de otra versión del esquema.** Ahí
+  **no corren las migraciones** —son SQL, y reimplementarlas en otro lenguaje
+  serían dos verdades que se separan—, así que un perfil guardado antes de una
+  migración se leía después con el código nuevo, que espera otra forma. Un perfil
+  de amplificación anterior a la migración 6 no tiene identificador en sus
+  componentes, y el escenario los referencia por ahí: el plano quedaba mudo sin
+  que nada fallara.
+
+  La salida es descartar, no migrar: ese almacén se declara desechable desde su
+  primera línea, y es el camino de desarrollo, no el del producto. **Se avisa
+  fuerte y no en silencio** — perder datos de prueba no tiene consecuencias,
+  perderlos sin enterarse convierte un «desapareció mi banda» en media hora de
+  búsqueda. Y un almacén vacío no avisa: sería ruido en cada arranque limpio.
+
 - **Los blancos táctiles se miden, en cada paso y en los dos anchos.** El sistema
   de diseño promete 48 píxeles como mínimo en dos lugares y **nada lo
   comprobaba**: el recorrido visual medía un único rectángulo, el del paro, y el
@@ -547,7 +561,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **987**. Los diez bloques son
+  auditorías, **991**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 
