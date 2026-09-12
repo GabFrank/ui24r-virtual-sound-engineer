@@ -228,6 +228,17 @@ cita es una medición que nadie va a encontrar cuando la necesite.
   que barrió un solo punto. Queda porque el guion **la archivó igual, sin
   quejarse**: ése era el defecto real, y se corrigió agregando una guarda que
   aborta con menos de cinco puntos.
+- `evidence/bytes-del-bus-de-efecto-2026-09-12.txt` — **corrida fallida, archivada
+  a propósito.** Rehizo a mano el desplazamiento en la trama y se salteó la
+  sección del reproductor: leía otro bloque. Salió consistente y parecía «el bus
+  no responde a nada»; lo delató que el byte valía 247, el centinela de «sin
+  reducción».
+- `evidence/bytes-del-bus-de-efecto-2026-09-12b.txt` — **qué mide cada byte del
+  bloque de un bus de EFECTO**, que `protocol-spec.md` §4.4 listaba como
+  pendiente. `+0/+1` previo y `+2/+3` posterior al fader del bus, verificado. Y
+  el medidor toma **después** del procesador: cola de 1170 ms, izquierda y
+  derecha descorrelacionadas con fuente mono, y 7,7 dB de dispersión entre 100 Hz
+  y 10 kHz.
 - `evidence/post-y-postproc-2026-09-12.txt` — **qué hacen `post` y `postproc` en
   el audio**: las cuatro combinaciones, cada una con el ecualizador plano,
   realzado y con el fader bajado. Las banderas son independientes y hacen lo que

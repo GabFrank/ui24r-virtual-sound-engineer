@@ -1,0 +1,74 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T05:24:58.312Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/bytes-del-bus-de-efecto.ts 10 1 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/bytes-del-bus-de-efecto.ts sha256:c17c223de546e165
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> efecto 2 (f.1)
+resolucion: 0.3334 dB por escalon
+
+estado                     | preIzq preDer postIz postDe  reduc puerta | testigo del canal
+envio 0 (aislado?)         |    0.0    0.0    0.0    0.0    0.0    1.0 | testigo  -37.66 | n=56
+envio 0.8, fader bus 0.76  |  136.0  121.0  136.0  121.0    0.0    1.0 | testigo  -37.66 | n=56
+envio 0.8, fader bus 0.50  |  136.0  121.0  101.0   86.0    0.0    1.0 | testigo  -37.66 | n=57
+envio 0.8, fader bus 0.20  |  136.0  121.0   21.0    6.8    0.0    1.0 | testigo  -37.66 | n=56
+envio 0.8, fader bus 0.00  |  136.0  121.0    0.0    0.0    0.0    1.0 | testigo  -37.66 | n=57
+
+=== CAIDA AL CORTAR EL ENVIO, trama por trama ===
+Una suma no tiene memoria: 20 dB en ~37 ms de mediana. Un reverb deja cola.
+ms desde el corte | preIzq preDer postIz postDe
+                0 |  136.0  121.0  136.0  121.0
+               67 |  136.0  121.0  136.0  121.0
+              100 |  132.0  116.0  132.0  116.0
+              133 |  119.0   93.0  119.0   93.0
+              201 |  108.0   82.0  108.0   82.0
+              234 |  107.0   69.0  107.0   69.0
+              267 |  106.0   59.0  106.0   59.0
+              333 |   99.0   57.0   99.0   57.0
+              367 |   95.0   40.0   95.0   40.0
+              401 |   86.0   36.0   86.0   36.0
+              467 |   77.0   31.0   77.0   31.0
+              501 |   70.0   31.0   70.0   31.0
+              534 |   73.0   25.0   73.0   25.0
+              567 |   71.0   27.0   71.0   27.0
+              600 |   69.0   29.0   69.0   29.0
+              633 |   62.0   21.0   62.0   21.0
+              699 |   50.0   18.0   50.0   18.0
+              734 |   42.0   17.0   42.0   17.0
+              767 |   42.0    5.0   42.0    5.0
+              800 |   39.0    5.0   39.0    5.0
+              866 |   33.0    0.0   33.0    0.0
+              899 |   29.0    0.0   29.0    0.0
+              933 |   20.0    0.0   20.0    0.0
+              999 |   16.0    0.0   16.0    0.0
+             1033 |    6.0    0.0    6.0    0.0
+             1067 |    6.0    0.0    6.0    0.0
+             1136 |    2.0    0.0    2.0    0.0
+             1170 |    0.0    0.0    0.0    0.0
+             1203 |    0.0    0.0    0.0    0.0
+             1270 |    0.0    0.0    0.0    0.0
+             1302 |    0.0    0.0    0.0    0.0
+             1337 |    0.0    0.0    0.0    0.0
+             1402 |    0.0    0.0    0.0    0.0
+             1436 |    0.0    0.0    0.0    0.0
+             1469 |    0.0    0.0    0.0    0.0
+             1536 |    0.0    0.0    0.0    0.0
+             1571 |    0.0    0.0    0.0    0.0
+             1638 |    0.0    0.0    0.0    0.0
+             1673 |    0.0    0.0    0.0    0.0
+             1707 |    0.0    0.0    0.0    0.0
+
+=== DISPERSION ENTRE FRECUENCIAS ===
+Una suma es plana (el medidor de entrada dio 0,23 dB). Un reverb no.
+frecuencia | preIzq preDer postIz postDe | testigo del canal
+       100 |  120.0  114.0  120.0  114.0 |  -37.66  n=68
+      1000 |  136.0  121.0  136.0  121.0 |  -37.66  n=70
+     10000 |  112.8  102.0  112.8  102.0 |  -37.99  n=68
+
+restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0
