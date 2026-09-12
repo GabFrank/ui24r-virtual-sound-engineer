@@ -81,15 +81,34 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // **Un numero que se actualiza sin mirar deja de ser una guarda.** Si este
   // test falla: contá qué entró, decidí si corresponde, y recién ahí cambiá el
   // numero -- en el mismo commit que lo justifica.
-  // **666, y el numero tiene historia.** La primera version decia 642 porque el
-  // contexto se fabricaba a mano con un `sessionState` que no existe, forzado
-  // con `as`: el cast tapo el error de tipos y suprimio las 24 rutas de
-  // `hw.N.gain`. Esa ganancia del previo SI es trabajo de la aplicacion en
-  // configuracion de canales (ADR-026), asi que 666 es el numero honesto.
+  // **El numero tiene historia, y cada salto esta contado.**
+  //
+  // 642 -> 666: la primera version decia 642 porque el contexto se fabricaba a
+  // mano con un `sessionState` que no existe, forzado con `as`: el cast tapo el
+  // error de tipos y suprimio las 24 rutas de `hw.N.gain`. Esa ganancia del
+  // previo SI es trabajo de la aplicacion en configuracion de canales (ADR-026).
+  //
+  // 666 -> 690: ADR-027 abrio el silencio de canal para el diagnostico de
+  // realimentacion. Son **exactamente +24**, los veinticuatro `i.N.mute` de la
+  // consola, y el test de abajo lo comprueba por separado: si el salto hubiera
+  // traido algo mas, este numero cuadraria igual y el otro no.
   const n = permitidas().length;
   strictEqual(
-    n, 666,
-    `el motor permite ${n} rutas del inventario y se esperaban 666. `
+    n, 690,
+    `el motor permite ${n} rutas del inventario y se esperaban 690. `
     + 'Si subio, algo que se rechazaba ahora se escribe.',
   );
+});
+
+test('lo unico que ADR-027 abrio son los silencios de canal', () => {
+  // **La cuenta sola no alcanza.** Si una autorizacion trajera de contrabando
+  // otra familia y quitara la misma cantidad de otra, el total cuadraria. Esto
+  // mira QUE entro, no cuanto.
+  const mutes = permitidas().filter((p) => /^i\.\d+\.mute$/.test(p));
+  strictEqual(mutes.length, 24, 'los veinticuatro canales de la consola');
+  // Y ningun otro silencio: ni el del general, ni los de bus, ni los de envio.
+  const otrosSilencios = permitidas().filter(
+    (p) => p.endsWith('.mute') && !/^i\.\d+\.mute$/.test(p),
+  );
+  deepStrictEqual(otrosSilencios, [], 'solo el silencio de canal');
 });

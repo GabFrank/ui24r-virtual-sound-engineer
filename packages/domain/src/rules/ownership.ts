@@ -79,7 +79,16 @@ export const OWNERSHIP: readonly OwnershipEntry[] = [
     nota: 'El músico depende de sus monitores para tocar' },
   { kind: 'MASTER_FADER', owner: 'USER_ONLY', escribible: false, nota: '' },
   { kind: 'MASTER_MUTE', owner: 'USER_ONLY', escribible: false, nota: '' },
-  { kind: 'CHANNEL_MUTE', owner: 'USER_ONLY', escribible: false, nota: '' },
+  // **Abierto el 2026-09-11 por ADR-027.** El bloqueo existía pensando en un
+  // modo de show que hoy no existe, y durante un soundcheck silenciar un canal
+  // para probar algo es lo más normal del oficio. Es la única forma de pasar de
+  // indicios --el analizador dice la frecuencia, la geometría dice la pareja-- a
+  // un experimento: silenciar un candidato y ver si la banda sostenida se cae.
+  //
+  // El motor lo restringe además a los estados que no están en vivo, con la
+  // misma forma que INV-006 aplica a la ganancia.
+  { kind: 'CHANNEL_MUTE', owner: 'CHANNEL_ASSISTANT', escribible: true,
+    nota: 'Se silencia para diagnosticar una realimentación, de a un canal por vez (ADR-027)' },
   // **La invariante específica, para que el registro no mande a buscar al lugar
   // equivocado.** Todo lo que es `USER_ONLY` se rechaza por INV-008, que habla
   // de propiedad en general; la alimentación fantasma tiene la suya —INV-007—

@@ -1,4 +1,5 @@
 import {
+  ESTADOS_EN_VIVO,
   ownership, esEscribible, verificarLimite,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
@@ -146,6 +147,26 @@ export class SafetyEngine {
       });
     }
 
+    // **Un solo silencio de canal por transacción.** ADR-027 lo abrió para el
+    // diagnóstico de realimentación, y la cuenta importa: silenciar dos canales
+    // a la vez rompe el experimento —si la banda sostenida se cae, no se sabe
+    // cuál de los dos la sostenía— además de dejar a dos músicos sin su canal.
+    //
+    // **Va acá y no en la tabla de límites.** El límite por transacción acota la
+    // MAGNITUD de un cambio, y un silencio no tiene magnitud: es binario. La
+    // primera versión declaró `porTransaccion: 1` creyendo que eso lo hacía
+    // cumplir, y el propio test lo desmintió: dos silencios pasaban, porque cada
+    // uno cumplía el tope por separado y la cuenta la miraba otra regla.
+    const silencios = cambios.filter((c) => clasificarRuta(c.path) === 'CHANNEL_MUTE').length;
+    if (silencios > 1) {
+      rechazos.push({
+        codigo: 'DEMASIADOS_PARAMETROS',
+        invariante: 'INV-005',
+        mensaje: `${silencios} silencios de canal en una transacción: se silencia de a uno, o el experimento no dice cuál era`,
+        path: null,
+      });
+    }
+
     for (const c of cambios) rechazos.push(...this.evaluarCambio(c, ctx));
 
     return rechazos.length === 0 ? { permitido: true } : { permitido: false, rechazos };
@@ -209,6 +230,22 @@ export class SafetyEngine {
         path: c.path,
       });
       return salida;
+    }
+
+    // **El silencio de canal, sólo fuera de los estados en vivo.** ADR-027 lo
+    // abrió para el diagnóstico de realimentación: silenciar un candidato y ver
+    // si la banda sostenida se cae es la única forma de pasar de indicios a un
+    // experimento. Pero el argumento del usuario era explícito sobre el
+    // soundcheck —«total es un soundcheck y eso es normal en estas
+    // condiciones»—, y durante un show dejar un canal mudo, aunque sea un
+    // segundo, es otra cosa.
+    if (c.kind === 'CHANNEL_MUTE' && ESTADOS_EN_VIVO.includes(ctx.sessionState)) {
+      salida.push({
+        codigo: 'ESTADO_DE_SESION',
+        invariante: 'INV-006',
+        mensaje: `el silencio de canal sólo se escribe fuera de los estados en vivo, y la sesión está en ${ctx.sessionState}`,
+        path: c.path,
+      });
     }
 
     // La ganancia de entrada solo se toca durante la configuración de canales,

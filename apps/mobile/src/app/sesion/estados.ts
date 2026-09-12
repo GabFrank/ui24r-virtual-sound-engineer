@@ -75,4 +75,7 @@ export const ESTADOS: Readonly<Record<SessionState, DescripcionDeEstado>> = {
  * Estados en los que la aplicación no debería distraer con nada que no sea
  * lo que está pasando en la sala.
  */
-export const ESTADOS_EN_VIVO: readonly SessionState[] = ['FULL_BAND', 'RINGOUT', 'SHOW'];
+// La lista vive en el dominio desde ADR-027, porque el motor de seguridad
+// también la necesita: dos listas de lo mismo en dos capas se separan, y la que
+// se separaría acá decide si la aplicación puede dejar un canal mudo en un show.
+export { ESTADOS_EN_VIVO } from '@vse/domain';

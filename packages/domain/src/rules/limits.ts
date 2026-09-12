@@ -25,6 +25,24 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
   HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas' },
   OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms' },
   MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB' },
+  /**
+   * **El silencio no tiene magnitud: es binario.** Un tope de «cuánto se mueve»
+   * no significa nada acá, y por eso INV-004 lo rechazaba —con razón— hasta que
+   * ADR-027 lo abrió para el diagnóstico.
+   *
+   * **Este `porTransaccion: 1` NO es «un canal por vez».** Acota la magnitud de
+   * un cambio, y la magnitud de un silencio es siempre 1, así que dos silencios
+   * en la misma transacción cumplen el tope los dos. La primera versión de este
+   * comentario decía que sí lo hacía cumplir, y el test lo desmintió: la regla
+   * de cuántos silencios entran en una transacción vive en el motor, que sí
+   * cuenta.
+   *
+   * El acumulado es alto a propósito: un diagnóstico recorre varios candidatos
+   * en la misma sesión, y cada uno es un silencio más su restauración. Doce
+   * alcanza para probar seis canales, que es más de los que suelen estar
+   * abiertos cuando aparece un acople.
+   */
+  CHANNEL_MUTE: { porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales' },
 };
 
 /** Factor de calidad mínimo en salidas: filtros estrechos sin evidencia, no. */

@@ -30,3 +30,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [024](ADR-024-confirmacion-por-testigo.md) | Las escrituras se confirman por una segunda conexión testigo | Aceptada |
 | [025](ADR-025-analizador-prestado.md) | El analizador se toma prestado con permiso, una vez por sesión | Aceptada |
 | [026](ADR-026-cerrar-el-lazo.md) | Cerrar el lazo: la aplicación escribe la ganancia | Aceptada |
+| [027](ADR-027-silenciar-para-diagnosticar.md) | Silenciar un canal para diagnosticar, en soundcheck | Aceptada |

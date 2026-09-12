@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { SafetyEngine } from '../src/engine.ts';
 import type { CambioPropuesto } from '../src/types.ts';
 import { contexto } from './helpers.ts';
+import type { ContextoSeguridad } from '../src/types.ts';
 
 const ok = { conexionPermiteEscribir: true, snapshotVerificado: true };
 
@@ -406,4 +407,59 @@ test('con perfil, un bus ajeno SI se rechaza por el bus', () => {
     assert.equal(v.rechazos.some((r) => r.codigo === 'BUS_NO_PERMITIDO'), true);
     assert.equal(v.rechazos.some((r) => r.codigo === 'SIN_PERFIL_DE_SALA'), false);
   }
+});
+
+// --- ADR-027: silenciar un canal para diagnosticar -------------------------
+
+/**
+ * El silencio de canal se abrió el 2026-09-11 para el diagnóstico de
+ * realimentación, y con condiciones.
+ *
+ * El argumento del usuario: el bloqueo existía pensando en un modo de show que
+ * hoy no existe, y en un soundcheck silenciar un canal para probar algo es lo
+ * más normal del oficio. Es la única forma de pasar de indicios —el analizador
+ * dice la frecuencia, la geometría dice la pareja— a un experimento.
+ */
+
+const mute = (canal: number): CambioPropuesto => ({
+  kind: 'CHANNEL_MUTE', path: `i.${canal}.mute`, unidad: 'canales',
+  valorPropuesto: 1, valorEsperado: 0, magnitudPropuesta: 1, magnitudEsperada: 0,
+});
+
+function silenciar(canal: number, estado: ContextoSeguridad['sessionState']) {
+  return new SafetyEngine().evaluar(
+    [mute(canal)], contexto({ sessionState: estado, aprobacionExplicita: true }),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+}
+
+test('ADR-027: se puede silenciar un canal en configuración de canales', () => {
+  const v = silenciar(3, 'CHANNEL_SETUP');
+  assert.strictEqual(v.permitido, true, `rechazado: ${JSON.stringify(v)}`);
+});
+
+test('ADR-027: NO se puede silenciar durante un show', () => {
+  // Es la condición que el ADR pone: el argumento del usuario era explícito
+  // sobre el soundcheck, y durante un show dejar un canal mudo, aunque sea un
+  // segundo, es otra cosa.
+  for (const estado of ['FULL_BAND', 'RINGOUT', 'SHOW'] as const) {
+    const v = silenciar(3, estado);
+    assert.strictEqual(v.permitido, false, `${estado} tendría que rechazar`);
+    // El veredicto es una unión: los rechazos sólo existen en la rama negativa.
+    if (v.permitido) continue;
+    assert.ok(v.rechazos.some((r) => r.codigo === 'ESTADO_DE_SESION'),
+      `${estado}: ${JSON.stringify(v.rechazos)}`);
+  }
+  // Control positivo: mezclando sí se puede, que no está en vivo.
+  assert.strictEqual(silenciar(3, 'MIX').permitido, true);
+});
+
+test('ADR-027: de a un canal por vez', () => {
+  // Silenciar dos a la vez rompe el experimento: si la banda sostenida cae, no
+  // se sabe cuál de los dos la sostenía.
+  const dos = new SafetyEngine().evaluar(
+    [mute(3), mute(5)], contexto({ aprobacionExplicita: true }),
+    { conexionPermiteEscribir: true, snapshotVerificado: true },
+  );
+  assert.strictEqual(dos.permitido, false, 'dos canales a la vez tiene que rechazarse');
 });

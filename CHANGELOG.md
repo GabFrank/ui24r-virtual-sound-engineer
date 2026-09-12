@@ -46,6 +46,41 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
   proponer ni escribir.
 
+- **Se puede silenciar un canal para diagnosticar, en soundcheck** (ADR-027). El
+  analizador dice a qué frecuencia y la geometría dice qué pareja está más
+  expuesta; las dos son **indicios**. La única forma de pasar de indicios a un
+  experimento es silenciar un candidato y ver si la banda sostenida se cae — y el
+  motor no permitía ni una sola ruta de silencio de canal.
+
+  **El argumento fue del usuario**: el bloqueo existía pensando en un modo de
+  show que hoy no existe y puede no existir nunca, y en un soundcheck silenciar
+  un canal para probar algo es lo más normal del oficio.
+
+  Con condiciones: sólo fuera de los estados en vivo, **de a un canal por vez**
+  —silenciar dos rompe el experimento, porque si la banda cae no se sabe cuál de
+  los dos la sostenía—, y con punto de retorno y restauración comprobada por otro
+  camino. El diagnóstico **nunca desilencia**, y no por una regla sino porque un
+  canal en silencio no puede estar cerrando el lazo.
+
+- **El techo de rutas escribibles pasó de 666 a 690**, que son exactamente los
+  veinticuatro silencios de canal. Hay un test que vigila ese número y **acusó el
+  cambio**, como tenía que hacer; ahora hay un segundo que mira **qué** entró, no
+  cuánto: si una autorización trajera otra familia de contrabando y quitara la
+  misma cantidad de otra, el total cuadraría igual.
+
+- **El límite declarado no hacía lo que su comentario decía.** Al abrir el
+  silencio hubo que darle un tope, porque INV-004 rechaza todo parámetro sin uno;
+  se declaró «uno por transacción» creyendo que con eso se silenciaba de a uno.
+  **El propio test lo desmintió: dos silencios pasaban.** El tope acota la
+  magnitud, y la de un silencio es siempre 1, así que cada uno cumplía por
+  separado. La regla de cuántos entran en una transacción vive en el motor, que
+  sí cuenta.
+
+- **La lista de estados en vivo vivía sólo en la capa de pantalla** y ahora la
+  necesita el motor de seguridad. Se movió al dominio: dos listas de lo mismo en
+  dos capas se separan, y la que se separaría acá decide si la aplicación puede
+  dejar un canal mudo durante un show.
+
 - **El almacén del navegador descarta lo que es de otra versión del esquema.** Ahí
   **no corren las migraciones** —son SQL, y reimplementarlas en otro lenguaje
   serían dos verdades que se separan—, así que un perfil guardado antes de una
@@ -561,7 +596,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
   anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
   tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
-  auditorías, **991**. Los diez bloques son
+  auditorías, **995**. Los diez bloques son
   nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
   `packages/dsp-contract` no tienen suite propia.
 
