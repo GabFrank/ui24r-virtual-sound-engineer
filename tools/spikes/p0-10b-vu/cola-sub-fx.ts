@@ -17,6 +17,7 @@
  */
 import { spawn } from 'node:child_process';
 import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const CABECERA = 8, FIN_ENTRADAS = CABECERA + 6 * 24;
 /** Donde arrancan los auxiliares, ya medido: la cola desconocida es lo de antes. */
@@ -91,7 +92,11 @@ try {
     await new Promise((r) => setTimeout(r, 1500));
     const xs = movidos(base, await foto());
     console.log(`  subgroup=${String(crudo).padStart(2)} -> ${xs.join(', ') || 'ningun byte'}`);
-    t.enviar(codificarSetd('i.9.subgroup', previos.get('i.9.subgroup') ?? 0));
+    // **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+    // escritura no es un valor por omision: es una suposicion disfrazada de
+    // lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+    // restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+    t.enviar(codificarSetd('i.9.subgroup', Number(exigirClave(previos, 'i.9.subgroup'))));
     await new Promise((r) => setTimeout(r, 1000));
   }
 } finally {

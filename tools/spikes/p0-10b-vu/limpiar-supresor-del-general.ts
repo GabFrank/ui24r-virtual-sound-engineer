@@ -22,7 +22,7 @@
  *   node --experimental-strip-types tools/spikes/p0-10b-vu/limpiar-supresor-del-general.ts 192.168.0.78
  */
 import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
-import { estadoPorHttp } from '../canal-muerto.ts';
+import { estadoPorHttpExigido } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 
@@ -36,8 +36,21 @@ const maquina = process.argv[2] ?? '192.168.0.78';
  */
 const VACIA = '1000.0000000000,116';
 
+/**
+ * Los filtros plantados, leídos por HTTP.
+ *
+ * **Usa la lectura exigente y no la tolerante, y eso es lo que hace que la
+ * comprobación pueda fallar.** Con la tolerante, una lectura que no llegaba
+ * devolvía un mapa vacío y esta función devolvía cero filtros. Consecuencia:
+ * antes de borrar imprimía «no hay nada que borrar» y salía bien; **después de
+ * borrar imprimía «borró 6 filtro(s)» y «quedan: 0», un éxito falso**. Lo
+ * encontró una auditoría de instrumentos, y el defecto es de forma: la
+ * afirmación en la que este proyecto se apoya —«`clearlive` funciona y se
+ * comprueba»— colgaba de un control que no distinguía «borró» de «no pude
+ * leer».
+ */
 async function filtros(): Promise<{ i: number; texto: string }[]> {
-  const e = await estadoPorHttp(maquina);
+  const e = await estadoPorHttpExigido(maquina);
   const xs: { i: number; texto: string }[] = [];
   for (let i = 0; i < 12; i++) {
     const f = e.get(`m.afs.eq.${i}`) ?? '';
@@ -82,7 +95,7 @@ if (antes.length === 0) {
   process.exit(0);
 }
 
-const e0 = await estadoPorHttp(maquina);
+const e0 = await estadoPorHttpExigido(maquina);
 console.log('');
 console.log(`m.afs.enabled = ${e0.get('m.afs.enabled')} (NO se toca)`);
 console.log(`m.afs.fmode   = ${e0.get('m.afs.fmode')}`);
@@ -107,7 +120,7 @@ for (const mandato of ['clearlive', 'clearfixed', 'clearall']) {
 
 await t.desconectar();
 
-const fin = await estadoPorHttp(maquina);
+const fin = await estadoPorHttpExigido(maquina);
 console.log('');
 console.log('=== ESTADO FINAL, releido por HTTP ===');
 console.log(`m.afs.enabled = ${fin.get('m.afs.enabled')}`);

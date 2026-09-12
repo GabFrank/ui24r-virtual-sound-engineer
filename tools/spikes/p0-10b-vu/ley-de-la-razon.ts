@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import {
   Ui24rTransport, codificarSetd, decodificarVuCanales, dbDeMedidor, dbDeReduccion,
 } from '@vse/mixer-adapter';
-import { estadoPorHttp } from '../canal-muerto.ts';
+import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 
 const canal = Number(process.argv[2] ?? '10');
 const n = canal - 1;
@@ -96,8 +96,14 @@ async function leer(ms = 1800) {
 }
 
 await t.conectar(maquina);
-const e0 = await estadoPorHttp(maquina);
-const AFS_PREVIO = e0.get('m.afs.enabled') ?? '1';
+const e0 = await estadoPorHttpExigido(maquina);
+// **Se EXIGE la clave, no se supone.** Antes esto era `?? '1'`, y una lectura
+// HTTP fallida --que `estadoPorHttp` devuelve como mapa vacio-- hacia imprimir
+// «estaba en 1» sin haberlo medido y ENCENDER al restaurar un supresor que el
+// usuario podia tener apagado. Lo encontro una auditoria de instrumentos el
+// 2026-09-12: era el hallazgo mas peligroso de los seis, porque toca el unico
+// de 45 campos que una instantanea no devuelve.
+const AFS_PREVIO = exigirClave(e0, 'm.afs.enabled');
 t.enviar(codificarSetd('m.afs.enabled', 0));
 await new Promise((r) => setTimeout(r, 1200));
 

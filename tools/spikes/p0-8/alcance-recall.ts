@@ -48,7 +48,7 @@ import {
 import type { BulkExternalChange } from '@vse/mixer-adapter';
 import {
   estadoPorHttp, exigirCanalesMuertos, reproductorCallado, busSinEnvios,
-} from '../canal-muerto.ts';
+, exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 
@@ -390,7 +390,11 @@ if (sinVolver.length > 0) {
 }
 // La etiqueta de instantanea activa se devuelve escribiendo solo la etiqueta,
 // nunca con otro LOADSNAPSHOT: eso aplicaria la instantanea entera otra vez.
-const etiquetaOriginal = base.get('var.currentSnapshot') ?? '';
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const etiquetaOriginal = exigirClave(base, 'var.currentSnapshot');
 actor.enviar(codificarSets('var.currentSnapshot', etiquetaOriginal));
 await new Promise((r) => setTimeout(r, 800));
 

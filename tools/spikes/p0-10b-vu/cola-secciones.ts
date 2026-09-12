@@ -12,6 +12,7 @@
  */
 import { spawn } from 'node:child_process';
 import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const CABECERA = 8, FIN_ENTRADAS = CABECERA + 6 * 24;
 const t = new Ui24rTransport();
@@ -50,7 +51,12 @@ for (const aux of [0, 3]) {
     if (Math.abs(con[i]! - base[i]!) > 3) movidos.push(i - FIN_ENTRADAS);
   }
   console.log(`auxiliar ${aux + 1} arriba -> bytes relativos que se mueven: ${movidos.join(', ') || 'ninguno'}`);
-  t.enviar(codificarSetd(`i.9.aux.${aux}.value`, previos.get(`i.9.aux.${aux}.value`) ?? 0));
+  // **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+  // escritura no es un valor por omision: es una suposicion disfrazada de
+  // lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+  // restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+  t.enviar(codificarSetd(`i.9.aux.${aux}.value`,
+    Number(exigirClave(previos, `i.9.aux.${aux}.value`))));
   await new Promise((r) => setTimeout(r, 1200));
 }
 

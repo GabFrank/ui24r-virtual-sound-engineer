@@ -21,6 +21,7 @@
  */
 import { Ui24rTransport, Ui24rMixerAdapter, codificarSetd, decodificar,
          decodificarVuCanales, dbDeMedidor } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const N = 8;               // canal 9
@@ -45,7 +46,11 @@ const punto = await app.guardarInstantanea();
 console.log(`punto de retorno: ${punto ?? 'NO SE PUDO'}`);
 if (punto === null) { await app.desconectar(); process.exit(1); }
 
-const generalAntes = crudo.get('m.mix') ?? 0;
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const generalAntes = exigirClave(crudo, 'm.mix');
 const muteAntes = crudo.get(`i.${N}.mute`) ?? 0;
 console.log(`general antes: ${generalAntes} · i.${N}.mute antes: ${muteAntes}`);
 

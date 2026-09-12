@@ -14,6 +14,7 @@
  */
 import { spawn } from 'node:child_process';
 import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const FIN_ENTRADAS = 8 + 6 * 24;
 const SECCIONES = {
@@ -82,8 +83,17 @@ try {
     console.log('');
 
     t.enviar(codificarSetd(fader, previos.get(fader) ?? 0.7647058824));
-    if (nombre === 'subgrupo') t.enviar(codificarSetd('i.9.subgroup', previos.get('i.9.subgroup') ?? -1));
-    else t.enviar(codificarSetd('i.9.aux.0.value', previos.get('i.9.aux.0.value') ?? 0));
+    // **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+    // escritura no es un valor por omision: es una suposicion disfrazada de
+    // lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+    // restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+    if (nombre === 'subgrupo') {
+      t.enviar(codificarSetd('i.9.subgroup', exigirClave(previos, 'i.9.subgroup')));
+    }
+    else {
+      t.enviar(codificarSetd('i.9.aux.0.value',
+        exigirClave(previos, 'i.9.aux.0.value')));
+    }
     await new Promise((r) => setTimeout(r, 1200));
   }
 } finally {

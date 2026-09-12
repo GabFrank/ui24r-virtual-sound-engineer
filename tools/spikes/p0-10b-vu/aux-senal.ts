@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { Ui24rTransport, codificarSetd, decodificarVuBuses, dbDeMedidor } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 const t = new Ui24rTransport();
 let ult: ReturnType<typeof decodificarVuBuses> | null = null;
 const previos = new Map<string, number>();
@@ -25,7 +26,11 @@ try {
   mostrar('envio del canal 10 (tono) al aux 1');
 } finally {
   sonando.kill();
-  t.enviar(codificarSetd('i.9.aux.0.value', previos.get('i.9.aux.0.value') ?? 0));
+  // **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+  // escritura no es un valor por omision: es una suposicion disfrazada de
+  // lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+  // restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+  t.enviar(codificarSetd('i.9.aux.0.value', Number(exigirClave(previos, 'i.9.aux.0.value'))));
   await new Promise((r) => setTimeout(r, 1500));
   console.log(`restaurado: i.9.aux.0.value = ${previos.get('i.9.aux.0.value')}`);
   await t.desconectar();

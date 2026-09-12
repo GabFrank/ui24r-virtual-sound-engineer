@@ -26,6 +26,7 @@ import {
   Ui24rTransport, Ui24rMixerAdapter, codificarSetd, decodificar,
   bandaDeFrecuencia, frecuenciaDeBanda, decodificarVuCanales, dbDeMedidor,
 } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const CANAL = 10;
@@ -68,11 +69,15 @@ const punto = await app.guardarInstantanea();
 if (punto === null) { console.log('sin punto de retorno; se aborta'); await app.desconectar(); process.exit(1); }
 console.log(`punto de retorno: ${punto}`);
 
-const afsAntes = crudo.get('m.afs.enabled') ?? 1;
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const afsAntes = exigirClave(crudo, 'm.afs.enabled');
 t.enviar(codificarSetd('m.afs.enabled', 0));
-const generalAntes = crudo.get('m.mix') ?? 0;
+const generalAntes = exigirClave(crudo, 'm.mix');
 t.enviar(codificarSetd('m.mix', 0));           // que no salga nada por el monitor
-const gananciaAntes = crudo.get(`hw.${CANAL - 1}.gain`) ?? 0;
+const gananciaAntes = exigirClave(crudo, `hw.${CANAL - 1}.gain`);
 t.enviar(codificarSetd(`hw.${CANAL - 1}.gain`, 0.70));
 await new Promise((r) => setTimeout(r, 1500));
 console.log(`supresor ${afsAntes} -> 0 · general a 0 · ganancia del canal ${CANAL} a 0,70`);

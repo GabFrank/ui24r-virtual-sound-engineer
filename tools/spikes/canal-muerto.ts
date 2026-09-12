@@ -57,6 +57,79 @@ export async function estadoPorHttp(maquina: string): Promise<Map<string, string
   return m;
 }
 
+/**
+ * Cuántas claves tiene que traer una lectura para ser creíble.
+ *
+ * El volcado de esta consola trae del orden de 6600 claves. Cualquier número
+ * de tres cifras o menos es una lectura que falló, no una consola vacía.
+ * Se pone en mil y no en seis mil para que un firmware con menos canales no
+ * dispare la guarda; lo que hay que distinguir es «leí» de «no leí».
+ */
+export const CLAVES_MINIMAS_PLAUSIBLES = 1000;
+
+/**
+ * El estado de la consola, o una excepción. **Nunca un mapa vacío.**
+ *
+ * **Por qué existe además de {@link estadoPorHttp}.** Aquélla devuelve un mapa
+ * vacío ante cualquier falla —el `fetch` que no conecta, el cuerpo nulo, el
+ * plazo que corta antes del primer trozo—, y un mapa vacío es indistinguible de
+ * una lectura real. Una auditoría encontró qué costaba eso: cuatro guiones del
+ * compresor leían `m.afs.enabled` así, caían al valor por omisión `'1'`,
+ * imprimían «estaba en 1» **como si lo hubieran medido**, y al restaurar
+ * **encendían** el supresor de realimentación. O sea que una lectura fallida
+ * dejaba encendido el único de cuarenta y cinco campos que una instantánea no
+ * devuelve, en el bus general del usuario.
+ *
+ * El defecto de forma es el que este proyecto ya tiene nombrado: **un control
+ * que sólo puede confirmar**. `?? '1'` no es un valor por omisión, es una
+ * suposición disfrazada de lectura.
+ *
+ * Así que todo guion que vaya a **restaurar** algo a partir de lo que leyó usa
+ * esta función. Si no pudo leer, no sabe a qué restaurar, y lo correcto es
+ * abortar antes de escribir —no adivinar.
+ */
+export async function estadoPorHttpExigido(maquina: string): Promise<Map<string, string>> {
+  const e = await estadoPorHttp(maquina);
+  if (e.size < CLAVES_MINIMAS_PLAUSIBLES) {
+    throw new Error(
+      `la lectura por HTTP de ${maquina} trajo ${e.size} claves, y una consola viva trae `
+      + `miles. No se escribe nada: sin saber el estado previo no hay a qué restaurar. `
+      + `(umbral: ${CLAVES_MINIMAS_PLAUSIBLES} claves)`,
+    );
+  }
+  return e;
+}
+
+/**
+ * Lee una clave que hace falta de verdad, y avisa si no está.
+ *
+ * Distingue los dos casos que `?? valorPorOmision` confunde: **la clave no
+ * existe en este firmware** y **la lectura no trajo nada**. La segunda ya la
+ * ataja {@link estadoPorHttpExigido}; ésta ataja la primera, que con un `??`
+ * se convierte silenciosamente en el valor que el guion esperaba encontrar.
+ *
+ * **Y sobre un mapa vacío también falla**, que es lo que la hace suficiente por
+ * sí sola: un mapa sin claves no tiene la que se le pide. Así que un guion que
+ * arma su propio mapa desde el WebSocket, sin pasar por
+ * {@link estadoPorHttpExigido}, queda igual de protegido.
+ *
+ * Genérica en el tipo del valor porque los guiones tienen las dos formas: los
+ * que leen `/raw` por HTTP arman `Map<string, string>` y los que escuchan el
+ * WebSocket arman `Map<string, number>`. Una versión atada a `string` habría
+ * obligado a una segunda función o a una conversión, y dos funciones para la
+ * misma regla es la forma de que una de las dos quede sin usar.
+ */
+export function exigirClave<V>(estado: ReadonlyMap<string, V>, k: string): V {
+  const v = estado.get(k);
+  if (v === undefined) {
+    throw new Error(
+      `la clave ${k} no vino en el volcado de ${estado.size} claves. No se adivina su valor: `
+      + `un guion que la restaura tiene que saber a qué.`,
+    );
+  }
+  return v;
+}
+
 function num(estado: ReadonlyMap<string, string>, k: string): number {
   const v = Number(estado.get(k) ?? '0');
   return Number.isFinite(v) ? v : 0;

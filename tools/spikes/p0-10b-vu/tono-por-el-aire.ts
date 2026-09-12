@@ -30,6 +30,7 @@ import {
   Ui24rTransport, Ui24rMixerAdapter, codificarSetd, decodificar,
   frecuenciaDeBanda, bandaDeFrecuencia, decodificarVuCanales, dbDeMedidor,
 } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const HZ = (process.argv[3] ?? '1000,500,250,125,63,40').split(',').map(Number);
@@ -86,12 +87,16 @@ console.log(`canal ${CANAL_MIC} en silencio: no hay lazo posible`);
  * sino que se apaga el supresor entero, que ademas es reversible y no le cuesta
  * a nadie el trabajo de afinacion.
  */
-const afsAntes = crudo.get('m.afs.enabled') ?? 1;
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const afsAntes = exigirClave(crudo, 'm.afs.enabled');
 t.enviar(codificarSetd('m.afs.enabled', 0));
 await new Promise((r) => setTimeout(r, 1500));
 console.log(`supresor de realimentacion: ${afsAntes} -> 0 mientras dura la medicion`);
 
-const gananciaAntes = crudo.get(`hw.${CANAL_TONO - 1}.gain`) ?? 0;
+const gananciaAntes = exigirClave(crudo, `hw.${CANAL_TONO - 1}.gain`);
 t.enviar(codificarSetd(`hw.${CANAL_TONO - 1}.gain`, GANANCIA_TONO));
 await new Promise((r) => setTimeout(r, 1000));
 console.log(`ganancia del canal ${CANAL_TONO}: ${gananciaAntes.toFixed(4)} -> ${GANANCIA_TONO} (para que el monitor suene)`);
