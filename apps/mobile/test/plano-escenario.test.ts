@@ -8,6 +8,7 @@ import {
   moverArrastre, lineasDeDistancia, UMBRAL_DE_ARRASTRE_PX, BLANCO_MINIMO_PX, YEMA_PX,
   escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
   ZOOM_MINIMO, PASO_DE_ZOOM,
+  rectanguloDeRango, tiradorDeRango, estirarRango, comoSeLeeElRango,
   type Arrastre, type FichaDelPlano,
 } from '../src/app/escenario/plano.ts';
 import { INCERTIDUMBRE_POR_FIJEZA } from '@vse/domain';
@@ -690,4 +691,105 @@ test('el dedo sobre una sala de 12 por 8 en una tablet vale un metro justo', () 
   strictEqual(e.pxPorMetro, 44);
   strictEqual(precisionDelDedoM(e), 1);
   strictEqual(zoomUtilMaximo(DIM, LIENZO.w, LIENZO.h, LIENZO.margen), 20);
+});
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * El rectángulo de rango de movimiento
+ *
+ * Decisión del usuario: «si el equipo es móvil entonces se ve el rango (que al
+ * registrar seteamos), puede ser un rectángulo editable», y al elegir entre
+ * opciones, «rectángulo que se estira».
+ * ────────────────────────────────────────────────────────────────────────── */
+
+test('sin rango declarado no hay rectángulo ni tiradores', () => {
+  const e = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const sinRango = emplazar(PUNTO(4, 6, 1.6), 'EN_MANO');
+  // **Nada, y no un rectángulo de tamaño cero.** Un artefacto de cero píxeles
+  // en el plano invita a estirarlo sin que nadie lo haya pedido, y la fijeza ya
+  // dice cuánto duda ese elemento.
+  strictEqual(rectanguloDeRango(sinRango, e), null);
+  strictEqual(tiradorDeRango(sinRango, e, 'ancho'), null);
+  strictEqual(tiradorDeRango(sinRango, e, 'largo'), null);
+});
+
+test('el rectángulo queda centrado en la ficha y con la escala del plano', () => {
+  const e = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const em = emplazar(PUNTO(4, 6, 1.6), 'EN_MANO', null, { rango: { anchoM: 3, largoM: 1 } });
+  const r = rectanguloDeRango(em, e)!;
+  const centro = aPantalla(PUNTO(4, 6, 1.6), e);
+  strictEqual(r.ancho, 3 * e.pxPorMetro);
+  strictEqual(r.alto, 1 * e.pxPorMetro);
+  // Centrado: el medio del rectángulo cae sobre la ficha.
+  ok(Math.abs(r.x + r.ancho / 2 - centro.x) < 1e-9);
+  ok(Math.abs(r.y + r.alto / 2 - centro.y) < 1e-9);
+  // Y los tiradores, uno por eje, a media altura de su lado y por fuera.
+  const tAncho = tiradorDeRango(em, e, 'ancho')!;
+  const tLargo = tiradorDeRango(em, e, 'largo')!;
+  ok(Math.abs(tAncho.x - (r.x + r.ancho)) < 1e-9);
+  ok(Math.abs(tAncho.y - centro.y) < 1e-9);
+  ok(Math.abs(tLargo.y - (r.y + r.alto)) < 1e-9);
+  ok(Math.abs(tLargo.x - centro.x) < 1e-9);
+  // **Que no se pisen**: con 48 px de blanco cada uno, ponerlos los dos en una
+  // esquina los haría intocables. Es la misma razón por la que existe el zoom.
+  ok(Math.hypot(tAncho.x - tLargo.x, tAncho.y - tLargo.y) > BLANCO_MINIMO_PX / 2);
+});
+
+test('estirar crece simétrico y no mueve la posición marcada', () => {
+  const e = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const em = emplazar(PUNTO(4, 6, 1.6), 'EN_MANO', null, { rango: { anchoM: 1, largoM: 1 } });
+  const centro = aPantalla(PUNTO(4, 6, 1.6), e);
+
+  // El dedo a 2 m a la derecha del centro: semilado 2, o sea lado 4.
+  const g = estirarRango(em, e, DIM, 'ancho',
+    { x: centro.x + 2 * e.pxPorMetro, y: centro.y });
+  strictEqual(g.anchoM, 4);
+  strictEqual(g.largoM, 1, 'estirar un eje no toca el otro');
+
+  // **Simétrico**: tirar hacia el otro lado da el mismo rectángulo. Si creciera
+  // hacia un solo lado, estirar movería la marca --que es un dato distinto y se
+  // edita arrastrando la ficha.
+  const espejo = estirarRango(em, e, DIM, 'ancho',
+    { x: centro.x - 2 * e.pxPorMetro, y: centro.y });
+  deepStrictEqual(espejo, g);
+
+  // Y el otro eje, con el mismo criterio.
+  const largo = estirarRango(em, e, DIM, 'largo',
+    { x: centro.x, y: centro.y + 1.5 * e.pxPorMetro });
+  strictEqual(largo.largoM, 3);
+  strictEqual(largo.anchoM, 1);
+});
+
+test('estirar se frena en las paredes del local, y al centímetro', () => {
+  const e = calcularEscala(DIM, LIENZO.w, LIENZO.h, LIENZO.margen);
+  const em = emplazar(PUNTO(4, 6, 1.6), 'EN_MANO', null, { rango: { anchoM: 1, largoM: 1 } });
+  const centro = aPantalla(PUNTO(4, 6, 1.6), e);
+
+  // Un dedo muy lejos: el lado se recorta al ancho del local.
+  const enorme = estirarRango(em, e, DIM, 'ancho', { x: centro.x + 99999, y: centro.y });
+  strictEqual(enorme.anchoM, DIM.ancho);
+  const hondo = estirarRango(em, e, DIM, 'largo', { x: centro.x, y: centro.y + 99999 });
+  strictEqual(hondo.largoM, DIM.largo);
+
+  // Un dedo que no se movió: cero, no negativo.
+  strictEqual(estirarRango(em, e, DIM, 'ancho', centro).anchoM, 0);
+  // Y un puntero roto no produce un dato roto.
+  strictEqual(estirarRango(em, e, DIM, 'ancho', { x: NaN, y: NaN }).anchoM, 0);
+
+  // Al centímetro: lo que sale de dividir píxeles tiene dieciséis cifras y dos
+  // son verdad.
+  const fino = estirarRango(em, e, DIM, 'ancho', { x: centro.x + 37, y: centro.y });
+  strictEqual(fino.anchoM, aCentimetros(fino.anchoM));
+});
+
+test('un rango se lee en palabras, y un cuadrado se dice una sola vez', () => {
+  // **Se le pasa `metros`, el mismo formateador de las distancias.** Un segundo
+  // formateador daría las cifras de dos maneras en la misma pantalla, que es el
+  // defecto que este archivo ya evita con el blanco táctil.
+  strictEqual(comoSeLeeElRango({ anchoM: 3, largoM: 3 }, metros), '3,00 m en cuadrado');
+  strictEqual(comoSeLeeElRango({ anchoM: 3, largoM: 0.5 }, metros),
+    '3,00 m de ancho por 0,50 m de fondo');
+  // Y con una diferencia por debajo de los cinco milímetros se lee como
+  // cuadrado, el mismo umbral que usa `metros` para decidir si un intervalo
+  // colapsó: dos lados que difieren en tres milímetros no son dos datos.
+  strictEqual(comoSeLeeElRango({ anchoM: 2, largoM: 2.003 }, metros), '2,00 m en cuadrado');
 });

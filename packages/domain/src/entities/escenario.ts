@@ -194,22 +194,95 @@ export interface Orientacion {
  * `orientacion` puede ser `null`: una caja directa o un instrumento acústico no
  * apuntan a ningún lado en el sentido que le importa a este modelo.
  */
+/**
+ * Hasta dónde se mueve algo que no está fijo.
+ *
+ * **Es un rectángulo y no un radio, y lo eligió el usuario**: «*si el equipo es
+ * móvil entonces se ve el rango (que al registrar seteamos), puede ser un
+ * rectángulo editable*» y, al elegir entre opciones, «*rectángulo que se
+ * estira*».
+ *
+ * Y tiene sentido físico además de ser lo que pidió: un cantante con
+ * inalámbrico se mueve **por el frente del escenario**, o sea mucho en `x` y
+ * poco en `y`. Un radio no puede decir eso; obliga a elegir entre exagerar la
+ * profundidad o subestimar el ancho.
+ *
+ * **Se suma a la duda de la fijeza, no la reemplaza.** Un cantante con
+ * inalámbrico tiene los ±0,50 m de `EN_MANO` en todas las direcciones —incluida
+ * la altura, porque se agacha— y encima este rectángulo en el plano.
+ *
+ * Centrado en {@link Emplazamiento.posicion} y **alineado con los ejes del
+ * local**, no rotado. Un rectángulo rotado sería más expresivo y mucho más
+ * difícil de estirar con el dedo, y este modelo existe para que el usuario
+ * pueda marcar su sala en treinta segundos.
+ *
+ * **Sólo `x` e `y`.** La altura no entra: el plano es una vista desde arriba y
+ * el modelo ya trata `z` con un campo numérico aparte.
+ */
+export interface RangoDeMovimiento {
+  /** Cuánto se mueve a lo ancho del local, en metros. El rectángulo completo. */
+  readonly anchoM: number;
+  /** Cuánto se mueve a lo largo, del escenario hacia el público. */
+  readonly largoM: number;
+}
+
 export interface Emplazamiento {
   readonly posicion: PuntoM;
   readonly orientacion: Orientacion | null;
   readonly fijeza: Fijeza;
-  /** Radio de duda alrededor de la posición, en metros. */
+  /**
+   * Radio de duda alrededor de la posición, en metros.
+   *
+   * **Es el error de la marca, no el movimiento.** Cuánto se mueve algo lo dice
+   * {@link rangoDeMovimiento}, y los dos se suman: la marca puede estar un poco
+   * corrida *y* el equipo puede moverse dentro de su rectángulo.
+   */
   readonly incertidumbrePosicionM: number;
   /** Duda sobre hacia dónde apunta, en grados. */
   readonly incertidumbreOrientacionGrados: number;
+  /**
+   * El rectángulo por el que se mueve, **además** de la duda de la fijeza.
+   *
+   * `null` mientras el usuario no lo declare, que es el caso por omisión: ahí
+   * vale la duda isótropa de la tabla de fijeza y nada más. Cuando lo estira,
+   * este rectángulo se **suma** a esa duda en el plano; la altura la sigue
+   * llevando {@link incertidumbrePosicionM}, porque el rectángulo es una vista
+   * desde arriba y quien canta se agacha.
+   */
+  readonly rangoDeMovimiento: RangoDeMovimiento | null;
 }
 
-/** Arma un emplazamiento aplicando la tabla de suposiciones por fijeza. */
+/**
+ * Arma un emplazamiento aplicando la tabla de suposiciones por fijeza.
+ *
+ * **El rango de movimiento no tiene valor por omisión, y la tabla de fijeza
+ * queda intacta.** La primera versión de esto le daba a `EN_MANO` un cuadrado
+ * de un metro de lado y le bajaba el radio a 0, leyendo los 0,50 m de la tabla
+ * como medio lado. Un test lo tiró abajo con un caso físico: quien canta **se
+ * agacha hacia su cuña**, o sea que un micrófono de mano también se mueve en
+ * altura, y un rectángulo del plano no puede decir eso. Con el radio en 0 el
+ * modelo afirmaba que el micrófono no podía acercarse a una cuña 40 cm más
+ * abajo, que es justamente el caso que el test describe.
+ *
+ * Así que la división es otra, y más simple: **la fijeza da la duda isótropa
+ * —decisión del usuario, sin tocar— y el rectángulo es lo que se le suma** al
+ * estirarlo. `EN_MANO` sigue siendo ±0,50 m en todas las direcciones hasta que
+ * el usuario declare que ese cantante se mueve tres metros por el frente; ahí
+ * el rectángulo crece en `x` y no en `y`.
+ *
+ * Lo bueno de esta forma es que no hay nada que decidir por el usuario. Su
+ * pregunta —«*si no es fijo, cuál es el rango de movimiento?*»— la contesta la
+ * pantalla, y mientras no la contesten vale la tabla que él ya fijó.
+ */
 export function emplazar(
   posicion: PuntoM,
   fijeza: Fijeza,
   orientacion: Orientacion | null = null,
-  sobreescribir: { readonly posicionM?: number; readonly orientacionGrados?: number } = {},
+  sobreescribir: {
+    readonly posicionM?: number;
+    readonly orientacionGrados?: number;
+    readonly rango?: RangoDeMovimiento | null;
+  } = {},
 ): Emplazamiento {
   const base = INCERTIDUMBRE_POR_FIJEZA[fijeza];
   return {
@@ -218,6 +291,40 @@ export function emplazar(
     fijeza,
     incertidumbrePosicionM: sobreescribir.posicionM ?? base.posicionM,
     incertidumbreOrientacionGrados: sobreescribir.orientacionGrados ?? base.orientacionGrados,
+    rangoDeMovimiento: sobreescribir.rango ?? null,
+  };
+}
+
+/**
+ * La duda de un emplazamiento, separada en sus dos formas.
+ *
+ * **Son dos formas distintas y no se pueden mezclar en una.** El rango de
+ * movimiento es una **caja** alineada con los ejes; el error de la marca es una
+ * **esfera**. La región donde puede estar el elemento es la suma de las dos
+ * —una caja con las esquinas redondeadas—, y para eso hay que llevarlas
+ * separadas.
+ *
+ * **Mezclarlas fue el primer intento y estaba mal.** Sumé el radio a cada
+ * semieje, o sea que convertí la esfera en una caja de lado `2r`. Una esfera de
+ * radio `r` está **inscripta** en esa caja, así que el intervalo de distancia
+ * salía más ancho de lo que corresponde: dos marcas con 0,30 y 0,40 m de duda a
+ * cinco metros daban un mínimo de 4,02 en vez de 4,30. Lo encontró el test que
+ * fija que las incertidumbres se suman y no se componen en cuadratura, con el
+ * número exacto.
+ */
+function duda(e: Emplazamiento): {
+  readonly radio: number;
+  readonly caja: { readonly x: number; readonly y: number; readonly z: number };
+} {
+  const g = e.rangoDeMovimiento;
+  return {
+    radio: Math.max(0, e.incertidumbrePosicionM),
+    caja: {
+      x: g === null ? 0 : Math.max(0, g.anchoM) / 2,
+      y: g === null ? 0 : Math.max(0, g.largoM) / 2,
+      // La altura no tiene rango de movimiento: el rectángulo es del plano.
+      z: 0,
+    },
   };
 }
 
@@ -526,9 +633,43 @@ function norma(v: PuntoM): number {
  * apoyado sobre la cuña es el caso real que lo produce.
  */
 export function distanciaM(a: Emplazamiento, b: Emplazamiento): Rango {
-  const d = norma(resta(a.posicion, b.posicion));
-  const u = a.incertidumbrePosicionM + b.incertidumbrePosicionM;
-  return { min: Math.max(0, d - u), max: d + u };
+  // **Eje por eje, y no `d ± (ua+ub)`.** La forma vieja restaba un radio a la
+  // distancia entre centros, que es correcto para dos esferas y no para dos
+  // cajas: un cantante que se mueve tres metros a lo ancho y nada a lo largo
+  // no se acerca tres metros a algo que tiene al costado.
+  //
+  // Entre dos cajas alineadas con los ejes el mínimo y el máximo son exactos:
+  // por cada eje, la separación va de `max(0, |Δ| − (sa+sb))` a `|Δ| + sa+sb`,
+  // y la distancia es la norma de esas separaciones. El mínimo da 0 cuando las
+  // cajas se solapan, que es lo correcto: pueden estar en el mismo lugar.
+  //
+  // Con los dos rangos en `null` esto da exactamente lo mismo que la forma
+  // vieja para el máximo, y **menos** para el mínimo sólo cuando las esferas se
+  // solapan --donde la vieja ya recortaba a 0--. Hay un test que lo fija.
+  const da = duda(a);
+  const db = duda(b);
+  // Primero las cajas, eje por eje: eso es exacto entre rectángulos alineados.
+  const ejes = [
+    { d: Math.abs(a.posicion.x - b.posicion.x), s: da.caja.x + db.caja.x },
+    { d: Math.abs(a.posicion.y - b.posicion.y), s: da.caja.y + db.caja.y },
+    { d: Math.abs(a.posicion.z - b.posicion.z), s: da.caja.z + db.caja.z },
+  ];
+  const entreCajas = {
+    min: Math.hypot(...ejes.map((e) => Math.max(0, e.d - e.s))),
+    max: Math.hypot(...ejes.map((e) => e.d + e.s)),
+  };
+  // Y después los radios, a lo largo de la recta que las une: eso es exacto
+  // entre esferas. Las dos cuentas juntas dan la distancia entre las dos
+  // regiones completas, cada una una caja con las esquinas redondeadas.
+  //
+  // **Sin rangos de movimiento esto da exactamente la forma vieja**, `d ± u`,
+  // porque las cajas se reducen a sus centros. Hay un test que lo fija con
+  // números exactos.
+  const radios = da.radio + db.radio;
+  return {
+    min: Math.max(0, entreCajas.min - radios),
+    max: entreCajas.max + radios,
+  };
 }
 
 /** Vector unitario hacia donde apunta una orientación, en la terna del local. */
@@ -553,7 +694,16 @@ export function anguloFueraDeEjeGrados(quien: Emplazamiento, otro: Emplazamiento
   if (quien.orientacion === null) return null;
   const v = resta(otro.posicion, quien.posicion);
   const d = norma(v);
-  const u = quien.incertidumbrePosicionM + otro.incertidumbrePosicionM;
+  // **El semieje mayor, no el radio.** Un rango de movimiento hace la duda
+  // anisótropa, y el ángulo fuera de eje no se puede calcular eje por eje como
+  // la distancia. Se toma el semieje más grande de cada uno: es el lado seguro
+  // --sobrestima la duda-- y este número se usa para decidir cuándo la
+  // geometría deja de informar, donde sobrestimar es lo correcto.
+  const dq = duda(quien);
+  const doo = duda(otro);
+  const alcance = (x: ReturnType<typeof duda>): number =>
+    x.radio + Math.max(x.caja.x, x.caja.y, x.caja.z);
+  const u = alcance(dq) + alcance(doo);
   if (d <= u || d === 0) return { min: 0, max: 180 };
 
   const eje = versorDe(quien.orientacion);
@@ -638,6 +788,36 @@ export function validarEscenario(
 
     if (e.emplazamiento.incertidumbrePosicionM < 0) {
       problemas.push({ elementoId: e.id, problema: 'la incertidumbre de posición es negativa' });
+    }
+    const rango = e.emplazamiento.rangoDeMovimiento;
+    if (rango !== null) {
+      // **Un lado negativo o no finito daría un mínimo mayor que el máximo**, y
+      // todo lo que lea el intervalo después le va a creer. Es el mismo motivo
+      // por el que se valida la incertidumbre angular, tres líneas más abajo.
+      if (!(Number.isFinite(rango.anchoM) && Number.isFinite(rango.largoM))) {
+        problemas.push({ elementoId: e.id, problema: 'el rango de movimiento tiene lados que no son números' });
+      } else if (rango.anchoM < 0 || rango.largoM < 0) {
+        problemas.push({ elementoId: e.id, problema: 'el rango de movimiento tiene un lado negativo' });
+      } else if (dimensionesM !== null
+        && (rango.anchoM > dimensionesM.ancho || rango.largoM > dimensionesM.largo)) {
+        // Un rango más grande que el local es un dato que nadie puede haber
+        // querido, y estirar el rectángulo con el dedo es fácil de pasarse.
+        problemas.push({
+          elementoId: e.id,
+          problema: `el rango de movimiento (${rango.anchoM} × ${rango.largoM} m) `
+            + `no entra en el local (${dimensionesM.ancho} × ${dimensionesM.largo} m)`
+            + ' — sin dimensiones del local esto no se comprueba',
+        });
+      }
+      // **Y que sea FIJO con rango es una contradicción declarada.** La fijeza
+      // dice cuánto se mueve: marcar algo fijo y darle un rectángulo de
+      // movimiento son dos afirmaciones que no pueden ser ciertas a la vez.
+      if (e.emplazamiento.fijeza === 'FIJO' && (rango.anchoM > 0 || rango.largoM > 0)) {
+        problemas.push({
+          elementoId: e.id,
+          problema: 'está marcado FIJO y tiene rango de movimiento: una de las dos cosas sobra',
+        });
+      }
     }
     if (e.emplazamiento.incertidumbreOrientacionGrados < 0) {
       // Con una incertidumbre angular negativa el rango sale invertido --min

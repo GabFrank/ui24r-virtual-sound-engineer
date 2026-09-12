@@ -188,15 +188,81 @@ test('un rango demasiado ancho, o roto, se reconoce como inservible', () => {
 // --- Incertidumbre por fijeza ----------------------------------------------
 
 test('la fijeza pone la duda por defecto, y se puede sobreescribir', () => {
+  // **La tabla de fijeza queda intacta y el rectángulo no tiene valor por
+  // omisión.** La primera versión de esto le daba a `EN_MANO` un cuadrado de un
+  // metro y le bajaba el radio a 0, leyendo los 0,50 m como medio lado; el test
+  // de más abajo lo tiró con un caso físico —quien canta se agacha hacia su
+  // cuña, o sea que se mueve también en altura, y un rectángulo del plano no
+  // puede decir eso—. La división quedó al revés: la fijeza da la duda
+  // isótropa y el rectángulo es lo que se le **suma**.
+  //
+  // Así no hay nada que decidir por el usuario: su pregunta «si no es fijo,
+  // cuál es el rango de movimiento?» la contesta la pantalla, y mientras no la
+  // contesten vale la tabla que él fijó.
   const enMano = emplazar(PUNTO(0, 0, 0), 'EN_MANO');
   strictEqual(enMano.incertidumbrePosicionM, INCERTIDUMBRE_POR_FIJEZA.EN_MANO.posicionM);
+  strictEqual(enMano.rangoDeMovimiento, null, 'sin declarar, no hay rectángulo');
+  for (const f of ['FIJO', 'EN_PIE'] as const) {
+    strictEqual(emplazar(PUNTO(0, 0, 0), f).rangoDeMovimiento, null);
+    strictEqual(emplazar(PUNTO(0, 0, 0), f).incertidumbrePosicionM,
+      INCERTIDUMBRE_POR_FIJEZA[f].posicionM);
+  }
+
   // Quien midió su sala con cinta sabe más que la tabla de suposiciones.
   const medido = emplazar(PUNTO(0, 0, 0), 'EN_MANO', null, { posicionM: 0.02 });
   strictEqual(medido.incertidumbrePosicionM, 0.02);
   strictEqual(medido.fijeza, 'EN_MANO', 'la fijeza no se pierde al sobreescribir la duda');
-  // Y un micrófono de mano tiene que dudar más que uno en un pie: si la tabla
-  // se igualara, medio modelo dejaría de tener sentido sin que nada fallara.
+
+  // Y el rectángulo se puede reemplazar, que es el punto de que se estire.
+  const estirado = emplazar(PUNTO(0, 0, 0), 'EN_MANO', null,
+    { rango: { anchoM: 4, largoM: 0.6 } });
+  deepStrictEqual(estirado.rangoDeMovimiento, { anchoM: 4, largoM: 0.6 });
+  // Y se puede quitar: un inalámbrico que hoy no se mueve de su marca.
+  strictEqual(emplazar(PUNTO(0, 0, 0), 'EN_MANO', null, { rango: null }).rangoDeMovimiento, null);
+
+  // Un micrófono de mano tiene que dudar más que uno en un pie: si la tabla se
+  // igualara, medio modelo dejaría de tener sentido sin que nada fallara.
   ok(INCERTIDUMBRE_POR_FIJEZA.EN_MANO.posicionM > INCERTIDUMBRE_POR_FIJEZA.EN_PIE.posicionM);
+});
+
+test('un rectangulo estirado a lo ancho no acerca nada que este al costado', () => {
+  // **La razón por la que el usuario eligió un rectángulo y no un radio.** Un
+  // cantante con inalámbrico se mueve por el frente del escenario: tres metros
+  // en `x` y medio en `y`. Con un radio de 1,5 m habría que elegir entre
+  // exagerar la profundidad o subestimar el ancho.
+  const canta = emplazar(PUNTO(4, 1, 1.6), 'EN_MANO', null,
+    { rango: { anchoM: 3, largoM: 0.5 } });
+  // Una cuña **al costado**, en el mismo eje del movimiento: el rango sí la
+  // acerca, porque el cantante puede caminar hasta ella.
+  const alCostado = emplazar(PUNTO(6, 1, 0.2), 'FIJO');
+  // Y una **adelante**, cruzada al movimiento: el rango casi no la acerca.
+  const adelante = emplazar(PUNTO(4, 3, 0.2), 'FIJO');
+
+  const dCostado = distanciaM(canta, alCostado);
+  const dAdelante = distanciaM(canta, adelante);
+
+  // **Los números salen de correr la cuenta, no de estimarla.** La primera
+  // versión de este test pedía «menos de 0,8» al costado, y el test lo
+  // encontró: da 0,987. El piso lo pone la altura --el micrófono a 1,6 m y las
+  // cuñas a 0,2-- más los ±0,50 m de `EN_MANO`, que también valen en vertical.
+  //
+  // A lo ancho el rango se come 1,5 m de los 2 que separan en `x`: 0,987.
+  ok(dCostado.min < 1.1, `al costado el minimo baja hasta ${dCostado.min}`);
+  // A lo largo se come 0,25 m de los 2 que separan en `y`: 1,741.
+  ok(dAdelante.min > 1.6, `adelante el minimo casi no baja: ${dAdelante.min}`);
+  ok(dCostado.min < dAdelante.min - 0.5,
+    'el rango tiene que distinguir el eje en que se mueve del que no: '
+    + `${dCostado.min} contra ${dAdelante.min}`);
+
+  // **Control positivo, y es el que justifica el rectángulo.** Con un radio
+  // isótropo del mismo alcance los dos casos dan **exactamente** igual, 0,941.
+  // Si esto fallara, el rectángulo no estaría aportando nada que un número no
+  // pudiera.
+  const conRadio = emplazar(PUNTO(4, 1, 1.6), 'EN_MANO', null, { posicionM: 1.5 });
+  const rCostado = distanciaM(conRadio, alCostado).min;
+  const rAdelante = distanciaM(conRadio, adelante).min;
+  ok(Math.abs(rCostado - rAdelante) < 1e-9,
+    `con radio los dos casos son indistinguibles: ${rCostado} y ${rAdelante}`);
 });
 
 // --- Las dos mitades --------------------------------------------------------

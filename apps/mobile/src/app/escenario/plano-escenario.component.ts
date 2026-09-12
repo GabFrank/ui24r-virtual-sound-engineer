@@ -7,6 +7,8 @@ import {
   aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia, moverArrastre,
   escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
   PASO_DE_ZOOM, ZOOM_MINIMO, type Vista,
+  rectanguloDeRango, tiradorDeRango, estirarRango, comoSeLeeElRango,
+  type EjeDeEstiramiento,
   precisionDelDedoM, puntaDeLaFlecha, radioIncertidumbrePx,
   BLANCO_MINIMO_PX, type Arrastre, type DimensionesDelLocal, type FichaDelPlano, type PuntoPx,
 } from './plano';
@@ -94,7 +96,14 @@ export interface FichaMovida {
       @for (f of dibujables(); track f.ficha.id) {
         <g class="ficha" [class.seleccionada]="f.ficha.id === seleccionada()"
            [class.dedo-grueso]="f.dedoGrueso" [attr.data-ficha]="f.ficha.id">
-          <!-- La duda, primero, para que quede debajo de todo lo demás. -->
+          <!-- **El rango de movimiento, lo más abajo de todo.** Es la región
+               más grande del dibujo y taparía la duda y la flecha. Va con
+               trazo discontinuo para que no se lea como una pared. -->
+          @if (f.rango !== null) {
+            <rect class="rango" [attr.x]="f.rango.x" [attr.y]="f.rango.y"
+                  [attr.width]="f.rango.ancho" [attr.height]="f.rango.alto" />
+          }
+          <!-- La duda, después, para que quede debajo de la ficha. -->
           <circle class="duda" [attr.cx]="f.centro.x" [attr.cy]="f.centro.y" [attr.r]="f.radioDuda" />
           @if (f.punta !== null) {
             <line class="eje" [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
@@ -106,6 +115,30 @@ export interface FichaMovida {
                chico a propósito, porque agrandarlo mentiría sobre la duda. -->
           <circle class="blanco" [attr.cx]="f.centro.x" [attr.cy]="f.centro.y"
                   [attr.r]="blancoPx / 2" [attr.data-ficha]="f.ficha.id" />
+          <!-- **Los tiradores, sólo en la ficha elegida.** Con todas a la
+               vez el plano se llena de blancos de 48 px que se pisan entre
+               fichas, y es el mismo motivo por el que las distancias se
+               dibujan sólo desde la elegida. -->
+          @if (f.ficha.id === seleccionada() && f.tiradorAncho !== null) {
+            <g class="tirador">
+              <line [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
+                    [attr.x2]="f.tiradorAncho.x" [attr.y2]="f.tiradorAncho.y" />
+              <circle [attr.cx]="f.tiradorAncho.x" [attr.cy]="f.tiradorAncho.y" [attr.r]="7" />
+              <circle class="blanco" [attr.cx]="f.tiradorAncho.x" [attr.cy]="f.tiradorAncho.y"
+                      [attr.r]="blancoPx / 2"
+                      [attr.data-ficha]="f.ficha.id" data-tirador="ancho" />
+            </g>
+          }
+          @if (f.ficha.id === seleccionada() && f.tiradorLargo !== null) {
+            <g class="tirador">
+              <line [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
+                    [attr.x2]="f.tiradorLargo.x" [attr.y2]="f.tiradorLargo.y" />
+              <circle [attr.cx]="f.tiradorLargo.x" [attr.cy]="f.tiradorLargo.y" [attr.r]="7" />
+              <circle class="blanco" [attr.cx]="f.tiradorLargo.x" [attr.cy]="f.tiradorLargo.y"
+                      [attr.r]="blancoPx / 2"
+                      [attr.data-ficha]="f.ficha.id" data-tirador="largo" />
+            </g>
+          }
           <!-- La etiqueta se da vuelta cerca de la pared derecha: el SVG
                recorta, y un nombre que se sale queda invisible. -->
           <text [class]="'etiqueta ' + (f.etiquetaALaIzquierda ? 'izq' : 'der')"
@@ -135,6 +168,14 @@ export interface FichaMovida {
     .borde-escenario { stroke: var(--signal); stroke-width: 3; }
     .rotulo { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
     .duda { fill: var(--signal-tenue); stroke: none; }
+    /* **Discontinuo y sin relleno**: un rectángulo lleno se lee como una
+       superficie del local --una tarima, una alfombra-- y esto es una región
+       de duda. El trazo discontinuo es la misma convención que las líneas de
+       distancia. */
+    .rango { fill: none; stroke: var(--signal); stroke-width: 1.5;
+             stroke-dasharray: 6 4; opacity: .55; }
+    .tirador line { stroke: var(--signal); stroke-width: 1; stroke-dasharray: 2 3; }
+    .tirador circle { fill: var(--signal); stroke: var(--bg); stroke-width: 2; }
     .eje { stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
     .punto { stroke: var(--surface); stroke-width: 2; }
     .punto.fuente { fill: #d98b3a; }
@@ -293,6 +334,12 @@ export class PlanoEscenarioComponent implements OnDestroy {
         radioDuda: radioIncertidumbrePx(ficha.emplazamiento, e),
         punta: puntaDeLaFlecha(ficha.emplazamiento, e, 26),
         dedoGrueso: elDedoEsMasGruesoQueLaDuda(ficha.emplazamiento, e),
+        // **El rango de movimiento, y sus dos tiradores.** `null` cuando el
+        // elemento no declaró rango: dibujar un rectángulo de tamaño cero
+        // pondría un artefacto que invita a estirarlo sin que nadie lo pida.
+        rango: rectanguloDeRango(ficha.emplazamiento, e),
+        tiradorAncho: tiradorDeRango(ficha.emplazamiento, e, 'ancho'),
+        tiradorLargo: tiradorDeRango(ficha.emplazamiento, e, 'largo'),
         // A menos de metro y medio de la pared derecha, el nombre no entra.
         etiquetaALaIzquierda: centro.x > bordeDerecho - 1.5 * e.pxPorMetro,
       };
@@ -338,16 +385,43 @@ export class PlanoEscenarioComponent implements OnDestroy {
   readonly resumenParaLector = computed(() => {
     const n = this.fichas().length;
     const d = this.dimensiones();
+    // **Y cuántos declaran rango de movimiento.** Un rectángulo dibujado que no
+    // se nombra deja fuera a quien use lector de pantalla, y es la única cifra
+    // de esta pantalla que se puede afirmar en un test sin montar un navegador.
+    const conRango = this.fichas().filter((f) => f.emplazamiento.rangoDeMovimiento !== null);
+    const rangos = conRango.length === 0 ? '' : ` ${conRango.length} `
+      + `${conRango.length === 1 ? 'declara rango de movimiento' : 'declaran rango de movimiento'}: `
+      + conRango.map((f) => `${f.etiqueta}, `
+        + comoSeLeeElRango(f.emplazamiento.rangoDeMovimiento!, metros)).join('; ')
+      + '.';
     return `Plano del local, ${d.ancho} por ${d.largo} metros, con ${n} `
       + `${n === 1 ? 'elemento ubicado' : 'elementos ubicados'}. `
-      + 'El escenario está arriba y el público abajo.';
+      + 'El escenario está arriba y el público abajo.'
+      + rangos;
   });
 
   private readonly arrastre = signal<Arrastre | null>(null);
 
+  /**
+   * Por qué eje se está estirando el rango, si se está estirando uno.
+   *
+   * **Va aparte de `arrastre` y no como un campo suyo**, porque son dos gestos
+   * distintos que comparten el mismo puntero: arrastrar mueve la marca y
+   * estirar cambia el rango. Meterlos en un solo estado obligaría a preguntar
+   * «¿es un arrastre de qué?» en cada sitio, y el sitio que se olvidara de
+   * preguntar movería la marca cuando el usuario quiso estirar.
+   */
+  private readonly estirando = signal<EjeDeEstiramiento | null>(null);
+
   private idDesde(ev: PointerEvent): string | null {
     const t = ev.target as Element | null;
     return t?.getAttribute('data-ficha') ?? null;
+  }
+
+  /** Si el dedo cayó sobre un tirador, cuál. */
+  private ejeDesde(ev: PointerEvent): EjeDeEstiramiento | null {
+    const v = (ev.target as Element | null)?.getAttribute('data-tirador');
+    return v === 'ancho' || v === 'largo' ? v : null;
   }
 
   /** Del evento al sistema de coordenadas del dibujo, que no es el de la página. */
@@ -387,6 +461,10 @@ export class PlanoEscenarioComponent implements OnDestroy {
       agarrePx: this.aLienzo(ev),
       origenM: ficha.emplazamiento.posicion,
     });
+    // **Y si cayó sobre un tirador, el gesto es estirar y no mover.** El
+    // tirador lleva también `data-ficha`, así que la selección y la captura del
+    // puntero funcionan igual; lo único que cambia es qué se emite al mover.
+    this.estirando.set(this.ejeDesde(ev));
     this.elegida.emit(id);
     (ev.target as Element).setPointerCapture?.(ev.pointerId);
     ev.preventDefault();
@@ -402,6 +480,7 @@ export class PlanoEscenarioComponent implements OnDestroy {
     if (!this.esElDedoQueArrastra(ev)) return;
     this.emitir(ev);
     this.arrastre.set(null);
+    this.estirando.set(null);
   }
 
   /**
@@ -414,11 +493,18 @@ export class PlanoEscenarioComponent implements OnDestroy {
   alCancelar(ev: PointerEvent): void {
     if (!this.esElDedoQueArrastra(ev)) return;
     const a = this.arrastre()!;
+    const eje = this.estirando();
     this.arrastre.set(null);
+    this.estirando.set(null);
     const ficha = this.fichas().find((f) => f.id === a.id);
-    if (ficha !== undefined) {
-      this.movida.emit({ id: a.id, emplazamiento: { ...ficha.emplazamiento, posicion: a.origenM } });
-    }
+    if (ficha === undefined) return;
+    // **Un estiramiento cancelado no se devuelve a nada**, y es a propósito: a
+    // diferencia de la posición, el rango no se guarda al apoyar el dedo --no
+    // hace falta, porque se recalcula desde el rectángulo actual en cada
+    // movida--. Así que lo último emitido ya es el estado bueno y volver a
+    // emitir lo mismo dejaría la pantalla en «sin guardar» sin motivo.
+    if (eje !== null) return;
+    this.movida.emit({ id: a.id, emplazamiento: { ...ficha.emplazamiento, posicion: a.origenM } });
   }
 
   /**
@@ -438,6 +524,22 @@ export class PlanoEscenarioComponent implements OnDestroy {
     if (a === null) return;
     const ficha = this.fichas().find((f) => f.id === a.id);
     if (ficha === undefined) return;
+
+    const eje = this.estirando();
+    if (eje !== null) {
+      // **Estirar no tiene umbral de arrastre.** El de la ficha existe para que
+      // tocarla no la corra; acá el tirador no tiene otro significado que
+      // estirar, así que un movimiento chico es un ajuste fino y no un toque
+      // accidental.
+      const rangoDeMovimiento = estirarRango(
+        ficha.emplazamiento, this.escala(), this.dimensiones(), eje, this.aLienzo(ev));
+      this.movida.emit({
+        id: a.id,
+        emplazamiento: { ...ficha.emplazamiento, rangoDeMovimiento },
+      });
+      return;
+    }
+
     const posicion = moverArrastre(a, this.aLienzo(ev), this.escala(), this.dimensiones());
     if (posicion === null) return;
     this.movida.emit({ id: a.id, emplazamiento: { ...ficha.emplazamiento, posicion } });

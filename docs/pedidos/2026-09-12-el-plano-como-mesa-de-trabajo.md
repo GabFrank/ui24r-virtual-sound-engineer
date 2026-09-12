@@ -194,3 +194,87 @@ separar acercando, pero dos elementos en la misma posición siguen sin forma de
 elegirse uno u otro; eso es otro ítem. Y el zoom se maneja con botones: el gesto
 de pinza no está, porque el anfitrión desactiva `touch-action` para poder
 arrastrar y habría que reconstruirlo a mano sobre dos punteros.
+
+## El rectángulo de rango de movimiento
+
+Decisión del usuario: «*si el equipo es móvil entonces se ve el rango (que al
+registrar seteamos), puede ser un rectángulo editable*», y al elegir entre
+opciones, «**rectángulo que se estira**».
+
+### Por qué un rectángulo y no un número
+
+Tiene sentido físico además de ser lo que pidió. Un cantante con inalámbrico se
+mueve **por el frente del escenario**: tres metros en `x` y medio en `y`. Un
+radio no puede decir eso; obliga a elegir entre exagerar la profundidad o
+subestimar el ancho. Hay un test que lo fija con números: con el rectángulo, una
+cuña al costado queda a 0,99 m de mínimo y una adelante a 1,74; **con un radio
+del mismo alcance las dos dan 0,941, indistinguibles**.
+
+### Dónde encaja, y la primera versión que estuvo mal
+
+La primera versión le daba a `EN_MANO` un cuadrado de un metro por omisión y le
+bajaba el radio a 0, leyendo los 0,50 m de la tabla de fijeza como medio lado.
+**Un test la tiró abajo con un caso físico**: quien canta **se agacha hacia su
+cuña**, o sea que un micrófono de mano se mueve también en altura, y un
+rectángulo del plano no puede decirlo. Con el radio en 0, el modelo afirmaba que
+el micrófono no podía acercarse a una cuña 40 cm más abajo — que es exactamente
+el caso que ese test describe.
+
+La división quedó al revés, y más simple: **la fijeza da la duda isótropa
+—decisión del usuario, sin tocar— y el rectángulo es lo que se le suma.**
+`EN_MANO` sigue siendo ±0,50 m en todas las direcciones hasta que alguien declare
+que ese cantante camina tres metros; ahí el rectángulo crece en `x` y no en `y`.
+
+Lo bueno de esta forma: **no hay nada que decidir por el usuario.** Su pregunta
+—«si no es fijo, cuál es el rango de movimiento?»— la contesta la pantalla, y
+mientras no la contesten vale la tabla que él ya fijó. La versión anterior me
+obligaba a inventar un rectángulo inicial.
+
+### La geometría, que cambió de forma
+
+Las distancias eran `d ± (ua + ub)`, exacto entre dos esferas. Con un rectángulo
+hay dos formas distintas y **no se pueden mezclar en una**: el rango es una
+**caja** alineada con los ejes y el error de la marca es una **esfera**.
+
+Mi primer intento sumó el radio a cada semieje, o sea convirtió la esfera en una
+caja de lado `2r`. Una esfera está **inscripta** en esa caja, así que el
+intervalo salía más ancho: dos marcas con 0,30 y 0,40 m de duda a cinco metros
+daban un mínimo de 4,02 en vez de 4,30. **Lo encontró el test que fija que las
+incertidumbres se suman y no se componen en cuadratura**, con el número exacto —
+la clase de test que sirve justamente porque no tiene tolerancia.
+
+Ahora son dos cuentas: las cajas eje por eje (exacto entre rectángulos
+alineados) y después los radios a lo largo de la recta que las une (exacto entre
+esferas). Sin rangos declarados da **exactamente** la forma vieja, y hay un test
+que lo fija.
+
+### En pantalla
+
+- El rectángulo, **debajo de todo**, con trazo discontinuo: lleno se leería como
+  una superficie del local —una tarima, una alfombra— y es una región de duda.
+- **Dos tiradores, uno por eje**, a media altura de su lado y por fuera. Por
+  fuera porque adentro competirían con el arrastre de la ficha; a media altura
+  porque en una esquina los dos se pisarían y con 48 px de blanco cada uno no
+  hay lugar. Hay un test que verifica que no se pisen.
+- **Sólo en la ficha elegida.** Con todas a la vez el plano se llena de blancos
+  que se pisan entre fichas, y es el mismo criterio que las distancias.
+- **Crece simétrico**: el elemento se queda donde está. Si creciera hacia un
+  lado, estirar movería la marca, que es otro dato y ya se edita arrastrando.
+- Se recorta a las paredes, y al centímetro.
+- Y el lector de pantalla lo nombra: «*3,00 m de ancho por 0,50 m de fondo*», con
+  el mismo formateador que las distancias. Un cuadrado se dice una sola vez —«3 m
+  en cuadrado»— porque hacer leer dos números iguales para darse cuenta de que
+  son iguales es trabajo de más.
+
+### Lo que valida el dominio
+
+Lados no finitos o negativos —darían un mínimo mayor que el máximo—, un rango más
+grande que el local, y **`FIJO` con rango**, que son dos afirmaciones que no
+pueden ser ciertas a la vez: la fijeza dice cuánto se mueve.
+
+### Lo que falta
+
+El alta de instrumento todavía no pregunta el rango; hoy sólo se estira en el
+plano. Y el rectángulo no rota: uno rotado sería más expresivo y mucho más
+difícil de estirar con el dedo, y esta pantalla existe para marcar una sala en
+treinta segundos.

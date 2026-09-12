@@ -3,6 +3,7 @@ import {
 } from '@vse/domain';
 import type {
   Emplazamiento, Escenario, PAComponentId, PAComponentSpec, PuntoM,
+  RangoDeMovimiento,
 } from '@vse/domain';
 
 /**
@@ -714,4 +715,126 @@ export function acercarSobre(
 /** Vuelve al local entero. Es la salida cuando uno se perdió con el zoom. */
 export function encuadreCompleto(dim: DimensionesDelLocal): Vista {
   return vistaInicial(dim);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * El rectángulo de rango de movimiento
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** El rectángulo de movimiento dibujado, en píxeles del lienzo. */
+export interface RectanguloEnPx {
+  readonly x: number;
+  readonly y: number;
+  readonly ancho: number;
+  readonly alto: number;
+}
+
+/**
+ * El rectángulo de movimiento de un elemento, listo para dibujar.
+ *
+ * Devuelve `null` cuando el elemento no declaró rango: no hay rectángulo, y
+ * dibujar uno de tamaño cero pondría un artefacto en el plano que invita a
+ * estirarlo sin que nadie lo haya pedido.
+ *
+ * **No incluye la duda de la fijeza.** Ésa se dibuja como el círculo de
+ * `radioIncertidumbrePx`, y son dos cosas distintas: el círculo dice «la marca
+ * puede estar corrida» y el rectángulo dice «esto camina hasta acá». Sumarlas
+ * en un solo dibujo perdería la distinción que el usuario pidió.
+ */
+export function rectanguloDeRango(
+  em: Emplazamiento, e: EscalaDelPlano,
+): RectanguloEnPx | null {
+  const g = em.rangoDeMovimiento;
+  if (g === null) return null;
+  const ancho = Math.max(0, g.anchoM) * e.pxPorMetro;
+  const alto = Math.max(0, g.largoM) * e.pxPorMetro;
+  const centro = aPantalla(em.posicion, e);
+  return { x: centro.x - ancho / 2, y: centro.y - alto / 2, ancho, alto };
+}
+
+/** Por qué lado se está estirando el rectángulo. */
+export type EjeDeEstiramiento = 'ancho' | 'largo';
+
+/**
+ * Dónde va el tirador de cada eje, en píxeles.
+ *
+ * **A media altura del lado, y por fuera del rectángulo.** Por fuera porque
+ * adentro competiría con el arrastre de la ficha, que ocupa el centro; y a
+ * media altura porque en una esquina los dos tiradores se pisarían y con
+ * 48 px de blanco cada uno no hay lugar.
+ *
+ * Con el rectángulo en cero los dos tiradores caen sobre la ficha, así que la
+ * pantalla no los dibuja hasta que hay rango declarado —lo mismo que
+ * {@link rectanguloDeRango}—.
+ */
+export function tiradorDeRango(
+  em: Emplazamiento, e: EscalaDelPlano, eje: EjeDeEstiramiento,
+): PuntoPx | null {
+  const r = rectanguloDeRango(em, e);
+  if (r === null) return null;
+  const centro = aPantalla(em.posicion, e);
+  return eje === 'ancho'
+    ? { x: r.x + r.ancho, y: centro.y }
+    : { x: centro.x, y: r.y + r.alto };
+}
+
+/**
+ * El rango nuevo después de arrastrar un tirador hasta `ahoraPx`.
+ *
+ * **Crece simétrico**: el elemento se queda donde está y el rectángulo se abre
+ * para los dos lados. Si creciera hacia un solo lado, estirar movería la
+ * posición marcada, que es un dato distinto y ya se edita arrastrando la ficha.
+ *
+ * **Se recorta al local**, igual que el arrastre de la ficha. Un rango más
+ * grande que la sala es un dato que nadie puede haber querido y que la
+ * validación del dominio denuncia después; frenarlo acá es más amable que
+ * aceptarlo y retarlo.
+ *
+ * Y **al centímetro**, por lo mismo que las coordenadas: lo que sale de dividir
+ * píxeles tiene dieciséis cifras de las cuales dos son verdad.
+ */
+export function estirarRango(
+  em: Emplazamiento,
+  e: EscalaDelPlano,
+  dim: DimensionesDelLocal,
+  eje: EjeDeEstiramiento,
+  ahoraPx: PuntoPx,
+): RangoDeMovimiento {
+  const g = em.rangoDeMovimiento;
+  const centro = aPantalla(em.posicion, e);
+  const actual = { anchoM: g === null ? 0 : g.anchoM, largoM: g === null ? 0 : g.largoM };
+  // El semilado nuevo es la distancia del centro al dedo, y el lado es el doble.
+  const semiPx = eje === 'ancho'
+    ? Math.abs(ahoraPx.x - centro.x)
+    : Math.abs(ahoraPx.y - centro.y);
+  const ladoM = aCentimetros(recortar(
+    (semiPx * 2) / e.pxPorMetro, 0, eje === 'ancho' ? dim.ancho : dim.largo,
+  ));
+  return eje === 'ancho'
+    ? { anchoM: ladoM, largoM: actual.largoM }
+    : { anchoM: actual.anchoM, largoM: ladoM };
+}
+
+/**
+ * Cómo se lee un rango en palabras, para la ficha y para el lector de pantalla.
+ *
+ * **Un cuadrado se dice una vez.** «3 por 3 m» hace leer dos números y comparar
+ * para darse cuenta de que son iguales; «3 m en cuadrado» lo dice de una.
+ */
+export function comoSeLeeElRango(
+  g: RangoDeMovimiento,
+  // **La misma firma que `metros` de `lo-que-dice-la-geometria`**, que formatea
+  // un intervalo. Se le pasa el mismo número dos veces porque un lado del
+  // rectángulo es un dato y no un rango: así hay un solo formateador en toda la
+  // pantalla y las cifras no se escriben de dos maneras.
+  formatear: (min: number, max: number) => string,
+): string {
+  // El mismo umbral de cinco milímetros que usa `metros` para decidir si un
+  // intervalo colapsó: dos lados que difieren en tres milímetros no son dos
+  // datos.
+  if (Math.abs(g.anchoM - g.largoM) < 0.005) {
+    return `${formatear(g.anchoM, g.anchoM)} en cuadrado`;
+  }
+  return `${formatear(g.anchoM, g.anchoM)} de ancho por `
+    + `${formatear(g.largoM, g.largoM)} de fondo`;
 }
