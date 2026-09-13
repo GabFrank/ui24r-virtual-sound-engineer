@@ -60,6 +60,23 @@ Y hacerlo depender de la prosa del docblock —«este guion existe para borrar»
 sería exactamente el error que el proyecto castiga: **la capa que justifica
 decidiendo por la que implementa**.
 
+## Lo convertido hasta ahora
+
+| guion | qué dejaba escrito | commit |
+|---|---|---|
+| `p0-10b-vu/eco.ts` | el canal 10 **muteado** —o desmuteado— según cómo estuviera | `ad648e7` |
+| `p0-10b-vu/ley-fader.ts` | el fader del canal 10 en **0,20**, unos −38 dB | `0780a8d` |
+| `p0-10b-vu/ley-ganancia.ts` | la ganancia del previo en **0,70**, con la del usuario en 0,2508 | `987d0ec` |
+
+Los tres salieron además del trinquete del supresor: los tres hacían sonar tono
+sostenido —60 y 300 segundos— con el supresor del general encendido.
+
+*(Los dos últimos entraron **mezclados** en commits cuyo mensaje habla de otra
+cosa. Es la regla del proyecto —una tarea, un commit— incumplida dos veces por el
+mismo descuido: agrupar un `git add -A` al final de un tramo largo. Queda dicho
+acá porque no reescribo historia ya empujada, y porque el número del trinquete no
+alcanza para encontrar cuándo bajó.)*
+
 ## Lo que sí queda
 
 El censo, que antes no existía, y la distinción nombrada. Cuando alguien toque
