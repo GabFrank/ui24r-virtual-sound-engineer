@@ -203,3 +203,97 @@ va por `conRestauracion`, que corre también si llega una señal, y se comprueba
 **No hay nada conectado a ninguna salida física** salvo los dos cables del bucle,
 así que esta corrida no hace ruido en la sala. El supresor del general se apaga
 mientras suena el estímulo y se restaura: un tono sostenido le planta notches.
+
+---
+
+# Resultado
+
+**Corrida del 2026-09-13**, archivada en
+`docs/spikes/SPK-P0.2b/evidence/curvas-del-ecualizador-2026-09-13b.txt`.
+Canal 10, multitono de 104 tonos de 40 Hz a 15 343 Hz, pico del estímulo a
+−27 dBFS, 14,6 dB de recorrido antes del recorte.
+
+## Las seis expectativas
+
+| # | Umbral | Resultado | |
+|---|---|---|---|
+| **E1** | línea base plana, 1,0 dB | **0,82 dB** | **PASA** |
+| **E2** | campana, 6 dB de caída a los dos lados | **6 de 6** curvas | **PASA** |
+| **E3** | `f0` contra `20·1102,5^V`, 5 % | **0,24 %** sobre 6 crudos | **PASA** |
+| **E4** | la recta excluida, factor > 2 | **factor 43,4** | **PASA** (subordinada) |
+| **E5** | `Q` contra `0,05·300^V`, factor 1,3 | **×1,02** sobre 5 crudos | **PASA** |
+| **E6** | la vuelta, 1,5 % y 0,5 dB | **0,03 %** y 0,09 dB | **PASA** |
+
+Y la dispersión punto a punto entre las dos líneas base dio **0,024 dB rms**, por
+debajo de los 0,05 de los que cuelga la resolución declarada: el ±1,5 % se
+sostiene.
+
+## Las dos leyes, medidas contra el filtro
+
+| Crudo | `f0` medido | `20·1102,5^V` | La recta que el código tenía | Error |
+|---|---|---|---|---|
+| 0,2500 | **116 Hz** | 115 | 5 015 | 0,2 % |
+| 0,3287 | **200 Hz** | 200 | 6 587 | 0,2 % |
+| 0,5584 | **1 001 Hz** | 1 000 | 11 178 | 0,1 % |
+| 0,6500 | **1 900 Hz** | 1 899 | 13 007 | 0,1 % |
+| 0,7563 | **4 006 Hz** | 4 000 | 15 131 | 0,1 % |
+| 0,9000 | **10 929 Hz** | 10 944 | 18 002 | −0,1 % |
+
+| Crudo | `Q` medido | `0,05·300^V` | La recta | Factor contra la recta |
+|---|---|---|---|---|
+| 0,3500 | **0,376** | 0,368 | 3,69 | ×0,10 |
+| 0,4500 | **0,660** | 0,651 | 4,67 | ×0,14 |
+| 0,5252 | **1,010** | 1,000 | 5,39 | ×0,19 |
+| 0,6200 | **1,728** | 1,717 | 6,31 | ×0,27 |
+| 0,7000 | **2,691** | 2,710 | 7,09 | ×0,38 |
+
+**Los tres crudos de fábrica cayeron donde la exponencial decía**: 200 Hz, 1 kHz y
+4 kHz, y el Q de fábrica en 1,010. Eso no era una predicción del contrato, pero
+estaba anotado antes de medir y salió.
+
+## Lo que se promovió, y hasta dónde
+
+`i.N.eq.b1.freq` y `i.N.eq.b1.q` pasan a **`PROBADO`** — las primeras dos rutas
+escribibles por vía cruda que tiene este proyecto.
+
+**Pero con el rango medido, no con el del recorrido entero.** Se declara
+`rawMin`/`rawMax` en 0,25–0,90 y 0,35–0,70, con lo que `aRaw` rechaza con
+`FUERA_DE_RANGO` cualquier frecuencia fuera de 115 Hz … 10,9 kHz o cualquier Q
+fuera de 0,37 … 2,71. Los extremos del parámetro caen fuera de la ventana del
+estímulo: ahí el pico de la campana da contra el borde y lo que se mediría sería
+el borde.
+
+**Y la cota está publicada**: la familia de `A·B^V` que también cae dentro del 5 %
+en los crudos medidos tiene la base entre **949 y 1268**, o sea que en el crudo
+1,0 la frecuencia queda entre **17 530 y 27 675 Hz** contra los 22 050 declarados.
+El tope **no está medido**.
+
+## Un hallazgo que no era el objetivo: la ganancia sube 20 dB, no 15
+
+La campana subió **20,0 dB exactos** en los ocho puntos del barrido, con el crudo
+de ganancia en 1,0. `raw-map.ts` declara ±15 dB y el manual ±20.
+
+**No alcanza para cambiar la entrada, y se dice por qué.** El pico de una campana
+no es el parámetro de ganancia salvo que el filtro esté normalizado de cierta
+manera, y eso no se sabe. Y se midió **un solo crudo de ganancia** —el extremo—,
+así que de la *forma* de esa ley no se sabe nada: podría no ser lineal. Queda
+`DESCONOCIDO` con el hallazgo anotado.
+
+## Dos corridas, y por qué
+
+La primera **perdió el WebSocket a mitad de camino y la restauración también
+falló**, dejando la consola con cinco claves cambiadas. Se restauró a mano y se
+verificó por HTTP.
+
+La causa la documenta el propio transporte: el latido `ALIVE` va en un
+`setInterval` de 1000 ms, y `respuesta()` hacía **seis a diez segundos de cálculo
+sincrónico**, que bloquean el bucle de eventos. Bloquearlo diez segundos es
+exactamente lo mismo que no mandar el latido. Ahora el análisis cede el turno una
+vez por tono, y existe `restaurarClaves()`, que **reconecta antes de restaurar** —
+lo que vale para los 46 guiones del proyecto, no sólo para éste.
+
+## Restauración, comprobada
+
+Las nueve claves releídas por HTTP, todas coincidiendo. Se puentearon durante la
+corrida el compresor del canal, su puerta, su de-esser y el compresor del general
+—todo lo dependiente del nivel— y se restauraron.

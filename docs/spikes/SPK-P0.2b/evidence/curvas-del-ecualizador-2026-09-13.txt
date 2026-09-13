@@ -1,0 +1,101 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T04:22:13.631Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts 10 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts sha256:b76cbd51c5fffffc
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 101 — LAS CURVAS DEL ECUALIZADOR, MEDIDAS CONTRA EL FILTRO ===
+canal 10 (i.9), multitono de 104 tonos
+   de 40.0 a 15343 Hz, bin de 0.25 Hz, captura de 4 s
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.eq.bypass          0
+   i.9.eq.easy            0
+   i.9.eq.prmod           0
+   i.9.eq.b1.freq         0.3286901902
+   i.9.eq.b1.q            0.5252185347
+   i.9.eq.b1.gain         0.5
+   i.9.eq.b2.gain         0.5
+   i.9.eq.b3.gain         0.5
+   i.9.eq.b4.gain         0.5
+   i.9.eq.b5.gain         0.5
+   i.9.eq.hpf.freq        0
+   i.9.eq.hpf.slope       0
+   i.9.eq.lpf.freq        1
+   i.9.eq.lpf.slope       0
+   i.9.dyn.bypass         0
+   i.9.dyn.ratio          1
+   i.9.gate.enabled       1
+   i.9.gate.thresh        0
+   i.9.deesser.enabled    0
+   i.9.mix                0.7647058824
+   hw.9.gain              0.2508445026
+   m.mix                  0.7643020595
+   m.dyn.bypass           0
+   m.dyn.l.ratio          0.0487804878
+   m.gate.enabled         0
+   m.eq.bypass            0
+   m.delayL               0
+   m.delayR               0
+   m.afs.enabled          1
+
+   El ecualizador del general, su fader y el supresor apagado son ganancias
+   ESTATICAS: estan en las dos capturas y se cancelan en la resta. Lo que no
+   se cancela es lo dependiente del nivel, y eso se puentea abajo.
+
+Los crudos de FABRICA, evaluados con las dos leyes en disputa:
+   b1 crudo 0.3286901902: exponencial    200 Hz | recta   6587 Hz
+   b2 crudo 0.5584347738: exponencial   1000 Hz | recta  11178 Hz
+   b3 crudo 0.7563259869: exponencial   4000 Hz | recta  15131 Hz
+   b4 crudo 0.887124964: exponencial  10000 Hz | recta  17745 Hz
+   b5 crudo 0.9542171999: exponencial  16000 Hz | recta  19085 Hz
+   Es evidencia sobre la CODIFICACION, no sobre el filtro: dice que numeros
+   muestra el cliente, no a que frecuencia filtra el DSP. Eso se mide abajo.
+
+=== LO QUE SE NEUTRALIZA, Y POR QUE ===
+   supresor del general: estaba en 1, se apaga
+   compresor del canal:  bypass estaba en 0, se puentea
+   de-esser del canal:   estaba en 0, se apaga
+   puerta del canal:     estaba en 1, se apaga
+   compresor del general: bypass estaba en 0, se puentea
+   Todos dependen del NIVEL, y el barrido levanta el pico hasta 12 dB en
+   una banda. Lo que aplastarian es justo la punta de la campana, de
+   donde salen f0, la altura y el Q. Una ganancia estatica se cancela en
+   la resta; una no lineal no.
+
+estimulo: pico -27 dBFS, cresta 5.03 (14.0 dB), -58.2 dBFS por tono, dura 600 s
+
+linea base con el ecualizador PUENTEADO: se aparta 0.82 dB de su media | pico -29.7 dBFS | margen peor 8.2 dB
+recorrido antes del recorte: 14.7 dB (base en -29.7, la campana sube hasta 12, 3 de margen)
+
+linea base con el ecualizador ADENTRO y b1 en su ganancia previa (0.5): difiere 0.08 dB de la puenteada
+   Esa diferencia es la contribucion de b2..b5, del pasa-altos y del
+   pasa-bajos. Sea la que sea, esta en las dos capturas de abajo y se
+   cancela: por eso la base que se usa es ESTA y no la puenteada.
+LA RESTAURACION FALLO. Hay que revisar la consola a mano.
+Error: transporte no conectado
+    at Ui24rTransport.enviar (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/packages/mixer-adapter/src/transport.ts:208:32)
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts:244:7
+    at unaVez (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:62:13)
+    at conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:90:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts:241:1
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/packages/mixer-adapter/src/transport.ts:208
+    if (!this.conectado) throw new Error('transporte no conectado');
+                               ^
+
+Error: transporte no conectado
+    at Ui24rTransport.enviar (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/packages/mixer-adapter/src/transport.ts:208:32)
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts:336:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:88:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts:241:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

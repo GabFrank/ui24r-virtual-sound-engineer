@@ -126,7 +126,9 @@ export function escribirMultitono(
  * una curva con un pico los extremos se hunden y hay que poder anular un tono sin
  * anular la captura.
  */
-export function respuesta(wav, frecuencias, { canalCapturado = 0, canalReferencia = 2 } = {}) {
+export async function respuesta(
+  wav, frecuencias, { canalCapturado = 0, canalReferencia = 2 } = {},
+) {
   const w = leerWav(wav);
   const cap = w.canales[canalCapturado];
   const ref = w.canales[canalReferencia];
@@ -139,23 +141,36 @@ export function respuesta(wav, frecuencias, { canalCapturado = 0, canalReferenci
   // interfaz, y se parece bastante a la de un filtro: sube, se aplana arriba, y
   // baja. El dato tiene que salir de acá porque acá es donde están las muestras.
   const picoCap = pico(cap);
-  const puntos = frecuencias.map((f) => {
+  const puntos = [];
+  for (const f of frecuencias) {
+    // **Y acá se le devuelve el turno al bucle de eventos, que no es un detalle.**
+    //
+    // Este análisis son ~104 tonos por 22 correlaciones sobre 192 000 muestras:
+    // entre seis y diez segundos de cálculo **sincrónico**. El transporte de la
+    // consola manda un `ALIVE` cada 1000 ms con un `setInterval`, y su propio
+    // docblock dice que sin eso «la consola deja de emitir a los pocos segundos».
+    // Un cálculo que bloquea el bucle diez segundos es **exactamente lo mismo que
+    // no mandar el latido**: se pierden diez, y la consola corta.
+    //
+    // Pasó el 2026-09-13: la medición 101 perdió el transporte a mitad de corrida
+    // y la restauración no pudo correr, así que la consola quedó con cinco claves
+    // cambiadas. Cediendo una vez por tono el bloqueo baja a unos 70 ms.
+    await new Promise((r) => { setTimeout(r, 0); });
     const a = amplitudDelTono(cap, f, w.frecuencia);
     const b = amplitudDelTono(ref, f, w.frecuencia);
     // **El piso se mide en la frecuencia de CADA tono.** Medirlo una vez en el
     // medio del espectro y aplicarlo a los 104 supone que el piso es plano, y no
     // lo es: el zumbido de red en 50, 100 y 150 Hz está muy por encima del piso
-    // de 800 Hz. Cuesta unos segundos por captura y evita juzgar un tono grave
-    // con el criterio de uno medio.
+    // de 800 Hz.
     const piso = pisoDelBin(cap, f, w.frecuencia, { bins: 10 });
-    return {
+    puntos.push({
       hz: f,
       db: dB(a) - dB(b),
       capturadoDb: dB(a),
       referenciaDb: dB(b),
       margenDb: dB(a) - dB(piso),
-    };
-  });
+    });
+  }
   puntos.picoDbFS = dB(picoCap);
   puntos.recorteExacto = picoCap >= 1.0;
   return puntos;

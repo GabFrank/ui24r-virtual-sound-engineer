@@ -189,7 +189,7 @@ function escribirFloat32(ruta, canales, fm) {
   writeFileSync(ruta, Buffer.concat([h, datos]));
 }
 
-test('el pico y el recorte viajan con la captura, y el cociente da cero', () => {
+test('el pico y el recorte viajan con la captura, y el cociente da cero', async () => {
   // La guarda de recorte de la medición 101 cuelga de estos dos campos, y el
   // cociente capturado/referencia es lo que hace que el banco no tenga que ser
   // plano. Esto prueba los dos de punta a punta. Si alguien saca `picoDbFS`, la
@@ -210,7 +210,7 @@ test('el pico y el recorte viajan con la captura, y el cociente da cero', () => 
     // Los dos canales IDENTICOS: la respuesta tiene que dar cero exacto.
     escribirFloat32(ruta, [x, x], 48000);
 
-    const r = respuesta(ruta, FRECUENCIAS, { canalCapturado: 0, canalReferencia: 1 });
+    const r = await respuesta(ruta, FRECUENCIAS, { canalCapturado: 0, canalReferencia: 1 });
     assert.ok(Math.abs(r.picoDbFS - objetivo) < 0.01,
       `pico pedido ${objetivo} dBFS, respuesta() informa ${r.picoDbFS.toFixed(3)}`);
     assert.equal(r.recorteExacto, objetivo >= 0,

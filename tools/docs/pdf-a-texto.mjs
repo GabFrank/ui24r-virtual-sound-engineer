@@ -72,6 +72,40 @@ function textoDelFlujo(t) {
   return salida.join('');
 }
 
+/**
+ * ¿Este flujo es texto, o son píxeles?
+ *
+ * **El filtro anterior aceptaba cualquier flujo que contuviera los bytes `TJ` o
+ * `Tj`, y eso es casi cualquier cosa.** Dos bytes concretos aparecen por azar en
+ * datos binarios todo el tiempo. Resultado medido sobre el manual de la Ui24R:
+ * **el 51,6 % del texto extraído eran datos de imagen descomprimidos** —corridas
+ * de `ÿÿÿÖÔÛÛÛÝÝÝ`, que son valores de píxeles blancos y grises— y el centinela
+ * los daba por buenos porque `ÿ`, `Ö`, `Û` y `Ý` caen dentro de `À-ÿ`.
+ *
+ * **Dos criterios, y los dos separan sin ambigüedad.** Medido sobre los 125
+ * flujos que el filtro viejo aceptaba:
+ *
+ * | | flujos | proporción de ASCII imprimible |
+ * |---|---|---|
+ * | con `BT`…`ET` | 123 | **1,000** en todos |
+ * | sin `BT`…`ET` | 2 | 0,139 y 0,207 |
+ *
+ * Un flujo de contenido de PDF es texto plano: operadores y literales. Un flujo
+ * de imagen es binario. No hay zona gris, así que el umbral se pone lejos de los
+ * dos grupos y no en el medio de nada.
+ */
+const RATIO_ASCII_MINIMO = 0.9;
+
+function esFlujoDeTexto(inflado) {
+  if (!/\bBT\b/.test(inflado) || !/\bET\b/.test(inflado)) return false;
+  let imprimibles = 0;
+  for (let i = 0; i < inflado.length; i++) {
+    const k = inflado.charCodeAt(i);
+    if ((k >= 32 && k < 127) || k === 9 || k === 10 || k === 13) imprimibles += 1;
+  }
+  return inflado.length > 0 && imprimibles / inflado.length >= RATIO_ASCII_MINIMO;
+}
+
 let paginas = 0;
 const partes = [];
 let i = 0;
@@ -83,7 +117,7 @@ while ((i = d.indexOf('stream', i)) !== -1) {
   if (fin === -1) break;
   try {
     const inflado = inflateSync(d.subarray(s, fin)).toString('latin1');
-    if (/\bTJ\b|\bTj\b/.test(inflado)) {
+    if (esFlujoDeTexto(inflado)) {
       paginas += 1;
       partes.push(`\n\n=== [flujo de texto ${paginas}] ===\n`);
       partes.push(textoDelFlujo(inflado));
@@ -112,6 +146,88 @@ while ((i = d.indexOf('stream', i)) !== -1) {
  * síntoma que no existía**. Lo delató mirar los códigos de los caracteres en vez
  * de la representación.
  */
+/**
+ * La tabla de caracteres de fuente, **verificada contra el contexto uno por uno**.
+ *
+ * Un PDF compuesto con fuentes en subconjunto no guarda «f-i»: guarda el código
+ * del glifo de la ligadura, y leído como latin1 sale un carácter acentuado al
+ * azar. Lo mismo con comillas tipográficas, viñetas y símbolos.
+ *
+ * **Esto no es un decodificador de PDF: es una tabla para ESTE documento**, y
+ * cada entrada se comprobó mirando dónde aparece. Un manual compuesto con otras
+ * fuentes necesita la suya, y el centinela de abajo lo va a delatar.
+ *
+ * | Código | Aparece en | Es |
+ * |---|---|---|
+ * | `Ü` | «Ürst», «modiÜcation», «SpeciÜcations», «ConÜguration» | ligadura **fi** |
+ * | `Ý` | «Ýame», «inÝuences», «Ýoating» | ligadura **fl** |
+ * | `Ó` | «userÓs», «CanadaÓs», «dÓIndustrie» | apóstrofo |
+ * | `Ò` | abre donde `Ó` cierra: «ÒscuiwlanÓ», «ÒNETWORKÓ» | comilla simple de apertura |
+ * | `Ñ` | «ÐMY OUTÑ», y **«1/4Ñ»** como marca de pulgada | comilla doble de cierre |
+ * | `Ð` | abre donde `Ñ` cierra: «ÐSoundcraft Ui24Ñ» | comilla doble de apertura |
+ * | `§` | «dbx§, Digitech§, Lexicon§» — tres marcas registradas | ® |
+ * | `¤` | encabeza «Read these instructions», «WARNING:» | viñeta |
+ *
+ * **Y el `=` que separa palabras.** En el texto justificado, el espacio sale como
+ * `=`: «1.3: = SpeciÜcations», «Smartphone = Controlled = Digital = Mixer». Se
+ * reemplaza sólo cuando tiene espacio a los dos lados, que es como aparece en
+ * 6 533 de las 7 317 veces; los otros 784 pueden ser signos de igual de verdad y
+ * no se tocan.
+ */
+const CARACTERES_DE_FUENTE = [
+  [/\u00DC/g, 'fi'],
+  [/\u00DD/g, 'fl'],
+  [/\u00D3/g, "'"],
+  [/\u00D2/g, "'"],
+  [/\u00D1/g, '"'],
+  [/\u00D0/g, '"'],
+  [/\u00A7/g, '(R)'],
+  [/\u00A4/g, '*'],
+];
+
+/**
+ * Texto escrito con la fuente **corrida 29 lugares**, en un byte por carácter.
+ *
+ * `repararUtf16Corrido` ya conocía este corrimiento, pero sólo lo deshacía en los
+ * tramos que venían en UTF-16. Hay otros que vienen en un byte, y se perdían:
+ * `7KH` es `The`, `<RX` es `You`, `$8;` es `AUX` — sumando 29 a cada código sale
+ * la palabra. Son de las palabras más frecuentes del manual.
+ *
+ * **Se aplica token por token y sólo cuando el resultado es una palabra**, que es
+ * lo que lo vuelve seguro: si un token ya es texto normal, no se toca; si al
+ * correrlo no sale una palabra, tampoco. No hay forma de que esto rompa texto que
+ * estaba bien.
+ */
+function correr29(token) {
+  let salida = '';
+  for (let i = 0; i < token.length; i++) {
+    salida += String.fromCharCode(token.charCodeAt(i) + 29);
+  }
+  return salida;
+}
+
+function repararCorrimientoDeUnByte(t) {
+  return t.replace(/\S+/g, (token) => {
+    if (token.length < 2 || esPalabra(token)) return token;
+    const corrido = correr29(token);
+    return /^[A-Za-z]{2,}$/.test(corrido) ? corrido : token;
+  });
+}
+
+function repararCaracteresDeFuente(t) {
+  let r = t;
+  for (const [re, con] of CARACTERES_DE_FUENTE) r = r.replace(re, con);
+  // **El espacio del texto justificado.** Con cualquier espacio en blanco a los
+  // lados, no sólo el carácter espacio: en el archivo aparecen 6 505 casos donde
+  // el separador que sigue es un salto de línea, y un `/ = /` literal los dejaba
+  // todos pasar. La mirada hacia atrás y hacia adelante evita comerse el espacio
+  // en blanco, que es lo que separa las palabras de al lado.
+  r = r.replace(/(?<=\s)=(?=\s)/g, '');
+  // Los códigos de control que dejan las fuentes de iconos: no son texto y no
+  // hay con qué reemplazarlos. Se sacan para que no ensucien el conteo.
+  return r.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+}
+
 function repararUtf16Corrido(t) {
   // Un tramo es UTF-16BE si tiene NUL en las posiciones pares, varias veces.
   return t.replace(/(?:\u0000[\s\S]){4,}/g, (tramo) => {
@@ -123,25 +239,73 @@ function repararUtf16Corrido(t) {
   });
 }
 
-const texto = repararUtf16Corrido(partes.join(''))
+// El orden importa: primero los tramos UTF-16, después la tabla de caracteres de
+// fuente, y **al final el corrimiento de un byte**, que decide token por token si
+// lo que tiene delante ya es una palabra. Si corriera antes, vería tokens que
+// todavía tienen ligaduras sin resolver y los dejaría pasar.
+const texto = repararCorrimientoDeUnByte(
+  repararCaracteresDeFuente(repararUtf16Corrido(partes.join(''))),
+)
   // El BOM de UTF-16, que queda suelto cuando el tramo era de un solo carácter.
   .replace(/þÿ|\ufeff/g, ' ')
   // Los PDF dejan mucho espacio de posicionamiento.
   .replace(/[ \t]{2,}/g, ' ')
   .replace(/\n{3,}/g, '\n\n');
 
-// **Un centinela contra el éxito falso.** Si el PDF usa fuentes con
-// codificación propia, esto devuelve caracteres sin sentido con forma de texto,
-// y quien lo lea después va a citar basura. Se mide qué proporción es legible.
-const legibles = (texto.match(/[A-Za-zÀ-ÿ0-9]/g) ?? []).length;
-const proporcion = texto.length === 0 ? 0 : legibles / texto.length;
-if (proporcion < 0.35) {
-  console.error(`ERROR: solo el ${(proporcion * 100).toFixed(0)} % de lo extraido son `
-    + 'caracteres legibles. El PDF probablemente use fuentes con codificacion propia, '
-    + 'y lo que saldria seria basura con forma de texto. No se imprime.');
+/**
+ * **Un centinela contra el éxito falso, que cuenta PALABRAS y no caracteres.**
+ *
+ * El anterior medía qué proporción de los caracteres caía en `[A-Za-zÀ-ÿ0-9]`, y
+ * eso **incluye el rango acentuado donde viven los caracteres corruptos**. Con el
+ * manual de la Ui24R declaró «79 % legible» mientras el 51,6 % del archivo eran
+ * datos de imagen —corridas de `ÿÿÿÖÔÛÛÛ`, valores de píxeles— y sólo el 38 % de
+ * los tokens eran palabras. Un control que sólo podía confirmar.
+ *
+ * Contar palabras no se deja engañar por eso: una corrida de `ÿÿÿ` no es una
+ * palabra, y `conÜguration` tampoco. El umbral se fija sobre lo que un documento
+ * técnico en inglés da de verdad, con margen.
+ */
+const PROPORCION_MINIMA_DE_PALABRAS = 0.6;
+
+/**
+ * ¿Este token es una palabra?
+ *
+ * Se le sacan los signos de los bordes antes de mirar: `page.` y `screen.` son
+ * palabras, y la primera versión de esta medida las rechazaba por el punto final.
+ * Eso no medía el texto, medía la puntuación.
+ */
+function esPalabra(w) {
+  const nucleo = w.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z]+$/, '');
+  return /^[A-Za-z][A-Za-z'-]*$/.test(nucleo) && nucleo.length >= 2;
+}
+
+// **Los marcadores que este mismo extractor inserta no entran en la cuenta.**
+// Los `=== [flujo de texto N] ===` son suyos, no del manual: contarlos sería
+// medirse a sí mismo y el resultado mejoraría al agregar más marcadores.
+const tokens = texto
+  .replace(/^=== \[flujo de texto \d+\] ===$/gm, '')
+  .split(/\s+/)
+  .filter(Boolean);
+const palabras = tokens.filter(esPalabra).length;
+const proporcion = tokens.length === 0 ? 0 : palabras / tokens.length;
+if (proporcion < PROPORCION_MINIMA_DE_PALABRAS) {
+  console.error(`ERROR: solo el ${(proporcion * 100).toFixed(0)} % de los tokens son `
+    + `palabras (${palabras} de ${tokens.length}). El PDF probablemente use fuentes con `
+    + 'codificacion propia que esta tabla no cubre, y lo que saldria seria basura con '
+    + 'forma de texto. No se imprime.');
+  // **Y se muestra QUE no es palabra, que es lo unico que permite arreglarlo.**
+  // Un centinela que dice «fallo» y no dice con que, obliga a quien lo lea a
+  // rehacer el analisis desde cero para saber si el umbral esta mal o el texto.
+  const noPalabras = tokens.filter((w) => !/^[A-Za-z][A-Za-z'-]+$/.test(w));
+  const cuenta = new Map();
+  for (const w of noPalabras) cuenta.set(w, (cuenta.get(w) ?? 0) + 1);
+  console.error('los 25 tokens no-palabra mas frecuentes:');
+  for (const [w, n] of [...cuenta].sort((a, b) => b[1] - a[1]).slice(0, 25)) {
+    console.error(`   x${String(n).padStart(4)}  ${JSON.stringify(w)}`);
+  }
   process.exit(1);
 }
 
 console.error(`${paginas} flujos de texto, ${texto.length} caracteres, `
-  + `${(proporcion * 100).toFixed(0)} % legibles`);
+  + `${palabras} palabras de ${tokens.length} tokens (${(proporcion * 100).toFixed(0)} %)`);
 process.stdout.write(texto);

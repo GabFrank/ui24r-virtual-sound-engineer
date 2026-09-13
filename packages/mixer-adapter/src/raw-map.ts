@@ -61,6 +61,38 @@ function deLaConsola(
   };
 }
 
+/**
+ * Conversión **medida contra el aparato**, con el rango que de verdad se midió.
+ *
+ * **La diferencia con `deLaConsola` no es el estado: es el rango.** Una medición
+ * cubre los puntos que midió, y los extremos del recorrido casi nunca están entre
+ * ellos — en la 101, `f0` se midió entre los crudos 0,25 y 0,90 porque afuera de
+ * eso el pico de la campana cae en el borde del estímulo y lo que se mediría sería
+ * el borde. Declarar `PROBADO` sobre 20 Hz … 22 050 Hz con eso sería afirmar dos
+ * extremos que nadie vio.
+ *
+ * Así que la entrada declara **`rawMin` y `rawMax` medidos**, y `fisicoMin` y
+ * `fisicoMax` salen de evaluarlos: `aRaw` rechaza con `FUERA_DE_RANGO` todo lo que
+ * quede afuera, que es exactamente lo correcto. La función es la misma en todo el
+ * recorrido; lo que está acotado es **hasta dónde se comprobó**.
+ */
+function medido(
+  path: string,
+  unidad: string,
+  fromRaw: (raw: number) => number,
+  toRaw: (fisico: number) => number,
+  rawMin: number,
+  rawMax: number,
+  spike: string,
+): RawMapEntry {
+  return {
+    path, unidad, rawMin, rawMax,
+    fisicoMin: fromRaw(rawMin), fisicoMax: fromRaw(rawMax),
+    estado: 'PROBADO', spike,
+    toRaw, fromRaw,
+  };
+}
+
 /** Conversión lineal. Sirve de punto de partida hasta que un spike mida la curva real. */
 function lineal(
   path: string,
@@ -106,21 +138,50 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // oficial, no medidas contra el aparato. Ninguna de las dos esta probada --el
   // `protocol-spec` §6.3 las da como «sin probar»-- y la medicion es barata:
   // escribir un crudo y leer que frecuencia informa la consola.
-  deLaConsola(
+  // **Medidas el 2026-09-13 contra el filtro, no contra lo que la consola guarda.**
+  //
+  // La medicion 101 barrio el crudo de la banda 1 y midio la respuesta en
+  // frecuencia del canal con un multitono, por el bucle a la interfaz. El pico de
+  // la campana es `f0`, y siguio a `20*1102,5^V` dentro del **0,24 %** en seis
+  // crudos entre 116 Hz y 10,9 kHz. La recta que este archivo tenia hasta ayer
+  // --`lineal(20, 20000)`-- se aparta hasta un **factor de 43,4**.
+  //
+  // El Q, medido como el ancho a mitad de la ganancia en decibeles con la
+  // frecuencia fija en 1 kHz, siguio a `0,05*300^V` dentro de **x1,02** en cinco
+  // crudos. La recta erra **x9,83**.
+  //
+  // **El rango declarado es el medido y no el del recorrido entero.** Los extremos
+  // --crudo 0 y crudo 1-- caen fuera de la ventana del estimulo: ahi el pico de la
+  // campana da contra el borde y lo que se mediria seria el borde. La familia de
+  // exponenciales que tambien cae dentro del 5 % en los crudos medidos tiene la
+  // base entre 949 y 1268, o sea que en el crudo 1,0 la frecuencia queda entre
+  // 17 530 y 27 675 Hz: **el tope no esta medido**, y por eso no se declara.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2b/evidence/curvas-del-ecualizador-2026-09-13b.txt`
+  medido(
     'i.N.eq.b1.freq', 'Hz',
     (v) => 20 * Math.pow(1102.5, v),
     (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
   ),
-  deLaConsola(
+  medido(
     'i.N.eq.b1.q', 'Q',
     (v) => 0.05 * Math.pow(300, v),
     (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
   ),
-  // **Estas dos se dejan como estan, y por un motivo.** El manual da −20…+20 dB
-  // para la ganancia del ecualizador, contra los ±15 de aca, pero el `mixer.html`
-  // no da formula: es **una sola** fuente contra el codigo. No se cambia un
-  // numero inventado por otro; se mide. Y del filtro pasa-altos no hay ni manual
-  // ni formula, asi que su recta queda como lo que es: un marcador de sitio.
+  // **La ganancia: ahora hay DOS fuentes contra el codigo, y sigue sin medirse
+  // bien.** El manual dice ±20 dB contra los ±15 de aca, y la medicion 101 vio la
+  // campana subir **20,0 dB exactos** con el crudo de ganancia en 1,0, en los
+  // ocho puntos del barrido. Eso es fuerte, pero **el pico de una campana no es
+  // el parametro de ganancia** salvo que el filtro este normalizado de cierta
+  // manera, y eso no se sabe. Ademas la 101 midio un solo crudo de ganancia --el
+  // extremo--, asi que de la FORMA de la ley no se sabe nada: podria no ser
+  // lineal. Queda DESCONOCIDO con el hallazgo anotado, y se mide aparte.
+  //
+  // Del filtro pasa-altos no hay ni manual ni formula, asi que su recta queda
+  // como lo que es: un marcador de sitio.
   lineal('i.N.eq.hpf.freq', 'Hz', 20, 400, 'DESCONOCIDO', 'SPK-P0.2b'),
   lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían

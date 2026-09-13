@@ -24,6 +24,7 @@ import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
+import { restaurarClaves } from '../restaurar.ts';
 // Los instrumentos de audio son JavaScript puro y no tienen tipos. El import va
 // en una linea porque `@ts-expect-error` aplica a la linea siguiente, y con el
 // import partido el error cae en la del `from` y la directiva queda sin usar.
@@ -128,7 +129,7 @@ async function capturar(etiqueta: string): Promise<Captura> {
   const wav = join(carpeta, `${etiqueta}.wav`);
   const hijo = spawn(GRABADOR, [String(SEGUNDOS), wav, 'Scarlett'], { stdio: 'ignore' });
   await new Promise<void>((r) => { hijo.on('close', () => r()); });
-  const r = respuesta(wav, frecuencias) as Captura;
+  const r = (await respuesta(wav, frecuencias)) as Captura;
   rmSync(wav, { force: true });
   // **Si el estimulo dejo de sonar, todo lo que sigue es ruido con forma de
   // curva.** `afplay` termina cuando el archivo se acaba, y sin esta guarda
@@ -238,18 +239,30 @@ let nivelPorTono = NaN;
 let alturaDelControl = NaN;
 let contribucionDelResto = NaN;
 
+/**
+ * Lo que hay que devolver, leido del aparato antes de empezar.
+ *
+ * Va por `restaurarClaves`, que **reconecta si el transporte se cayo**. La
+ * primera corrida de esta medicion perdio el WebSocket a mitad de camino y la
+ * restauracion fallo con «transporte no conectado», dejando la consola con cinco
+ * claves cambiadas.
+ */
+const A_RESTAURAR: readonly (readonly [string, number])[] = [
+  [`i.${n}.eq.bypass`, PREVIO.bypass],
+  [`i.${n}.eq.b1.freq`, PREVIO.freq],
+  [`i.${n}.eq.b1.gain`, PREVIO.gain],
+  [`i.${n}.eq.b1.q`, PREVIO.q],
+  [`i.${n}.dyn.bypass`, PREVIO.dynCanal],
+  [`i.${n}.deesser.enabled`, PREVIO.deesser],
+  [`i.${n}.gate.enabled`, PREVIO.gate],
+  ['m.dyn.bypass', PREVIO.dynGeneral],
+  ['m.afs.enabled', PREVIO.afs],
+];
+
 await conRestauracion(
-  () => {
+  async () => {
     sonando?.kill();
-    t.enviar(codificarSetd(`i.${n}.eq.bypass`, PREVIO.bypass));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.freq`, PREVIO.freq));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.gain`, PREVIO.gain));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.q`, PREVIO.q));
-    t.enviar(codificarSetd('m.afs.enabled', PREVIO.afs));
-    t.enviar(codificarSetd(`i.${n}.dyn.bypass`, PREVIO.dynCanal));
-    t.enviar(codificarSetd(`i.${n}.deesser.enabled`, PREVIO.deesser));
-    t.enviar(codificarSetd(`i.${n}.gate.enabled`, PREVIO.gate));
-    t.enviar(codificarSetd('m.dyn.bypass', PREVIO.dynGeneral));
+    await restaurarClaves(t, maquina, A_RESTAURAR);
     rmSync(carpeta, { recursive: true, force: true });
   },
   async () => {

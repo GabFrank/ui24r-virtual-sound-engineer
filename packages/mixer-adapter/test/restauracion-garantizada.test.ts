@@ -114,12 +114,35 @@ function soloCodigo(texto: string): string {
   }).join('\n');
 }
 
+/**
+ * ¿Es un **guion** que corre solo, o un módulo que alguien importa?
+ *
+ * **La regla del trinquete es «si el proceso muere, la consola queda escrita», y
+ * un módulo que nunca corre solo no puede dejar nada escrito**: lo dejan sus
+ * llamadores, y ésos sí están en la cuenta. Meter un ayudante en la lista de
+ * pendientes sería declarar una deuda que no existe, y agregarlo a una lista de
+ * excepciones por su nombre es como se pudren los trinquetes.
+ *
+ * Se distingue por la estructura y no por el nombre: **todos los guiones de este
+ * árbol abren la consola con un `await` en el nivel superior** —`await
+ * t.conectar(maquina)`— porque no hay otra forma de empezar. Un módulo de
+ * ayuda tiene sus `await` adentro de sus funciones, indentados.
+ *
+ * Lo encontró `tools/spikes/restaurar.ts` el 2026-09-13: escribe a la consola
+ * —es lo único que hace— y no puede usar `conRestauracion` porque **es** la
+ * restauración, y usarse a sí misma sería circular.
+ */
+function correSolo(codigo: string): boolean {
+  return /^await\s/m.test(codigo);
+}
+
 function clasificar(): { escriben: string[]; conRestauracion: string[] } {
   const escriben: string[] = [];
   const conRestauracion: string[] = [];
   for (const ruta of archivosTs(GUIONES)) {
     const codigo = soloCodigo(readFileSync(ruta, 'utf8'));
     if (!/\.enviar\(codificarSet[ds]\(/.test(codigo)) continue;
+    if (!correSolo(codigo)) continue;
     const rel = ruta.slice(GUIONES.length + 1);
     escriben.push(rel);
     if (/conRestauracion\(/.test(codigo)) conRestauracion.push(rel);

@@ -18,9 +18,15 @@ test('ADR-006: una conversión no verificada en hardware no se escribe', () => {
     'el mensaje dice qué spike lo desbloquea');
 });
 
-test('hoy no hay ninguna ruta cruda escribible, y eso es correcto', () => {
-  assert.deepEqual(rutasProbadas(), [],
-    'ninguna conversión está verificada todavía: los spikes no se ejecutaron');
+test('las unicas rutas escribibles son las que una medicion habilito', () => {
+  // Hasta el 2026-09-13 esta lista estaba vacía y el test decía que eso era
+  // correcto. Lo era: ninguna conversión se había medido. La medición 101 midió
+  // dos contra el filtro real, así que ahora la lista tiene exactamente esas dos.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una tercera sin que alguien
+  // agregue acá su medición y su evidencia, esto falla.
+  assert.deepEqual([...rutasProbadas()].sort(), ['i.N.eq.b1.freq', 'i.N.eq.b1.q'],
+    'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 
 test('toda entrada declara su spike y su rango físico', () => {
@@ -120,31 +126,83 @@ test('el ecualizador usa la curva de la consola, no una recta', () => {
         `${c.path} en el crudo ${v}: da ${e.fromRaw(v)} y la consola ${esperado}`);
     }
 
-    // 2. Los extremos son los que declaran las dos fuentes.
-    assert.ok(Math.abs(e.fisicoMin - c.rango[0]) / c.rango[0] < 1e-9,
-      `${c.path} arranca en ${e.fisicoMin} y no en ${c.rango[0]}`);
-    assert.ok(Math.abs(e.fisicoMax - c.rango[1]) / c.rango[1] < 1e-9,
-      `${c.path} termina en ${e.fisicoMax} y no en ${c.rango[1]}`);
+    // 2. **El rango declarado es el MEDIDO, no el del recorrido entero.**
+    // Los extremos del parámetro --crudo 0 y crudo 1-- caen fuera de la ventana
+    // del estímulo de la 101: ahí el pico de la campana da contra el borde y lo
+    // que se mediría sería el borde. Declararlos sería afirmar lo que nadie vio.
+    assert.ok(e.rawMin > 0 && e.rawMax < 1,
+      `${c.path} declara el recorrido entero (${e.rawMin}..${e.rawMax}) y la 101 `
+      + 'no midió los extremos');
+    assert.ok(Math.abs(e.fisicoMin - c.f(e.rawMin)) / e.fisicoMin < 1e-9,
+      `${c.path}: fisicoMin tiene que ser la función evaluada en rawMin`);
+    assert.ok(Math.abs(e.fisicoMax - c.f(e.rawMax)) / e.fisicoMax < 1e-9,
+      `${c.path}: fisicoMax tiene que ser la función evaluada en rawMax`);
+    // Y el recorrido entero sigue siendo el que las dos fuentes declaran, aunque
+    // no esté medido: la función es la misma; lo acotado es hasta dónde se vio.
+    assert.ok(Math.abs(e.fromRaw(0) - c.rango[0]) / c.rango[0] < 1e-9);
+    assert.ok(Math.abs(e.fromRaw(1) - c.rango[1]) / c.rango[1] < 1e-9);
 
-    // 3. **Y NO es una recta.** Ésta es la guarda que atrapa una vuelta atrás:
-    // los dos puntos de arriba los cumpliría cualquier curva que comparta los
-    // extremos. En el medio, una exponencial y la recta que une sus extremos se
-    // separan por un factor grande, y acá se exige que se separen.
+    // 3. **Y NO es una recta**, con el umbral DERIVADO del tramo y no puesto a ojo.
+    //
+    // Los dos puntos de arriba los cumpliría cualquier curva que comparta los
+    // extremos, así que hace falta mirar el medio. Pero cuánto se separan una
+    // exponencial y la recta que une sus extremos **depende de cuánto abarque el
+    // tramo**: si el tramo cubre un factor `r`, la separación en el medio es
+    // exactamente `(1+r)/(2·√r)`.
+    //
+    // Eso importó el 2026-09-13: cuando el rango pasó del recorrido entero al
+    // medido, la separación del Q bajó de ×16,6 a ×1,54 y un umbral fijo de 5
+    // empezó a fallar **sin que la curva hubiera cambiado**. Un umbral constante
+    // acá no mide la forma: mide el ancho del tramo.
+    //
+    // Una recta da ×1,00 por definición, así que el umbral se pone en la
+    // predicción con una tolerancia, y con eso sigue atrapando el revert.
+    const factorDelTramo = e.fisicoMax / e.fisicoMin;
+    const separacionEsperada = (1 + factorDelTramo) / (2 * Math.sqrt(factorDelTramo));
+    const medio = (e.rawMin + e.rawMax) / 2;
     const recta = e.fisicoMin + 0.5 * (e.fisicoMax - e.fisicoMin);
-    const curva = e.fromRaw(0.5);
-    assert.ok(recta / curva > 5,
-      `${c.path} se parece demasiado a una recta en el medio: la recta da ${recta} `
-      + `y la curva ${curva}. Si esto falla, alguien la volvió a poner lineal.`);
+    const curva = e.fromRaw(medio);
+    assert.ok(Math.abs(recta / curva - separacionEsperada) / separacionEsperada < 0.02,
+      `${c.path}: la separacion en el medio da ${(recta / curva).toFixed(3)} y una `
+      + `exponencial sobre este tramo tiene que dar ${separacionEsperada.toFixed(3)}. `
+      + 'Si esto falla, alguien cambio la forma de la curva.');
+    assert.ok(separacionEsperada > 1.2,
+      `${c.path}: sobre un tramo de factor ${factorDelTramo.toFixed(1)} una recta y `
+      + 'una exponencial casi no se distinguen, asi que este test dejo de discriminar');
   }
 });
 
-test('el ecualizador queda INFERIDO: leído del cliente, no medido', () => {
+test('el ecualizador quedo PROBADO, y sólo dentro de lo que se midió', () => {
   for (const c of CURVAS_DE_LA_CONSOLA) {
-    // Que la curva sea la correcta no la hace medida. `protocol-spec` §6.3 las
-    // da como «sin probar», y subirlas a PROBADO sin medir sería cambiar una
-    // invención por una lectura y llamarla evidencia.
-    assert.equal(entrada(c.path)?.estado, 'INFERIDO',
-      `${c.path} no está medido contra el aparato: no puede estar en PROBADO`);
+    const e = entrada(c.path);
+    assert.equal(e?.estado, 'PROBADO',
+      `${c.path} se midió contra el filtro en la 101`);
+    assert.equal(e?.spike, 'SPK-P0.2b', 'y la entrada dice qué spike la habilitó');
+  }
+});
+
+test('fuera del rango medido, la conversion se niega', () => {
+  // **Es la mitad que hace honesto el PROBADO.** La función vale en todo el
+  // recorrido, pero sólo se comprobó en un tramo; `aRaw` tiene que rechazar lo de
+  // afuera en vez de extrapolar con cara de medido.
+  const bajo = aRaw('i.N.eq.b1.freq', 30);
+  assert.equal(bajo.ok, false);
+  assert.equal(bajo.ok === false && bajo.codigo, 'FUERA_DE_RANGO',
+    '30 Hz está por debajo de los 115 que la 101 midió');
+  const alto = aRaw('i.N.eq.b1.freq', 18000);
+  assert.equal(alto.ok, false);
+  assert.equal(alto.ok === false && alto.codigo, 'FUERA_DE_RANGO',
+    '18 kHz está por encima de los 10,9 que la 101 midió');
+
+  // Y adentro sí convierte, con la ida y la vuelta coherentes.
+  const dentro = aRaw('i.N.eq.b1.freq', 1000);
+  assert.equal(dentro.ok, true);
+  if (dentro.ok) {
+    assert.ok(Math.abs(entrada('i.N.eq.b1.freq')!.fromRaw(dentro.raw) - 1000) < 1e-6,
+      'pedir 1 kHz tiene que escribir el crudo que la consola lee como 1 kHz');
+    // El crudo de fábrica de la banda 2 es exactamente ése: 1 kHz.
+    assert.ok(Math.abs(dentro.raw - 0.5584347738) < 1e-6,
+      'y ese crudo es el que el aparato trae de fábrica para 1 kHz');
   }
 });
 
