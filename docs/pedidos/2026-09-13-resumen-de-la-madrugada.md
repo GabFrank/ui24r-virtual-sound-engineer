@@ -6,14 +6,18 @@ Plan: [`2026-09-13-plan-de-la-madrugada.md`](2026-09-13-plan-de-la-madrugada.md)
 | Bloque | |
 |---|---|
 | 0 — la 101 | **cerrado** |
-| 1 — la 102 | **cerrado** |
+| 1 — las mediciones | **cerrado, y se extendió**: además de la 102 salieron la **104** (la ley del envío contra la salida real) y la **105** (de dónde viene la fuga) |
 | 2 — auditoría general | **cerrada**, con sus nueve ALTA aplicados |
 | 3 — el manual | **cerrado**, con cinco tareas escritas |
-| 4 — producto | **a medias**: de las seis tareas (P1…P6) se hizo **P2**, más tres de robustecimiento que no estaban en la lista |
+| 4 — producto | **a medias**: de las seis tareas (P1…P6) se hizo **P2**, más **seis** de robustecimiento que no estaban en la lista, y dos guiones convertidos de P3 |
 
 La primera versión de este resumen decía «los cinco bloques quedaron cerrados».
 No era cierto, y es exactamente la clase de sobreafirmación que dos auditorías
 estuvieron corrigiendo toda la noche.
+
+**Lo que necesita una mano tuya, en un minuto:** desenchufar el cable de la
+entrada 1 de la interfaz y avisarme. Con eso se cierra de dónde viene la fuga de
+1 kHz, que es lo único que limita hasta dónde puede medir esta serie.
 
 ## Lo que ahora se sabe y antes no
 
@@ -256,9 +260,15 @@ Dos cosas que vi al mirar esa lista y que son decisión tuya, no mía:
   y no lo hago sin que lo pidas.
 - `var.currentSnapshot` apunta a `VSE_AUTO_1789097773977`, que **no está en
   ninguna de las tres listas**. El puntero quedó colgado. No lo toqué: mover
-  punteros de instantánea es lo que aplicaría una y cambiaría la consola entera. La fantasma del canal 9 no se tocó. Nada
-sonó en la sala: no hay nada conectado a ninguna salida salvo los dos cables del
-bucle.
+  punteros de instantánea es lo que aplicaría una y cambiaría la consola entera.
+
+La fantasma del canal 9 no se tocó. Nada sonó en la sala: no hay nada conectado a
+ninguna salida salvo los dos cables del bucle.
+
+**El estado quedó verificado por lectura a las 07:40**, no por «no lo toqué»: las
+6665 claves están, el envío del canal 10 al auxiliar 5 en 0, los dos faders donde
+estaban, y **la pila del supresor del general vacía**. No hay ningún proceso de
+medición corriendo.
 
 **Lo que sí hay que decidir es el ring-out perdido.** Tres filtros de −6 dB en
 200, 4226 y 8190 Hz. Rehacerlo es la forma correcta; escribirlos de vuelta con un
