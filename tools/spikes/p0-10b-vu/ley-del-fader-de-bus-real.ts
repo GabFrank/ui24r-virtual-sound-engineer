@@ -50,9 +50,12 @@ const TOLERANCIA_DIFERENCIA_DB = 2 * ESCALON_DB;
 
 /** El envío queda fijo: es la fuente del bus, no lo que se mide. */
 const ENVIO_FIJO = 0.45;
-/** Lo que la 104 midió con esta misma cadena. C1 exige acercarse. */
-const C1_ESPERADO_DBFS = -12.68;
-const C1_TOLERANCIA_DB = 3;
+/**
+ * Lo que la 104 midió con la cadena al revés —envío 1,0 y bus 0,45—. **Se imprime
+ * como referencia y NO se compara contra nada**: ese número sale de suponer que
+ * el fader del bus sigue `faderADb`, que es la hipótesis bajo prueba.
+ */
+const LA_104_DIO_DBFS = -12.68;
 /** Un punto vale si está este margen por encima del piso EFECTIVO. */
 const MARGEN_MINIMO_DB = 45;
 /** L5: sin este recorrido la corrida no separa `faderADb` de una curva parecida. */
@@ -68,10 +71,29 @@ const RECORRIDO_MINIMO_DB = 40;
 const PUNTOS_MINIMOS = 10;
 /** Menos cuadros VU2 que esto y el promedio no es un promedio. */
 const CUADROS_MINIMOS = 20;
-/** C1: el tono tiene que estar AL MENOS esto por encima del piso efectivo. */
-const C1_SOBRE_EL_PISO_DB = 40;
-/** L7: la referencia interna de la interfaz no puede derivar mas que esto. */
-const L7_DERIVA_MAXIMA_DB = 0.3;
+/**
+ * C1: el tono tiene que estar al menos esto por encima del piso efectivo.
+ *
+ * **Y el número no es una opinión: es la condición necesaria para que L5 pueda
+ * pasar.** Cualquier punto util necesita `MARGEN_MINIMO_DB` sobre el piso, y
+ * entre el mejor y el peor tiene que haber `RECORRIDO_MINIMO_DB`. O sea que el
+ * tope tiene que estar 45 + 40 = 85 dB arriba. Exigir menos abre una franja
+ * donde C1 dice «el tono llega», se barren cinco minutos con el general del
+ * usuario en 0, y L5 falla por aritmetica. Lo esperado en este banco son 104 dB.
+ */
+const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
+/**
+ * L7: la referencia interna de la interfaz no puede derivar mas que esto.
+ *
+ * **0,1 y no 0,3, por aritmetica.** L3b declara estructura con una pendiente de
+ * 0,002 dB/dB, que sobre los ~59 dB de recorrido previsto son 0,118 dB de deriva
+ * total. Un tope de 0,3 dejaria pasar una deriva del instrumento **2,5 veces
+ * mayor que lo que L3b puede resolver**: la Mac podria fabricar el hallazgo de
+ * L3b sin que L7 se entere. El control del instrumento tiene que ser mas fino que
+ * la expectativa que vigila. La 104 midio 0,00 dB sobre 50 capturas con un tope
+ * de 0,2, asi que apretar a 0,1 no cuesta nada y esta medido.
+ */
+const L7_DERIVA_MAXIMA_DB = 0.1;
 
 /**
  * Dos crudos deliberadamente FUERA de la rejilla de centésimos.
@@ -340,6 +362,14 @@ await conRestauracion(
     pisoEfectivo = Math.max(fugaDb, ruidoDb);
     console.log(`C2 con el envio CERRADO y el bus al tope: ${fugaDb.toFixed(2)} dBFS`);
     console.log(`   ruido del bin en esa misma captura: ${ruidoDb.toFixed(2)} dBFS`);
+    // **Un piso no finito desactivaria la regla de anulacion entera.** Con C2 en
+    // silencio digital exacto el ruido da −Infinity, todo margen da +Infinity, y
+    // NINGUN punto se anula nunca: se puntuarian puntos hundidos en el ruido como
+    // si estuvieran medidos, con todo el aparato de C2 silenciosamente apagado.
+    if (!Number.isFinite(pisoEfectivo)) {
+      throw new Error(`el piso efectivo dio ${pisoEfectivo}: sin un piso finito la regla `
+        + 'de anulacion no puede anular nada y se publicarian puntos hundidos en el ruido.');
+    }
     console.log(`   PISO EFECTIVO = ${pisoEfectivo.toFixed(2)} dBFS, el mayor de los dos.`);
     console.log('   `pisoDelBin` saltea los bins de guarda, asi que una fuga coherente en');
     console.log('   1 kHz le es invisible: por eso se mide aparte y por eso se usa esta.');
@@ -354,7 +384,7 @@ await conRestauracion(
     const sobreElPiso = c1 - pisoEfectivo;
     console.log(`C1 envio en ${ENVIO_FIJO}, bus al tope: ${c1.toFixed(2)} dBFS, `
       + `${sobreElPiso.toFixed(1)} dB sobre el piso efectivo`);
-    console.log(`   (la 104, con la cadena al reves, dio ${C1_ESPERADO_DBFS} dBFS)`);
+    console.log(`   (la 104, con la cadena al reves, dio ${LA_104_DIO_DBFS} dBFS)`);
     // **C1 comprueba que el tono LLEGA, y nada mas.** La primera version exigia
     // -12,68 +-3 dBFS, y ese numero sale de suponer que el fader del BUS sigue
     // `faderADb` --que es justo la hipotesis bajo prueba--. Con un tope del bus de
@@ -394,13 +424,13 @@ await conRestauracion(
           // **En el crudo LEIDO, no en el escrito.** Si la consola redondeara, ese
           // error entraria en la ley sin tener nada que ver con ella, y `faderADb`
           // se evaluaria en un numero que la consola no tiene.
-          atenuacion: NaN, prediccion: faderADb(CRUDOS[0]!) - faderADb(crudoLeido),
+          atenuacion: NaN, prediccion: NaN,
           anulado: null,
         });
         console.log(`${crudo.toFixed(4).padStart(6)} | ${crudoLeido.toFixed(4).padStart(8)} | `
           + `${m.realDb.toFixed(2).padStart(8)} | ${m.preDb.toFixed(2).padStart(8)} | `
           + `${m.canalDb.toFixed(2).padStart(8)} | ${'—'.padStart(7)} | `
-          + `${(faderADb(CRUDOS[0]!) - faderADb(crudo)).toFixed(2).padStart(8)} | `
+          + `${(faderADb(1) - faderADb(crudoLeido)).toFixed(2).padStart(8)} | `
           + `${(m.realDb - pisoEfectivo).toFixed(0).padStart(6)}`
           + (m.recorta ? '  <-- RECORTA' : ''));
       }
@@ -419,6 +449,14 @@ for (const sentido of ['baja', 'sube'] as const) {
   const tope = puntos.find((p) => p.sentido === sentido && p.crudo === CRUDOS[0]);
   for (const p of puntos.filter((x) => x.sentido === sentido)) {
     p.atenuacion = tope === undefined ? NaN : tope.m.realDb - p.m.realDb;
+    // **Los DOS terminos con el crudo leido, no solo el del punto.** Con el tope
+    // en el crudo escrito, un tope que la consola devolviera como 0,9999 en vez de
+    // 1,0 metia un sesgo CONSTANTE de 0,005 dB en los cuarenta residuos --del
+    // mismo tamaño que los residuos de la 104, ≤0,007-- y alcanzaba para empujar
+    // todos los signos al mismo lado y hacer que L3b, «la que decide», fallara
+    // acusando a la consola por un redondeo del tope.
+    p.prediccion = tope === undefined ? NaN
+      : faderADb(tope.crudoLeido) - faderADb(p.crudoLeido);
     const margen = p.m.realDb - pisoEfectivo;
     if (!(margen >= MARGEN_MINIMO_DB)) {
       // La formula del error es de primer orden: con margen chico no significa nada
@@ -442,12 +480,20 @@ console.log('');
 console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
 
 {
-  const dif = Math.abs(c1 - C1_ESPERADO_DBFS);
-  const ok = dif <= C1_TOLERANCIA_DB;
-  console.log(`\nC1 el tono llega: ${d(c1)} dBFS contra ${C1_ESPERADO_DBFS} de la 104 `
-    + `(difiere ${d(dif)}, tope ${C1_TOLERANCIA_DB})`);
-  console.log(ok ? '   PASA.' : '   FALLA. O el tono no entra, o el banco no es el mismo.');
-  if (!ok) problemas.push('C1');
+  // **C1 ya se juzgo, y se juzgo ARRIBA.** Acá había una segunda evaluación que
+  // comparaba contra −12,68 ± 3 dBFS, y sobrevivió al arreglo que agregó la
+  // buena: el control nuevo se puso y el viejo no se sacó. O sea que C1 se
+  // evaluaba dos veces con criterios contradictorios y **ganaba el que el
+  // contrato de esta misma medición declara falso**, porque era el que llegaba
+  // al `if`. Con un tope del bus de +6 en vez de +10 habría abortado con el
+  // motivo impreso al revés: «el banco no es el mismo».
+  //
+  // Lo encontró una segunda auditoría, y la lección es de forma: un arreglo que
+  // agrega el control bueno sin sacar el malo deja los dos vivos, y gana el que
+  // escribe en `problemas`.
+  console.log(`\nC1 el tono llega: ${d(c1)} dBFS, juzgado en el sitio antes de barrer.`);
+  console.log('   No se compara contra un nivel absoluto: ese numero saldria de suponer');
+  console.log('   que el fader del BUS sigue faderADb, que es la hipotesis bajo prueba.');
 }
 {
   const pres = utiles.map((p) => p.m.preDb).filter(Number.isFinite);
@@ -487,12 +533,21 @@ console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
   // «se mide y no se usa» que esta serie ya cometio cuatro veces.
   const refs = puntos.map((p) => p.m.referenciaDb).filter(Number.isFinite);
   const deriva = refs.length === 0 ? NaN : Math.max(...refs) - Math.min(...refs);
-  const ok = refs.length > 0 && deriva <= L7_DERIVA_MAXIMA_DB;
-  console.log(`\nL7 la referencia interna de la interfaz: deriva ${d(deriva)} dB sobre `
-    + `${refs.length} capturas (tope ${L7_DERIVA_MAXIMA_DB})`);
-  console.log(ok ? '   PASA. El instrumento no se movio, y eso NO lo dice ningun otro control.'
-    : '   FALLA. Se movio la computadora o el conversor, no la consola.');
-  if (!ok) problemas.push('L7');
+  console.log(`\nL7 la referencia interna de la interfaz: ${refs.length} capturas finitas`);
+  // **Con una sola captura la deriva da 0 y L7 pasaria sola**, que es el mismo
+  // agujero que L4 y L6 tenian y que este mismo arreglo cerro en ellas. El puerto
+  // se trajo la expectativa de la 104 y dejo su minimo.
+  if (refs.length < PUNTOS_MINIMOS) {
+    console.log(`   NO DECIDE: con menos de ${PUNTOS_MINIMOS} lecturas la deriva da cero `
+      + 'y esta expectativa pasaria sola.');
+    problemas.push('L7 sin lecturas');
+  } else {
+    const ok = deriva <= L7_DERIVA_MAXIMA_DB;
+    console.log(`   deriva ${d(deriva)} dB (tope ${L7_DERIVA_MAXIMA_DB})`);
+    console.log(ok ? '   PASA. El instrumento no se movio, y eso NO lo dice ningun otro control.'
+      : '   FALLA. Se movio la computadora o el conversor, no la consola.');
+    if (!ok) problemas.push('L7');
+  }
 }
 {
   const ats = utiles.map((p) => p.atenuacion).filter(Number.isFinite);
@@ -605,9 +660,19 @@ if (problemas.length > 0) {
     // ~0,005 dB, la sexagesima parte del escalon, y hacerlo FALLAR seria rechazar
     // por algo que no se puede ver. La 104 movio este veredicto a dB a proposito y
     // el 106 habia vuelto a los bits.
-    const costoDb = Math.abs(faderADb(Math.min(1, CRUDOS[0]! - peor.dif)) - faderADb(CRUDOS[0]!));
+    // **El costo se evalua en el crudo de CADA punto y se toma el peor.** La
+    // version anterior lo evaluaba siempre en `CRUDOS[0]` --el tope de la curva,
+    // donde la pendiente es ~50 dB por unidad-- cuando la desviacion puede ocurrir
+    // abajo, donde es ~156. Subestimaba 3,1 veces: imprimia PASA hasta una
+    // desviacion que abajo cuesta 0,105 dB, el 31 % del presupuesto entero de L3.
+    // O sea que L6 daba PASA sobre un redondeo que L3 ve y que mete pendiente en
+    // L3b, que es justo lo que este veredicto en decibeles venia a impedir.
+    const costoDb = puntos.reduce((peorCosto, p) => {
+      const c = Math.abs(faderADb(p.crudoLeido) - faderADb(p.crudo));
+      return Number.isFinite(c) && c > peorCosto ? c : peorCosto;
+    }, 0);
     console.log(`   diferencia maxima ${peor.dif.toExponential(1)} en el crudo ${peor.crudo}, `
-      + `que cuesta ${costoDb.toFixed(4)} dB`);
+      + `y el peor costo en dB sobre todos los puntos es ${costoDb.toFixed(4)} dB`);
     console.log(costoDb < ESCALON_DB / 10
       ? '   PASA. Y es una COTA, no una identidad.'
       : '   FALLA: la consola redondea lo bastante como para verse en L3.');

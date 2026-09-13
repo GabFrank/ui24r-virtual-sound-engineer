@@ -31,7 +31,19 @@ export async function leerUnaClave(
   const hasta = Date.now() + topeMs;
   try {
     while (Date.now() < hasta) {
-      const { value, done } = await lector.read();
+      // **Con plazo, y no sólo mirando el reloj entre lecturas.** Si la consola
+      // acepta la conexión y no manda nada, `read()` no resuelve nunca y el guion
+      // queda colgado —con el general del usuario abajo y el tono sonando, en el
+      // caso del ítem 106—. `estadoPorHttp` se protege así desde antes; esta
+      // función heredó el descuido de la copia que vivía adentro de la 104, y al
+      // darle nombre propio pasó a ser el único instrumento que las dos
+      // mediciones comparten: 43 oportunidades por corrida en vez de una.
+      const paso = await Promise.race([
+        lector.read(),
+        new Promise<null>((r) => { setTimeout(() => r(null), 900); }),
+      ]);
+      if (paso === null) continue;
+      const { value, done } = paso;
       if (done) break;
       texto += decoder.decode(value, { stream: true });
       const m = texto.match(re);

@@ -31,9 +31,16 @@ la decisión; abrirla necesita su propio ADR.
 
 ## El banco, y qué se escribe
 
-`i.9.aux.4.value = 0,45` fijo, como fuente del bus. Con el bus al tope eso pone
-la interfaz en **−12,68 dBFS**, que es el mismo nivel de arranque que midió la
-104: si sale otra cosa, el banco se movió.
+`i.9.aux.4.value = 0,45` fijo, como fuente del bus. Con el bus al tope eso
+**debería** poner la interfaz cerca de los −12,68 dBFS que midió la 104 con la
+cadena al revés — y ese número **se imprime como referencia y no se compara
+contra nada**, por lo que dice C1 más abajo: sale de suponer que el fader del
+bus sigue `faderADb`, que es la hipótesis bajo prueba.
+
+*(La primera versión de esta sección decía «si sale otra cosa, el banco se
+movió», y veintiocho líneas más abajo el mismo documento lo declaraba falso y
+peligroso. El arreglo se aplicó en un lugar y no en el otro — el mismo descuido
+que en el guion, donde el control viejo sobrevivió al lado del nuevo.)*
 
 Se barre **`a.4.mix`**, que es lo que se mide.
 
@@ -54,7 +61,12 @@ tiras además del canal 10 mandando a este auxiliar.
 ## Los controles positivos, antes de todo
 
 **C1 — el tono llega, y nada más que eso.** Con el envío en 0,45 y el bus al tope,
-la entrada 2 tiene que estar **al menos 40 dB por encima del piso efectivo**. Si
+la entrada 2 tiene que estar **al menos 85 dB por encima del piso efectivo**, que
+no es un número elegido: es la condición necesaria para que L5 pueda pasar —45 dB
+de margen para que un punto valga, más 40 de recorrido entre el mejor y el peor—.
+Exigir menos abre una franja donde C1 dice «el tono llega», se barren cinco
+minutos con el general del usuario en 0, y L5 falla por aritmética. En este banco
+se esperan 104 dB. Si
 no, el tono no está entrando —la salida por omisión de la Mac puede no ser la
 interfaz— y no hay nada que medir: **el guion lanza en el sitio**, adentro de
 `conRestauracion`, que es donde la excepción pasa por la restauración.
@@ -93,7 +105,10 @@ corrida no vale.
 del medidor (0,334 dB) en los puntos no anulados.
 
 **L3b — y el residuo no tiene estructura.** Pendiente del residuo contra la
-atenuación, y prueba de rachas de signo. **Es la expectativa que decide**, y está
+atenuación **por debajo de 0,002 dB/dB**, y al menos un tercio de los cambios de
+signo que se esperarían con residuos independientes. Los dos números van acá y no
+sólo en el código: una expectativa cuyo umbral no está pre-registrado no es una
+expectativa. **Es la expectativa que decide**, y está
 acá porque la 104 tuvo que agregarla: una cota de máximo absoluto no ve una
 desviación que crece, que es exactamente la firma que la 94 declaró indecidible.
 Su modo de falla propio es el residuo correlacionado, y una cota no puede verlo.
@@ -110,7 +125,11 @@ aritmética se escribe para que el número no sea una opinión:
 `m.mix = 0` llegó** en vez de suponerlo: sin esa comprobación, L5 fallaría
 acusando «el banco se degradó», que es la consola equivocada.
 
-**L7 — la referencia interna de la interfaz no deriva** más de 0,3 dB. Es el
+**L7 — la referencia interna de la interfaz no deriva** más de **0,1 dB**, y el
+número sale de L3b: una pendiente de 0,002 dB/dB sobre los ~59 dB de recorrido
+son 0,118 dB de deriva total, así que un tope más grueso dejaría que el
+instrumento **fabricara el hallazgo de L3b** sin que este control se entere. La
+104 midió 0,00 dB sobre 50 capturas con un tope de 0,2: apretar no cuesta nada. Es el
 **único control sobre el instrumento** de toda la corrida: la entrada 3 es un
 retorno interno de la Scarlett y no pasa por la consola, así que si deriva, lo
 que cambió es la computadora o el conversor. Todo lo demás vigila la consola.
