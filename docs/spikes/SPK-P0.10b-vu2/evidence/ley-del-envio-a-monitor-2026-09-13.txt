@@ -199,7 +199,7 @@ crudo  | desvio vs faderADb | error del instrumento | motivo
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
-# divergencia reconocida: ed2775001605396f
+# divergencia reconocida: 
 ================================================================================
 
 La huella de arriba --sha256:6dc0409e400b4b77-- YA NO COINCIDE con el guion de
@@ -250,3 +250,8 @@ mirarlo otra vez.
 Y de paso muestra su limite honesto: ese cambio fue un MOVIMIENTO de codigo, no
 una modificacion, y el validador lo informa como «TOCO CODIGO» porque no puede
 distinguir mover de cambiar. Acusa de mas, que es el lado correcto.
+
+Caduco por SEGUNDA vez el 2026-09-13, al sacar `leerUnaClave` del guion a un
+modulo compartido. Renovada a . Sigue siendo el mismo
+cambio de fondo --el supresor del general, que este archivo ya explica arriba--
+mas dos movimientos de codigo que no cambian lo que la corrida hizo.

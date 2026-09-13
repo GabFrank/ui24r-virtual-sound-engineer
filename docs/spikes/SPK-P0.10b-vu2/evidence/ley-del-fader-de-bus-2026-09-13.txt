@@ -1,0 +1,164 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T11:18:35.757Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-del-fader-de-bus-real.ts 10 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-del-fader-de-bus-real.ts sha256:e1dc9fcf654aa405
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 106 — LA LEY DEL FADER DE UN BUS, CONTRA LA SALIDA REAL ===
+canal 10 (i.9) -> auxiliar 5 (a.4) -> entrada 2
+se barre a.4.mix | envio fijo en 0.45
+escalon del medidor: 0.333401 dB | tolerancia de diferencia 0.6668 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.aux.4.value          0
+   i.9.aux.4.post           0
+   i.9.mute                 0
+   i.9.mix                  0.7647058824
+   a.4.mix                  0
+   a.4.mute                 0
+   a.4.afs.enabled          0
+   hwoutaux.4.src           a.4
+   m.mix                    0.7643020595
+   m.afs.enabled            1
+   m.afs.fmode              1
+   hw.9.gain                0.2508445026
+   ecualizador del bus: 31 bandas, todas centradas | bypass = 0
+
+   exigido sin escribir: bus y canal sin mutear, supresor del bus apagado,
+   hwoutaux.4.src = a.4, 0 tiras mas, ecualizador del bus plano
+
+=== LO QUE SE NEUTRALIZA ===
+   puerta y compresor del bus, y compresor, puerta y de-esser del canal
+   supresor del general: estaba en 1, apagado mientras suene
+   fader del GENERAL: estaba en 0.7643020595, a 0 toda la corrida.
+   Se mide por la entrada 2, asi que bajarlo no cuesta nada. Lo que
+   compra se informa abajo, con el numero de C2 al lado: el item 105
+   dejo una COTA --la fuga cayo al menos 30,4 dB-- y no un valor.
+
+=== LOS CONTROLES POSITIVOS ===
+C2 con el envio CERRADO y el bus al tope: -117.07 dBFS
+   ruido del bin en esa misma captura: -118.74 dBFS
+   PISO EFECTIVO = -117.07 dBFS, el mayor de los dos.
+   `pisoDelBin` saltea los bins de guarda, asi que una fuga coherente en
+   1 kHz le es invisible: por eso se mide aparte y por eso se usa esta.
+   Contra la 104, que midio -91,77 dBFS con el general arriba: -25.3 dB de diferencia. Eso es lo que compro bajarlo,
+   medido en ESTA corrida y no heredado del hallazgo.
+C1 envio en 0.45, bus al tope: -12.69 dBFS, 104.4 dB sobre el piso efectivo
+   (la 104, con la cadena al reves, dio -12.68 dBFS)
+
+=== EL BARRIDO ===
+crudo  | leido    | real     | pre bus  | canal    | at.real | prev~   | margen
+   (prev~ es provisoria: la que decide se calcula con el crudo LEIDO del tope,
+    que recien se sabe al terminar el barrido. Los residuos van en L3/L3b.)
+1.0000 |   1.0000 |   -12.69 |   -61.33 |   -46.66 |       — |    0.00~|    104
+0.9500 |   0.9500 |   -15.17 |   -61.33 |   -46.66 |       — |    2.48~|    102
+0.9000 |   0.9000 |   -17.40 |   -61.33 |   -46.66 |       — |    4.71~|    100
+0.8500 |   0.8500 |   -19.44 |   -61.33 |   -46.66 |       — |    6.75~|     98
+0.8237 |   0.8237 |   -20.46 |   -61.33 |   -46.66 |       — |    7.78~|     97
+0.8000 |   0.8000 |   -21.36 |   -61.33 |   -46.66 |       — |    8.68~|     96
+0.7500 |   0.7500 |   -23.23 |   -61.33 |   -46.66 |       — |   10.55~|     94
+0.7000 |   0.7000 |   -25.13 |   -61.33 |   -46.66 |       — |   12.44~|     92
+0.6500 |   0.6500 |   -27.11 |   -61.33 |   -46.66 |       — |   14.42~|     90
+0.6141 |   0.6141 |   -28.62 |   -61.33 |   -46.66 |       — |   15.94~|     88
+0.6000 |   0.6000 |   -29.25 |   -61.33 |   -46.66 |       — |   16.56~|     88
+0.5500 |   0.5500 |   -31.62 |   -61.33 |   -46.66 |       — |   18.94~|     85
+0.5000 |   0.5000 |   -34.30 |   -61.33 |   -46.66 |       — |   21.62~|     83
+0.4500 |   0.4500 |   -37.36 |   -61.33 |   -46.66 |       — |   24.67~|     80
+0.4000 |   0.4000 |   -40.87 |   -61.33 |   -46.66 |       — |   28.18~|     76
+0.3500 |   0.3500 |   -44.90 |   -61.33 |   -46.66 |       — |   32.21~|     72
+0.3000 |   0.3000 |   -49.53 |   -61.33 |   -46.66 |       — |   36.83~|     68
+0.2500 |   0.2500 |   -54.84 |   -61.33 |   -46.66 |       — |   42.14~|     62
+0.2000 |   0.2000 |   -60.92 |   -61.33 |   -46.66 |       — |   48.19~|     56
+0.1500 |   0.1500 |   -67.87 |   -61.33 |   -46.66 |       — |   55.07~|     49
+0.1000 |   0.1000 |   -75.87 |   -61.33 |   -46.66 |       — |   62.86~|     41
+0.1000 |   0.1000 |   -75.88 |   -61.33 |   -46.66 |       — |   62.86~|     41
+0.1500 |   0.1500 |   -67.89 |   -61.33 |   -46.66 |       — |   55.07~|     49
+0.2000 |   0.2000 |   -60.93 |   -61.33 |   -46.66 |       — |   48.19~|     56
+0.2500 |   0.2500 |   -54.83 |   -61.33 |   -46.66 |       — |   42.14~|     62
+0.3000 |   0.3000 |   -49.54 |   -61.33 |   -46.66 |       — |   36.83~|     68
+0.3500 |   0.3500 |   -44.90 |   -61.33 |   -46.66 |       — |   32.21~|     72
+0.4000 |   0.4000 |   -40.87 |   -61.33 |   -46.66 |       — |   28.18~|     76
+0.4500 |   0.4500 |   -37.36 |   -61.33 |   -46.66 |       — |   24.67~|     80
+0.5000 |   0.5000 |   -34.30 |   -61.33 |   -46.66 |       — |   21.62~|     83
+0.5500 |   0.5500 |   -31.62 |   -61.33 |   -46.66 |       — |   18.94~|     85
+0.6000 |   0.6000 |   -29.25 |   -61.33 |   -46.66 |       — |   16.56~|     88
+0.6141 |   0.6141 |   -28.63 |   -61.33 |   -46.66 |       — |   15.94~|     88
+0.6500 |   0.6500 |   -27.11 |   -61.33 |   -46.66 |       — |   14.42~|     90
+0.7000 |   0.7000 |   -25.13 |   -61.33 |   -46.66 |       — |   12.44~|     92
+0.7500 |   0.7500 |   -23.23 |   -61.33 |   -46.66 |       — |   10.55~|     94
+0.8000 |   0.8000 |   -21.36 |   -61.33 |   -46.66 |       — |    8.68~|     96
+0.8237 |   0.8237 |   -20.46 |   -61.33 |   -46.66 |       — |    7.78~|     97
+0.8500 |   0.8500 |   -19.44 |   -61.33 |   -46.66 |       — |    6.75~|     98
+0.9000 |   0.9000 |   -17.40 |   -61.33 |   -46.66 |       — |    4.71~|    100
+0.9500 |   0.9500 |   -15.17 |   -61.33 |   -46.66 |       — |    2.48~|    102
+1.0000 |   1.0000 |   -12.68 |   -61.33 |   -46.66 |       — |    0.00~|    104
+
+=== VEREDICTOS, contra el contrato del item 106 ===
+
+C1 el tono llega: -12.69 dBFS, juzgado en el sitio antes de barrer.
+   No se compara contra un nivel absoluto: ese numero saldria de suponer
+   que el fader del BUS sigue faderADb, que es la hipotesis bajo prueba.
+
+L1 el pre del auxiliar no se mueve: rango 0.00 dB (tope 0.6668)
+   PASA. El byte +0 esta antes del fader del bus, como estaba medido.
+
+L2 el medidor del canal no se mueve: rango 0.00 dB sobre 40 puntos, techo -46.66 dB
+   PASA. La fuente no se movio.
+
+L7 la referencia interna de la interfaz: 42 capturas finitas
+   deriva 0.00 dB (tope 0.1)
+   PASA. El instrumento no se movio, y eso NO lo dice ningun otro control.
+
+L5 recorrido util: 55.21 dB sobre 40 puntos (minimo 40)
+   PASA.
+
+L3 la salida real contra faderADb: desvio maximo 0.14 dB en el crudo 0.15 (tope 0.3334)
+   PASA. Y es una COTA, no una identidad: dice que si hay diferencia es menor que la resolucion.
+
+L3b el residuo contra faderADb: pendiente 0.00146 dB/dB sobre 38 puntos
+   signos: 26 positivos, 12 negativos, 2 cambios de signo (con residuos independientes se esperarian ~19)
+   FALLA. El residuo ESTA estructurado, y eso es un hallazgo y no una contradiccion con L3: una cota puntual no ve la estructura. Gana L3b.
+
+L4 ida y vuelta: 20 pares comparados
+   diferencia maxima 0.02 dB en el crudo 0.15
+   PASA.
+
+L6 el crudo escrito contra el releido: 42 comparados
+   el peor costo en dB sobre todos los puntos: 0.0000 dB (tope 0.0333)
+   PASA. Y es una COTA, no una identidad.
+   Dos de los crudos barridos estan fuera de la rejilla de centesimos a
+   proposito: sin ellos esta expectativa no podria fallar.
+
+=== LOS PUNTOS ANULADOS, QUE NO SE PUNTUAN PERO SE INFORMAN ===
+   baja 0.1: margen de 41.20 dB sobre el piso efectivo: el instrumento erraria 0.08 dB
+   sube 0.1: margen de 41.19 dB sobre el piso efectivo: el instrumento erraria 0.08 dB
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada sobre m.mix: el general es otra ruta y otra medicion.
+   Nada sobre el cero absoluto: es relativa al tope del barrido.
+   Nada sobre la ley INVERSA: esto mide crudo -> dB.
+   Un bus de diez, un dia, una frecuencia, un nivel de fuente.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.aux.4.value          esperado 0              leido 0
+   a.4.mix                  esperado 0              leido 0
+   m.mix                    esperado 0.7643020595   leido 0.7643020595
+   a.4.gate.enabled         esperado 1              leido 1
+   a.4.dyn.bypass           esperado 0              leido 0
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   m.afs.enabled            esperado 1              leido 1
+   Las 9 claves volvieron, por un camino distinto del que escribio.
+
+   filtros del supresor: 0 antes, 0 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 1

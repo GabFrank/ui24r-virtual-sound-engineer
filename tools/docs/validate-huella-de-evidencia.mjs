@@ -58,7 +58,8 @@ const leerDeDisco = (rel) => {
 /** El archivo tal como estaba en un commit. `null` si no existía ahí. */
 const leerDeCommit = (commit) => (rel) => {
   try {
-    return execFileSync('git', ['show', `${commit}:${rel}`], { cwd: RAIZ, encoding: 'utf8' });
+    return execFileSync('git', ['show', `${commit}:${rel}`],
+      { cwd: RAIZ, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
   } catch { return null; }
 };
 
