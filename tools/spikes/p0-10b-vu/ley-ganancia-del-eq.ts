@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   Ui24rTransport, codificarSetd, decodificarVuCanales,
-  dbDeMedidor, VU_ESCALA, MEDIDOR_RANGO_DB,
+  dbDeMedidor,
 } from '@vse/mixer-adapter';
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
@@ -214,7 +214,7 @@ const carpeta = mkdtempSync(join(tmpdir(), 'vse-108-'));
  *
  * Cada uno a `NIVEL_DBFS`, asi que la suma tiene un pico de 6 dB mas en el peor
  * caso. Las dos frecuencias completan un numero entero de ciclos en cada segundo
- * --1000 y 100 a 48 kHz-- asi que no hay discontinuidad en el bucle del archivo.
+ * --las dos son enteras-- asi que no hay discontinuidad en el bucle del archivo.
  */
 function tono(segundos: number): string {
   const muestras = FM * segundos;
@@ -604,6 +604,20 @@ await conRestauracion(
     t.enviar(codificarSetd(`i.${n}.eq.bypass`, previo(`i.${n}.eq.bypass`)));
     await new Promise((r) => setTimeout(r, 2000));
     const mPlano = await medir('C1-plano', true);
+    // **Las dos capturas de las que sale L1 no pasaban por la anulacion**, y L1 es
+    // uno de los gates que habilitan la ley. Era la unica data de la corrida sin
+    // control de calidad.
+    for (const [nombre, m] of [['puenteado', mPuenteado], ['plano', mPlano]] as const) {
+      if (m.recorta) throw new Error(`la captura «${nombre}» de L1 recorta`);
+      if (m.cuadros < CUADROS_MINIMOS) {
+        throw new Error(`la captura «${nombre}» de L1 tiene ${m.cuadros} cuadros VU2 y hacen `
+          + `falta ${CUADROS_MINIMOS}: el promedio no es un promedio.`);
+      }
+      if (!(m.centroDb - pisoEfectivo >= MARGEN_MINIMO_DB)) {
+        throw new Error(`la captura «${nombre}» de L1 esta a `
+          + `${(m.centroDb - pisoEfectivo).toFixed(1)} dB del piso, y hacen falta ${MARGEN_MINIMO_DB}.`);
+      }
+    }
     puenteadoDb = mPuenteado.centroDb;
     planoDb = mPlano.centroDb;
     const sobreElPiso = planoDb - pisoEfectivo;
@@ -665,7 +679,6 @@ await new Promise((r) => setTimeout(r, 1000));
 const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 const problemas: string[] = [];
 
-// La ganancia de cada punto se mide contra el PLANO de su mismo sentido.
 // **PRIMERA PASADA: quien vale.**
 //
 // **Esta pasada se perdio en una edicion y una auditoria lo encontro.** Sin ella
@@ -804,13 +817,25 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     // hace honesta a la medicion» se volveria auto-cumplido en el unico caso en que
     // hace falta.
     const TOPE_DE_LEY_DB = 25;
-    const acotar = (g: number): number => Math.max(-TOPE_DE_LEY_DB, Math.min(TOPE_DE_LEY_DB, g));
+    const acotar = (g: number): number => {
+      const v = Math.max(-TOPE_DE_LEY_DB, Math.min(TOPE_DE_LEY_DB, g));
+      // **Y se dice cuando muerde.** El caso en que muerde es exactamente el
+      // interesante: o la ley es mas grande de lo que nadie cree, o algo quedo vivo
+      // aplastando el canal. Los dos son hallazgos y los dos eran invisibles.
+      if (v !== g) {
+        console.log(`   AVISO: el recorrido medido llego a ${g.toFixed(1)} dB y la falda se `
+          + `calcula acotando a ${v} — o la ley es mayor que ±${TOPE_DE_LEY_DB}, o algo `
+          + 'quedo vivo aplastando el canal.');
+      }
+      return v;
+    };
     const falda = Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, acotar(Math.max(...ats))))
       + Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, acotar(Math.min(...ats))));
     const tope = falda + C2_HOLGURA_DB;
-    // Con `ats` vacio, `Math.max(...[])` da -Infinity y el tope daria Infinity: C2
-    // imprimiria PASA. Lo tapa L4 aguas abajo, pero un PASA falso impreso es un
-    // PASA falso archivado.
+    // **`Number.isFinite` acá NO protege de nada, y se deja dicho.** Con `ats` vacio
+    // `Math.max(...[])` da -Infinity, pero `acotar` lo lleva a -25 y el tope sale
+    // finito igual. La proteccion la da el minimo de lecturas de arriba. Queda la
+    // comprobacion porque es barata, sin el comentario que afirmaba lo contrario.
     const ok = Number.isFinite(tope) && rango <= tope;
     console.log(`   rango ${d(rango)} dB mientras el centro se mueve `
       + `${d(Math.max(...ats) - Math.min(...ats))} dB`);
@@ -828,7 +853,12 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
   // del medidor y no por la consola.
   const conMedidor = utiles.filter((p) => Number.isFinite(p.m.canalDb) && p.m.canalDb > -70
     && Number.isFinite(p.atenuacion));
-  const refM = conMedidor.find((p) => p.crudo === CRUDO_PLANO);
+  // **El plano de SU MISMO sentido**, como hace `planos`. Con el de 'baja' para los
+  // dos, cualquier deriva entre pasadas entraba como sesgo fijo en la mitad de los
+  // puntos.
+  const planoDe = (sentido: 'baja' | 'sube'): Punto | undefined =>
+    conMedidor.find((p) => p.sentido === sentido && p.crudo === CRUDO_PLANO);
+  const refM = planoDe('baja');
   console.log(`\nL8 el medidor del canal sigue al realce: ${conMedidor.length} puntos por `
     + 'encima del fondo de escala');
   if (refM === undefined || conMedidor.length < PUNTOS_MINIMOS) {
@@ -846,32 +876,72 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     // mueve `g` dB y el otro no, la potencia total cambia
     // `10·log10((10^(g/10) + 1) / 2)`. Con eso el desvio esperado es cero en todo
     // el recorrido, y lo que quede es lo que L8 vino a buscar.
-    const medidorPredicho = (g: number): number =>
-      10 * Math.log10((Math.pow(10, g / 10) + 1) / 2);
-    let peor = 0;
-    for (const p of conMedidor) {
-      const dif = Math.abs((p.m.canalDb - refM.m.canalDb) - medidorPredicho(p.atenuacion));
-      if (dif > peor) peor = dif;
+    // **¿El medidor de la consola es de potencia o de pico? No se sabe, asi que se
+    // miden las dos y se dice cual ajusta.**
+    //
+    // Con dos tonos iguales la prediccion depende de eso: potencia da
+    // `10·log10((10^(g/10)+1)/2)` y pico `20·log10((10^(g/20)+1)/2)`, y en los
+    // extremos difieren **2,23 dB** contra un tope de 1,5. Suponer una de las dos
+    // habria producido, si era la otra, la misma acusacion falsa de recorte que esta
+    // expectativa vino a evitar.
+    //
+    // El 99b calibro la escala del medidor con UN seno, donde pico y eficaz se
+    // diferencian en una constante que se absorbe en la calibracion y se cancela en
+    // toda diferencia. **El estimulo de dos tonos es la primera vez en este proyecto
+    // que la distincion importa**, asi que L8 la mide de paso.
+    //
+    // El veredicto es sobre la hipotesis COMPUESTA --el medidor es una de las dos--
+    // y por eso alcanza con que una ajuste. Si ninguna ajusta, eso si es el recorte
+    // que se busca.
+    const modelos = [
+      ['potencia', (g: number) => 10 * Math.log10((Math.pow(10, g / 10) + 1) / 2)],
+      ['pico', (g: number) => 20 * Math.log10((Math.pow(10, g / 20) + 1) / 2)],
+    ] as const;
+    const ajustes = modelos.map(([nombre, f]) => {
+      let peor = 0;
+      for (const p of conMedidor) {
+        const r = planoDe(p.sentido);
+        if (r === undefined) continue;
+        const dif = Math.abs((p.m.canalDb - r.m.canalDb) - f(p.atenuacion));
+        if (dif > peor) peor = dif;
+      }
+      return { nombre, peor };
+    });
+    for (const a of ajustes) {
+      console.log(`   si el medidor fuera de ${a.nombre.padEnd(9)}: desvio maximo `
+        + `${a.peor.toFixed(2)} dB`);
     }
-    const ok = peor <= L8_DESVIO_MAXIMO_DB;
-    console.log(`   desvio maximo ${peor.toFixed(2)} dB (tope ${L8_DESVIO_MAXIMO_DB})`);
-    console.log(ok ? '   PASA. Nada recorto adentro de la consola.'
-      : '   FALLA. El medidor del canal dejo de seguir al realce: hubo recorte o '
-        + 'limitacion ADENTRO, y la ley medida se aplanaria arriba sin que el '
+    const mejor = ajustes.reduce((m, a) => (a.peor < m.peor ? a : m), ajustes[0]!);
+    const ok = mejor.peor <= L8_DESVIO_MAXIMO_DB;
+    console.log(`   tope ${L8_DESVIO_MAXIMO_DB}`);
+    console.log(ok
+      ? `   PASA, y de paso: el medidor del canal se comporta como de ${mejor.nombre.toUpperCase()}. `
+        + 'Nada recorto adentro de la consola.'
+      : '   FALLA. El medidor no sigue al realce por NINGUNO de los dos modelos: hubo '
+        + 'recorte o limitacion ADENTRO, y la ley se aplanaria arriba sin que el '
         + 'detector de recorte de la interfaz lo vea.');
+    console.log('   **L8 es un control del REALCE.** Su sensibilidad es 0,99 en +20 dB y');
+    console.log('   0,01 en -20: en el corte es ciego, y da igual, porque el recorte solo');
+    console.log('   puede ocurrir arriba. Y solo ve lo que pase AGUAS ABAJO de donde ese');
+    console.log('   medidor toma, que este proyecto no midio.');
     if (!ok) problemas.push('L8');
   }
 }
 {
   const ats = utiles.map((p) => p.atenuacion).filter(Number.isFinite);
   const recorrido = ats.length === 0 ? NaN : Math.max(...ats) - Math.min(...ats);
-  const ok = recorrido >= RECORRIDO_MINIMO_DB;
+  const ok = ats.length >= PUNTOS_MINIMOS && recorrido >= RECORRIDO_MINIMO_DB;
   console.log(`\nL4 el recorrido total: ${d(recorrido)} dB sobre ${utiles.length} puntos `
     + `(minimo ${RECORRIDO_MINIMO_DB})`);
   console.log(`   maximo realce ${d(Math.max(...ats))} dB, maximo corte ${d(Math.min(...ats))} dB`);
   console.log('   La tabla declara ±15 —30 de recorrido— y el item 101 vio +20 en el');
   console.log('   extremo, que serian 40. Los dos no pueden ser ciertos: esto lo dice.');
-  if (!ok) { console.log('   FALLA.'); problemas.push('L4'); } else console.log('   PASA.');
+  if (ats.length < PUNTOS_MINIMOS) {
+    // Con dos puntos que abarquen el recorrido, `recorrido >= 30` pasaba. Era el
+    // unico gate sin piso propio.
+    console.log(`   NO DECIDE: ${ats.length} puntos utiles y hacen falta ${PUNTOS_MINIMOS}.`);
+    problemas.push('L4 sin puntos');
+  } else if (!ok) { console.log('   FALLA.'); problemas.push('L4'); } else console.log('   PASA.');
 }
 
 if (problemas.length > 0) {

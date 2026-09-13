@@ -92,7 +92,13 @@ que se puede afirmar *antes* de medir cuánto corta. En este banco se esperan
 el bin de 1 kHz se mueve cuarenta decibeles, el del testigo no se puede mover más
 de **la falda calculada más 0,15 dB de holgura**. El tope no es un número elegido:
 sale de la fórmula de una campana estándar con el Q que la consola declara y el
-realce y el corte que esta corrida midió. Un tope redondo era lo que hacía
+realce y el corte que esta corrida midió, **acotados a ±25 dB**. La cota importa:
+sin ella, algo que aplastara el canal en el corte llevaría el recorrido a −60, la
+falda a 3,75 dB y el tope a 3,96, y C2 daría PASA sobre un testigo que se movió
+tres decibeles enteros — auto-cumpliéndose justo en el caso en que hace falta.
+±25 deja cinco decibeles sobre el mayor valor creíble (el manual dice ±20 y el 101
+midió 20,0 exactos). Y cuando la cota muerde, **se dice**: es la señal de que o la
+ley es mayor de lo que nadie cree, o algo quedó vivo. Un tope redondo era lo que hacía
 imposible a C2. Si se mueve, lo que cambió no fue la banda sino algo global —el
 fader, la ganancia, el compresor que no se puenteó— y **la corrida no mide la ley
 del ecualizador**: mide otra cosa.
@@ -147,6 +153,23 @@ recorte llegaría a la Scarlett a un nivel cómodo, **sin marca**, y se leería 
 una ley que se aplana arriba — un hallazgo falso contra la consola. El medidor de
 salida del canal es el único instrumento que puede verlo, y hasta esta versión se
 medía, se imprimía y no lo juzgaba nadie.
+
+**Y no se supone si el medidor es de pico o de potencia: se miden las dos.** Con
+dos tonos la predicción depende de eso —potencia da `10·log10((10^(g/10)+1)/2)` y
+pico `20·log10((10^(g/20)+1)/2)`— y en los extremos difieren **2,23 dB** contra un
+tope de 1,5. Suponer una habría producido, si era la otra, la misma acusación
+falsa de recorte que esta expectativa vino a evitar. El veredicto es sobre la
+hipótesis compuesta —el medidor es una de las dos— así que alcanza con que una
+ajuste, **y la corrida informa cuál**: el 99b calibró la escala con un solo seno,
+donde pico y eficaz se diferencian en una constante que se cancela, así que el
+estímulo de dos tonos es la primera vez en este proyecto que la distinción
+importa.
+
+**L8 es un control del REALCE, y hay que decirlo.** Su sensibilidad es 0,99 en
++20 dB y 0,01 en −20: en el corte es ciego, y da igual, porque el recorte sólo
+puede ocurrir arriba. Y sólo ve lo que pase **aguas abajo de donde ese medidor
+toma**, que este proyecto no midió: «el único instrumento que puede verlo» es una
+esperanza razonable, no un hecho.
 
 **Y se compara contra la suma de los dos tonos, no contra el bin.** El medidor es
 de banda ancha: con dos tonos de igual amplitud, en el corte máximo el testigo

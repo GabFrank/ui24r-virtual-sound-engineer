@@ -21,8 +21,14 @@
  * - **un campo del tipo que nadie lee**: `se mide y no se usa`, que esta serie
  *   cometió al menos cinco veces.
  *
- * **No decide nada.** Informa y sale con 0: son señales de forma, y algunas van a
- * ser legítimas. Lo que no puede pasar es que nadie las mire.
+ * **No decide nada, y su silencio no es un certificado.** Informa y sale con 0: son
+ * señales de forma, y algunas van a ser legítimas.
+ *
+ * Y lo que NO ve, dicho para que nadie lea «cero señales» como «está limpio»: mira
+ * los `const`, no los `import`, así que un import que quedó sin uso le pasa por al
+ * lado; no puede ver un comentario que quedó varado cuando su bloque se movió; y no
+ * puede ver un `if` que dejó de poder disparar. Una auditoría encontró los tres en
+ * el mismo archivo que este detector acababa de declarar limpio.
  *
  * Uso:
  *   node tools/spikes/restos-de-edicion.mjs [carpeta]
