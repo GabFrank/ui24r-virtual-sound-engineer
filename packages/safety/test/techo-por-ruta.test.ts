@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { registrarTecho, registrarTechos, olvidarTecho } from '../src/techo-por-ruta.ts';
+import { registrarTecho, registrarTechos, olvidarTecho, anclarSiSeAplico } from '../src/techo-por-ruta.ts';
 import { crudoDeEnvio } from './helpers.ts';
 
 /**
@@ -148,4 +148,48 @@ test('el lazo completo: bajar ancla, y el motor rechaza la vuelta de mas', async
   assert.ok(sinTecho.permitido
     || !sinTecho.rechazos.some((r) => r.invariante === 'INV-010'),
     'con el mapa vacío el techo no rechaza nada: ése era el agujero');
+});
+
+/**
+ * La secuencia que hace el servicio que baja envíos a monitor, de punta a punta.
+ *
+ * **Se prueba acá y no en el servicio de Angular** porque es la misma razón de
+ * siempre: la decisión que protege la cuña de un músico no puede quedar
+ * comprobable sólo a mano, enredada con la inyección de dependencias.
+ */
+const envioCon = (path: string, de: number, a: number) => ({
+  kind: 'MONITOR_AUX_SEND' as const, path, magnitudEsperada: de, magnitudPropuesta: a,
+});
+
+test('un cambio que la consola RECHAZO no deja techo', () => {
+  const t = anclarSiSeAplico(new Map(), envioCon('i.3.aux.1.value', -6, -8), false);
+  assert.equal(t.get('i.3.aux.1.value'), undefined,
+    'anclar con la intencion deja al usuario sin poder volver a donde nunca dejo de estar');
+});
+
+test('la secuencia completa: bajar dos veces, olvidar, y volver a bajar', () => {
+  const ruta = 'i.3.aux.1.value';
+  // Primera bajada aceptada: el techo queda donde venia.
+  let t = anclarSiSeAplico(new Map(), envioCon(ruta, -6, -8), true);
+  assert.equal(t.get(ruta), -6);
+
+  // Segunda bajada aceptada: el primer descenso gana, el techo NO se mueve.
+  t = anclarSiSeAplico(t, envioCon(ruta, -8, -10), true);
+  assert.equal(t.get(ruta), -6, 'el techo es de donde venia la PRIMERA vez');
+
+  // El usuario lo movio a mano: el «donde estaba» que recordabamos dejo de ser
+  // cierto, y sostenerlo le impediria subir a donde el ya lo puso.
+  t = olvidarTecho(t, ruta);
+  assert.equal(t.get(ruta), undefined);
+
+  // Y vuelve a anclar donde este ahora, no donde estaba antes.
+  t = anclarSiSeAplico(t, envioCon(ruta, -3, -5), true);
+  assert.equal(t.get(ruta), -3);
+});
+
+test('una bajada rechazada en el medio no corre el techo', () => {
+  const ruta = 'i.3.aux.1.value';
+  let t = anclarSiSeAplico(new Map(), envioCon(ruta, -6, -8), true);
+  t = anclarSiSeAplico(t, envioCon(ruta, -8, -12), false);
+  assert.equal(t.get(ruta), -6);
 });

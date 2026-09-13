@@ -87,3 +87,27 @@ export function olvidarTecho(
   nuevo.delete(path);
   return nuevo;
 }
+
+/**
+ * El techo se ancla **sólo si la consola aceptó la escritura**.
+ *
+ * **Es una decisión y por eso tiene nombre.** Anclar con la intención —antes de
+ * mandar— dejaría un techo puesto por una escritura que quizá se rechazó, y el
+ * usuario no podría volver a un lugar del que nunca se movió. Es el error más
+ * fácil de cometer acá: el dato que hace falta para el techo —de dónde venía— lo
+ * tenés antes de escribir, así que la tentación de guardarlo ahí mismo está.
+ *
+ * Y al revés también importa: si se aplicó, hay que anclarlo **aunque el usuario
+ * no vuelva a tocar nada**, porque el techo es lo único que va a impedir que la
+ * aplicación lo suba de más la próxima vez.
+ *
+ * `registrarTecho` ya sabe que sólo cuenta el primer descenso y que sólo aplica a
+ * `MONITOR_AUX_SEND`; esto sólo agrega la condición de éxito.
+ */
+export function anclarSiSeAplico(
+  techos: ReadonlyMap<string, number>,
+  cambio: Pick<CambioPropuesto, 'kind' | 'path' | 'magnitudEsperada' | 'magnitudPropuesta'>,
+  seAplico: boolean,
+): ReadonlyMap<string, number> {
+  return seAplico ? registrarTecho(techos, cambio) : techos;
+}

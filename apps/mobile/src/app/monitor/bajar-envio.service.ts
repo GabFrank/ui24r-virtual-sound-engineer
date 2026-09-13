@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { puedeBajarEnvioAMonitor } from '@vse/assistants';
 import type { ContextoSeguridad } from '@vse/safety';
-import { registrarTecho, olvidarTecho } from '@vse/safety';
+import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
 import { SessionStateService } from '../core/session.state';
@@ -198,12 +198,15 @@ export class BajarEnvioService {
       },
     );
 
+    // **El techo se ancla DESPUÉS de que la consola lo aceptó, y la condición
+    // vive en `@vse/safety`, donde se prueba.** Anclarlo con la intención dejaría
+    // un techo por una escritura que quizá se rechazó, y el usuario no podría
+    // volver a un lugar del que nunca se movió. Acá se pasa el resultado y la
+    // decisión la toma quien la tiene probada; repetir el `if` en este archivo
+    // sería tener la regla en dos lados.
+    this.techos.update((t) => anclarSiSeAplico(t, cambio, r.estado === 'APLICADA'));
+
     if (r.estado === 'APLICADA') {
-      // **El techo se ancla DESPUÉS de que la consola lo aceptó, no antes.**
-      // Anclarlo con la intención dejaría un techo por una escritura que quizá
-      // se rechazó, y el usuario no podría volver a un lugar donde nunca dejó de
-      // estar. `registrarTecho` guarda de dónde venía y el primer descenso gana.
-      this.techos.update((t) => registrarTecho(t, cambio));
       return { estado: 'APLICADA', id: r.id, quedoEnDb: v.destinoDb };
     }
 
