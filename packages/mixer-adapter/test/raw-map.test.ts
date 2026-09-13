@@ -11,7 +11,11 @@ test('ADR-006: una ruta sin mapeo no se escribe', () => {
 test('ADR-006: una conversión no verificada en hardware no se escribe', () => {
   // Todas las entradas arrancan sin verificar: llenarlas con conversiones
   // inventadas es exactamente el riesgo que esta tabla evita.
-  const r = aRaw('i.N.eq.hpf.freq', 100);
+  // **El ejemplo cambia cuando el hecho cambia.** Hasta el 2026-09-13 este test
+  // usaba `i.N.eq.hpf.freq`, que entonces era un numero puesto a ojo en
+  // DESCONOCIDO. La medicion 103 lo midio y lo promovio, asi que el ejemplo pasa a
+  // la ganancia del ecualizador, que sigue sin medirse.
+  const r = aRaw('i.N.eq.b1.gain', 5);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.codigo, 'NO_PROBADO');
   assert.match(r.ok === false ? r.mensaje : '', /SPK-P0.2b/,
@@ -25,7 +29,8 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   //
   // **El test sigue siendo un trinquete**: si aparece una tercera sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
-  assert.deepEqual([...rutasProbadas()].sort(), ['i.N.eq.b1.freq', 'i.N.eq.b1.q'],
+  assert.deepEqual([...rutasProbadas()].sort(),
+    ['i.N.eq.b1.freq', 'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 
@@ -241,4 +246,51 @@ test('nada refutado es escribible, nunca', () => {
     assert.ok(!rutasProbadas().includes(e.path),
       `${e.path} está refutado y aparece como escribible`);
   }
+});
+
+/**
+ * El pasa-altos y el pasa-bajos comparten la ley del ecualizador, **recortada**.
+ *
+ * La medición 103 midió once puntos y los once caen dentro del 1,1 % de
+ * `20·1102,5^V` con un tope en 1 kHz: el pasa-altos recorta por arriba y el
+ * pasa-bajos por abajo. Es la tercera y la cuarta confirmación independiente de
+ * esa exponencial, que este archivo declaraba como recta hasta el 2026-09-13.
+ */
+test('el pasa-altos y el pasa-bajos usan la ley del ecualizador con tope en 1 kHz', () => {
+  const hpf = entrada('i.N.eq.hpf.freq');
+  const lpf = entrada('i.N.eq.lpf.freq');
+  assert.ok(hpf && lpf);
+
+  const ley = (v: number) => 20 * Math.pow(1102.5, v);
+  // Donde la ley está por debajo del tope, los dos la siguen sin recortar.
+  for (const v of [0.25, 0.40, 0.55]) {
+    assert.ok(Math.abs(hpf.fromRaw(v) - ley(v)) / ley(v) < 1e-9,
+      `el pasa-altos en ${v} da ${hpf.fromRaw(v)} y la ley ${ley(v)}`);
+  }
+  // Y donde la pasa, recortan: el pasa-altos por arriba, el pasa-bajos por abajo.
+  for (const v of [0.70, 0.85, 1.0]) {
+    assert.ok(Math.abs(hpf.fromRaw(v) - 1000) < 1e-9,
+      `el pasa-altos en ${v} tiene que estar recortado en 1000 y da ${hpf.fromRaw(v)}`);
+  }
+  for (const v of [0, 0.15, 0.45]) {
+    assert.ok(Math.abs(lpf.fromRaw(v) - 1000) < 1e-9,
+      `el pasa-bajos en ${v} tiene que estar recortado en 1000 y da ${lpf.fromRaw(v)}`);
+  }
+  assert.ok(Math.abs(lpf.fromRaw(0.60) - ley(0.60)) / ley(0.60) < 1e-9);
+
+  // **Y el recorte es lo que el manual declara**: «20 Hz a 1 kHz» para el
+  // pasa-altos, «22 kHz a 1 kHz» para el pasa-bajos.
+  assert.ok(Math.abs(hpf.fisicoMax - 1000) < 1e-9, 'el pasa-altos llega hasta 1 kHz');
+  assert.ok(Math.abs(lpf.fisicoMin - 1000) < 1e-9, 'el pasa-bajos empieza en 1 kHz');
+});
+
+test('fuera del tramo medido, los dos filtros se niegan', () => {
+  // Del pasa-bajos se barrió hasta el crudo 0,60 (1339 Hz): los 22 kHz del manual
+  // quedan sin medir y `aRaw` tiene que rechazarlos en vez de extrapolar.
+  const alto = aRaw('i.N.eq.lpf.freq', 18000);
+  assert.equal(alto.ok === false && alto.codigo, 'FUERA_DE_RANGO');
+  // Y del pasa-altos, por debajo de 115 Hz: el crudo 0 es la línea base de la
+  // medición, así que su codo es irrecuperable con ese método.
+  const bajo = aRaw('i.N.eq.hpf.freq', 30);
+  assert.equal(bajo.ok === false && bajo.codigo, 'FUERA_DE_RANGO');
 });

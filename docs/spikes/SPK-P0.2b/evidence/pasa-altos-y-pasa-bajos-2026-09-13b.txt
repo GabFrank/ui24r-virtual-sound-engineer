@@ -53,3 +53,63 @@ control positivo: con el pasa-altos en su extremo, el tono de 40 Hz cae 53.8 dB
   0.40 |     330 Hz | recta   172 | exp400    66 | exp1000    96 | banda   0.00 dB (disp 0.008, margen 58) | margen del codo    7
   0.55 |     945 Hz | recta   229 | exp400   104 | exp1000   172 | banda  -0.00 dB (disp 0.005, margen 61) | margen del codo   -1
   0.70 |    1005 Hz | recta   286 | exp400   163 | exp1000   309 | banda  -0.00 dB (disp 0.006, margen 60) | margen del codo   -9
+  0.85 |    1005 Hz | recta   343 | exp400   255 | exp1000   556 | banda  -0.00 dB (disp 0.007, margen 61) | margen del codo   -1
+  1.00 |    1004 Hz | recta   400 | exp400   400 | exp1000  1000 | banda  -0.00 dB (disp 0.006, margen 62) | margen del codo    1
+
+=== EL PASA-BAJOS ===
+  0.00 |    1011 Hz | banda  -0.09 dB (disp 0.342, margen 52) | margen del codo    6
+  0.15 |    1011 Hz | banda  -0.09 dB (disp 0.342, margen 52) | margen del codo    8
+  0.30 |    1011 Hz | banda  -0.09 dB (disp 0.342, margen 52) | margen del codo    8
+  0.45 |    1010 Hz | banda  -0.09 dB (disp 0.343, margen 52) | margen del codo    8
+  0.60 |    1339 Hz | banda  -0.03 dB (disp 0.116, margen 52) | margen del codo    8
+
+=== LA VUELTA AL PRIMER PUNTO ===
+  0.25 |     115 Hz | recta   115 | exp400    42 | exp1000    53 | banda  -0.00 dB (disp 0.007, margen 61) | margen del codo    8
+la linea base al cerrar: 0.02 dB (max), 0.006 dB (rms punto a punto)
+
+=== VEREDICTOS, contra el contrato del item 103 ===
+
+H1 planitud de la linea base: 0.83 dB
+   PASA. Los extremos de los dos filtros son «fuera del camino», MEDIDO.
+
+H2 el pasa-altos atenua: 53.8 dB en el tono mas grave
+   PASA. La escritura llego al filtro.
+
+H3 el codo en el crudo 1,0: 1004 Hz
+   contra los 400 del codigo: factor 2.51
+   contra los 1000 del manual: factor 1.00
+   PASA, y gana EL MANUAL (1000 Hz): el codo esta a un factor 1.00 de esa fuente y 2.51 de la otra.
+
+H4 cual ley describe el codo, sobre 6 crudos utiles:
+   recta 20..400 (el codigo)        error maximo 312.5 %
+   exponencial a 400                error maximo 809.2 %
+   exponencial a 1000 (el manual)   error maximo 449.3 %
+   FALLA: ninguna de las tres describe el codo dentro del 10 %. La ley no
+   es ninguna de las tres, y eso tambien es un resultado.
+
+H5 el pasa-bajos: su codo SUBE cuando el crudo sube
+   en el crudo 0 el codo esta en 1011 Hz (el manual dice 1 kHz)
+   PASA. El sentido y el extremo son los que el manual declara.
+
+H6 la vuelta: el codo difiere 0.02 % | la base 0.006 dB rms
+   PASA. El banco no se movio.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada de las pendientes, que el manual declara seleccionables: se midio una.
+   Nada de los codos que caigan fuera de la ventana del estimulo.
+   Nada del pasa-altos ni del pasa-bajos de los buses, que son otras claves.
+   Y un acuerdo dentro del umbral es una COTA, no una identidad.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.eq.hpf.freq        esperado 0              leido 0
+   i.9.eq.lpf.freq        esperado 1              leido 1
+   i.9.dyn.bypass         esperado 0              leido 0
+   i.9.gate.enabled       esperado 1              leido 1
+   i.9.deesser.enabled    esperado 0              leido 0
+   m.dyn.bypass           esperado 0              leido 0
+   m.afs.enabled          esperado 1              leido 1
+   m.gate.enabled         esperado 0              leido 0
+   Todo restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

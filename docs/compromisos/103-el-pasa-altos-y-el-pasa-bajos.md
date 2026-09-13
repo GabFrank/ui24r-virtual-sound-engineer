@@ -143,3 +143,78 @@ restauración va por `restaurarClaves` —que reconecta si el transporte se cae�
 comprueba **releyendo por HTTP**.
 
 **No hay nada conectado a ninguna salida física** salvo los dos cables del bucle.
+
+---
+
+# Resultado
+
+**Corrida del 2026-09-13**, archivada en
+[`pasa-altos-y-pasa-bajos-2026-09-13b.txt`](../spikes/SPK-P0.2b/evidence/pasa-altos-y-pasa-bajos-2026-09-13b.txt).
+Hubo una corrida anterior que **se descarta y también se archiva**: la contaminé
+escribiendo en la consola mientras corría, y está contada en
+[`hallazgo-la-senal-de-que-una-corrida-termino.md`](../backlog/hallazgo-la-senal-de-que-una-corrida-termino.md).
+
+| # | Umbral | Resultado | |
+|---|---|---|---|
+| **H1** | línea base plana, 1,0 dB | **0,83 dB** | **PASA** |
+| **H2** | el pasa-altos atenúa, 10 dB | **53,8 dB** | **PASA** |
+| **H3** | el codo en el crudo 1,0, factor 1,25 / 1,9 | **1004 Hz** — factor **1,00** del manual, 2,51 del código | **PASA** |
+| **H4** | alguna de las tres leyes, 10 % | **ninguna**: 312 %, 809 % y 449 % de error | **FALLA** |
+| **H5** | el pasa-bajos es el espejo | codo en **1011 Hz** con el crudo en 0 | **PASA** |
+| **H6** | la vuelta, 2 % y 0,5 dB | **0,02 %** y 0,006 dB rms | **PASA** |
+
+## El código estaba mal en el rango Y en la forma
+
+`raw-map.ts` declaraba `lineal('i.N.eq.hpf.freq', 'Hz', 20, 400)`. **El codo en el
+crudo 1,0 está en 1004 Hz**, a factor 1,00 de los 1000 que el manual declara y a
+2,51 de los 400 del código. El manual tenía razón.
+
+## Y la ley es la cuarta, la que no se me ocurrió probar
+
+H4 falló porque **ninguna de las tres candidatas era la ley**. Eso es exactamente
+lo que su modo de falla estaba puesto para sacar a la luz, y la respuesta estaba a
+la vista: es **la misma exponencial que la medición 101 midió para las bandas del
+ecualizador**, recortada en 1 kHz.
+
+| Crudo | Codo medido | `20·1102,5^V` | Recortado en 1000 | Error |
+|---|---|---|---|---|
+| 0,25 | **115 Hz** | 115 | 115 | −0,2 % |
+| 0,40 | **330 Hz** | 330 | 330 | +0,1 % |
+| 0,55 | **945 Hz** | 943 | 943 | +0,3 % |
+| 0,70 | **1005 Hz** | 2696 | **1000** | +0,5 % |
+| 0,85 | **1005 Hz** | 7710 | **1000** | +0,5 % |
+| 1,00 | **1004 Hz** | 22050 | **1000** | +0,4 % |
+
+Y el pasa-bajos es la misma ley recortada **por abajo**:
+
+| Crudo | Codo medido | `20·1102,5^V` | Recortado en 1000 | Error |
+|---|---|---|---|---|
+| 0,00 | **1011 Hz** | 20 | **1000** | +1,1 % |
+| 0,15 | **1011 Hz** | 57 | **1000** | +1,1 % |
+| 0,30 | **1011 Hz** | 164 | **1000** | +1,1 % |
+| 0,45 | **1010 Hz** | 468 | **1000** | +1,0 % |
+| 0,60 | **1339 Hz** | 1338 | 1338 | +0,1 % |
+
+**Once puntos, todos dentro del 1,1 %, la mayoría dentro del 0,5 %.**
+
+Así que:
+
+- **`i.N.eq.hpf.freq` = `min(20·1102,5^V, 1000)`**
+- **`i.N.eq.lpf.freq` = `max(20·1102,5^V, 1000)`**
+
+Los dos coinciden con lo que el manual declara —«20 Hz a 1 kHz» y «22 kHz a
+1 kHz»— y **son la tercera y la cuarta confirmación independiente de la
+exponencial `20·1102,5^V`**, que la 101 había medido sobre las bandas del
+ecualizador y que este proyecto tenía como recta hasta ayer.
+
+## Lo que no queda medido
+
+- **El extremo superior del pasa-bajos.** El manual dice 22 kHz; el barrido llegó
+  al crudo 0,60 (1339 Hz) y por encima de ~12 kHz el estímulo no alcanza.
+- **El extremo inferior del pasa-altos.** El crudo 0 **es la línea base**, así que
+  su codo es irrecuperable con este método. Que sean 20 Hz sale de la ley y del
+  manual, no de una medición.
+- **Las pendientes**, que el manual declara seleccionables: se midió una,
+  `slope = 0`.
+- **Y el recorte en 1 kHz es lo que se mide, no una interpretación**: seis crudos
+  distintos dan el mismo codo dentro del 0,1 %.

@@ -69,8 +69,11 @@ test('declarar otra unidad se detecta', () => {
  * todavía no se midió, que es casi todo.
  */
 test('sin ley verificada se dice, y no se rechaza', () => {
-  // Una entrada que existe pero no está medida.
-  const r = verificarAtadura('i.N.eq.hpf.freq', 0.5, 100, 'Hz');
+  // **Una entrada que existe pero no está medida.** Hasta el 2026-09-13 este
+  // ejemplo era `i.N.eq.hpf.freq`; la medición 103 lo midió y lo promovió, así que
+  // el ejemplo pasa a la ganancia del ecualizador, que sigue sin medirse. Que el
+  // ejemplo tenga que cambiar es la señal de que el trabajo avanza.
+  const r = verificarAtadura('i.N.eq.b1.gain', 0.5, 5, 'dB');
   assert.equal(r.atada, false);
   assert.equal(r.atada === false && r.codigo, 'SIN_LEY_VERIFICADA');
   assert.match(r.atada === false ? r.motivo : '', /DESCONOCIDO/);

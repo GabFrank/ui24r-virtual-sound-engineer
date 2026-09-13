@@ -188,6 +188,42 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     (q) => Math.log(q / 0.05) / Math.log(300),
     0.35, 0.70, 'SPK-P0.2b',
   ),
+  // **El pasa-altos y el pasa-bajos, medidos el 2026-09-13 contra el filtro.**
+  //
+  // El pasa-altos decia `lineal(20, 400)` en `DESCONOCIDO`: un numero puesto a
+  // ojo, y **mal en el rango y en la forma**. Su codo en el crudo 1,0 esta en
+  // **1004 Hz**, a factor 1,00 de los 1000 que el manual declara y a 2,51 de los
+  // 400 del codigo. Del pasa-bajos no habia entrada.
+  //
+  // **Y la ley es la MISMA exponencial que las bandas del ecualizador**, la que la
+  // medicion 101 midio: `20·1102,5^V`, **recortada en 1 kHz**. El pasa-altos la
+  // recorta por arriba y el pasa-bajos por abajo, que es exactamente lo que el
+  // manual declara --«20 Hz a 1 kHz» y «22 kHz a 1 kHz»--. Once puntos medidos,
+  // todos dentro del 1,1 % y la mayoria dentro del 0,5 %.
+  //
+  // Son la tercera y la cuarta confirmacion independiente de esa exponencial.
+  //
+  // **El rango declarado es el medido.** Del pasa-bajos se barrio hasta el crudo
+  // 0,60 (1339 Hz): por encima de ~12 kHz el estimulo no alcanza, asi que los
+  // 22 kHz del manual quedan sin medir. Y del pasa-altos, el crudo 0 **es la linea
+  // base** de la medicion, asi que su codo es irrecuperable con ese metodo: los
+  // 20 Hz salen de la ley y del manual, no de una corrida.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2b/evidence/pasa-altos-y-pasa-bajos-2026-09-13b.txt`
+  medido(
+    'i.N.eq.hpf.freq', 'Hz',
+    (v) => Math.min(20 * Math.pow(1102.5, v), 1000),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 1.0, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.lpf.freq', 'Hz',
+    (v) => Math.max(20 * Math.pow(1102.5, v), 1000),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.0, 0.60, 'SPK-P0.2b',
+  ),
+
   // **La ganancia: ahora hay DOS fuentes contra el codigo, y sigue sin medirse
   // bien.** El manual dice ±20 dB contra los ±15 de aca, y la medicion 101 vio la
   // campana subir **20,0 dB exactos** con el crudo de ganancia en 1,0, en los
@@ -197,9 +233,7 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // extremo--, asi que de la FORMA de la ley no se sabe nada: podria no ser
   // lineal. Queda DESCONOCIDO con el hallazgo anotado, y se mide aparte.
   //
-  // Del filtro pasa-altos no hay ni manual ni formula, asi que su recta queda
-  // como lo que es: un marcador de sitio.
-  lineal('i.N.eq.hpf.freq', 'Hz', 20, 400, 'DESCONOCIDO', 'SPK-P0.2b'),
+  // (El pasa-altos y el pasa-bajos se midieron: estan arriba.)
   lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
