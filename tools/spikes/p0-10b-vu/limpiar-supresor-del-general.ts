@@ -10,9 +10,23 @@
  *
  * Eso es atenuación real sobre su PA. El usuario pidió que se intentara borrar.
  *
- * **Lo que ya se sabe, del 2026-09-10:** `clearlive` funciona y se comprueba;
- * `clearfixed` y `clearall` no hicieron nada nunca. Por el campo que los
- * distingue, los seis de ahora parecen estar en la pila de **fijos**.
+ * **Lo que se creía, del 2026-09-10:** `clearlive` funciona y se comprueba;
+ * `clearfixed` y `clearall` no hicieron nada nunca.
+ *
+ * **Se dio vuelta el 2026-09-13, con este mismo guion.** Sobre el filtro que
+ * plantó la 104 —`m.afs.eq.6`, 1000,008 Hz, Q 7, −18 dB— `clearlive` borró cero,
+ * `clearfixed` borró cero y **`clearall` lo borró**. Es el orden exactamente
+ * inverso al que decía este docblock, y lo dice la corrida archivada en
+ * `docs/spikes/SPK-P0.10b-vu2/evidence/limpiar-supresor-tras-la-104-2026-09-13.txt`.
+ *
+ * Que este guion pruebe los tres en orden es lo que permitió verlo: si hubiera
+ * confiado en la creencia y disparado sólo `clearlive`, habría informado «borró
+ * 0» y el filtro seguiría puesto.
+ *
+ * **Y el número de la ranura no dice de qué pila es.** El 6 cayó en el rango que
+ * `numfixed = 6` haría pensar que es el de los vivos, y ni `clearlive` ni
+ * `clearfixed` lo tocaron. Con lo medido hasta hoy, **el único mandato del que
+ * hay evidencia de que borre algo es `clearall`, y se lleva la pila entera.**
  *
  * Se prueban los tres en orden, leyendo por HTTP entre uno y otro: sin eso no se
  * puede atribuir el resultado a un mandato en particular. **`m.afs.enabled` no

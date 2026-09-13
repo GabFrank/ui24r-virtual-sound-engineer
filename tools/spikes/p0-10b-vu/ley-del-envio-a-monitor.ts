@@ -228,6 +228,10 @@ const PREVIO: readonly (readonly [string, number])[] = [
   [`i.${n}.dyn.bypass`, Number(exigirClave(e0, `i.${n}.dyn.bypass`))],
   [`i.${n}.gate.enabled`, Number(exigirClave(e0, `i.${n}.gate.enabled`))],
   [`i.${n}.deesser.enabled`, Number(exigirClave(e0, `i.${n}.deesser.enabled`))],
+  // **El supresor del GENERAL, que esta corrida se olvido y costo caro.**
+  // Ver M4b. Va en PREVIO y no en un `finally` porque es lo unico de esta lista
+  // cuyo olvido le deja al usuario atenuacion real sobre su PA.
+  ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
 ];
 
 console.log('=== 104 — LA LEY DEL ENVIO A MONITOR, CONTRA LA SALIDA REAL ===');
@@ -292,6 +296,29 @@ console.log(`=== QUIEN MAS ALIMENTA EL AUXILIAR ${auxiliar} ===`);
       + 'notches de -18 dB y el barrido mediria eso.');
   }
   console.log(`   supresor del auxiliar: apagado (a.${a}.afs.enabled = 0), comprobado`);
+}
+
+// **M4b — Y el supresor del GENERAL, que la primera version de este guion no miro.**
+//
+// M4 razono con cuidado sobre los 900 segundos de 1 kHz por el bus auxiliar y se
+// olvido de que **el mismo tono llega al general**: el canal tiene `i.N.mix` sin
+// mutear, asi que alimenta el general aunque esta medicion no use esa salida.
+//
+// Lo que costo: la corrida del 2026-09-13 dejo `m.afs.eq.6` en 1000,008 Hz, Q 7,
+// **−18 dB** sobre el general del usuario. Y borrarlo no fue gratis: `clearlive`
+// no lo borro, `clearfixed` tampoco, **sólo `clearall`** —que se lleva TODA la
+// pila, incluidos los filtros que el usuario planto en sus fechas—.
+//
+// Evidencia de las dos cosas:
+// `docs/spikes/SPK-P0.10b-vu2/evidence/limpiar-supresor-tras-la-104-2026-09-13.txt`.
+//
+// Se apaga y se restaura, como hacia la 99b. No se exige apagado de entrada
+// porque encendido es el estado NORMAL de la consola del usuario: un guion que
+// se niegue a correr con el supresor puesto no corre nunca.
+{
+  const afsGeneral = Number(exigirClave(e0, 'm.afs.enabled'));
+  console.log(`   supresor del GENERAL: estaba en ${afsGeneral}`
+    + (afsGeneral === 0 ? ', ya estaba apagado' : ', se apaga y se restaura por PREVIO'));
 }
 
 // **§7.7 — El banco tiene que estar donde el reconocimiento lo dejo.**
@@ -382,12 +409,14 @@ await conRestauracion(
     t.enviar(codificarSetd(`i.${n}.gate.enabled`, 0));
     t.enviar(codificarSetd(`i.${n}.deesser.enabled`, 0));
     t.enviar(codificarSetd(`a.${a}.mix`, FADER_DEL_AUXILIAR));
+    t.enviar(codificarSetd('m.afs.enabled', 0));
     await new Promise((r) => setTimeout(r, 2500));
     console.log('');
     console.log('=== LO QUE SE NEUTRALIZA ===');
     console.log(`   puerta del auxiliar: estaba en ${PREVIO[2]![1]}, se apaga`);
     console.log(`   compresor del auxiliar: bypass estaba en ${PREVIO[3]![1]}, se puentea`);
     console.log('   compresor, puerta y de-esser del canal: puenteados');
+    console.log('   supresor del GENERAL: apagado mientras dura el tono (M4b)');
     console.log(`   fader del auxiliar puesto en ${FADER_DEL_AUXILIAR} como ATENUADOR FIJO:`);
     console.log('   baja lo que llega a la interfaz sin tocar `pre`, que esta antes de el.');
     console.log('   Es una ganancia estatica: se cancela en toda atenuacion relativa al arranque.');

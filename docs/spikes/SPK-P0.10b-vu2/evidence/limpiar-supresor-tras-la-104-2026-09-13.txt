@@ -1,0 +1,37 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T08:33:54.762Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/limpiar-supresor-del-general.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/limpiar-supresor-del-general.ts sha256:6fc18dfca7e1b6c5
+# la huella cubre 2 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+ANTES: 1 filtro(s)
+   eq.6     1000.0 Hz   -18.0 dB  Q=7.0
+
+m.afs.enabled = 1 (NO se toca)
+m.afs.fmode   = 1
+
+--- clearlive ---
+borró 0 filtro(s)
+quedan: 1 filtro(s)
+   eq.6     1000.0 Hz   -18.0 dB  Q=7.0
+
+--- clearfixed ---
+borró 0 filtro(s)
+quedan: 1 filtro(s)
+   eq.6     1000.0 Hz   -18.0 dB  Q=7.0
+
+--- clearall ---
+borró 1 filtro(s)
+quedan: 0 filtro(s)
+
+=== ESTADO FINAL, releido por HTTP ===
+m.afs.enabled = 1
+filtros que quedan: 0 de los 1 que habia
+
+
+# salida del proceso: 0
