@@ -183,6 +183,17 @@ const CONCEPTOS: readonly { sufijo: string; familias: readonly string[]; clase: 
  * el fondo sigue llegando al general por el retorno. Ésa es la dirección
  * peligrosa que el módulo define en su propia prosa.
  *
+ * **La mitad del mute dejó de ser prosa el 2026-09-13.** Está medida: con el
+ * envío `i.9.aux.4.value` abierto en 1,0 y un tono sonando, mutear el canal le
+ * sacó a la salida física del auxiliar **0,00 dB**, con 103 dB de margen en el
+ * bin. O sea que el envío a auxiliar de esta consola es pre-fader **y pre-mute**:
+ * el mute del canal no está en ese camino.
+ *
+ * Consecuencia para quien use esto: **proponer «muteá el canal» para sacar algo
+ * de la mezcla de monitores no hace nada.** Lo que hay que bajar es el envío.
+ * Evidencia: `docs/spikes/SPK-P0.10b-vu2/evidence/de-quien-es-la-fuga-2026-09-13.txt`
+ * y `docs/backlog/hallazgo-el-envio-a-auxiliar-es-pre-mute.md`.
+ *
  * Los grupos con hojas nombradas las nombran; los que se declaran enteros
  * llevan `*`, porque enumerar las 482 claves de la dinámica no le dice nada a
  * nadie y la afirmación es la misma: de acá no se lee nada.
