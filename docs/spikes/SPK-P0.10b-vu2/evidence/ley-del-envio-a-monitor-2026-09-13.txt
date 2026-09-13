@@ -196,3 +196,40 @@ crudo  | desvio vs faderADb | error del instrumento | motivo
 
 
 # salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
+# divergencia reconocida: 7c0438aa1ff915f6
+================================================================================
+
+La huella de arriba --sha256:6dc0409e400b4b77-- YA NO COINCIDE con el guion de
+hoy, y el encabezado dice que en ese caso el archivo es de otra version. Se
+explica aca en vez de dejarlo como un desajuste mudo.
+
+QUE CAMBIO. El commit 55a786f le agrego al guion, DESPUES de esta corrida:
+
+    ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],   // a PREVIO
+    t.enviar(codificarSetd('m.afs.enabled', 0));                   // y se apaga
+
+POR QUE. Esta corrida dejo el supresor del general ENCENDIDO con un tono de
+1 kHz sostenido 900 segundos llegando al general, y le planto al usuario una
+notch de 1000,008 Hz, Q 7, -18 dB. Detalle en
+docs/backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md.
+
+QUE SIGNIFICA PARA ESTOS NUMEROS.
+
+  - La LEY que esta corrida midio --VtoLIN contra la salida real, 0,007 dB sobre
+    los primeros 32 dB-- no depende del supresor: es una atenuacion relativa al
+    arranque, y el supresor del general no esta en el camino del auxiliar.
+
+  - El PISO --los -91,77 dBFS con el envio cerrado-- SI depende. El item 105
+    midio ese mismo piso con el supresor apagado y dio -87,04 dBFS: 4,73 dB mas.
+    La fuga viaja por el camino del general, y el supresor esta en ese camino.
+
+  - O sea que el guion de hoy, corrido de nuevo, NO reproduciria el -91,77.
+    Reproduciria algo cerca de -87. Eso no invalida esta corrida: la invalidaria
+    leerla como si fuera del guion actual.
+
+Se anota y no se remide porque remedir daria otra configuracion, no la misma. Lo
+que este archivo registra es lo que la consola hizo esa noche, con el guion que
+tenia esa noche, y eso sigue siendo cierto.

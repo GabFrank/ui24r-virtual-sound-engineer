@@ -35,3 +35,19 @@ filtros que quedan: 0 de los 1 que habia
 
 
 # salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
+================================================================================
+
+La huella de arriba ya no coincide con el guion de hoy. El commit 55a786f
+cambio `limpiar-supresor-del-general.ts`, y el cambio fue SOLO DE COMENTARIOS:
+se corrigio su docblock, que afirmaba desde el 2026-09-10 que `clearlive`
+funciona y que `clearfixed` y `clearall` nunca hicieron nada. Esta misma corrida
+mostro lo contrario.
+
+Comprobado mecanicamente: el diff de ese commit sobre este archivo, filtrando
+lineas de comentario, no deja ni una linea de codigo.
+
+O sea que lo que corrio es el mismo codigo que hay hoy, y estos numeros valen
+tal cual. Lo unico que cambio es la prosa que los rodea.

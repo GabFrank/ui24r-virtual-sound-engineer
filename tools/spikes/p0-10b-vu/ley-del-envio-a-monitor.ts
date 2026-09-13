@@ -33,6 +33,7 @@ import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
 import { restaurarClaves } from '../restaurar.ts';
+import { leerUnaClave } from '../leer-una-clave.ts';
 // @ts-expect-error -- JavaScript sin tipos
 import { analizar } from '../../audio/analizar.mjs';
 
@@ -136,43 +137,6 @@ t.alRecibir((linea) => {
     puerta: bus.indicadorDePuerta, canalSalida: c.salida,
   });
 });
-
-/**
- * Lee **una** clave de `/raw`, cortando en cuanto aparece.
- *
- * **`estadoPorHttp` paga su tope de 8000 ms en cada llamada, todas las veces.**
- * No es lentitud de la red: `/raw` entrega el volcado **y despues sigue emitiendo
- * `RTA` a 30 Hz**, que `protocol.ts` describe como «la unica emision que la
- * consola mantiene pase lo que pase». Asi que la carrera de 900 ms sin datos que
- * `estadoPorHttp` usa para cortar **nunca la gana el silencio**: siempre llega
- * otra trama, y la lectura corre hasta el tope.
- *
- * Con 46 puntos eso son **368 segundos** de los 900 que dura el tono, para leer
- * una clave por punto. Lo midio un auditor antes de correr.
- *
- * Aca alcanza con cortar en cuanto la clave aparece en el cuerpo acumulado.
- */
-async function leerUnaClave(maquina: string, clave: string, topeMs = 3000): Promise<number> {
-  const res = await fetch(`http://${maquina}/raw`);
-  const lector = res.body?.getReader();
-  if (lector === undefined) throw new Error(`no se pudo leer /raw de ${maquina}`);
-  const re = new RegExp(`^SETD\\^${clave.replace(/\./g, '\\.')}\\^(.*)$`, 'm');
-  const decoder = new TextDecoder();
-  let texto = '';
-  const hasta = Date.now() + topeMs;
-  try {
-    while (Date.now() < hasta) {
-      const { value, done } = await lector.read();
-      if (done) break;
-      texto += decoder.decode(value, { stream: true });
-      const m = texto.match(re);
-      if (m !== null) return Number(m[1]);
-    }
-  } finally {
-    void lector.cancel();
-  }
-  throw new Error(`${clave} no aparecio en /raw de ${maquina} en ${topeMs} ms`);
-}
 
 const media = (xs: number[]): number =>
   (xs.length === 0 ? NaN : xs.reduce((s, v) => s + v, 0) / xs.length);
