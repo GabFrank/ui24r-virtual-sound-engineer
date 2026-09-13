@@ -148,3 +148,48 @@ test('dB es la conversion de siempre, y el cero no es -0', () => {
   assert.ok(Math.abs(dB(0.5) + 6.0206) < 0.001);
   assert.equal(dB(0), -Infinity);
 });
+
+/**
+ * **La mutación que las pruebas de tono puro no pueden ver: sacar la ventana.**
+ *
+ * Goertzel evalúa la correlación en la frecuencia exacta, así que con un tono
+ * **solo** la ventana no cambia nada: medido, 0,000 dB con y sin. Y si además se
+ * saca el `/ 0,5` que la compensa, tampoco cambia la escala. O sea que quitar la
+ * ventana entera —ventana y compensación juntas— dejaba todo el archivo en verde.
+ *
+ * Lo que la ventana compra es rechazo de lo que NO está en la frecuencia pedida,
+ * y este banco vive de eso: el ítem 105 mide una fuga 79 dB por debajo de un tono
+ * que suena al mismo tiempo. Sin ventana, un interferente a nivel pleno a 50 Hz
+ * de distancia mete **+23,7 dB** de error; con Hann, 0,002 dB.
+ *
+ * **La separación es de 200,5 bins a propósito.** Con una separación que sea un
+ * múltiplo ENTERO del bin, el núcleo rectangular vale cero y la prueba pasaría
+ * sin ventana: un interferente a 3,00 Hz exactos da 0,000 dB de error en los dos
+ * casos. Una prueba con números redondos no ve nada.
+ */
+test('un interferente fuerte y cercano no se cuela en el bin', () => {
+  const DEBIL = 1e-4;          // −80 dB
+  const SEPARACION_EN_BINS = 200.5;
+  const hzInterferente = 1000 + (SEPARACION_EN_BINS * FM) / N;
+  const x = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    x[i] = DEBIL * Math.sin((2 * Math.PI * 1000 * i) / FM)
+      + Math.sin((2 * Math.PI * hzInterferente * i) / FM + 0.7);
+  }
+  const error = dB(amplitudDelTono(x, 1000, FM)) - dB(DEBIL);
+  assert.ok(Math.abs(error) < 0.1,
+    `el interferente a ${(hzInterferente - 1000).toFixed(2)} Hz mete ${error.toFixed(2)} dB `
+    + 'de error en un tono de -80 dB. Sin ventana de Hann esto da +23,7 dB, y es el '
+    + 'regimen en el que se mide la fuga del item 105.');
+});
+
+test('con un tono solo, la ventana no se nota: por eso hace falta la prueba de arriba', () => {
+  // Esto NO es un control de calidad del instrumento: es la demostracion de por
+  // que el test anterior existe. Si algun dia falla, es que Goertzel dejo de
+  // evaluar en la frecuencia exacta y hay que revisar la prueba de al lado.
+  for (const [n, hz] of [[N, 1000], [N, 1000.37], [144000, 1000], [12000, 1013.7]]) {
+    const error = dB(amplitudDelTono(seno(0.25, hz, n), hz, FM)) - dB(0.25);
+    assert.ok(Math.abs(error) < 0.01,
+      `${n} muestras a ${hz} Hz: ${error.toFixed(4)} dB`);
+  }
+});

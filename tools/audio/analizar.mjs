@@ -95,11 +95,36 @@ export const dB = (v) => (v > 0 ? 20 * Math.log10(v) : -Infinity);
  * de la frecuencia buscada, y el módulo de esos dos da la amplitud. El ruido que
  * no está en esa frecuencia se promedia a cero.
  *
- * **Se usa una ventana de Hann.** Sin ventana, que la frecuencia no caiga justo
- * en un bin entero derrama energía a los costados y subestima la amplitud hasta
- * 3,9 dB: el error más grande de toda la cadena, y silencioso. Con Hann la
- * pérdida por desalineación baja a 1,4 dB y se compensa por la ganancia
- * coherente de la ventana, que es 0,5.
+ * **Se usa una ventana de Hann, y no por lo que este docblock decía.** Afirmaba
+ * que sin ventana la desalineación del tono respecto de la rejilla de bins
+ * subestima la amplitud hasta 3,9 dB, y que Hann la baja a 1,4 dB. **Eso no
+ * describe este código.** Goertzel evalúa la correlación en la frecuencia
+ * **exacta** que se le pide, no en un bin de una rejilla, así que no hay
+ * desalineación que perder: medido con seis largos de registro y frecuencias
+ * con parte fraccionaria de ciclo, un tono solo da **0,000 dB de error con
+ * ventana y sin ventana**. Lo encontró una auditoría del ítem 105 el 2026-09-13.
+ *
+ * Lo que la ventana compra de verdad es **rechazo de lo que NO está en la
+ * frecuencia pedida**, y es enorme. Con un tono débil en 1 kHz a −80 dB y otro
+ * a nivel pleno cerca, en un registro de 4 s (bin de 0,25 Hz):
+ *
+ * | el interferente, a | sin ventana | con Hann |
+ * |---|---|---|
+ * | 2,9 Hz (11,5 bins) | **+48,8 dB** de error | 9,1 dB |
+ * | 10,1 Hz (40,5 bins) | +37,9 dB | 0,27 dB |
+ * | 50,1 Hz (200,5 bins) | +23,7 dB | 0,002 dB |
+ *
+ * Los lóbulos laterales del rectángulo caen tan despacio que un interferente a
+ * cincuenta hercios todavía arruina la medición. **Y separaciones que son un
+ * múltiplo entero del bin dan cero de error sin ventana**, que es la trampa: una
+ * prueba con números redondos no ve nada.
+ *
+ * Este banco vive en ese régimen. La fuga que mide el ítem 105 está 79 dB por
+ * debajo de un tono que suena al mismo tiempo.
+ *
+ * El `/0,5` del final compensa la ganancia coherente de Hann. Sacar la ventana
+ * **y** ese divisor a la vez es la mutación que las pruebas de tono puro no
+ * pueden ver, y por eso hay una prueba con interferente.
  */
 export function amplitudDelTono(x, frecuencia, fm) {
   const n = x.length;
