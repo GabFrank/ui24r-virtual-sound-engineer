@@ -250,6 +250,14 @@ const PREVIO: readonly (readonly [string, number])[] = [
   [`i.${n}.dyn.bypass`, Number(exigirClave(e0, `i.${n}.dyn.bypass`))],
   [`i.${n}.gate.enabled`, Number(exigirClave(e0, `i.${n}.gate.enabled`))],
   [`i.${n}.deesser.enabled`, Number(exigirClave(e0, `i.${n}.deesser.enabled`))],
+  // **Los dos que los controles positivos escriben.** C0 mutea el canal para medir
+  // el piso y C1 puentea el ecualizador para tener el punto plano; los dos vuelven
+  // en seguida, pero **una corrida que muera ahi los dejaria escritos**. Van a
+  // `PREVIO` para que vuelvan por el camino garantizado y no por una escritura
+  // literal de mi cabeza — que es lo que el trinquete `escribir-sin-leer` acaba de
+  // cazar, con razon.
+  [`i.${n}.mute`, Number(exigirClave(e0, `i.${n}.mute`))],
+  [`i.${n}.eq.bypass`, Number(exigirClave(e0, `i.${n}.eq.bypass`))],
   ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
   // El fader del canal va ultimo por el mismo motivo que `m.mix` en el 107: no se
   // devuelve el nivel antes de devolver lo que lo protege.
@@ -452,7 +460,7 @@ await conRestauracion(
         + 'de anulacion no puede anular nada y se publicarian puntos hundidos en el ruido.');
     }
     console.log(`   PISO EFECTIVO = ${pisoEfectivo.toFixed(2)} dBFS, el mayor de los dos.`);
-    t.enviar(codificarSetd(`i.${n}.mute`, 0));
+    t.enviar(codificarSetd(`i.${n}.mute`, previo(`i.${n}.mute`)));
     await new Promise((r) => setTimeout(r, 2000));
 
     // **El punto plano contra el ecualizador PUENTEADO.** De aca sale L1: si el
@@ -460,7 +468,7 @@ await conRestauracion(
     t.enviar(codificarSetd(`i.${n}.eq.bypass`, 1));
     await new Promise((r) => setTimeout(r, 2000));
     const mPuenteado = await medir('C1-puenteado', true);
-    t.enviar(codificarSetd(`i.${n}.eq.bypass`, 0));
+    t.enviar(codificarSetd(`i.${n}.eq.bypass`, previo(`i.${n}.eq.bypass`)));
     await new Promise((r) => setTimeout(r, 2000));
     const mPlano = await medir('C1-plano', true);
     puenteadoDb = mPuenteado.centroDb;
