@@ -298,3 +298,64 @@ export function esNivelDeEnvioAMonitor(ruta: string): boolean {
   if (String(Number(canal)) !== canal || String(Number(aux)) !== aux) return false;
   return Number(canal) < CANALES_DE_ENTRADA && Number(aux) < AUXILIARES;
 }
+
+/**
+ * La ruta concreta que publica la consola, llevada a la **plantilla** con la que
+ * la tabla de conversión la indexa. `i.3.aux.1.value` → `i.N.aux.M.value`.
+ *
+ * **Por qué hacía falta, y qué estaba roto sin esto.** `RAW_MAP` se indexa por
+ * las plantillas —`i.N.eq.b1.freq`— y `entrada()` era un `Map.get` de la cadena
+ * cruda. O sea que `entrada('i.3.eq.b1.freq')` devolvía `undefined` **para toda
+ * ruta real**, y con eso:
+ *
+ * - `verificarAtadura` —la guarda que ata la magnitud que el motor juzga al crudo
+ *   que va al cable, escrita el 2026-09-13 para cerrar un agujero que una
+ *   auditoría había demostrado explotable— devolvía `SIN_LEY_VERIFICADA` **en
+ *   todos los canales**. Y `SIN_LEY_VERIFICADA` está documentado como «no es un
+ *   rechazo». La guarda estaba enchufada al motor y no podía disparar nunca.
+ * - `aRaw('i.3.eq.b1.freq', 1000)` contestaba `SIN_MAPEO`, «no se escribe», así
+ *   que las cuatro leyes del ecualizador medidas contra el filtro real no servían
+ *   para escribir ningún canal de verdad.
+ *
+ * Es la forma que este proyecto ya tiene nombrada: la capa que justifica estaba
+ * bien y la que implementa no conectaba. Nadie lo vio porque **ningún llamador de
+ * producción usa `aRaw`**, y los tests usan la plantilla.
+ *
+ * **Las reglas son las de `esNivelDeEnvioAMonitor`, y por los mismos motivos.**
+ * Se exige la forma canónica —`03` no es `3`, porque el estado por ruta se indexa
+ * por la cadena cruda y los contaría como rutas distintas— y el índice dentro del
+ * rango real, porque canonizar `i.99.…` daría una conversión para un canal que
+ * esta consola no tiene.
+ *
+ * **Falla cerrado ante un índice de familia desconocida.** Si aparece un segmento
+ * numérico que no sabemos acotar, devuelve `undefined` en vez de adivinar: dar
+ * una conversión para una ruta que nadie acotó es exactamente lo que la auditoría
+ * de la lista blanca castigó.
+ */
+export function canonizarRuta(ruta: string): string | undefined {
+  const partes = ruta.split('.');
+  for (let i = 0; i < partes.length; i++) {
+    const seg = partes[i]!;
+    // **Todo segmento es un identificador o un número, y nada más.** Sin esto,
+    // `i. 3.eq.b1.freq` —con un espacio— no matcheaba `^\d+$`, se dejaba intacto y
+    // la función devolvía esa cadena: basura que nadie encuentra en la tabla, pero
+    // una respuesta con forma de éxito. `entrada()` la atajaba por casualidad, y
+    // quien use esta función como validador no tendría esa suerte.
+    if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(seg) && !/^\d+$/.test(seg)) return undefined;
+    if (!/^\d+$/.test(seg)) continue;
+    // Forma canónica: el número tiene que volver a escribirse igual.
+    if (String(Number(seg)) !== seg) return undefined;
+    const familia = i === 0 ? '' : partes[i - 1]!;
+    const n = Number(seg);
+    if (familia === 'i') {
+      if (n >= CANALES_DE_ENTRADA) return undefined;
+      partes[i] = 'N';
+    } else if (familia === 'aux') {
+      if (n >= AUXILIARES) return undefined;
+      partes[i] = 'M';
+    } else {
+      return undefined;
+    }
+  }
+  return partes.join('.');
+}

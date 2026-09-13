@@ -74,6 +74,21 @@ const DELIBERADAS = new Map<string, string>([
     + 'en la sala y el estado por ruta se indexa por cadena cruda, asi que con la '
     + 'guarda vieja esquivaba el techo puesto en `i.3.aux.1.value`'],
   ['i.0003.aux.0000000001.value', 'el mismo alias llevado al extremo'],
+
+  // **Y las cuatro de abajo, por `canonizarRuta`.** Mismo trato y mismo motivo:
+  // son aserciones NEGATIVAS sobre la tabla de conversion. Hasta el 2026-09-13
+  // `entrada()` no resolvia ninguna ruta concreta, asi que `verificarAtadura`
+  // --la guarda que ata la magnitud al crudo que va al cable-- devolvia
+  // `SIN_LEY_VERIFICADA` en los 24 canales y no podia disparar nunca. Al
+  // arreglarlo hay que probar que canonizar NO abre la puerta de par en par.
+  ['i.03.eq.b1.freq', 'el alias con cero a la izquierda, ahora sobre la tabla de '
+    + 'conversion: si resolviera, seria la misma ruta alcanzada por una clave que '
+    + 'el techo por ruta no cuenta'],
+  ['i.003.eq.b1.freq', 'el mismo alias con dos ceros'],
+  ['i.99.eq.b1.freq', 'indice fuera de rango: dar una conversion para un canal que '
+    + 'la consola no tiene es escribir a ciegas'],
+  ['i.3.aux.01.value', 'el alias con cero en el indice del AUXILIAR, que es el otro '
+    + 'de los dos indices que `canonizarRuta` toca'],
 ]);
 
 /** Los archivos donde puede esconderse una ruta: código y pruebas, no compilados. */

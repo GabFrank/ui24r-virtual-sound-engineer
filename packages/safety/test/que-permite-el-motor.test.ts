@@ -98,6 +98,28 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // 690 -> 930: ADR-028 abrio el envio a monitor. Son **exactamente +240**, los
   // `i.N.aux.M.value` de veinticuatro canales por diez auxiliares, y nada mas.
   //
+  // **930 -> 834 el 2026-09-13, y esto BAJA porque algo dejo de escribirse.** Son
+  // exactamente -96: las cuatro rutas con ley medida --`eq.b1.freq`, `eq.b1.q`,
+  // `eq.lpf.freq` y `eq.hpf.freq`-- por veinticuatro canales. Se reparten en -72
+  // de CHANNEL_EQ y -24 de HPF.
+  //
+  // **No se cayeron: nunca habian sido escribibles, y este numero lo tapaba.** El
+  // arnes declaraba `unidad: 'dB'` para TODA ruta, y con eso pasaban una puerta
+  // que con la unidad honesta rechazan. `LIMITES.CHANNEL_EQ` pone su tope en dB y
+  // la ley medida de `eq.b1.freq` esta en Hz; `LIMITES.HPF` lo pone en octavas y
+  // la de `eq.hpf.freq` esta en Hz. El motor rechaza con INV-004 --«comparar los
+  // dos numeros seria comparar especies distintas»-- y **tiene razon**: un tope de
+  // 4 dB no acota un salto de frecuencia.
+  //
+  // Salio a la luz al arreglar `entrada()`, que no resolvia ninguna ruta concreta
+  // (ver `canonizar-ruta.test.ts`). Con la tabla resolviendo, el arnes tuvo que
+  // declarar la unidad de verdad, y ahi se vio.
+  //
+  // **La causa es de modelo y no de medicion**: `LIMITES` da UNA unidad por
+  // `kind`, y `CHANNEL_EQ` cubre hojas en Hz, en dB y en Q. Mientras eso siga asi,
+  // medir mas leyes del ecualizador no las hace escribibles.
+  // Ver `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
+  //
   // **Este test evito que fueran +1200.** `clasificar-ruta` mete cinco hojas
   // bajo `MONITOR_AUX_SEND` --value, mute, pan, post y postproc-- y abrir el
   // `kind` las abria las cinco. El usuario autorizo el nivel; `post` y
@@ -106,8 +128,8 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // ahora rechaza toda hoja que no sea `.value`.
   const n = permitidas().length;
   strictEqual(
-    n, 930,
-    `el motor permite ${n} rutas del inventario y se esperaban 930. `
+    n, 834,
+    `el motor permite ${n} rutas del inventario y se esperaban 834. `
     + 'Si subio, algo que se rechazaba ahora se escribe.',
   );
 });
@@ -119,7 +141,7 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
  * (24) por `hw.N.gain` (24) deja el 930 en pie y **todas** las aserciones de
  * familia en verde, porque cada una mira su propia familia y ninguna mira el
  * conjunto. Y quedaban sin fijar seis familias grandes: el ecualizador de canal
- * (504), el del general (66), el filtro pasa-altos (48), el fader, el silencio
+ * (432), el del general (66), el filtro pasa-altos (24), el fader, el silencio
  * y la ganancia del previo.
  *
  * Esto fija el reparto entero. Un cambio que mueva una ruta de una categoria a
@@ -128,12 +150,18 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
 const REPARTO_ESPERADO: ReadonlyMap<string, number> = new Map([
   // El ecualizador del canal es la mayoria de lo escribible, y es el corazon
   // del producto: corregir el timbre de un canal es para lo que existe.
-  ['CHANNEL_EQ', 504],
+  // -72 el 2026-09-13: `eq.b1.freq`, `eq.b1.q` y `eq.lpf.freq` de los 24 canales
+  // tienen ley medida en Hz y en Q, y el tope de este `kind` esta en dB. El motor
+  // las rechaza por INV-004 y siempre las habria rechazado: lo que las contaba
+  // era el arnes, que declaraba dB para todo.
+  ['CHANNEL_EQ', 432],
   // ADR-028. Veinticuatro canales por diez auxiliares.
   ['MONITOR_AUX_SEND', 240],
   // Solo los filtros del general, nada de bypass ni de recall de preset.
   ['OUTPUT_EQ', 66],
-  ['HPF', 48],
+  // -24 por lo mismo: `eq.hpf.freq` tiene ley medida en Hz y el tope esta en
+  // octavas. Queda `eq.hpf.slope`, que no tiene ley y sigue pasando.
+  ['HPF', 24],
   // ADR-026: la ganancia del previo, solo en configuracion de canales.
   ['PREAMP_GAIN', 24],
   ['CHANNEL_FADER', 24],
@@ -155,7 +183,7 @@ test('el reparto de lo escribible por categoria es exactamente el declarado', ()
 
   // Y que la suma sea el total que el otro test vigila: si los dos numeros se
   // separan, uno de los dos se actualizo sin mirar.
-  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 930);
+  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 834);
 });
 
 test('lo unico que ADR-028 abrio son los niveles de envio a monitor', () => {

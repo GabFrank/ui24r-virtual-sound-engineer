@@ -2,6 +2,7 @@ import type { MixerDomainAPI, ReadResult, WriteResult, ConnectionState,
   DeviceInfo, BulkExternalChange, PresenciaAjena } from '@vse/mixer-adapter';
 import type { ContextoSeguridad, CambioPropuesto } from '../src/types.ts';
 import { LIMITES } from '@vse/domain';
+import { entrada } from '@vse/mixer-adapter';
 import type { ParameterKind } from '@vse/domain';
 
 /**
@@ -205,14 +206,38 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
  * alguien cambia la unidad de un tope, esto sigue midiendo la puerta que corre.
  */
 export function cambioDeInventario(kind: ParameterKind, path: string): CambioPropuesto {
+  // **Si la ruta tiene ley medida, el par va COHERENTE.** Y esto no es un
+  // relajamiento del recorrido: es lo que lo mantiene midiendo lo que dice.
+  //
+  // Hasta el 2026-09-13 el crudo y la magnitud iban con el mismo número —«crudo 1
+  // declarado como 1 dB»—, absurdo a propósito, porque lo que se mide acá es la
+  // **puerta de permiso** y no la conversión. Eso funcionaba mientras nada atara
+  // las dos cosas. Ese mismo día se arregló `entrada()`, que no resolvía ninguna
+  // ruta concreta, y con eso `verificarAtadura` empezó a disparar de verdad: las
+  // 96 rutas del ecualizador con ley medida —24 canales por 4 leyes— pasaron a
+  // rechazarse con `MAGNITUD_NO_ATADA` y la cuenta cayó de 930 a 834.
+  //
+  // **El rechazo era correcto**: en `i.N.eq.b1.freq` el crudo 1 son 22 050 Hz y el
+  // cambio declaraba 1. Lo que dejó de ser cierto es la premisa del arnés —que los
+  // números no importan—, así que se arregla el arnés y no el número esperado.
+  // Cambiar el 930 habría escondido que la guarda empezó a funcionar.
+  const e = entrada(path);
+  if (e !== undefined && e.estado === 'PROBADO') {
+    // Un crudo del tramo medido, y la magnitud que ESE crudo produce.
+    const raw = (e.rawMin + e.rawMax) / 2;
+    return {
+      kind, path, unidad: e.unidad,
+      valorPropuesto: raw, valorEsperado: raw,
+      magnitudPropuesta: e.fromRaw(raw), magnitudEsperada: e.fromRaw(raw),
+    } as CambioPropuesto;
+  }
   return {
     kind,
     path,
     unidad: LIMITES[kind]?.unidad ?? 'dB',
-    // El crudo y la magnitud van con el mismo número a propósito: lo que este
-    // recorrido mide es la **puerta de permiso**, no la conversión. Que un
-    // crudo 1 declarado como 1 dB sea absurdo está dicho acá para que nadie lo
-    // lea como una afirmación sobre unidades.
+    // Sin ley medida no hay con qué atar, así que el par sigue siendo el de antes
+    // y el motor sigue juzgando lo declarado. Que sea absurdo está dicho acá para
+    // que nadie lo lea como una afirmación sobre unidades.
     valorPropuesto: 1,
     valorEsperado: 0,
     magnitudPropuesta: 1,

@@ -1,3 +1,5 @@
+import { canonizarRuta } from './clasificar-ruta.ts';
+
 /**
  * Tabla de conversión entre las rutas crudas del protocolo y unidades físicas.
  *
@@ -329,7 +331,7 @@ export type ResultadoConversion =
  * valor absoluto para que el usuario lo aplique a mano.
  */
 export function aRaw(path: string, fisico: number): ResultadoConversion {
-  const e = PORPATH.get(path);
+  const e = entrada(path);
   if (!e) {
     return {
       ok: false,
@@ -370,8 +372,20 @@ export function aRaw(path: string, fisico: number): ResultadoConversion {
   return { ok: true, raw: e.toRaw(fisico) };
 }
 
+/**
+ * La entrada de la tabla para una ruta, concreta o plantilla.
+ *
+ * **Acepta las dos formas a propósito.** La plantilla —`i.N.eq.b1.freq`— es el
+ * nombre del catálogo y la usan `rutasProbadas()` y las pruebas; la concreta
+ * —`i.3.eq.b1.freq`— es lo que publica la consola y lo que llega desde el motor.
+ * Hasta el 2026-09-13 sólo resolvía la primera, y ver `canonizarRuta` para lo que
+ * eso dejaba roto.
+ */
 export function entrada(path: string): RawMapEntry | undefined {
-  return PORPATH.get(path);
+  const directa = PORPATH.get(path);
+  if (directa !== undefined) return directa;
+  const canonica = canonizarRuta(path);
+  return canonica === undefined ? undefined : PORPATH.get(canonica);
 }
 
 /** Rutas con conversión verificada. Son las únicas escribibles por vía cruda. */
