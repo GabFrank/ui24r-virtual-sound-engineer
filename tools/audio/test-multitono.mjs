@@ -14,7 +14,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { frecuenciasPorOctava, picoInterpolado, qPorAnchoMitad } from './multitono.mjs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
+import { frecuenciasPorOctava, picoInterpolado, qPorAnchoMitad, respuesta }
+  from './multitono.mjs';
 
 /** La respuesta en dB de una campana, analítica: no hay simulación de por medio. */
 function campanaDb(hz, f0, q, gananciaDb) {
@@ -143,4 +147,77 @@ test('el rango de Q donde el instrumento sirve, fijado', () => {
     const factor = Math.max(medido.q / q, q / medido.q);
     assert.ok(factor <= 1.07, `Q=${q}: factor ${factor.toFixed(3)}`);
   }
+});
+
+test('una curva que no sube no tiene ancho, y se dice en vez de inventarlo', () => {
+  // El caso lo construyó un auditor el 2026-09-13: una curva enteramente
+  // negativa con un máximo interior en −3 dB. La mitad de −3 es −1,5, que queda
+  // ARRIBA de todos los puntos, así que el bucle disparaba en el propio pico y
+  // extrapolaba decenas de pasos de malla hacia afuera. Devolvía
+  // `{q: 0,0131, de 10,5 Hz a 61 355 Hz}` con la ventana yendo de 40 a 15 343 Hz.
+  const curva = FRECUENCIAS.map((hz) => ({
+    hz,
+    db: -3 - 2 * Math.pow(Math.log(hz / 1000), 2),
+  }));
+  const pico = picoInterpolado(curva);
+  assert.ok(pico, 'la parábola sí tiene vértice: el problema no era el pico');
+  assert.ok(pico.alturaDb < 0, 'y su altura es negativa, que es el caso');
+  assert.equal(qPorAnchoMitad(curva, pico), null,
+    'sin ganancia positiva no hay «ancho a mitad de la ganancia» que medir');
+});
+
+/**
+ * Un WAV float32 de dos canales, que es lo que `grabar` produce.
+ *
+ * El multitono se escribe en int16 porque es lo que `afplay` reproduce, y
+ * `leerWav` **se niega a convertir formatos a propósito** —cada conversión es una
+ * oportunidad de meter un error de escala—, así que para probar `respuesta()`
+ * hace falta un archivo del formato que de verdad va a leer.
+ */
+function escribirFloat32(ruta, canales, fm) {
+  const n = canales[0].length;
+  const c = canales.length;
+  const datos = Buffer.alloc(n * c * 4);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < c; k++) datos.writeFloatLE(canales[k][i], (i * c + k) * 4);
+  }
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + datos.length, 4); h.write('WAVEfmt ', 8);
+  h.writeUInt32LE(16, 16); h.writeUInt16LE(3, 20); h.writeUInt16LE(c, 22);
+  h.writeUInt32LE(fm, 24); h.writeUInt32LE(fm * c * 4, 28); h.writeUInt16LE(c * 4, 32);
+  h.writeUInt16LE(32, 34); h.write('data', 36); h.writeUInt32LE(datos.length, 40);
+  writeFileSync(ruta, Buffer.concat([h, datos]));
+}
+
+test('el pico y el recorte viajan con la captura, y el cociente da cero', () => {
+  // La guarda de recorte de la medición 101 cuelga de estos dos campos, y el
+  // cociente capturado/referencia es lo que hace que el banco no tenga que ser
+  // plano. Esto prueba los dos de punta a punta. Si alguien saca `picoDbFS`, la
+  // corrida vuelve a poder publicar la curva del limitador de la interfaz
+  // creyendo que es la de un filtro.
+  const ruta = join(tmpdir(), 'vse-test-respuesta.wav');
+  const n = 192000;
+  for (const objetivo of [-8, -24, 0]) {
+    const amplitud = Math.pow(10, objetivo / 20);
+    const x = new Float32Array(n);
+    for (const f of FRECUENCIAS) {
+      const w = (2 * Math.PI * f) / 48000;
+      for (let i = 0; i < n; i++) x[i] += Math.sin(w * i + f);
+    }
+    let pico = 0;
+    for (let i = 0; i < n; i++) if (Math.abs(x[i]) > pico) pico = Math.abs(x[i]);
+    for (let i = 0; i < n; i++) x[i] = (x[i] / pico) * amplitud;
+    // Los dos canales IDENTICOS: la respuesta tiene que dar cero exacto.
+    escribirFloat32(ruta, [x, x], 48000);
+
+    const r = respuesta(ruta, FRECUENCIAS, { canalCapturado: 0, canalReferencia: 1 });
+    assert.ok(Math.abs(r.picoDbFS - objetivo) < 0.01,
+      `pico pedido ${objetivo} dBFS, respuesta() informa ${r.picoDbFS.toFixed(3)}`);
+    assert.equal(r.recorteExacto, objetivo >= 0,
+      `con el pico en ${objetivo} dBFS el recorte tendria que ser ${objetivo >= 0}`);
+    const peor = Math.max(...r.map((p) => Math.abs(p.db)));
+    assert.ok(peor < 0.001,
+      `con los dos canales iguales el cociente tiene que dar 0 dB; el peor da ${peor}`);
+  }
+  rmSync(ruta, { force: true });
 });

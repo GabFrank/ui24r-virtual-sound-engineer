@@ -20,19 +20,26 @@
  * **Y las fases son pseudoaleatorias.** Con todas en cero las cien senoides se
  * suman en el instante cero y el pico es cien veces el de una: el archivo
  * recortaría con un nivel eficaz ridículamente bajo. Con fases repartidas el
- * factor de cresta baja a unos 3,5 y el estímulo entrega mucho más nivel por el
- * mismo pico.
+ * factor de cresta baja a **5,03, o sea 14,03 dB** — medido sobre los 104 tonos
+ * que esto genera de verdad, no estimado. El número importa porque es lo que hay
+ * que descontar para saber cuánto recorrido queda antes del recorte.
  */
 import { writeFileSync } from 'node:fs';
-import { amplitudDelTono, pisoDelBin, dB, leerWav } from './analizar.mjs';
+import { amplitudDelTono, pisoDelBin, pico, dB, leerWav } from './analizar.mjs';
 
 /**
  * Frecuencias repartidas por octava, cada una caída en un bin entero.
  *
- * Se quitan los duplicados que aparecen abajo de todo: a 20 Hz, un doceavo de
- * octava son 1,2 Hz, y si el bin mide 0,25 Hz dos tonos vecinos pueden redondear
- * al mismo. Y se exige **separación mínima en bins** para que no se derramen
- * entre sí, que es lo que arruinaría la medición justo en los graves.
+ * Se exige **separación mínima en bins** para que los tonos no se derramen entre
+ * sí, que es lo que arruinaría la medición justo en los graves: a 20 Hz un
+ * doceavo de octava son 1,2 Hz, y con bins de 0,25 Hz dos tonos vecinos quedarían
+ * a cinco bins.
+ *
+ * **Con `desde = 40`, que es lo que la medición 101 usa, este filtro no descarta
+ * nada**: 104 crudas dan 104 tonos y la separación mínima real es de 10 bins.
+ * Recién empieza a actuar en `desde = 30` (descarta 1) y en `desde = 20`
+ * (descarta 4). Queda porque el día que alguien baje el arranque lo va a
+ * necesitar, y queda dicho para que nadie crea que está haciendo algo hoy.
  */
 export function frecuenciasPorOctava({
   desde = 40, hasta = 16000, porOctava = 12, anchoDelBinHz, separacionMinimaEnBins = 8,
@@ -105,7 +112,7 @@ export function escribirMultitono(
   c.writeUInt16LE(16, 34); c.write('data', 36); c.writeUInt32LE(datos.length, 40);
   writeFileSync(ruta, Buffer.concat([c, datos]));
   return {
-    /** Pico sobre eficaz. Con fases repartidas ronda 4; con todas en cero sería 100. */
+    /** Pico sobre eficaz. Con los 104 tonos de esta medición da 5,03 (14,03 dB). */
     factorDeCresta: pico / eficaz,
     nivelPorTonoDbFS: dB(escala / 32767),
     segundosTotales: (n * repeticiones) / fm,
@@ -127,18 +134,31 @@ export function respuesta(wav, frecuencias, { canalCapturado = 0, canalReferenci
     throw new Error(`el WAV tiene ${w.canales.length} canales y hacen falta al menos `
       + `${Math.max(canalCapturado, canalReferencia) + 1}`);
   }
-  const pisoCap = pisoDelBin(cap, frecuencias[Math.floor(frecuencias.length / 2)], w.frecuencia);
-  return frecuencias.map((f) => {
+  // **El pico y el recorte de la captura, que quien mida tiene que poder mirar.**
+  // Una curva medida sobre una captura recortada es la curva del limitador de la
+  // interfaz, y se parece bastante a la de un filtro: sube, se aplana arriba, y
+  // baja. El dato tiene que salir de acá porque acá es donde están las muestras.
+  const picoCap = pico(cap);
+  const puntos = frecuencias.map((f) => {
     const a = amplitudDelTono(cap, f, w.frecuencia);
     const b = amplitudDelTono(ref, f, w.frecuencia);
+    // **El piso se mide en la frecuencia de CADA tono.** Medirlo una vez en el
+    // medio del espectro y aplicarlo a los 104 supone que el piso es plano, y no
+    // lo es: el zumbido de red en 50, 100 y 150 Hz está muy por encima del piso
+    // de 800 Hz. Cuesta unos segundos por captura y evita juzgar un tono grave
+    // con el criterio de uno medio.
+    const piso = pisoDelBin(cap, f, w.frecuencia, { bins: 10 });
     return {
       hz: f,
       db: dB(a) - dB(b),
       capturadoDb: dB(a),
       referenciaDb: dB(b),
-      margenDb: dB(a) - dB(pisoCap),
+      margenDb: dB(a) - dB(piso),
     };
   });
+  puntos.picoDbFS = dB(picoCap);
+  puntos.recorteExacto = picoCap >= 1.0;
+  return puntos;
 }
 
 /**
@@ -182,9 +202,20 @@ export function picoInterpolado(puntos) {
  * sin los dos cruces no hay ancho, y suponer uno sería inventarlo.
  */
 export function qPorAnchoMitad(puntos, pico) {
+  // **La altura tiene que ser positiva, y el bucle arranca en el vecino.**
+  //
+  // Con una curva que no sube --toda negativa, con un máximo interior en −3 dB--
+  // la mitad queda ARRIBA de todos los puntos, el bucle dispara en el propio pico
+  // y la interpolación extrapola decenas de pasos de malla hacia afuera. Medido:
+  // devolvía `{q: 0,0131, de 10,5 Hz a 61 355 Hz}` con la ventana medida yendo de
+  // 40 a 15 343 Hz. Un número con cara de medido sacado de una curva que no es
+  // una campana.
+  if (!(pico.alturaDb > 0)) return null;
   const mitad = pico.alturaDb / 2;
   const cruce = (desde, paso) => {
-    for (let k = desde; k >= 0 && k < puntos.length; k += paso) {
+    // Desde el vecino: el pico está por definición arriba de la mitad, y si no lo
+    // estuviera la curva no sería lo que se cree.
+    for (let k = desde + paso; k >= 0 && k < puntos.length; k += paso) {
       if (puntos[k].db <= mitad) {
         const anterior = puntos[k - paso];
         if (anterior === undefined) return null;

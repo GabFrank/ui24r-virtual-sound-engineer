@@ -160,11 +160,11 @@ export function pico(x) {
 const BINS_DEL_PISO = 20;
 const BINS_DE_GUARDA = 4;
 
-export function pisoDelBin(x, frecuencia, fm) {
+export function pisoDelBin(x, frecuencia, fm, { bins = BINS_DEL_PISO } = {}) {
   const anchoDelBin = fm / x.length;
   let potencia = 0;
   let n = 0;
-  for (let k = BINS_DE_GUARDA; k < BINS_DE_GUARDA + BINS_DEL_PISO; k++) {
+  for (let k = BINS_DE_GUARDA; k < BINS_DE_GUARDA + bins; k++) {
     for (const signo of [1, -1]) {
       const f = frecuencia + signo * k * anchoDelBin;
       if (f <= 0 || f >= fm / 2) continue;

@@ -72,6 +72,69 @@ se quiera probar. El multitono mide **toda la respuesta en una captura**, y como
 el nivel de cada tono se mide contra el mismo tono en la referencia, no hace falta
 que los tonos tengan todos el mismo nivel ni que el camino sea plano.
 
+## Las precondiciones, verificadas ANTES de escribir nada
+
+**Entre la banda 1 y la entrada de la interfaz no hay sólo un cable.** Está el
+resto del canal —su compresor, su puerta, su de-esser— y después el general
+entero. El estímulo sube hasta **12 dB de pico** cuando la campana se levanta, y
+cualquier cosa dependiente del nivel aplasta justamente la punta de la campana,
+que es de donde salen `f0`, la altura y el Q.
+
+**Una ganancia estática se cancela en la resta contra la línea base. Una no lineal
+no.** Ésa es toda la regla, y es la que la 99b tuvo que aprender midiendo.
+
+| Qué | Cómo queda | Por qué |
+|---|---|---|
+| Compresor del canal | **se puentea** | depende del nivel |
+| Puerta del canal | **se apaga** | ídem |
+| De-esser del canal | **se apaga** | es un compresor **de banda**, y actúa justo donde la campana levanta: el peor de todos |
+| Compresor del general | **se puentea** | la 99b ya lo había establecido |
+| Ecualizador del general, su fader, el supresor apagado | se leen, se registran, **no se tocan** | son ganancias **estáticas** y se cancelan en la resta |
+| Bandas b2…b5, pasa-altos, pasa-bajos | se leen y **su contribución se mide** | ver abajo |
+
+**Y la línea base se toma con el ecualizador ADENTRO, no puenteado.** Puentearlo
+entero y después meterlo entero haría que la resta entregue
+`b1 × b2 × b3 × b4 × b5 × hpf × lpf`, y no `b1`. Con el ecualizador adentro y
+**b1 en su ganancia neutra**, las otras cuatro bandas y los dos filtros están en
+las **dos** capturas y se cancelan igual que se cancela la interfaz, el cable y el
+previo.
+
+Que la ganancia previa de b1 sea neutra **no se supone**: se toman las dos líneas
+base —puenteada y adentro— y su diferencia **es** la contribución del resto del
+ecualizador. Se mide y se publica.
+
+## El nivel del estímulo, que decide si la corrida sirve
+
+La primera versión de este contrato ponía el pico del estímulo en **−8 dBFS**, y
+los números dicen que habría recortado antes de medir nada:
+
+- La 99b midió en **este mismo banco**, este canal, con `hw.9.gain = 0,2508445026`:
+  tono a −15 dBFS, pico capturado −6,9. Son **+8,1 dB de ganancia de cadena**.
+- Con el estímulo a −8 dBFS, la **línea base** llega a **+0,1 dBFS**.
+- Y la campana encima sube el pico **+8,6 dB** con 15 dB de ganancia y **+12,0 dB**
+  con 20 —medido sintetizando los 104 tonos con el filtro—, y la ganancia del
+  parámetro **no se conoce**.
+
+Así que el estímulo va a **−27 dBFS de pico**, que deja cada tono en −58,2 dBFS:
+contra el piso del bin que la 99b midió en este banco, **56 dB de margen**, once
+arriba de los 45 que se exigen. Bajar el estímulo no cuesta nada; recortar arruina
+la corrida entera. **Y el recorrido se calcula del banco antes de barrer**: si no
+alcanza, la corrida aborta diciendo cuántos decibeles hay que bajar.
+
+## El control positivo, sin el cual la corrida miente en la dirección más fuerte
+
+Si la escritura no llega al filtro —el Easy EQ activo, el crudo no aceptado, la
+banda no enganchada— lo que se mide es ruido. Y sobre ruido puro este instrumento
+**devuelve un pico en el 98 % de los sorteos** y un Q de **mediana 15,5**. La
+corrida cerraría diciendo *«el `mixer.html` no describe el filtro»*, que es la
+conclusión más fuerte y más equivocada que puede emitir.
+
+Así que antes de barrer se comprueba que **la campana suba al menos 6 dB**, y si
+no sube, la corrida aborta nombrando `eq.easy` y `eq.prmod`. Y se **relee el crudo
+escrito por HTTP**: la 99b midió que el crudo del *fader* no se redondea, pero del
+ecualizador no se sabía nada, y una cuantización se comería el 5 % de E3 sin tener
+nada que ver con la ley.
+
 ## Las expectativas
 
 Falsables, con su umbral, antes de correr.
@@ -85,12 +148,12 @@ máximo; se declara así y no mejor.
 
 | # | Predicción | Qué la falsaría |
 |---|---|---|
-| **E1** | **La línea base es plana.** Con el ecualizador puenteado, capturado ÷ transmitido no se aparta más de **1,0 dB** entre 40 Hz y 16 kHz, después de restarle su propia media | Que no lo sea: el banco no sirve de referencia y todo lo demás es la suma del banco y el filtro |
-| **E2** | **La banda 1 es un filtro de campana**, no un estante: con la ganancia al máximo la curva sube, alcanza un máximo y **vuelve a bajar** a los dos lados, al menos 6 dB de cada lado | Que no baje de un lado: es un estante, y «frecuencia central» quiere decir otra cosa |
+| **E1** | **La línea base es plana.** Con el ecualizador puenteado, capturado ÷ transmitido no se aparta más de **1,0 dB** entre 40 Hz y **15 343 Hz**, que es donde el estímulo termina de verdad, después de restarle su propia media | Que no lo sea. **Y no invalida el resto**: todo lo que sigue se mide como diferencia contra la línea base, y una irregularidad **estática** del camino se cancela ahí. Lo que falsa es la afirmación «el banco es plano», que es un dato sobre el banco y se publica como tal |
+| **E2** | **La banda 1 es un filtro de campana**, no un estante: con la ganancia al máximo la curva sube, alcanza un máximo y **vuelve a bajar al menos 6 dB de cada lado**, **en los crudos cuya campana entra entera en la ventana de 40 Hz a 15 343 Hz** | Que no baje de un lado **en un crudo que sí entra entero**: es un estante. En los crudos de los extremos el lado corto es el que da contra el borde del estímulo —una campana con `f0` en 57 Hz sólo puede caer 5,6 dB antes de los 40 Hz— y ahí se informa y **no se puntúa**: lo que limita es la ventana, no el filtro |
 | **E3** | **`f0` sigue `20·1102,5^V`** dentro del **5 %**, en al menos 6 crudos repartidos entre 0,1 y 0,9 | Que se desvíe. La función del `mixer.html` no describe el filtro |
-| **E4** | **La recta queda excluida.** En al menos un crudo, `f0` se aparta de `20 + 19980·V` en más de un **factor de 2** | Que no: los dos modelos serían indistinguibles con este instrumento y la corrida no decide nada |
+| **E4** | **La recta queda excluida.** En al menos un crudo, `f0` se aparta de `20 + 19980·V` en más de un **factor de 2** | Que no: los dos modelos serían indistinguibles y la corrida no decide nada. **Y es subordinada, declarado acá para que nadie la lea como confirmación independiente:** el factor entre las dos leyes en los ocho crudos va de **1,64 a 52,75**, así que **si E3 pasa, E4 pasa necesariamente**. Su valor es el otro: si E3 *falla*, E4 dice si falló porque la ley es la recta (factor ≈ 1) o porque no es ninguna de las dos |
 | **E5** | **El Q sigue `0,05·300^V`** dentro de un **factor de 1,3**, medido como `f0 / Δf` con `Δf` el ancho a **mitad de la ganancia en dB** | Que se desvíe más. Ojo: el umbral es flojo a propósito, porque la definición de Q de un filtro de campana varía entre fabricantes; sirve para separar 1,0 de 5,4, no para afinar una cifra |
-| **E6** | **Ida y vuelta.** Repetir el primer crudo al final da el mismo `f0` dentro de **1,5 %** y la misma línea base dentro de **0,5 dB** | Que no: algo del banco se movió y la corrida no vale |
+| **E6** | **Ida y vuelta.** Repetir **el crudo de 1 kHz** —el mejor condicionado, con 55 tonos de un lado y 47 del otro— da el mismo `f0` dentro de **1,5 %** y la misma línea base dentro de **0,5 dB** de forma | Que no: algo del banco se movió. **Y el nivel se publica aparte**: a las dos líneas base se les resta su media, así que una deriva **uniforme** del camino de captura es invisible en la comparación de formas — y es la que sesga todas las alturas y por tanto todos los Q (medido: 0,5 dB de deriva mueve un Q de 1,004 a 0,963) |
 
 ### Lo que NO se declara con umbral
 
@@ -112,6 +175,22 @@ con esa salvedad y **no se toca la entrada de la ganancia**.
   que se midió**; si `f0` sigue la exponencial pero con otra base, la inversa
   también cambia. Se declara qué quedó medido y en qué dirección.
 - **Un canal, una banda, un nivel de estímulo.**
+- **El tope del recorrido no queda medido.** El `mixer.html` declara 20 Hz …
+  22 050 Hz y esta corrida mide `V` entre 0,15 y 0,90, porque afuera de eso el
+  pico cae en el borde de la ventana. Con el 5 % de E3 la familia de `A·B^V` que
+  también pasa tiene la base entre **968 y 1256**, lo que en `V = 1` es una
+  frecuencia entre **18 083 y 26 885 Hz**. La corrida publica esa cota calculada
+  sobre sus propios datos: *«`20·1102,5^V` medida»* se va a leer como «el rango
+  20–22 050 está medido», y no lo está.
+- **Y E5 tampoco fija la base en 300.** La familia que cae dentro del factor 1,3
+  admite bases entre 67 y 1343. E5 separa la exponencial de la recta y poco más,
+  que es para lo que se puso.
+- **La dispersión de las alturas no es una no linealidad de la ganancia.** En los
+  crudos bajos la campana se sale por abajo de la ventana y en los altos el biquad
+  se deforma cerca de Nyquist: los dos extremos miden **la ventana**. Si hace falta
+  una cifra de ganancia es la del control positivo a 1 kHz, y sola.
+- **`eq.easy` y `eq.prmod` se leen y se registran, no se verifican.** Están vistos,
+  no comprobados — salvo por lo que el control positivo delata de manera indirecta.
 
 ## Restauración
 
