@@ -40,7 +40,8 @@ motivos, en orden:
    comparar el byte contra el instrumento externo.
 
 **Y el fader del auxiliar se usa como atenuador fijo**, para bajar el nivel a la
-interfaz sin tocar el medidor. El reconocimiento del 2026-09-13 midió el camino:
+interfaz sin tocar el medidor. El reconocimiento del 2026-09-13 midió el camino
+—[`reconocer-auxiliar-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/reconocer-auxiliar-2026-09-13.txt)—:
 
 | | |
 |---|---|

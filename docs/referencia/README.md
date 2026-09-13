@@ -107,6 +107,40 @@ node tools/docs/pdf-a-texto.mjs <el-pdf> > docs/referencia/manual-ui24r-v1.0.txt
 El PDF no va al repositorio —4 MB de Harman— y se baja de
 `https://adn.harmanpro.com/product_documents/documents/5503_1492037684/ui24r_Manual_V1.0_Web_original.pdf`.
 
-El extractor sale al 79 % de caracteres legibles. Lo que queda ilegible son
-rótulos compuestos con otra fuente; el cuerpo técnico se lee entero. Hay además
-un **Service Manual** circulando que no se miró.
+## El extractor mentía sobre sí mismo, y se arregló el 2026-09-13
+
+La primera versión de este README decía que el extractor «sale al 79 % de
+caracteres legibles». **Era falso, y el centinela no podía verlo:** medía qué
+proporción de los *caracteres* caía en `[A-Za-zÀ-ÿ0-9]`, y ese rango **incluye los
+caracteres corruptos**. Contaba la basura como legible. Un control que sólo podía
+confirmar.
+
+Lo que había de verdad, medido:
+
+| Defecto | Tamaño |
+|---|---|
+| **Datos de imagen tomados por texto** | **el 51,6 % del archivo** — corridas de `ÿÿÿÖÔÛÛÛ`, que son valores de píxeles. El filtro aceptaba cualquier flujo que contuviera los bytes `TJ` o `Tj`, y esa secuencia aparece por azar en datos binarios |
+| **El espacio salía como `=`** | 6 505 veces. El corrimiento de fuente suma 29 a cada código, y el espacio Unicode real (0x20) más 29 da 0x3D, que es `=` |
+| **Ligaduras sueltas** | `Ü` por **fi** y `Ý` por **fl**: «Ürmware», «conÜguration», «Üxed». `grep firmware` daba **cero** sobre once apariciones |
+| **Tramos con la fuente corrida** en un byte | `7KH` es `The`, `<RX` es `You`, `$8;` es `AUX`. Sólo se deshacía el corrimiento en los tramos UTF-16 |
+| **Tokens que eran palabras de verdad** | **38 %** |
+
+Después de arreglarlo: **122 030 caracteres y el 91 % de los tokens son
+palabras**. Y el centinela ahora **cuenta palabras y no caracteres**, que es lo
+que no se deja engañar: una corrida de `ÿÿÿ` no es una palabra y `conÜguration`
+tampoco.
+
+**Cada carácter de fuente se mapeó verificando su contexto**, no a ojo: `Ó` es un
+apóstrofo porque aparece en «userÓs», «CanadaÓs» y «dÓIndustrie»; `Ñ` es una
+comilla doble porque aparece en «1/4Ñ» como marca de pulgada. La tabla está en
+`tools/docs/pdf-a-texto.mjs` con la evidencia de cada fila, y **es para este
+documento**: otro manual con otras fuentes necesita la suya, y el centinela lo va
+a delatar.
+
+**Lo que sigue roto y no es reparable así:** el extractor devuelve el texto en el
+orden en que el PDF lo dibuja, no en el orden visual. Por eso aparecen cosas como
+«High-Pass Filte, Low-Pass Filerr» donde el manual dice «Filter» las dos veces.
+Eso ya estaba antes de estas reparaciones y no lo introdujeron: arreglarlo pide
+interpretar el posicionamiento de cada glifo, que es otro programa.
+
+Hay además un **Service Manual** circulando que no se miró.

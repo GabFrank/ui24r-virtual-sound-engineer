@@ -210,7 +210,8 @@ mientras suena el estímulo y se restaura: un tono sostenido le planta notches.
 
 **Corrida del 2026-09-13**, archivada en
 `docs/spikes/SPK-P0.2b/evidence/curvas-del-ecualizador-2026-09-13b.txt`.
-Canal 10, multitono de 104 tonos de 40 Hz a 15 343 Hz, pico del estímulo a
+Canal 10, multitono de 104 tonos de 40 Hz a 15343 Hz --citado tal como el
+instrumento lo imprimió--, pico del estímulo a
 −27 dBFS, 14,6 dB de recorrido antes del recorte.
 
 ## Las seis expectativas
@@ -281,9 +282,10 @@ así que de la *forma* de esa ley no se sabe nada: podría no ser lineal. Queda
 
 ## Dos corridas, y por qué
 
-La primera **perdió el WebSocket a mitad de camino y la restauración también
-falló**, dejando la consola con cinco claves cambiadas. Se restauró a mano y se
-verificó por HTTP.
+La primera —[`curvas-del-ecualizador-2026-09-13.txt`](../spikes/SPK-P0.2b/evidence/curvas-del-ecualizador-2026-09-13.txt)—
+**perdió el WebSocket a mitad de camino y la restauración también falló**,
+dejando la consola con cinco claves cambiadas. Se restauró a mano y se verificó
+por HTTP. Se archiva y se cita igual: una corrida que murió dice dónde murió.
 
 La causa la documenta el propio transporte: el latido `ALIVE` va en un
 `setInterval` de 1000 ms, y `respuesta()` hacía **seis a diez segundos de cálculo

@@ -414,11 +414,14 @@ bloques de la cola— y **esta corrida no la cierra**: mide el bloque de entrada
 
 ## Las tres corridas, y por qué hubo tres
 
-| | Qué pasó | Quién lo atajó |
-|---|---|---|
-| **a** | Abortó antes de barrer: la interfaz recortaba, pico 0,00 dBFS | La guarda de recorte |
-| **b** | Barrió, pero con el estimador de piso de una sola muestra y M1 como veredicto global | Los datos: dos tomas del mismo silencio dieron −106,70 y −136,12 dBFS |
-| **c** | La buena | |
+| | Qué pasó | Archivo | Quién lo atajó |
+|---|---|---|---|
+| **a** | Abortó antes de barrer: la interfaz recortaba, pico 0,00 dBFS | [`medidor-contra-salida-real-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/medidor-contra-salida-real-2026-09-13.txt) | La guarda de recorte |
+| **b** | Barrió, pero con el estimador de piso de una sola muestra y M1 como veredicto global | [`medidor-contra-salida-real-2026-09-13b.txt`](../spikes/SPK-P0.10b-vu2/evidence/medidor-contra-salida-real-2026-09-13b.txt) | Los datos: dos tomas del mismo silencio dieron −106,70 y −136,12 dBFS |
+| **c** | La buena | [`medidor-contra-salida-real-2026-09-13c.txt`](../spikes/SPK-P0.10b-vu2/evidence/medidor-contra-salida-real-2026-09-13c.txt) | |
+
+**Las tres se archivan y las tres se citan.** Una corrida que abortó también es
+evidencia: dice en qué estado estaba el banco y qué guarda disparó.
 
 **El error de la (a) fue calcular el recorrido desde `pre`** cuando el barrido
 arranca en el crudo 1,0, que son **+10 dB de fader** por encima. El medidor y la

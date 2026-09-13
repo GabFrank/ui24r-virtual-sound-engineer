@@ -119,7 +119,6 @@ while ((i = d.indexOf('stream', i)) !== -1) {
     const inflado = inflateSync(d.subarray(s, fin)).toString('latin1');
     if (esFlujoDeTexto(inflado)) {
       paginas += 1;
-      partes.push(`\n\n=== [flujo de texto ${paginas}] ===\n`);
       partes.push(textoDelFlujo(inflado));
     }
   } catch {
@@ -168,11 +167,6 @@ while ((i = d.indexOf('stream', i)) !== -1) {
  * | `§` | «dbx§, Digitech§, Lexicon§» — tres marcas registradas | ® |
  * | `¤` | encabeza «Read these instructions», «WARNING:» | viñeta |
  *
- * **Y el `=` que separa palabras.** En el texto justificado, el espacio sale como
- * `=`: «1.3: = SpeciÜcations», «Smartphone = Controlled = Digital = Mixer». Se
- * reemplaza sólo cuando tiene espacio a los dos lados, que es como aparece en
- * 6 533 de las 7 317 veces; los otros 784 pueden ser signos de igual de verdad y
- * no se tocan.
  */
 const CARACTERES_DE_FUENTE = [
   [/\u00DC/g, 'fi'],
@@ -206,9 +200,22 @@ function correr29(token) {
   return salida;
 }
 
+/**
+ * **Ya limpio** quiere decir letras de punta a punta, con a lo sumo un signo de
+ * puntuación al final.
+ *
+ * No se usa `esPalabra` acá, y la diferencia importa: `esPalabra` le saca los
+ * signos de los dos bordes antes de mirar —para que `page.` cuente como palabra
+ * en la métrica— y con eso `7DS` pasa por palabra, porque al quitarle el `7`
+ * queda `DS`. Resultado: «7DS the More» se quedaba sin reparar cuando era «Tap
+ * the More». Para decidir si hay que correr un token hace falta el criterio
+ * estricto.
+ */
+const YA_LIMPIO = /^[A-Za-z][A-Za-z'-]*[.,;:!?)]?$/;
+
 function repararCorrimientoDeUnByte(t) {
   return t.replace(/\S+/g, (token) => {
-    if (token.length < 2 || esPalabra(token)) return token;
+    if (token.length < 2 || YA_LIMPIO.test(token)) return token;
     const corrido = correr29(token);
     return /^[A-Za-z]{2,}$/.test(corrido) ? corrido : token;
   });
@@ -217,12 +224,6 @@ function repararCorrimientoDeUnByte(t) {
 function repararCaracteresDeFuente(t) {
   let r = t;
   for (const [re, con] of CARACTERES_DE_FUENTE) r = r.replace(re, con);
-  // **El espacio del texto justificado.** Con cualquier espacio en blanco a los
-  // lados, no sólo el carácter espacio: en el archivo aparecen 6 505 casos donde
-  // el separador que sigue es un salto de línea, y un `/ = /` literal los dejaba
-  // todos pasar. La mirada hacia atrás y hacia adelante evita comerse el espacio
-  // en blanco, que es lo que separa las palabras de al lado.
-  r = r.replace(/(?<=\s)=(?=\s)/g, '');
   // Los códigos de control que dejan las fuentes de iconos: no son texto y no
   // hay con qué reemplazarlos. Se sacan para que no ensucien el conteo.
   return r.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
@@ -233,19 +234,41 @@ function repararUtf16Corrido(t) {
   return t.replace(/(?:\u0000[\s\S]){4,}/g, (tramo) => {
     let salida = '';
     for (let i = 1; i < tramo.length; i += 2) {
-      salida += String.fromCharCode(tramo.charCodeAt(i) + 29);
+      const codigo = tramo.charCodeAt(i);
+      // **El espacio de verdad no se corre, y por eso el manual estaba lleno de
+      // «=».** El corrimiento de 29 es de la FUENTE: su código 0x03 es el
+      // espacio, y 0x03+29 = 0x20, que sale bien. Pero un tramo así también trae
+      // espacios Unicode de verdad —0x0020— y 0x20+29 = 0x3D, que es `=`.
+      //
+      // Medido sobre el manual de la Ui24R: los `=` pasaban de 775 a **7 317**
+      // justo en este paso, y quedaban 6 505 haciendo de separador de palabra.
+      // «Tablet/PC/Smartphone = Controlled = Digital = Mixer». La versión
+      // anterior los limpiaba después con un reemplazo de ` = ` por espacio, que
+      // es tapar el síntoma: acá se arregla donde se produce, y un `=` que
+      // sobreviva es un signo de igual de verdad.
+      salida += codigo === 0x20 ? ' ' : String.fromCharCode(codigo + 29);
     }
     return salida;
   });
 }
 
-// El orden importa: primero los tramos UTF-16, después la tabla de caracteres de
-// fuente, y **al final el corrimiento de un byte**, que decide token por token si
-// lo que tiene delante ya es una palabra. Si corriera antes, vería tokens que
-// todavía tienen ligaduras sin resolver y los dejaría pasar.
-const texto = repararCorrimientoDeUnByte(
-  repararCaracteresDeFuente(repararUtf16Corrido(partes.join(''))),
-)
+/**
+ * El orden importa: primero los tramos UTF-16, después la tabla de caracteres de
+ * fuente, y **al final el corrimiento de un byte**, que decide token por token si
+ * lo que tiene delante ya está limpio. Si corriera antes, vería tokens que
+ * todavía tienen ligaduras sin resolver y los dejaría pasar.
+ *
+ * **Y los marcadores de flujo se ponen DESPUÉS de reparar.** Cuando iban antes,
+ * la reparación del corrimiento los agarraba: `===` no es una palabra, y correrlo
+ * 29 da `ZZZ`, que sí lo es. El extractor corrompía su propia salida —«ZZZ [flujo
+ * de texto Nz ZZZ»— y encima esos tokens entraban en la cuenta de palabras.
+ */
+const reparar = (x) => repararCorrimientoDeUnByte(
+  repararCaracteresDeFuente(repararUtf16Corrido(x)),
+);
+const texto = partes
+  .map((p, i) => `\n\n=== [flujo de texto ${i + 1}] ===\n${reparar(p)}`)
+  .join('')
   // El BOM de UTF-16, que queda suelto cuando el tramo era de un solo carácter.
   .replace(/þÿ|\ufeff/g, ' ')
   // Los PDF dejan mucho espacio de posicionamiento.
