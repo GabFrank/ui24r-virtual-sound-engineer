@@ -23,6 +23,17 @@
  * acepta las dos. Queda escrito porque este módulo tiene nombre propio para que lo
  * usen varios guiones, y la restricción no se ve desde afuera.
  */
+/**
+ * Cuanto se tolera de silencio ENTRE trozos.
+ *
+ * **Es un cambio de contrato respecto de la version con `continue`, y se dice.**
+ * Antes un hipo de red de mas de esto se reintentaba --y perdia el trozo--; ahora
+ * termina la lectura. Es la decision correcta, pero significa que una consola que
+ * tarde mas de 900 ms en mandar el trozo siguiente hace fallar la llamada aunque
+ * `topeMs` sea mucho mayor.
+ */
+const PLAZO_POR_TROZO_MS = 900;
+
 export async function leerUnaClave(
   maquina: string,
   clave: string,
@@ -55,7 +66,9 @@ export async function leerUnaClave(
       //
       // `estadoPorHttp` trata el plazo como `done` y sale, por esto mismo. Este
       // módulo copió el patrón y cambió la palabra clave.
-      const temporizador = new Promise<null>((r) => { plazo = setTimeout(() => r(null), 900); });
+      const temporizador = new Promise<null>((r) => {
+        plazo = setTimeout(() => r(null), PLAZO_POR_TROZO_MS);
+      });
       const paso = await Promise.race([lector.read(), temporizador]);
       if (paso === null) break;
       clearTimeout(plazo);
@@ -67,7 +80,18 @@ export async function leerUnaClave(
     }
   } finally {
     clearTimeout(plazo);
-    void lector.cancel();
+    // **Con `catch`, como `estadoPorHttp`.** Si el flujo ya erro, `cancel()`
+    // rechaza sin manejador y Node tumba el proceso — en el medio de una corrida
+    // que tiene el general del usuario abajo. Es la segunda guarda que esta copia
+    // habia perdido respecto de su hermano; la primera era el `break`.
+    void lector.cancel().catch(() => {});
   }
-  throw new Error(`${clave} no aparecio en /raw de ${maquina} en ${topeMs} ms`);
+  // **El mensaje dice cuanto se espero de verdad.** Con el plazo por trozo, la
+  // tolerancia a un silencio es de 900 ms y no de `topeMs`: decir «en 3000 ms»
+  // haria creer a quien diagnostique una consola lenta que se le dieron tres
+  // segundos. Es la misma familia de defecto que el guion que acusa a la consola
+  // equivocada: un diagnostico que se equivoca sobre si mismo.
+  throw new Error(`${clave} no aparecio en /raw de ${maquina}: `
+    + `${Math.round(Date.now() - (hasta - topeMs))} ms de lectura, con un tope de `
+    + `${PLAZO_POR_TROZO_MS} ms de silencio entre trozos y ${topeMs} ms en total`);
 }

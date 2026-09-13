@@ -38,7 +38,7 @@ const APAGA = /m\.afs\.enabled['"]?\s*,\s*0\b|m\.afs\.enabled\^0/;
  * Guiones que hacen sonar algo sin apagar el supresor del general.
  * **Sólo puede encoger.**
  *
- * Son cuarenta y seis, y casi todos son instrumentos de una corrida vieja que ya
+ * Son cuarenta y cinco, y casi todos son instrumentos de una corrida vieja que ya
  * no se vuelven a correr. Convertirlos de golpe es un cambio mecánico grande
  * sobre código que le habla a un aparato real; la lista impide que crezca y
  * obliga a sacar de ella lo que se arregle, en el mismo commit.
@@ -60,7 +60,7 @@ const SUENAN_SIN_APAGAR: ReadonlySet<string> = new Set([
   'p0-10b-vu/diferencia-entre-buses.ts', 'p0-10b-vu/donde-esta-el-pre.ts',
   'p0-10b-vu/eq-vs-medidor.ts', 'p0-10b-vu/escala-del-bloque-de-bus.ts',
   'p0-10b-vu/ley-envio-aux.ts',
-  'p0-10b-vu/ley-envio-fx.ts', 'p0-10b-vu/ley-fader.ts',
+  'p0-10b-vu/ley-envio-fx.ts',
   'p0-10b-vu/ley-ganancia.ts', 'p0-10b-vu/linealidad.ts',
   'p0-10b-vu/post-y-postproc.ts', 'p0-10b-vu/prueba-tono.ts',
   'p0-10b-vu/puerta-vs-medidor.ts', 'p0-10b-vu/realimentacion-real.ts',
@@ -105,7 +105,7 @@ test('ningun guion NUEVO hace sonar algo con el supresor del general encendido',
 });
 
 test('la lista tiene el tamaño que dice, y solo puede bajar', () => {
-  deepStrictEqual(SUENAN_SIN_APAGAR.size, 46,
+  deepStrictEqual(SUENAN_SIN_APAGAR.size, 45,
     'si sube, alguien agrego un guion que suena sin apagar el supresor; si baja, '
     + 'alguien lo arreglo y hay que actualizar el numero en el mismo commit');
 });

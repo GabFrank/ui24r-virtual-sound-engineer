@@ -104,7 +104,6 @@ const SIN_CONVERTIR: ReadonlySet<string> = new Set([
   'p0-10b-vu/latencia-snapshotlist.ts',
   'p0-10b-vu/ley-de-la-razon.ts',
   'p0-10b-vu/ley-envio-fx.ts',
-  'p0-10b-vu/ley-fader.ts',
   'p0-10b-vu/ley-ganancia.ts',
   'p0-10b-vu/ley-rta-por-frecuencia.ts',
   'p0-10b-vu/leyes-del-compresor.ts',
@@ -204,10 +203,10 @@ test('ningun guion nuevo escribe a la consola sin restauracion garantizada', () 
  * y nada fijaba el tamaño.
  *
  * Cada conversión baja este número. Subirlo deja de ser una línea más en una
- * lista de setenta y cinco y pasa a ser un cambio que se ve en la revisión.
+ * lista de setenta y cuatro y pasa a ser un cambio que se ve en la revisión.
  */
 test('la lista de pendientes tiene el tamaño que dice, y solo puede bajar', () => {
-  deepStrictEqual(SIN_CONVERTIR.size, 75,
+  deepStrictEqual(SIN_CONVERTIR.size, 74,
     'si esto sube, alguien agregó un guion que escribe sin restauración garantizada. '
     + 'Si baja, alguien convirtió uno y hay que actualizar el número en el mismo commit.');
 });

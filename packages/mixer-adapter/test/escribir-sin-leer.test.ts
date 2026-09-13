@@ -46,7 +46,6 @@ const ESCRIBEN_SIN_LEER: ReadonlySet<string> = new Set([
   'p0-10b-vu/ley-de-la-razon.ts',
   'p0-10b-vu/ley-envio-aux.ts',
   'p0-10b-vu/ley-envio-fx.ts',
-  'p0-10b-vu/ley-fader.ts',
   'p0-10b-vu/ley-ganancia.ts',
   'p0-10b-vu/leyes-del-compresor.ts',
   'p0-10b-vu/limpiar-supresor-del-general.ts',
@@ -110,7 +109,7 @@ test('ningun guion nuevo escribe una clave de estado que no leyo', () => {
 });
 
 test('la lista tiene el tamaño que dice, y solo puede bajar', () => {
-  deepStrictEqual(ESCRIBEN_SIN_LEER.size, 20,
+  deepStrictEqual(ESCRIBEN_SIN_LEER.size, 19,
     'si sube, alguien agrego un guion que escribe a ciegas; si baja, alguien lo '
     + 'convirtio y hay que actualizar el numero en el mismo commit');
 });

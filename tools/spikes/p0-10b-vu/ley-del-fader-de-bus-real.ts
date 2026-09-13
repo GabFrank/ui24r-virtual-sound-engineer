@@ -415,10 +415,20 @@ await conRestauracion(
       // consola equivocada. Si el tono llega fuerte y el margen igual no alcanza, lo
       // que esta alto es el PISO --la fuga no se suprimio-- y la Mac no tiene nada
       // que ver.
-      const tonoLlegaFuerte = c1 > pisoEfectivo + 60;
+      // **Y la condicion mira el PISO en escala absoluta, no la misma diferencia
+      // otra vez.** La primera version usaba `c1 > pisoEfectivo + 60`, que es
+      // identico a `sobreElPiso > 60` --la misma magnitud que ya se esta juzgando,
+      // partida en dos--. Las dos causas bajan `sobreElPiso` exactamente igual, asi
+      // que eso acertaba la mitad de las veces: un tono debil con el piso impecable
+      // mandaba al operador a mirar `m.mix`.
+      //
+      // El piso normal de este banco esta cerca de -117 dBFS y el de la 104, con la
+      // fuga sin suprimir, dio -91,77. Un piso por encima de -100 es anormal y
+      // señala la fuga; por debajo, el piso esta bien y lo que falta es el tono.
+      const pisoAlto = pisoEfectivo > -100;
       throw new Error(`C1: el tono esta solo ${sobreElPiso.toFixed(1)} dB sobre el piso `
         + `(minimo ${C1_SOBRE_EL_PISO_DB}, que es lo que L5 necesita para ser posible). `
-        + (tonoLlegaFuerte
+        + (pisoAlto
           ? `El tono ENTRA bien --${c1.toFixed(2)} dBFS-- pero el piso quedo en `
             + `${pisoEfectivo.toFixed(2)}: la fuga no se suprimio, y con este piso el `
             + 'recorrido util no alcanza. Revisar que m.mix haya bajado.'
@@ -490,9 +500,17 @@ const problemas: string[] = [];
  * rondas de auditoría.
  */
 // **PRIMERA PASADA: quien vale.** La anulacion no depende del tope, asi que se
-// decide antes y sobre todos los puntos. Tenerla en el mismo bucle que usaba el
-// tope hacia que el veredicto dependiera del ORDEN: bajando, el tope es el primer
-// punto y todavia no estaba anulado cuando se lo miraba; subiendo, es el ultimo.
+// decide antes y sobre todos los puntos.
+//
+// **Y esto es lo que hace posible la guarda de la segunda pasada**, que es el
+// motivo de partirlo. Antes el tope se resolvia con un `find` y se usaba pasara lo
+// que pasara: su `anulado` no se leia NUNCA. Separar «quien vale» de «contra que
+// se mide» es lo que permite mirarlo, y mirarlo con un valor ya definitivo.
+//
+// (Una version anterior de este comentario decia que el defecto era una dependencia
+// del ORDEN. No lo era: no habia dependencia del orden porque no habia comprobacion
+// ninguna. Queda corregido porque un comentario que acredita un defecto que no
+// estaba es la misma clase de error que este proyecto persigue en la otra direccion.)
 for (const p of puntos) {
   const margen = p.m.realDb - pisoEfectivo;
   if (!(margen >= MARGEN_MINIMO_DB)) {
@@ -524,7 +542,25 @@ for (const sentido of ['baja', 'sube'] as const) {
   }
   topes.set(sentido, tope);
 }
-if (referenciaInservible.length > 0) {
+/**
+ * **Y si no sirve NO se sale del proceso, se saltea el veredicto.**
+ *
+ * La primera version usaba `process.exit(1)` aca. Estaba bien respecto de
+ * `conRestauracion` --la consola ya volvio-- y mal respecto de todo lo que viene
+ * despues: se saltaba el informe de los puntos anulados, o sea **el motivo por el
+ * que el tope no servia**; la verificacion por HTTP de las nueve claves; y la
+ * comparacion de la pila del supresor.
+ *
+ * Y el caso en que esto dispara es **una corrida que salio mal**, justo cuando mas
+ * falta hace saber si la consola volvio limpia. El guion acaba de mandar 900
+ * segundos de 1 kHz sostenido por un canal que alimenta el general: si quedo una
+ * notch plantada, salir ahi la deja sin informar y el usuario se entera en su
+ * proxima fecha. Es literalmente la historia del hallazgo del `clearall`, dos veces.
+ *
+ * El contrato promete esas dos comprobaciones **sin condicion**.
+ */
+const referenciaSirve = referenciaInservible.length === 0;
+if (!referenciaSirve) {
   console.log('');
   console.log('=== EL PUNTO DE REFERENCIA NO SIRVE ===');
   for (const x of referenciaInservible) console.log(`   ${x}`);
@@ -532,13 +568,14 @@ if (referenciaInservible.length > 0) {
   console.log('   ninguna expectativa se decide y no se imprime ley. Publicarla seria');
   console.log('   publicar un HALLAZGO FALSO contra la consola: un tope recortado lee bajo,');
   console.log('   el residuo sale constante, y L3b lo leeria como estructura --la firma');
-  console.log('   exacta que la 94 dejo indecidible--, mientras el motivo verdadero queda');
-  console.log('   impreso cuarenta lineas mas abajo sin relacion declarada.');
-  process.exit(1);
+  console.log('   exacta que la 94 dejo indecidible--.');
+  console.log('   Se sigue igual hasta la restauracion y la pila del supresor: son lo que');
+  console.log('   mas falta hace justo cuando una corrida salio mal.');
+  process.exitCode = 1;
 }
 
 // **TERCERA: las atenuaciones y las predicciones, con un tope que ya se sabe bueno.**
-for (const p of puntos) {
+for (const p of referenciaSirve ? puntos : []) {
   const tope = topes.get(p.sentido)!;
   p.atenuacion = tope.m.realDb - p.m.realDb;
   // **Los DOS terminos con el crudo LEIDO.** Con el tope en el crudo escrito, un
@@ -552,6 +589,9 @@ for (const p of puntos) {
 const utiles = puntos.filter((p) => p.anulado === null);
 
 console.log('');
+if (!referenciaSirve) {
+  console.log('=== NO SE IMPRIMEN VEREDICTOS: el punto de referencia no sirve ===');
+} else {
 console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
 
 {
@@ -763,6 +803,12 @@ if (problemas.length > 0) {
   if (problemas.length > 0) process.exitCode = 1;
 }
 
+}
+
+// **Los anulados se informan SIEMPRE, y esto estaba adentro del `else`.**
+// Cuando el punto de referencia no sirve, el motivo por el que no sirve es
+// justamente una anulacion — asi que la unica corrida en la que este informe
+// hace falta de verdad era la unica en la que no se imprimia.
 const anulados = puntos.filter((p) => p.anulado !== null);
 if (anulados.length > 0) {
   console.log('');
