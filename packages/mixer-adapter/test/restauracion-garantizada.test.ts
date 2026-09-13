@@ -48,10 +48,48 @@ const GUIONES = join(RAIZ, 'tools', 'spikes');
  *
  * **Sólo puede encoger.** Cada vez que uno se convierta, sale de acá.
  */
+/**
+ * Lo que NO es un guion: el código que **es** la restauración.
+ *
+ * `tools/spikes/restaurar.ts` escribe a la consola —es lo único que hace— y no
+ * puede usar `conRestauracion` porque usarse a sí misma sería circular.
+ *
+ * **La primera versión de esta exención era estructural** —«un guion abre la
+ * consola con un `await` en el nivel superior»— y parecía más limpia que una
+ * lista de nombres. Una auditoría la rompió en un intento: envolviendo el cuerpo
+ * en `async function principal() { … } void principal();` el guion escribe igual,
+ * muere igual, y pasaba los dos tests. **Un criterio que cualquiera esquiva sin
+ * proponérselo no es un criterio.**
+ *
+ * Una exención por nombre con su razón escrita es una línea que alguien puede
+ * revisar. La regla estructural era una que nadie iba a volver a mirar.
+ */
+const ES_LA_RESTAURACION: ReadonlySet<string> = new Set(['restaurar.ts']);
+
 const SIN_CONVERTIR: ReadonlySet<string> = new Set([
+  'auditoria/05-testigo-y-fader.ts',
+  'auditoria/06-gain-y-techo.ts',
+  'auditoria/07-gain-fino-techo.ts',
+  'auditoria/08-gain-fino-v2.ts',
+  'auditoria/09-gain-definitivo.ts',
+  'auditoria/10-bloque-entrada.ts',
+  'auditoria/11-rta-sonda.ts',
+  'auditoria/12-rta-escala.ts',
+  'auditoria/13-cola-vu2.ts',
+  'auditoria/14-cola-final-y-gr.ts',
+  'auditoria/15-rta-balistica.ts',
+  'auditoria/16-final.ts',
+  'auditoria/17-main-bytes.ts',
+  'auditoria/18-linein-cola.ts',
+  'auditoria/19-restaurar.ts',
+  'auditoria/20-limpieza.ts',
+  'auditoria/21-var-rta.ts',
+  'auditoria/estado.ts',
+  'p0-10b-vu/analizador.ts',
   'p0-10b-vu/aux-senal.ts',
   'p0-10b-vu/barrido-testigo.ts',
   'p0-10b-vu/borrar-filtros-fijos.ts',
+  'p0-10b-vu/borrar-instantanea-real.ts',
   'p0-10b-vu/bytes-del-bus-de-efecto.ts',
   'p0-10b-vu/cadencia-difusion.ts',
   'p0-10b-vu/calibrar-medidor-de-reduccion.ts',
@@ -60,9 +98,13 @@ const SIN_CONVERTIR: ReadonlySet<string> = new Set([
   'p0-10b-vu/concurrencia-real.ts',
   'p0-10b-vu/donde-esta-el-pre.ts',
   'p0-10b-vu/dos-clientes.ts',
+  'p0-10b-vu/eco.ts',
   'p0-10b-vu/encender-fantasma.ts',
+  'p0-10b-vu/enlazar-estereo.ts',
   'p0-10b-vu/eq-vs-medidor.ts',
   'p0-10b-vu/escribir.ts',
+  'p0-10b-vu/hay-pendrive.ts',
+  'p0-10b-vu/latencia-snapshotlist.ts',
   'p0-10b-vu/ley-de-la-razon.ts',
   'p0-10b-vu/ley-envio-fx.ts',
   'p0-10b-vu/ley-fader.ts',
@@ -73,11 +115,17 @@ const SIN_CONVERTIR: ReadonlySet<string> = new Set([
   'p0-10b-vu/limpiar-supresor-del-general.ts',
   'p0-10b-vu/post-y-postproc.ts',
   'p0-10b-vu/preparar-lazo.ts',
+  'p0-10b-vu/probar-escritura.ts',
   'p0-10b-vu/puerta-vs-medidor.ts',
+  'p0-10b-vu/puntero-snapshot.ts',
   'p0-10b-vu/reduccion.ts',
+  'p0-10b-vu/restaurar.ts',
   'p0-10b-vu/roles-bus.ts',
+  'p0-10b-vu/rta-limpiar.ts',
   'p0-10b-vu/rta-sobre-buses.ts',
+  'p0-10b-vu/rta-unidad.ts',
   'p0-10b-vu/ruido-rosa-por-el-aire.ts',
+  'p0-10b-vu/shows.ts',
   'p0-10b-vu/subgrupo-pre-o-post.ts',
   'p0-10b-vu/techo-medidor.ts',
   'p0-10b-vu/testigo-dentro-del-tic.ts',
@@ -90,12 +138,15 @@ const SIN_CONVERTIR: ReadonlySet<string> = new Set([
   'p0-5/espectro-del-general.ts',
   'p0-5/lazo-por-el-previo.ts',
   'p0-8/alcance-recall.ts',
+  'p0-8/eco-del-puntero.ts',
+  'p0-8/retencion-y-borrado.ts',
   'p0-9/agrupacion-arrastre.ts',
   'p0-9/avalancha-real.ts',
   'p0-9/presencia-dos-clientes.ts',
   'p0-9/recall-diez-veces.ts',
   'p0-9/testigo-en-el-tic.ts',
 ]);
+
 
 function archivosTs(dir: string, salida: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -114,36 +165,22 @@ function soloCodigo(texto: string): string {
   }).join('\n');
 }
 
-/**
- * ¿Es un **guion** que corre solo, o un módulo que alguien importa?
- *
- * **La regla del trinquete es «si el proceso muere, la consola queda escrita», y
- * un módulo que nunca corre solo no puede dejar nada escrito**: lo dejan sus
- * llamadores, y ésos sí están en la cuenta. Meter un ayudante en la lista de
- * pendientes sería declarar una deuda que no existe, y agregarlo a una lista de
- * excepciones por su nombre es como se pudren los trinquetes.
- *
- * Se distingue por la estructura y no por el nombre: **todos los guiones de este
- * árbol abren la consola con un `await` en el nivel superior** —`await
- * t.conectar(maquina)`— porque no hay otra forma de empezar. Un módulo de
- * ayuda tiene sus `await` adentro de sus funciones, indentados.
- *
- * Lo encontró `tools/spikes/restaurar.ts` el 2026-09-13: escribe a la consola
- * —es lo único que hace— y no puede usar `conRestauracion` porque **es** la
- * restauración, y usarse a sí misma sería circular.
- */
-function correSolo(codigo: string): boolean {
-  return /^await\s/m.test(codigo);
-}
 
 function clasificar(): { escriben: string[]; conRestauracion: string[] } {
   const escriben: string[] = [];
   const conRestauracion: string[] = [];
   for (const ruta of archivosTs(GUIONES)) {
     const codigo = soloCodigo(readFileSync(ruta, 'utf8'));
-    if (!/\.enviar\(codificarSet[ds]\(/.test(codigo)) continue;
-    if (!correSolo(codigo)) continue;
+    // **`.enviar(` a secas, no sólo `.enviar(codificarSetd(`.**
+    //
+    // El filtro anterior veía una sola forma de escribir y **32 guiones usaban
+    // otras**: con plantilla, con la orden en una variable, con `SETS^var.rta^`.
+    // Ninguno estaba en la lista y ninguno usaba `conRestauracion`. Entre ellos,
+    // dos que **borran instantáneas reales**. Un detector que reconoce un modismo
+    // y no un efecto cuenta lo que sabe buscar, no lo que pasa.
+    if (!/\.enviar\(/.test(codigo)) continue;
     const rel = ruta.slice(GUIONES.length + 1);
+    if (ES_LA_RESTAURACION.has(rel)) continue;
     escriben.push(rel);
     if (/conRestauracion\(/.test(codigo)) conRestauracion.push(rel);
   }
@@ -158,6 +195,24 @@ test('ningun guion nuevo escribe a la consola sin restauracion garantizada', () 
     'Estos guiones escriben a la consola y no usan conRestauracion. Un guion nuevo '
     + 'tiene que usarla: si el proceso muere, la consola queda escrita.\n'
     + nuevos.join('\n'));
+});
+
+/**
+ * **El tamaño, con el número escrito.**
+ *
+ * Sin esto el trinquete se aflojaba agregando un nombre más: una auditoría lo
+ * probó creando un guion que escribe sin `conRestauracion`, poniéndolo en la
+ * lista, y viendo los dos tests en verde. El test que se llamaba «la lista sólo
+ * encoge» comprobaba **la dirección contraria** —que un guion convertido salga—
+ * y nada fijaba el tamaño.
+ *
+ * Cada conversión baja este número. Subirlo deja de ser una línea más en una
+ * lista de setenta y ocho y pasa a ser un cambio que se ve en la revisión.
+ */
+test('la lista de pendientes tiene el tamaño que dice, y solo puede bajar', () => {
+  deepStrictEqual(SIN_CONVERTIR.size, 78,
+    'si esto sube, alguien agregó un guion que escribe sin restauración garantizada. '
+    + 'Si baja, alguien convirtió uno y hay que actualizar el número en el mismo commit.');
 });
 
 test('el trinquete no puede aflojarse: la lista de pendientes solo encoge', () => {
