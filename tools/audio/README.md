@@ -54,3 +54,49 @@ por descuido; el tono lo manda `afplay` aparte.
 **No convierte nada.** Guarda en el formato de la entrada, sin cambiar frecuencia
 ni profundidad. Cada conversión es una oportunidad de meter un error de escala, y
 este proyecto ya pagó tres.
+
+---
+
+# El analizador
+
+`analizar.mjs` dice qué hay en un WAV capturado: el nivel del tono, el piso, y
+cuánto separa uno del otro.
+
+## Por qué el pico no alcanza, y es la diferencia entre poder medir y no
+
+El pico de una señal con ruido es el pico de la suma: cuando el tono baja hasta
+el orden del ruido, el pico deja de bajar y el barrido se aplana.
+
+Medido contra este banco, con un tono de 1 kHz:
+
+| | por pico | en el bin de 1 kHz |
+|---|---|---|
+| tono presente, general | −22,8 dBFS | −23,0 dBFS |
+| en silencio, general | −55,1 dBFS | **−120,9 dBFS** |
+| **recorrido útil** | **~32 dB** | **~98 dB** |
+
+Correlacionando con el seno y el coseno de la frecuencia buscada —Goertzel, una
+DFT de un solo bin— el ruido que no está en esa frecuencia no entra en la
+cuenta. Con cuatro segundos a 48 kHz el bin es de 0,25 Hz.
+
+**Y es el mismo dato, medido mejor**: no es un truco para ver lo que no está. Si
+el tono se fue, el bin da cero igual — en silencio lee −121 dBFS.
+
+**Verificado contra un valor conocido**: los canales 3 y 4 de la interfaz son su
+retorno interno, y con un tono generado a −20 dBFS leen **−20,00 exacto**.
+
+## Dos detalles que costaron
+
+**No busca el trozo `data` con `indexOf`.** Eso encuentra la primera aparición,
+que puede caer dentro de un `JUNK` de relleno o del propio audio y devolver
+basura con forma de señal. Los archivos de `AVAudioFile` traen ese `JUNK`, así
+que el caso no es teórico. Se recorren los trozos.
+
+**`Math.max(...x)` revienta la pila** con 192.000 muestras. Va con bucle.
+
+## Lo que no dice
+
+Nada sobre dBFS absolutos **de la consola**. Mide lo que llegó a la interfaz, y
+entre la salida de la consola y esto hay una ganancia de entrada que nadie midió.
+Sirve para **diferencias** por un camino que no se toca, que es lo que las leyes
+necesitan.
