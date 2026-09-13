@@ -6,18 +6,37 @@ Plan: [`2026-09-13-plan-de-la-madrugada.md`](2026-09-13-plan-de-la-madrugada.md)
 | Bloque | |
 |---|---|
 | 0 — la 101 | **cerrado** |
-| 1 — las mediciones | **cerrado, y se extendió**: además de la 102 salieron la **104** (la ley del envío contra la salida real) y la **105** (de dónde viene la fuga) |
+| 1 — las mediciones | **cerrado, y se extendió mucho**: además de la 102 salieron la **104** (la ley del envío), la **105** (de dónde viene la fuga), la **106** (el fader de bus), la **107** (el fader del general) y la **108** (la ganancia del ecualizador), ésta última escrita y en auditoría |
 | 2 — auditoría general | **cerrada**, con sus nueve ALTA aplicados |
 | 3 — el manual | **cerrado**, con cinco tareas escritas |
-| 4 — producto | **a medias**: de las seis tareas (P1…P6) se hizo **P2**, más **seis** de robustecimiento que no estaban en la lista, y dos guiones convertidos de P3 |
+| 4 — producto | **a medias, pero mucho menos**: **P1 hecho** —la app puede bajar un monitor—, **P2** hecho, **P6** con su ADR escrito y esperándote, **P3** con cuatro guiones convertidos, y **P4** con uno. Falta **P5** entero |
 
 La primera versión de este resumen decía «los cinco bloques quedaron cerrados».
 No era cierto, y es exactamente la clase de sobreafirmación que dos auditorías
 estuvieron corrigiendo toda la noche.
 
-**Lo que necesita una mano tuya, en un minuto:** desenchufar el cable de la
-entrada 1 de la interfaz y avisarme. Con eso se cierra de dónde viene la fuga de
-1 kHz, que es lo único que limita hasta dónde puede medir esta serie.
+## Lo que necesita algo tuyo, por orden de consecuencia
+
+**1. Una decisión, y es la que desbloquea producto.** ADR-029 quedó en parcial
+esperándola: *¿hasta dónde puede volver a subir la aplicación el fader del
+general, después de haberlo bajado para cazar un acople?* Cuatro opciones, en
+[`ADR-029`](../adr/ADR-029-bajar-los-buses-para-cazar-acoples.md): hasta donde
+estaba; hasta donde estaba menos un margen; no sube sola y avisa; o no la toca.
+No la decido yo porque para la sala vos tenés una referencia que la aplicación no
+tiene —cuánta gente hay adentro—.
+
+**2. Un minuto de tus manos.** Desenchufar el cable de la entrada 1 de la interfaz
+y avisarme: con eso se cierra si la fuga de 1 kHz se cruza adentro de la Scarlett
+o en la etapa de salida de la consola, que es lo único que limita hasta dónde
+puede medir esta serie.
+
+**3. El ring-out perdido**, que sigue siendo tuyo: tres filtros de −6 dB en 200,
+4226 y 8190 Hz. Rehacerlo es la forma correcta.
+
+**4. Y si te parece mal que haya corrido la 107**, decímelo: bajé el fader de tu
+general durante cinco minutos para medir su ley. El contrato dice por qué creí que
+correspondía —nada conectado salvo el bucle, y sólo bajé— y está escrito para que
+lo puedas objetar.
 
 ## Lo que ahora se sabe y antes no
 
