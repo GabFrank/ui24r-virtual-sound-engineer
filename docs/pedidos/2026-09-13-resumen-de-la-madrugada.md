@@ -285,6 +285,53 @@ monitor, y eso no está escrito en ningún lado. Los otros dos huecos que ADR-02
 declara —el techo que no se llena y el acumulado por sesión— necesitan el
 historial de la sesión.
 
+## P1 quedó hecho: la aplicación puede bajar un monitor
+
+ADR-028 abrió 240 rutas y su primer hueco decía que **ningún camino de la
+aplicación las usaba**: el único `CambioPropuesto` de producción en todo el
+repositorio era el de ganancia. Ahora son dos.
+
+Lo que faltaba abajo de eso eran dos cosas y las dos aparecieron el mismo día: la
+**ley** del envío, que midió la 104, y que `entrada()` **resolviera una ruta
+concreta** —no lo hacía, así que la guarda que ata la magnitud al crudo devolvía
+«no hay ley» en los veinticuatro canales—.
+
+La regla vive donde se prueba, y **sólo baja**: volver a subir es tuyo, textual
+—*«luego vuelvo a subir de a poco buscando el acople nuevamente»*—. Y se niega a
+proponer un nivel fuera del tramo que la medición cubrió, en vez de extrapolar:
+es la primera vez en este proyecto que **una medición cambia lo que la aplicación
+puede hacer**.
+
+### Y el techo resultó no necesitar lo que el ADR decía
+
+`techoPorRuta` estaba vacío «porque hace falta el historial de la sesión». Para
+este techo no hace falta: `registrarTecho` lo construye **de los cambios
+mismos** —dónde estaba la ruta la primera vez que la app la bajó, y el primer
+descenso gana—. El dueño natural de esa memoria es quien baja. El mapa vive en el
+servicio, y con eso el hueco 2 también quedó cerrado.
+
+**Lo que falta para que lo veas: ninguna pantalla lo llama todavía.** Existe el
+camino y está probado; falta quién lo dispare. Lo digo porque la diferencia entre
+una función y la promesa de una función es exactamente esa frase.
+
+## El 106, en tercera auditoría y sin correr
+
+La ley del fader de bus (`a.N.mix`) es lo que desbloquea P6. El contrato viejo
+—la 99a— declaraba su propio techo: *«esto es autoconsistencia y no
+calibración»*. Ese techo ya no está, así que la medición se rehizo contra el
+convertidor externo.
+
+**No corrió todavía, y las dos auditorías encontraron bloqueantes cada una.** La
+primera: la corrida no podía terminar —567 s de barrido contra un tono de 300—, y
+la guarda del ecualizador del bus no matcheaba ninguna clave real. La segunda
+encontró el peor, y es de forma: **el arreglo anterior agregó el control bueno y
+no sacó el malo**. El C1 circular seguía vivo setenta líneas más abajo, todavía
+bloqueando la ley, y el contrato tenía el gemelo documental: afirmaba una frase y
+la refutaba veintiocho líneas después.
+
+Ese defecto —el mismo arreglo aplicado en un lugar y no en el otro— es el que más
+me costó en toda la noche, y es el que le pedí que busque en la tercera vuelta.
+
 ## Lo que queda abierto
 
 | | |
@@ -293,10 +340,11 @@ historial de la sesión.
 | **`m.afs.fmode`** | cuál valor es LIVE, FIXED y LOCK. **Decide si una corrida planta filtros permanentes** |
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |
 | **La puerta** | ataque, relajación y retención declarados por el manual, ninguno en el código |
-| **El llamador del monitor** | **desbloqueado**: la ley está medida y en la tabla, y la guarda que la usa ya dispara. Lo que falta es decidir *cuándo* la app propone bajar un envío, que es de producto |
+| **La pantalla del monitor** | el servicio que baja un envío existe y está probado; **ninguna pantalla lo llama**. Es lo que falta para que se vea |
 | **Un `kind`, una unidad** | el ecualizador se puede medir todo lo que quieras y sigue sin poder escribirse. Tres salidas posibles, **las tres decisión tuya** |
 | **77 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer. De ellos, **9 sólo mandan consultas** y no tienen nada que restaurar: el detector es `.enviar(` y no distingue |
 | **46 guiones** | hacen sonar un estímulo sin apagar el supresor del general. Trinquete nuevo |
+| **El ítem 106** | la ley del fader de bus, en tercera auditoría. Sin correr |
 | **La fuga de 1 kHz** | medida: viaja por la salida del general. Falta **un minuto tuyo**: desenchufar el cable de la entrada 1 y repetir la lectura, para separar Scarlett de consola |
 | **Los 4,73 dB de G1** | si el supresor del general explica la diferencia entre la 104 y la 105. Probarlo cuesta filtros plantados: **es decisión tuya** |
 | **El extremo superior del pasa-bajos** | el manual dice 22 kHz; el estímulo no llega |
