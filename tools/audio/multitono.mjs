@@ -216,6 +216,54 @@ export function picoInterpolado(puntos) {
  * Devuelve `null` si la curva no vuelve a bajar hasta la mitad de los dos lados:
  * sin los dos cruces no hay ancho, y suponer uno sería inventarlo.
  */
+/**
+ * La frecuencia donde una curva cruza un nivel, interpolada.
+ *
+ * **Estaba escondida adentro del cálculo del Q**, que la necesitaba para medir el
+ * ancho de una campana. La medición 103 necesita exactamente lo mismo para el
+ * punto de −3 dB de un pasa-altos, así que se saca afuera: dos copias de una
+ * interpolación es como se separan sin que nadie lo note.
+ *
+ * Busca desde `desde` en la dirección `paso` el primer punto que quede **al otro
+ * lado** de `nivel`, e interpola linealmente en `log(f)` entre ése y el anterior.
+ * Devuelve `null` si la curva nunca cruza: sin los dos puntos que lo rodean no hay
+ * cruce que interpolar, y suponerlo sería inventarlo.
+ */
+export function cruceEnNivel(puntos, nivel, desde, paso) {
+  for (let k = desde + paso; k >= 0 && k < puntos.length; k += paso) {
+    const aca = puntos[k];
+    const antes = puntos[k - paso];
+    if (antes === undefined) return null;
+    const cruzo = paso > 0 ? aca.db <= nivel : aca.db <= nivel;
+    if (!cruzo) continue;
+    if (antes.db === aca.db) return aca.hz;
+    const t = (antes.db - nivel) / (antes.db - aca.db);
+    return Math.exp(Math.log(antes.hz) + t * (Math.log(aca.hz) - Math.log(antes.hz)));
+  }
+  return null;
+}
+
+/**
+ * El nivel de la banda de paso, medido en el extremo que el filtro no toca.
+ *
+ * **No se supone que sea 0 dB.** La curva se mide contra una línea base, así que
+ * un filtro sin ganancia de paso daría cero — pero eso hay que verlo, no
+ * asumirlo, y de todas formas el ruido mueve cada punto. Se toma la **mediana** de
+ * los `cuantos` tonos del extremo, que es robusta a que uno se vaya.
+ *
+ * `extremo` es `'agudo'` para un pasa-altos —cuya banda de paso está arriba— y
+ * `'grave'` para un pasa-bajos.
+ */
+export function bandaDePaso(puntos, extremo, cuantos = 20) {
+  const tramo = extremo === 'agudo'
+    ? puntos.slice(Math.max(0, puntos.length - cuantos))
+    : puntos.slice(0, cuantos);
+  const v = tramo.map((p) => p.db).sort((a, b) => a - b);
+  if (v.length === 0) return NaN;
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 === 1 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
 export function qPorAnchoMitad(puntos, pico) {
   // **La altura tiene que ser positiva, y el bucle arranca en el vecino.**
   //
@@ -227,21 +275,9 @@ export function qPorAnchoMitad(puntos, pico) {
   // una campana.
   if (!(pico.alturaDb > 0)) return null;
   const mitad = pico.alturaDb / 2;
-  const cruce = (desde, paso) => {
-    // Desde el vecino: el pico está por definición arriba de la mitad, y si no lo
-    // estuviera la curva no sería lo que se cree.
-    for (let k = desde + paso; k >= 0 && k < puntos.length; k += paso) {
-      if (puntos[k].db <= mitad) {
-        const anterior = puntos[k - paso];
-        if (anterior === undefined) return null;
-        // Interpolación lineal en log(f) entre el punto que cruzó y el anterior.
-        const t = (anterior.db - mitad) / (anterior.db - puntos[k].db);
-        return Math.exp(Math.log(anterior.hz)
-          + t * (Math.log(puntos[k].hz) - Math.log(anterior.hz)));
-      }
-    }
-    return null;
-  };
+  // Usa el buscador comun: tener dos copias de la misma interpolacion es como se
+  // separan sin que nadie lo note.
+  const cruce = (desde, paso) => cruceEnNivel(puntos, mitad, desde, paso);
   const abajo = cruce(pico.indice, -1);
   const arriba = cruce(pico.indice, +1);
   if (abajo === null || arriba === null) return null;

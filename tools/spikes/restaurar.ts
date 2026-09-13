@@ -17,7 +17,22 @@
  * alcanza con reabrir la URL: el identificador de sesión se agota al usarse. Por
  * eso hace falta la **máquina** y no la dirección ya resuelta.
  */
-import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
+import { codificarSetd } from '@vse/mixer-adapter';
+
+/**
+ * Lo que esta funcion necesita de un transporte, y nada mas.
+ *
+ * **Depende de lo que usa, no de la clase concreta**, y eso es lo que permite
+ * probarla: con `Ui24rTransport` en la firma, el unico codigo que escribe en el
+ * camino de restauracion no se podia montar sin una consola de verdad. Una
+ * auditoria lo marco como el riesgo numero uno sin cubrir: si esto se equivoca,
+ * la consola del usuario queda distinta y nadie se entera.
+ */
+export interface TransporteRestaurable {
+  readonly conectado: boolean;
+  conectar(maquina: string): Promise<void>;
+  enviar(linea: string): void;
+}
 
 /** Cuántas veces se intenta reconectar antes de rendirse y decirlo. */
 const INTENTOS = 3;
@@ -40,7 +55,7 @@ const dormir = (ms: number): Promise<void> =>
  * mirar la consola a mano.
  */
 export async function restaurarClaves(
-  t: Ui24rTransport,
+  t: TransporteRestaurable,
   maquina: string,
   pares: readonly (readonly [string, number])[],
 ): Promise<void> {
