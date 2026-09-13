@@ -1,0 +1,109 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T09:10:30.243Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/de-quien-es-la-fuga.ts 10 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/de-quien-es-la-fuga.ts sha256:e6951f6c12d45008
+# la huella cubre 6 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 105 — DE QUIEN ES LA FUGA DE 1 kHz ===
+canal 10 (i.9) -> auxiliar 5 (a.4) -> entrada 2
+tono de 1000 Hz a -15 dBFS | 4 s por captura
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.aux.4.value          0
+   i.9.aux.4.post           0
+   i.9.mute                 0
+   i.9.mix                  0.7647058824
+   m.mix                    0.7643020595
+   m.dim                    0
+   m.afs.enabled            1
+   m.afs.fmode              1
+   a.4.mix                  0
+   a.4.mute                 0
+   a.4.afs.enabled          0
+   hwoutaux.4.src           a.4
+
+   exigido sin escribir: envio en 0, bus y canal sin mutear, fader del general no
+   abajo, supresor del bus apagado, hwoutaux.4.src = a.4, 0 tiras mas
+
+=== EL BANCO DE LA 104, REPRODUCIDO CLAVE POR CLAVE ===
+   a.4.mix = 0.45 como ATENUADOR FIJO. Sin esto el
+   auxiliar sale por un fader en 0, que es −infinito dB, y las cuatro
+   lecturas darian el piso del bin. Es el defecto que la auditoria paro.
+   puerta y compresor del bus, y compresor, puerta y de-esser del canal: fuera
+   supresor del general: estaba en 1, apagado mientras suene
+
+=== EL CONTROL POSITIVO, QUE VA ANTES DE TODO ===
+estado                              aux (bin 1k)   gral (bin 1k)  margen
+
+   AVISO: durante los proximos ~7 s el envio del canal 10 al
+   auxiliar 5 queda ABIERTO EN 1,0 y el bus vivo en 0.45.
+   Si hay algo enchufado a esa salida, va a sonar.
+C1  envio ABIERTO en 1,0              -12.68 dBFS     -17.99 dBFS    103 dB
+C2  envio abierto + canal MUTEADO     -12.68 dBFS     -80.15 dBFS    104 dB
+
+=== LOS CUATRO ESTADOS ===
+estado                              aux (bin 1k)   gral (bin 1k)  margen
+E0  banco de la 104, envio en 0       -87.04 dBFS     -18.00 dBFS     31 dB
+E1  fader del general en 0           -121.01 dBFS    -133.34 dBFS     -0 dB
+E2  canal muteado                    -122.86 dBFS    -104.76 dBFS     -5 dB
+E3  tono apagado, consola como E0    -117.44 dBFS    -108.44 dBFS      0 dB
+
+=== LAS GUARDAS, contra el contrato del item 105 ===
+
+C1 el tono llega a la consola: -12.68 dBFS con el envio abierto, contra -12.68 de la 104 (difiere 0.00, tope 6)
+   PASA.
+
+C2 el mute del canal corta el auxiliar: -12.68 -> -12.68 dBFS (cayo 0.00 dB)
+   NO. El envio es pre-fader Y pre-mute: mutear el canal no lo saca del bus auxiliar, asi que E2 NO separa nada y las filas que lo usan no valen.
+   Esto no se sabia: el proyecto tenia medido `post`, nunca la relacion con el mute.
+
+G1 E0 reproduce la 104: -87.04 dBFS contra -91.77 (difiere 4.73, tope 1.5)
+   FALLA. El banco no es el mismo, asi que ninguna de las otras lecturas significa nada.
+
+G2 la caida maxima observable alcanza: margen de 31.20 dB en E0 (minimo 15)
+   PASA. Una caida de hasta 31.20 dB es observable.
+   E1: margen -0.11 dB -> el instrumento erraria 8.80 dB   <-- comparable al umbral de 3 dB
+   E2: margen -4.53 dB -> el instrumento erraria 14.63 dB   <-- comparable al umbral de 3 dB
+
+G3 el testigo del general: E0 -18.00 -> E1 -133.34 (cayo 115.34), E2 -104.76 (cayo 86.76)
+   PASA. Los dos mutes llegaron y se notan donde tienen que notarse.
+
+G4 E3 baja al piso: -117.44 dBFS (tope -110), medido con la consola como en E0
+   PASA. Con el tono apagado no queda 1 kHz.
+
+=== NO SE IMPRIME VEREDICTO: fallaron G1, G2/E1, G2/E2 ===
+   El contrato dice que una guarda que falla ABORTA. Un veredicto sobre una
+   cadena de medicion rota es peor que no tener veredicto: se ve igual de
+   sereno y es falso. Arreglar lo que fallo y volver a correr.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada sobre otras frecuencias: un tono, 1 kHz.
+   Nada sobre si la fuga es coherente o incoherente: el bin da amplitud
+   y no fase, y sin fase no se sabe como se suma.
+   Nada sobre el auxiliar 3 ni sobre el bloque de efectos.
+   En dos de las cuatro filas NO dice cual de los dos candidatos.
+
+=== G5 RESTAURACION, RELEIDA POR HTTP ===
+   i.9.aux.4.value          esperado 0              leido 0
+   m.mix                    esperado 0.7643020595   leido 0.7643020595
+   i.9.mute                 esperado 0              leido 0
+   a.4.mix                  esperado 0              leido 0
+   a.4.gate.enabled         esperado 1              leido 1
+   a.4.dyn.bypass           esperado 0              leido 0
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   m.afs.enabled            esperado 1              leido 1
+   Las diez claves volvieron, comprobado por un camino distinto.
+
+   filtros del supresor del general: 0 antes, 0 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 1

@@ -169,6 +169,65 @@ cumple no figure en la lista.
 
 Detalle: [`hallazgo-solo-clearall-borra-y-se-lleva-todo.md`](../backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md).
 
+## El 105: el veredicto no salió, y la corrida sirvió igual
+
+El contrato del 105 exigía que, si una guarda falla, **no se imprima veredicto**.
+G1 falló y no se imprimió. Eso es la regla funcionando, no la corrida perdida:
+salieron tres cosas.
+
+### El envío a auxiliar es pre-fader **y pre-mute**
+
+El control positivo C2, con 103 dB de margen: con el envío abierto, mutear el
+canal le sacó al auxiliar **0,00 dB**. El proyecto tenía medido `post = 0`
+—pre-fader— y de la relación con el **mute** no sabía nada.
+
+Para vos esto es una regla de operación: **mutear un canal no silencia lo que ese
+canal manda al monitor del músico.** Hay que bajar el envío.
+
+Detalle: [`hallazgo-el-envio-a-auxiliar-es-pre-mute.md`](../backlog/hallazgo-el-envio-a-auxiliar-es-pre-mute.md).
+
+### La fuga viaja por la salida del general
+
+Con el fader del general en 0, la fuga cayó **al menos 30,4 dB** y se hundió bajo
+el piso de ruido de su propia captura. Como el fader del general es post-suma,
+eso **excluye la diafonía del sumador interno** y deja la fuga en el camino de
+salida: salida física del general → cable → entrada 1 de la interfaz → lo que se
+cruce desde ahí.
+
+Lo que falta para cerrarlo **necesita una mano tuya y un minuto**: desenchufar el
+cable de la entrada 1 y repetir la lectura. Si el tono sigue, es de la consola;
+si desaparece, es diafonía adentro de la Scarlett.
+
+Detalle: [`hallazgo-la-fuga-viaja-por-la-salida-del-general.md`](../backlog/hallazgo-la-fuga-viaja-por-la-salida-del-general.md).
+
+### Y por qué falló G1, que es el tercer hallazgo
+
+E0 dio −87,04 dBFS donde la 104 midió −91,77. Pero el banco **no se movió**: el
+control positivo del camino principal dio −12,68 contra −12,68 de la 104, cero
+coma cero cero. Lo que cambió es la fuga.
+
+La única diferencia deliberada entre las dos corridas es `m.afs.enabled`: la 104
+lo dejó encendido —ése fue su defecto— y la 105 lo apaga porque la regla nueva lo
+exige. Y encaja: si la fuga viaja por el camino del general, el supresor del
+general está **en** ese camino.
+
+Es coherente y **no está probado**, y probarlo cuesta un tono sostenido con el
+supresor activo, o sea filtros plantados que sólo `clearall` borra. No lo hice.
+
+### Dos auditorías, y lo que ninguna vio
+
+El guion se auditó dos veces antes de tocar la consola. La primera paró un
+defecto que habría publicado un veredicto falso —el banco no se reproducía—. La
+segunda encontró que el tono se comprobaba en el momento equivocado: si `afplay`
+moría durante la captura de E2, las seis guardas pasaban y se imprimía «la fuga
+es de la consola», el veredicto de mayor consecuencia, producido por un
+reproductor muerto.
+
+**Lo que ninguna de las dos vio lo encontré leyendo el aparato:** el guion
+escribía `m.mute`, una clave que **no existe** en esta consola. Hay 736 claves
+con `mute` en el volcado y ninguna es del general. Las dos auditorías leyeron el
+código; el código era consistente consigo mismo.
+
 ## Lo que queda abierto
 
 | | |
@@ -180,7 +239,8 @@ Detalle: [`hallazgo-solo-clearall-borra-y-se-lleva-todo.md`](../backlog/hallazgo
 | **El llamador del monitor** | `MONITOR_AUX_SEND` y `techoPorRuta` **sólo existen en tests**. Es lo que haría que una sesión con sonido real valga el tiempo del usuario |
 | **77 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer. De ellos, **9 sólo mandan consultas** y no tienen nada que restaurar: el detector es `.enviar(` y no distingue |
 | **46 guiones** | hacen sonar un estímulo sin apagar el supresor del general. Trinquete nuevo |
-| **La fuga de 1 kHz** | el ítem **105** tiene contrato y guion escritos, en auditoría. Decide si toda medición de esta serie arrastra un piso a ~70 dB |
+| **La fuga de 1 kHz** | medida: viaja por la salida del general. Falta **un minuto tuyo**: desenchufar el cable de la entrada 1 y repetir la lectura, para separar Scarlett de consola |
+| **Los 4,73 dB de G1** | si el supresor del general explica la diferencia entre la 104 y la 105. Probarlo cuesta filtros plantados: **es decisión tuya** |
 | **El extremo superior del pasa-bajos** | el manual dice 22 kHz; el estímulo no llega |
 
 ## Y lo único que hace falta del usuario
