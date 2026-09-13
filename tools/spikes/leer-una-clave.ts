@@ -16,6 +16,12 @@
  * instrumento son dos instrumentos que se separan. Estaba adentro del guion de la
  * 104; el 106 lo tiró y volvió al volcado completo, que es exactamente lo que
  * pasa cuando algo no tiene nombre propio.
+ *
+ * **Sólo lee claves `SETD`.** Las de texto —`hwoutaux.N.src`, `m.afs.eq.N`— viajan
+ * como `SETS` y esta función **no las encuentra**: lanzaría «no apareció en /raw»
+ * a los 3000 ms, que un lector confunde con una consola muerta. `estadoPorHttp`
+ * acepta las dos. Queda escrito porque este módulo tiene nombre propio para que lo
+ * usen varios guiones, y la restricción no se ve desde afuera.
  */
 export async function leerUnaClave(
   maquina: string,
@@ -29,20 +35,30 @@ export async function leerUnaClave(
   const decoder = new TextDecoder();
   let texto = '';
   const hasta = Date.now() + topeMs;
+  // Se guarda para poder cancelarlo: sin esto quedaban temporizadores colgando
+  // que mantienen el bucle de eventos referenciado y retrasan la salida.
+  let plazo: ReturnType<typeof setTimeout> | undefined;
   try {
     while (Date.now() < hasta) {
-      // **Con plazo, y no sólo mirando el reloj entre lecturas.** Si la consola
-      // acepta la conexión y no manda nada, `read()` no resuelve nunca y el guion
-      // queda colgado —con el general del usuario abajo y el tono sonando, en el
-      // caso del ítem 106—. `estadoPorHttp` se protege así desde antes; esta
-      // función heredó el descuido de la copia que vivía adentro de la 104, y al
-      // darle nombre propio pasó a ser el único instrumento que las dos
-      // mediciones comparten: 43 oportunidades por corrida en vez de una.
-      const paso = await Promise.race([
-        lector.read(),
-        new Promise<null>((r) => { setTimeout(() => r(null), 900); }),
-      ]);
-      if (paso === null) continue;
+      // **Con plazo, y el plazo SALE en vez de reintentar.** Si la consola acepta
+      // la conexión y no manda nada, `read()` no resuelve nunca y el guion queda
+      // colgado —con el general del usuario abajo y el tono sonando, en el caso
+      // del ítem 106—.
+      //
+      // **Y sale, no `continue`.** La primera versión de este plazo reintentaba, y
+      // eso pierde datos de forma permanente: un `ReadableStreamDefaultReader`
+      // **encola** las lecturas y las satisface en orden, así que el `read()`
+      // abandonado sigue vivo y se come el trozo siguiente —el que la lectura
+      // nueva creía estar esperando—. Comprobado ejecutándolo: con un plazo
+      // agotado, el primer trozo va al `read()` abandonado y `texto` nunca lo ve.
+      // Justo el trozo donde viven las claves tempranas del volcado.
+      //
+      // `estadoPorHttp` trata el plazo como `done` y sale, por esto mismo. Este
+      // módulo copió el patrón y cambió la palabra clave.
+      const temporizador = new Promise<null>((r) => { plazo = setTimeout(() => r(null), 900); });
+      const paso = await Promise.race([lector.read(), temporizador]);
+      if (paso === null) break;
+      clearTimeout(plazo);
       const { value, done } = paso;
       if (done) break;
       texto += decoder.decode(value, { stream: true });
@@ -50,6 +66,7 @@ export async function leerUnaClave(
       if (m !== null) return Number(m[1]);
     }
   } finally {
+    clearTimeout(plazo);
     void lector.cancel();
   }
   throw new Error(`${clave} no aparecio en /raw de ${maquina} en ${topeMs} ms`);

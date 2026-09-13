@@ -232,6 +232,13 @@ const filtrosDelSupresor = (e: Map<string, string>): string[] => {
   return xs;
 };
 
+// **Las doce del supresor se validan ACA y no al final.** `filtrosDelSupresor`
+// usa `exigirClave`, y llamarlo recien despues de los cinco minutos de medicion
+// convertia una clave faltante en un reventon tardio: se media todo, se imprimian
+// los veredictos, y despues lanzaba sin llegar a comparar la pila --que es lo
+// unico que protege al usuario de quedarse con una notch de -18 dB--.
+const FILTROS_AL_EMPEZAR = filtrosDelSupresor(e0);
+
 console.log('=== 106 — LA LEY DEL FADER DE UN BUS, CONTRA LA SALIDA REAL ===');
 console.log(`canal ${canal} (i.${n}) -> auxiliar ${auxiliar} (a.${a}) -> entrada 2`);
 console.log(`se barre a.${a}.mix | envio fijo en ${ENVIO_FIJO}`);
@@ -309,7 +316,11 @@ let pisoEfectivo = NaN;
 
 await conRestauracion(
   async () => {
+    // **Se espera a que el tono muera antes de restaurar.** `m.afs.enabled` vuelve
+    // a 1 al final de `restaurarClaves`, y reencender el supresor con el tono
+    // todavia sonando es exactamente como se planto la notch de la 104.
     sonando?.kill();
+    await new Promise((r) => setTimeout(r, 1500));
     await restaurarClaves(t, maquina, PREVIO);
     rmSync(carpeta, { recursive: true, force: true });
   },
@@ -399,14 +410,27 @@ await conRestauracion(
     // El contrato prometia abortar y la primera version barria diez minutos igual,
     // dejando el general del usuario en 0 para no medir nada.
     if (!(sobreElPiso >= C1_SOBRE_EL_PISO_DB)) {
+      // **Dos causas distintas, dos mensajes.** Acusar siempre a la Mac es el defecto
+      // que una auditoria le marco a la G1 del 105: la guarda correcta senalando la
+      // consola equivocada. Si el tono llega fuerte y el margen igual no alcanza, lo
+      // que esta alto es el PISO --la fuga no se suprimio-- y la Mac no tiene nada
+      // que ver.
+      const tonoLlegaFuerte = c1 > pisoEfectivo + 60;
       throw new Error(`C1: el tono esta solo ${sobreElPiso.toFixed(1)} dB sobre el piso `
-        + `(minimo ${C1_SOBRE_EL_PISO_DB}). No esta entrando a la consola --la salida por `
-        + 'omision de la Mac puede no ser la interfaz-- y no hay nada que medir.');
+        + `(minimo ${C1_SOBRE_EL_PISO_DB}, que es lo que L5 necesita para ser posible). `
+        + (tonoLlegaFuerte
+          ? `El tono ENTRA bien --${c1.toFixed(2)} dBFS-- pero el piso quedo en `
+            + `${pisoEfectivo.toFixed(2)}: la fuga no se suprimio, y con este piso el `
+            + 'recorrido util no alcanza. Revisar que m.mix haya bajado.'
+          : 'El tono no esta entrando a la consola: la salida por omision de la Mac '
+            + 'puede no ser la interfaz.'));
     }
 
     console.log('');
     console.log('=== EL BARRIDO ===');
-    console.log('crudo  | leido    | real     | pre bus  | canal    | at.real | prevista | margen');
+    console.log('crudo  | leido    | real     | pre bus  | canal    | at.real | prev~   | margen');
+console.log('   (prev~ es provisoria: la que decide se calcula con el crudo LEIDO del tope,');
+console.log('    que recien se sabe al terminar el barrido. Los residuos van en L3/L3b.)');
 
     for (const sentido of ['baja', 'sube'] as const) {
       const orden = sentido === 'baja' ? CRUDOS : [...CRUDOS].reverse();
@@ -430,7 +454,11 @@ await conRestauracion(
         console.log(`${crudo.toFixed(4).padStart(6)} | ${crudoLeido.toFixed(4).padStart(8)} | `
           + `${m.realDb.toFixed(2).padStart(8)} | ${m.preDb.toFixed(2).padStart(8)} | `
           + `${m.canalDb.toFixed(2).padStart(8)} | ${'—'.padStart(7)} | `
-          + `${(faderADb(1) - faderADb(crudoLeido)).toFixed(2).padStart(8)} | `
+          // **Provisoria y marcada como tal.** La prediccion que decide se calcula
+          // despues del barrido, cuando ya se sabe cual fue el crudo LEIDO del tope;
+          // acá todavia no se sabe. Se imprime contra el escrito y se dice, en vez de
+          // dejar dos numeros con la misma cara calculados de forma distinta.
+          + `${(faderADb(1) - faderADb(crudoLeido)).toFixed(2).padStart(7)}~| `
           + `${(m.realDb - pisoEfectivo).toFixed(0).padStart(6)}`
           + (m.recorta ? '  <-- RECORTA' : ''));
       }
@@ -445,35 +473,82 @@ const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x))
 const problemas: string[] = [];
 
 // La atenuacion se mide contra el tope del barrido, del mismo sentido.
-for (const sentido of ['baja', 'sube'] as const) {
-  const tope = puntos.find((p) => p.sentido === sentido && p.crudo === CRUDOS[0]);
-  for (const p of puntos.filter((x) => x.sentido === sentido)) {
-    p.atenuacion = tope === undefined ? NaN : tope.m.realDb - p.m.realDb;
-    // **Los DOS terminos con el crudo leido, no solo el del punto.** Con el tope
-    // en el crudo escrito, un tope que la consola devolviera como 0,9999 en vez de
-    // 1,0 metia un sesgo CONSTANTE de 0,005 dB en los cuarenta residuos --del
-    // mismo tamaño que los residuos de la 104, ≤0,007-- y alcanzaba para empujar
-    // todos los signos al mismo lado y hacer que L3b, «la que decide», fallara
-    // acusando a la consola por un redondeo del tope.
-    p.prediccion = tope === undefined ? NaN
-      : faderADb(tope.crudoLeido) - faderADb(p.crudoLeido);
-    const margen = p.m.realDb - pisoEfectivo;
-    if (!(margen >= MARGEN_MINIMO_DB)) {
-      // La formula del error es de primer orden: con margen chico no significa nada
-      // y se dice en vez de imprimir un numero sin sentido.
-      p.anulado = `margen de ${d(margen)} dB sobre el piso efectivo`
-        + (margen > 6
-          ? `: el instrumento erraria ${(8.686 * Math.pow(10, -margen / 20)).toFixed(2)} dB`
-          : ': por debajo de 6 dB la formula del error de primer orden no aplica');
-    }
-    // **Y no se pisa el motivo.** Antes `recorta` sobrescribia el del margen y se
-    // perdia cual vino primero.
-    if (p.m.recorta && p.anulado === null) p.anulado = 'la captura recorta';
-    if (p.m.cuadros < CUADROS_MINIMOS && p.anulado === null) {
-      p.anulado = `solo ${p.m.cuadros} cuadros VU2: el promedio no es un promedio`;
-    }
+/**
+ * **El punto de referencia tiene que servir, y esto nunca se comprobaba.**
+ *
+ * De él cuelgan TODAS las atenuaciones y TODAS las predicciones: si el tope está
+ * anulado, los 41 puntos salen sesgados **la misma cantidad y en el mismo
+ * sentido**. Y el daño no es un PASA tranquilizador: un tope recortado lee bajo,
+ * el residuo sale constante, L3 falla y L3b ve 40 residuos del mismo signo con
+ * cero cambios. O sea que la corrida publicaría **un hallazgo falso contra la
+ * consola, con la firma exacta que la 94 dejó indecidible y que la 104 pagó por
+ * poder nombrar** — mientras el motivo verdadero, una captura que el propio guion
+ * marcó inservible, está impreso cuarenta líneas más abajo sin relación declarada.
+ *
+ * Ninguna guarda de `NaN` puede ver esto, porque con un tope anulado todos los
+ * números son finitos. La 104 tiene esta comprobación; el 106 no la tuvo en tres
+ * rondas de auditoría.
+ */
+// **PRIMERA PASADA: quien vale.** La anulacion no depende del tope, asi que se
+// decide antes y sobre todos los puntos. Tenerla en el mismo bucle que usaba el
+// tope hacia que el veredicto dependiera del ORDEN: bajando, el tope es el primer
+// punto y todavia no estaba anulado cuando se lo miraba; subiendo, es el ultimo.
+for (const p of puntos) {
+  const margen = p.m.realDb - pisoEfectivo;
+  if (!(margen >= MARGEN_MINIMO_DB)) {
+    // La formula del error es de primer orden: con margen chico no significa nada
+    // y se dice en vez de imprimir un numero sin sentido.
+    p.anulado = `margen de ${d(margen)} dB sobre el piso efectivo`
+      + (margen > 6
+        ? `: el instrumento erraria ${(8.686 * Math.pow(10, -margen / 20)).toFixed(2)} dB`
+        : ': por debajo de 6 dB la formula del error de primer orden no aplica');
+  }
+  // **Y no se pisa el motivo.** Antes `recorta` sobrescribia el del margen y se
+  // perdia cual vino primero.
+  if (p.m.recorta && p.anulado === null) p.anulado = 'la captura recorta';
+  if (p.m.cuadros < CUADROS_MINIMOS && p.anulado === null) {
+    p.anulado = `solo ${p.m.cuadros} cuadros VU2: el promedio no es un promedio`;
   }
 }
+
+// **SEGUNDA PASADA: el punto de referencia, ya con las anulaciones decididas.**
+const referenciaInservible: string[] = [];
+const topes = new Map<'baja' | 'sube', Punto>();
+for (const sentido of ['baja', 'sube'] as const) {
+  const tope = puntos.find((p) => p.sentido === sentido && p.crudo === CRUDOS[0]);
+  if (tope === undefined || tope.anulado !== null
+    || !Number.isFinite(tope.m.realDb) || !Number.isFinite(tope.crudoLeido)) {
+    referenciaInservible.push(`${sentido}: ${tope === undefined ? 'no existe'
+      : tope.anulado ?? 'lectura no finita'}`);
+    continue;
+  }
+  topes.set(sentido, tope);
+}
+if (referenciaInservible.length > 0) {
+  console.log('');
+  console.log('=== EL PUNTO DE REFERENCIA NO SIRVE ===');
+  for (const x of referenciaInservible) console.log(`   ${x}`);
+  console.log('   De el cuelgan TODAS las atenuaciones y TODAS las predicciones, asi que');
+  console.log('   ninguna expectativa se decide y no se imprime ley. Publicarla seria');
+  console.log('   publicar un HALLAZGO FALSO contra la consola: un tope recortado lee bajo,');
+  console.log('   el residuo sale constante, y L3b lo leeria como estructura --la firma');
+  console.log('   exacta que la 94 dejo indecidible--, mientras el motivo verdadero queda');
+  console.log('   impreso cuarenta lineas mas abajo sin relacion declarada.');
+  process.exit(1);
+}
+
+// **TERCERA: las atenuaciones y las predicciones, con un tope que ya se sabe bueno.**
+for (const p of puntos) {
+  const tope = topes.get(p.sentido)!;
+  p.atenuacion = tope.m.realDb - p.m.realDb;
+  // **Los DOS terminos con el crudo LEIDO.** Con el tope en el crudo escrito, un
+  // tope que la consola devolviera como 0,9999 en vez de 1,0 metia un sesgo
+  // CONSTANTE de 0,005 dB en los cuarenta residuos --del mismo tamaño que los de
+  // la 104, ≤0,007-- y alcanzaba para empujar todos los signos al mismo lado y
+  // hacer que L3b, «la que decide», fallara acusando a la consola por un redondeo.
+  p.prediccion = faderADb(tope.crudoLeido) - faderADb(p.crudoLeido);
+}
+
 const utiles = puntos.filter((p) => p.anulado === null);
 
 console.log('');
@@ -671,8 +746,12 @@ if (problemas.length > 0) {
       const c = Math.abs(faderADb(p.crudoLeido) - faderADb(p.crudo));
       return Number.isFinite(c) && c > peorCosto ? c : peorCosto;
     }, 0);
-    console.log(`   diferencia maxima ${peor.dif.toExponential(1)} en el crudo ${peor.crudo}, `
-      + `y el peor costo en dB sobre todos los puntos es ${costoDb.toFixed(4)} dB`);
+    // **El veredicto es el costo en dB y nada mas.** `peor.dif` --el maximo de la
+    // diferencia en CRUDO-- era la magnitud del criterio anterior y sobrevivio a la
+    // reescritura: los dos maximos suelen estar en crudos distintos, y la frase los
+    // presentaba como si fueran el mismo punto.
+    console.log(`   el peor costo en dB sobre todos los puntos: ${costoDb.toFixed(4)} dB `
+      + `(tope ${(ESCALON_DB / 10).toFixed(4)})`);
     console.log(costoDb < ESCALON_DB / 10
       ? '   PASA. Y es una COTA, no una identidad.'
       : '   FALLA: la consola redondea lo bastante como para verse en L3.');
@@ -716,7 +795,7 @@ console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
     : '   HAY CLAVES SIN RESTAURAR. Revisar la consola antes de seguir.');
   if (!bien) process.exitCode = 1;
 
-  const antes = filtrosDelSupresor(e0);
+  const antes = FILTROS_AL_EMPEZAR;
   const despues = filtrosDelSupresor(fin);
   console.log('');
   console.log(`   filtros del supresor: ${antes.length} antes, ${despues.length} despues`);

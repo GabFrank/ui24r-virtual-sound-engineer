@@ -66,10 +66,18 @@ no es un número elegido: es la condición necesaria para que L5 pueda pasar —
 de margen para que un punto valga, más 40 de recorrido entre el mejor y el peor—.
 Exigir menos abre una franja donde C1 dice «el tono llega», se barren cinco
 minutos con el general del usuario en 0, y L5 falla por aritmética. En este banco
-se esperan 104 dB. Si
-no, el tono no está entrando —la salida por omisión de la Mac puede no ser la
-interfaz— y no hay nada que medir: **el guion lanza en el sitio**, adentro de
-`conRestauracion`, que es donde la excepción pasa por la restauración.
+se esperan 104 dB.
+
+**Si no llega a 85, el guion lanza en el sitio** —adentro de `conRestauracion`,
+que es donde la excepción pasa por la restauración— y distingue las dos causas,
+porque no son el mismo problema:
+
+- **el tono no está entrando**: la salida por omisión de la Mac puede no ser la
+  interfaz;
+- **el tono entra fuerte y el piso quedó alto**: la fuga no se suprimió, o sea que
+  `m.mix` no bajó. Acá la Mac no tiene nada que ver, y acusarla sería el defecto
+  que una auditoría le marcó a la G1 del ítem 105: la guarda correcta señalando la
+  consola equivocada.
 
 **Y NO compara contra un nivel absoluto, que es un error que esta versión del
 contrato tuvo que corregir.** La primera decía «−12,68 ± 3 dBFS, y si sale otra
