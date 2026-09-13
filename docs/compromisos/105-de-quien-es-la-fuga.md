@@ -60,12 +60,19 @@ lo usa queda declarada inservible en la propia salida.
 Después se cierra el envío a 0 y se desmutea. Los dos valores vuelven por
 `PREVIO`.
 
+**Lo que C2 prueba y lo que no, dicho acá porque el guion no puede decirlo.** C2
+establece que el mute está **antes de la derivación del envío**. El camino que E2
+tiene que cortar es el de la **fuga**, que por definición no pasa por el envío —esa
+es la medición entera—. Si la fuga fuera diafonía de la tira al bus en el sumador,
+o algo analógico aguas abajo del mute, la respuesta de C2 **no se transfiere**. Es
+una plausibilidad fuerte, no una prueba, y la fila que la usa hereda esa limitación.
+
 ## Los estados
 
 | | estado | qué saca del camino |
 |---|---|---|
 | **E0** | banco reproducido, envío en 0 | reproduce el número de la 104 |
-| **E1** | `m.mute = 1` | el general: ni en la entrada 1 de la interfaz ni adentro de la consola |
+| **E1** | `m.mute = 1` | el general en la entrada 1 de la interfaz — y adentro de la consola **sólo si el mute está antes del sumador, que nadie midió** |
 | **E2** | `m.mute = 0`, `i.9.mute = 1` | la tira, **si C2 dijo que el mute está en ese camino** |
 | **E3** | el tono apagado, **con la consola como en E0** | el piso real del bin |
 
@@ -96,12 +103,14 @@ por el canal estaría tapada y la guarda pasaría sin ver nada.
 ## El veredicto
 
 Un estado «cae» si baja más de 10 dB respecto de E0 y «queda» si baja menos de
-3 dB. Entre 3 y 10 no se decide y se dice. **Una caída negativa —que el nivel
-suba al mutear— no es «queda»**: es una anomalía y se informa como tal.
+3 dB. Entre 3 y 10 no se decide y se dice. **Una subida de más de 3 dB —que el
+nivel suba al mutear— no es «queda»**: es una anomalía y se informa como tal. Los
+3 dB son la misma banda muerta en las dos direcciones, a propósito: por debajo de
+eso el instrumento no separa una subida de «no cambió».
 
 | E1 | E2 | conclusión |
 |---|---|---|
-| cae | cae | la fuga entra **por el camino del general**. Dos candidatos que esta corrida NO separa: diafonía de la entrada 1 a la entrada 2 adentro de la Scarlett, o diafonía del bus general al auxiliar adentro de la consola |
+| cae | cae | la fuga entra **por el camino del general**. Dos candidatos que esta corrida NO separa: diafonía de la entrada 1 a la entrada 2 adentro de la Scarlett, o diafonía del bus general al auxiliar adentro de la consola. **Y el segundo candidato cuelga de una suposición sin medir**: si `m.mute` fuera un mute de salida post-suma, el bus interno seguiría llevando el tono, E1 no lo eliminaría, y la fila apuntaría sólo al lado analógico. El control que lo decidiría es el mismo truco de C2 aplicado a `m.mute`, y no está en esta corrida |
 | queda | cae | la fuga es **de la consola**: la tira le llega al bus auxiliar sin pasar por el envío |
 | queda | queda | la fuga es **anterior al mute del canal**. Dos candidatos que esta corrida NO separa: la salida de la interfaz cruzándose a su propia entrada 2, o la etapa de entrada de la consola |
 | cae | queda | **contradictorio**: mutear el canal saca el tono también del general, así que si E1 cae, E2 tiene que caer. Si aparece, es un hallazgo sobre `i.9.mute` y no un veredicto sobre la fuga |
@@ -123,5 +132,17 @@ se declaran inservibles y sólo se informa E1.
 **Mutea la salida general del usuario durante unos 7 segundos.** Es el primer
 guion de esta serie que lo hace. No se corre con público. Nada está conectado a
 ninguna salida física salvo los dos cables del bucle.
+
+**Y abre el envío del canal 10 al auxiliar 5 en 1,0 durante unos 7 segundos**,
+con el bus vivo en 0,45 y el tono sonando. Es la escritura más ruidosa de la
+corrida, el auxiliar 5 de una Ui24R es por omisión un envío a monitor, y el guion
+lo avisa por pantalla antes de hacerlo. Durante toda la corrida —unos 48 s— el
+fader de ese bus queda en 0,45 donde el usuario lo tenía en 0: es el banco de la
+104 y no hay forma de medir sin eso.
+
+**Hace falta que el general y el canal 10 estén sin mutear para arrancar.** El
+guion se niega a correr si no, porque con el general ya muteado E1 no saca nada
+del camino y el falso «queda» sería indetectable. Si la consola está en reposo con
+el general muteado, hay que desmutearlo a mano antes.
 
 **No se toca**: la instantánea «Alma caninde», la fantasma del canal 9.

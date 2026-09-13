@@ -104,13 +104,29 @@ let sonando: ReturnType<typeof spawn> | null = null;
 let falloDelTono: Error | null = null;
 
 async function medir(etiqueta: string, exigeTono: boolean): Promise<Lectura> {
-  if (exigeTono) {
+  /**
+   * **La ventana que importa son los segundos de la captura, no el instante
+   * previo.** La primera version de este guion comprobaba el tono ANTES de
+   * grabar, y eso deja abierto el unico camino a un veredicto falso que quedaba:
+   * si `afplay` muere DURANTE la captura de E2, E2 lee el piso, `v2` da «cae»,
+   * G3 pasa —al morir el tono cae tambien el general, asi que el testigo confirma
+   * el artefacto en vez de delatarlo—, G4 pasa porque E3 tiene que dar el piso, y
+   * se imprime «LA FUGA ES DE LA CONSOLA», que es el veredicto de mayor
+   * consecuencia de la tabla, producido por un reproductor muerto.
+   *
+   * La 104 comprobaba despues (`ley-del-envio-a-monitor.ts:200-202`). Aca se
+   * comprueba **antes y despues**: antes para no gastar cuatro segundos al pedo,
+   * despues porque es la que ataja el caso.
+   */
+  const vivo = (cuando: string): void => {
+    if (!exigeTono) return;
     if (falloDelTono !== null) throw falloDelTono;
     if (sonando !== null && sonando.exitCode !== null) {
-      throw new Error(`el tono dejo de sonar antes de ${etiqueta}: afplay salio con `
+      throw new Error(`el tono dejo de sonar ${cuando} ${etiqueta}: afplay salio con `
         + `${sonando.exitCode}. Sin tono las lecturas son el piso y el veredicto seria falso.`);
     }
-  }
+  };
+  vivo('antes de');
   const wav = join(carpeta, `${etiqueta}.wav`);
   const hijo = spawn(GRABADOR, [String(SEGUNDOS_DE_CAPTURA), wav, 'Scarlett'], { stdio: 'ignore' });
   await new Promise<void>((resolver, rechazar) => {
@@ -121,6 +137,7 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Lectura> {
     canales: { tonoDb: number; margenEnBinDb: number; recorteExacto: boolean }[];
   };
   rmSync(wav, { force: true });
+  vivo('durante');
   const aux = an.canales[ENTRADA_AUXILIAR]!;
   const gen = an.canales[ENTRADA_GENERAL]!;
   return {
@@ -152,6 +169,40 @@ const PREVIO: readonly (readonly [string, number])[] = [
   ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
 ];
 
+/**
+ * La pila de filtros del supresor del general, leída de un volcado HTTP.
+ *
+ * **Por qué hace falta mirarla dos veces.** De las diez claves que este guion
+ * escribe, `m.afs.enabled = 0` es la única cuya pérdida **no mueve ninguna
+ * guarda**: G1 y G2 miran el auxiliar, G3 compara el general contra sí mismo —la
+ * notch está en las dos lecturas y se cancela en la resta—, G4 mira el piso, y G5
+ * relee **la bandera**, no la pila. O sea que el `setd` se podía perder, el
+ * supresor plantar una notch de −18 dB con Q 7 en 1 kHz sobre el general del
+ * usuario, y la corrida terminar imprimiendo «Todo restaurado».
+ *
+ * Sacarla exige `clearall`, que se lleva la pila entera incluido el ring-out del
+ * usuario. Ya pasó dos veces; la segunda le costó tres filtros.
+ *
+ * Y la comprobación es gratis: los `m.afs.eq.N` vienen en los dos volcados que el
+ * guion ya pide. Es una resta sobre datos que están en memoria.
+ */
+const VACIA = '1000.0000000000,116';
+const filtrosDelSupresor = (e: Map<string, string>): string[] => {
+  const xs: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const f = e.get(`m.afs.eq.${i}`) ?? '';
+    if (f !== '' && !f.startsWith(VACIA)) xs.push(`eq.${i}: ${f}`);
+  }
+  return xs;
+};
+
+/** Por nombre y no por posicion: `PREVIO` tiene diez entradas y se reordena solo. */
+const previo = (clave: string): number => {
+  const x = PREVIO.find(([k]) => k === clave);
+  if (x === undefined) throw new Error(`${clave} no esta en PREVIO`);
+  return x[1];
+};
+
 console.log('=== 105 — DE QUIEN ES LA FUGA DE 1 kHz ===');
 console.log(`canal ${canal} (i.${n}) -> auxiliar ${auxiliar} (a.${a}) -> entrada 2`);
 console.log(`tono de ${HZ} Hz a ${NIVEL_DBFS} dBFS | ${SEGUNDOS_DE_CAPTURA} s por captura`);
@@ -179,6 +230,22 @@ for (const k of [
   exigir(`i.${n}.mute`, '0', 'E2 escribe este mute, y si ya valia 1 no hay tono en ningun lado');
   exigir(`a.${a}.afs.enabled`, '0', 'un supresor en el bus del tono planta notches a mitad de corrida');
   exigir(`hwoutaux.${a}.src`, `a.${a}`, 'la salida fisica tiene que traer ESTE bus');
+  // **Citados por la salida de C2, asi que exigidos aca.** Decir «el envio es
+  // pre-fader» apoyandose en lo que midio otra corrida es el defecto que la 94 y
+  // la 102 documentaron cada una por su lado.
+  exigir(`i.${n}.aux.${a}.post`, '0', 'C2 informa que el envio es pre-fader; si no lo es, miente');
+  exigir(`i.${n}.aux.${a}.postproc`, '1', 'cambia que procesamiento del canal ve el envio');
+  // **El ecualizador del bus, plano.** La 94 esquivo un notch del supresor y cayo
+  // justo en una atenuacion de 22,67 dB en 1 kHz del ecualizador del bus.
+  {
+    const torcidas = [...e0.keys()]
+      .filter((k) => k.startsWith(`a.${a}.eq.`) && /\.(gain|g)$/.test(k))
+      .filter((k) => Math.abs(Number(e0.get(k)) - 0.5) > 1e-6);
+    if (torcidas.length > 0) {
+      throw new Error(`${torcidas.length} banda(s) del ecualizador del bus fuera del centro: `
+        + `${torcidas.join(', ')}. En 1 kHz eso se suma a lo que se mide.`);
+    }
+  }
   const otros = [...e0.keys()]
     .filter((k) => new RegExp(`^(i|f|l|p)\\.\\d+\\.aux\\.${a}\\.value$`).test(k)
       && k !== `i.${n}.aux.${a}.value`)
@@ -193,6 +260,7 @@ for (const k of [
 }
 
 const L: Record<string, Lectura> = {};
+const capturas: Lectura[] = [];
 let muteCortaElAuxiliar: boolean | null = null;
 let c1Db = NaN;
 let c2Db = NaN;
@@ -219,7 +287,8 @@ await conRestauracion(
     console.log(`   auxiliar sale por un fader en 0, que es −infinito dB, y las cuatro`);
     console.log('   lecturas darian el piso del bin. Es el defecto que la auditoria paro.');
     console.log('   puerta y compresor del bus, y compresor, puerta y de-esser del canal: fuera');
-    console.log(`   supresor del general: estaba en ${PREVIO[9]![1]}, apagado mientras suene`);
+    console.log('   supresor del general: estaba en '
+      + `${previo('m.afs.enabled')}, apagado mientras suene`);
 
     const wav = tono(240);
     sonando = spawn('afplay', [wav]);
@@ -237,9 +306,18 @@ await conRestauracion(
     console.log('estado                              aux (bin 1k)   gral (bin 1k)  margen');
 
     // C1 — ¿llega el tono a la consola?
+    // **El aviso va acá y no sólo en el contrato.** Durante los ~7 s que siguen, la
+    // consola queda con el envío ABIERTO EN 1,0 sobre un bus cuyo fader está vivo
+    // en 0,45, con el tono sonando. Es el estado más caliente que este guion deja,
+    // y el auxiliar 5 de una Ui24R es por omisión un envío a monitor.
+    console.log('');
+    console.log(`   AVISO: durante los proximos ~7 s el envio del canal ${canal} al`);
+    console.log(`   auxiliar ${auxiliar} queda ABIERTO EN 1,0 y el bus vivo en ${FADER_DEL_AUXILIAR}.`);
+    console.log('   Si hay algo enchufado a esa salida, va a sonar.');
     t.enviar(codificarSetd(`i.${n}.aux.${a}.value`, 1));
     await new Promise((r) => setTimeout(r, 2500));
     const c1 = await medir('C1', true);
+    capturas.push(c1);
     c1Db = c1.auxDb;
     mostrar('C1  envio ABIERTO en 1,0', c1);
 
@@ -247,6 +325,7 @@ await conRestauracion(
     t.enviar(codificarSetd(`i.${n}.mute`, 1));
     await new Promise((r) => setTimeout(r, 2500));
     const c2 = await medir('C2', true);
+    capturas.push(c2);
     c2Db = c2.auxDb;
     mostrar('C2  envio abierto + canal MUTEADO', c2);
     muteCortaElAuxiliar = c1.auxDb - c2.auxDb > CAE_DB;
@@ -333,6 +412,17 @@ console.log('=== LAS GUARDAS, contra el contrato del item 105 ===');
       + 'la fila «cae» es inalcanzable por aritmetica y el guion estaria obligado a '
       + 'imprimir «queda» diga lo que diga la fisica.');
   if (!ok) problemas.push('G2');
+  // **Y en E1 y E2, que son los que se clasifican.** Con poco margen, el error del
+  // instrumento --8,686·10^(−m/20), la formula de la 104-- se come los umbrales de
+  // 3 y 10 dB y la clasificacion es ruido. Es el mismo patron «se mide, se imprime
+  // y no se usa» que la primera version tenia con el testigo del general.
+  for (const [nombre, x] of [['E1', L.E1!], ['E2', L.E2!]] as const) {
+    const err = 8.686 * Math.pow(10, -x.margenAuxDb / 20);
+    const bien = err < QUEDA_DB / 2;
+    console.log(`   ${nombre}: margen ${d(x.margenAuxDb)} dB -> el instrumento erraria `
+      + `${err.toFixed(2)} dB` + (bien ? '' : `   <-- comparable al umbral de ${QUEDA_DB} dB`));
+    if (!bien) problemas.push(`G2/${nombre}`);
+  }
 }
 {
   const c1g = L.E0!.generalDb - L.E1!.generalDb;
@@ -354,7 +444,9 @@ console.log('=== LAS GUARDAS, contra el contrato del item 105 ===');
   if (!ok) problemas.push('G4');
 }
 {
-  const r = [L.E0!, L.E1!, L.E2!, L.E3!].some((x) => x.recorta);
+  // C1 y C2 son las capturas mas calientes de la corrida --C1 esta 80 dB por
+  // encima de E0-- y de C2 sale `muteCortaElAuxiliar`, que gobierna la tabla.
+  const r = [...capturas, L.E0!, L.E1!, L.E2!, L.E3!].some((x) => x.recorta);
   if (r) { console.log('\nRECORTE en alguna captura: el bin esta falseado.'); problemas.push('recorte'); }
 }
 
@@ -377,9 +469,10 @@ if (problemas.length > 0) {
   if (v1 === 'SUBE' || v2 === 'SUBE') {
     console.log('   => ANOMALIA: mutear SUBIO el nivel de 1 kHz en el auxiliar. Eso no es');
     console.log('      «queda»: es un hallazgo, y esta corrida no lo explica.');
-  } else if (muteCortaElAuxiliar === false && v1 !== 'cae') {
-    console.log('   => SOLO SE INFORMA E1, y E1 no cayo. C2 mostro que el mute del canal no');
-    console.log('      esta en el camino del auxiliar, asi que E2 no separa nada.');
+  } else if (muteCortaElAuxiliar === false) {
+    console.log(`   => SOLO SE INFORMA E1, que ${v1}. C2 mostro que el mute del canal no`);
+    console.log('      esta en el camino del auxiliar, asi que E2 no separa nada y las');
+    console.log('      filas que lo usan no valen. Esto manda sobre lo que diga E1.');
   } else if (v1 === 'cae' && v2 === 'cae') {
     console.log('   => LA FUGA ENTRA POR EL CAMINO DEL GENERAL. Dos candidatos que esta');
     console.log('      corrida NO separa: diafonia de la entrada 1 a la entrada 2 adentro de');
@@ -422,8 +515,25 @@ console.log('=== G5 RESTAURACION, RELEIDA POR HTTP ===');
     console.log(`   ${k.padEnd(24)} esperado ${String(v).padEnd(14)} leido ${leido}`
       + (ok ? '' : '   <-- NO COINCIDE'));
   }
-  console.log(bien ? '   Todo restaurado, comprobado por un camino distinto del que escribio.'
+  console.log(bien ? '   Las diez claves volvieron, comprobado por un camino distinto.'
     : '   HAY CLAVES SIN RESTAURAR. Revisar la consola antes de seguir.');
   if (!bien) process.exitCode = 1;
+
+  // **Y la pila del supresor, que la bandera no dice.** Ver el docblock de
+  // `filtrosDelSupresor`.
+  const antes = filtrosDelSupresor(e0);
+  const despues = filtrosDelSupresor(fin);
+  console.log('');
+  console.log(`   filtros del supresor del general: ${antes.length} antes, ${despues.length} despues`);
+  for (const f of despues) console.log(`      ${f}`);
+  if (despues.length !== antes.length || despues.some((f, i) => f !== antes[i])) {
+    console.log('   LA PILA CAMBIO. El supresor planto algo durante esta corrida: el');
+    console.log(`   \`m.afs.enabled = 0\` no llego, o no alcanzo. Es una notch REAL sobre`);
+    console.log('   el general del usuario. Borrarla exige `clearall`, que se lleva la pila');
+    console.log('   entera: ver docs/backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md');
+    process.exitCode = 1;
+  } else {
+    console.log('   Sin cambios: el supresor no planto nada.');
+  }
 }
 await t.desconectar();
