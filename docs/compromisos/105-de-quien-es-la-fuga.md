@@ -1,6 +1,7 @@
 # 105 — De quién es la fuga de 1 kHz
 
-**Contrato escrito el 2026-09-13 a las 05:42, ANTES de tocar la consola.**
+**Primera versión escrita el 2026-09-13 a las 05:42. Rehecha a las 06:20 después
+de una auditoría que la habría dejado publicar un veredicto falso.**
 Depende de: `docs/backlog/hallazgo-el-residuo-de-la-94-no-es-la-ley.md`.
 
 ## Qué pregunta
@@ -14,65 +15,113 @@ La 104 no pudo decir **de dónde sale**, y la respuesta cambia qué se puede
 medir: si la fuga es de la consola, es una propiedad del aparato; si es del
 banco, ninguna medición de esta serie puede bajar de unos 70 dB sin corregirla.
 
-## El banco
+## Lo que la primera versión de este contrato hacía mal
 
-El mismo de la 104. Salida de la interfaz → entrada 10 de la consola; general →
-entrada 1 de la interfaz; auxiliar 5 → entrada 2. Tono de 1 kHz. **El envío
-`i.9.aux.4.value` queda en 0 toda la corrida: esto no barre nada.**
+Se anota porque es el defecto más caro de esta serie y ya salió tres veces.
 
-## Los estados, y qué separa cada uno
+El −91,77 **no se midió con la consola en reposo**: se midió adentro de la
+neutralización de la 104, con `a.4.mix = 0,45` como atenuador fijo. En reposo ese
+fader vale **0**, y `faderADb(0) = −∞`. Un guion que fuera a reproducir ese
+número sin reproducir el banco mediría el piso del bin en los cuatro estados, las
+cuatro caídas darían ≈ 0 dB, y la tabla de veredictos imprimiría, serena y
+falsa, «la fuga es anterior al mute del canal» **sobre una cadena de medición
+muerta**. La expectativa que tenía que atajarlo fallaba, sí, pero no detenía
+nada y acusaba a un banco que no había cambiado.
+
+De ahí salen las dos reglas duras de abajo: **el banco se reproduce clave por
+clave**, y **una guarda que falla ABORTA antes del veredicto**, no lo comenta.
+
+## El banco, reproducido clave por clave
+
+Igual que la 104, y por eso se listan: `a.4.mix = 0,45`,
+`a.4.gate.enabled = 0`, `a.4.dyn.bypass = 1`, `i.9.dyn.bypass = 1`,
+`i.9.gate.enabled = 0`, `i.9.deesser.enabled = 0`, `m.afs.enabled = 0`.
+Todas leídas por HTTP antes, restauradas por `restaurarClaves()`.
+
+Y se **exige**, sin escribir: `i.9.aux.4.value = 0` al empezar, `a.4.mute = 0`,
+`m.mute = 0`, `i.9.mute = 0`, `hwoutaux.4.src = a.4`, y que ninguna otra tira
+tenga el envío a este auxiliar abierto.
+
+## El control positivo, que va ANTES de todo
+
+Sin esto, dos cosas quedaban supuestas y las dos deciden el resultado.
+
+**C1 — ¿llega el tono a la consola?** Se abre `i.9.aux.4.value` a 1,0 y se mide
+la entrada 2. Tiene que dar cerca de los −12,7 dBFS que midió la 104. Si da el
+piso, **el tono no está entrando** —la salida por omisión de la Mac no es la
+interfaz, o el cable— y no hay nada que medir: se aborta.
+
+**C2 — ¿el mute del canal está en el camino del auxiliar?** Con el envío todavía
+abierto, se mutea el canal y se vuelve a medir. El envío es **pre-fader**
+(`i.9.aux.4.post = 0`); que además sea pre-mute o post-mute **este proyecto no lo
+midió nunca**. Si el mute no corta el auxiliar, E2 no separa nada y la fila que
+lo usa queda declarada inservible en la propia salida.
+
+Después se cierra el envío a 0 y se desmutea. Los dos valores vuelven por
+`PREVIO`.
+
+## Los estados
 
 | | estado | qué saca del camino |
 |---|---|---|
-| **E0** | como está | reproduce el número de la 104 |
-| **E1** | `m.mute = 1` | la entrada 1 de la interfaz se queda sin señal |
-| **E2** | `m.mute = 0`, `i.9.mute = 1` | la consola se queda sin tono en todos sus buses |
-| **E3** | el tono apagado | el piso real del bin, en este mismo estado |
+| **E0** | banco reproducido, envío en 0 | reproduce el número de la 104 |
+| **E1** | `m.mute = 1` | el general: ni en la entrada 1 de la interfaz ni adentro de la consola |
+| **E2** | `m.mute = 0`, `i.9.mute = 1` | la tira, **si C2 dijo que el mute está en ese camino** |
+| **E3** | el tono apagado, **con la consola como en E0** | el piso real del bin |
 
-Lectura: en los cuatro se mide el bin de 1 kHz de la entrada 2.
+En los cuatro se mide el bin de 1 kHz de la **entrada 2** (el auxiliar) y de la
+**entrada 1** (el general), que es el testigo.
 
-## Las expectativas, declaradas antes de mirar
+## Las guardas, declaradas antes de mirar. Si una falla, NO se imprime veredicto
 
-**L1 — E0 reproduce la 104.** El bin de 1 kHz en E0 tiene que dar
-−91,77 ± 1,5 dBFS. Si no, el banco cambió entre las dos corridas y **ninguna de
-las otras tres lecturas significa nada**: se aborta y se dice.
+**G1 — E0 reproduce la 104.** −91,77 ± 1,5 dBFS. Si no, el banco no es el mismo
+y ninguna de las otras lecturas significa nada.
 
-**L2 — E3 baja al piso.** Con el tono apagado, el bin tiene que caer por debajo
-de −110 dBFS. Si no, hay una fuente de 1 kHz que no es el tono que este guion
-reproduce, y la pregunta está mal planteada.
+**G2 — la caída máxima observable alcanza para decidir.** El margen del bin en
+E0 tiene que ser ≥ 15 dB. Es una consecuencia aritmética y no una opinión: si E0
+está a 7 dB del piso, una caída de más de 7 dB **no puede ocurrir**, la fila
+«cae» es inalcanzable por construcción y el guion está obligado a imprimir
+«queda» diga lo que diga la física.
 
-**L3 — el veredicto, que es una tabla y no un umbral.** Un estado «cae» si baja
-más de 10 dB respecto de E0, y «queda» si baja menos de 3 dB. Entre 3 y 10 dB no
-se decide y se dice que no se decide.
+**G3 — el testigo del general.** `generalDb` tiene que caer más de 10 dB en E1
+respecto de E0. Es la comprobación de que `m.mute = 1` llegó y de que el bucle
+del general desapareció de la entrada 1 — la premisa entera de E1. Ídem para E2.
+
+**G4 — E3 baja al piso.** Por debajo de −110 dBFS, **medido con la consola como
+en E0**: si se midiera con el canal muteado, una fuente ajena de 1 kHz que entre
+por el canal estaría tapada y la guarda pasaría sin ver nada.
+
+**G5 — la restauración**, releída por HTTP.
+
+## El veredicto
+
+Un estado «cae» si baja más de 10 dB respecto de E0 y «queda» si baja menos de
+3 dB. Entre 3 y 10 no se decide y se dice. **Una caída negativa —que el nivel
+suba al mutear— no es «queda»**: es una anomalía y se informa como tal.
 
 | E1 | E2 | conclusión |
 |---|---|---|
-| cae | — | la fuga entraba por la **entrada 1 de la interfaz**: diafonía del bucle del general. Es del banco |
+| cae | cae | la fuga entra **por el camino del general**. Dos candidatos que esta corrida NO separa: diafonía de la entrada 1 a la entrada 2 adentro de la Scarlett, o diafonía del bus general al auxiliar adentro de la consola |
 | queda | cae | la fuga es **de la consola**: la tira le llega al bus auxiliar sin pasar por el envío |
-| queda | queda | la fuga es **anterior al mute del canal**: o la salida de la interfaz se cruza a su propia entrada 2, o la etapa de entrada de la consola la filtra. **Esta corrida no separa esas dos**, y separarlas pide desenchufar un cable |
+| queda | queda | la fuga es **anterior al mute del canal**. Dos candidatos que esta corrida NO separa: la salida de la interfaz cruzándose a su propia entrada 2, o la etapa de entrada de la consola |
+| cae | queda | **contradictorio**: mutear el canal saca el tono también del general, así que si E1 cae, E2 tiene que caer. Si aparece, es un hallazgo sobre `i.9.mute` y no un veredicto sobre la fuga |
 
-**L4 — el testigo de que el tono no se movió.** El bin de 1 kHz de la entrada 1
-en E0 y en E2: entre los dos tiene que haber una caída grande (el mute del canal
-apaga el general), y en E0 tiene que estar donde la 104 lo dejó. Si la entrada 1
-no cambia al mutear el canal, **el mute no hace lo que se cree** y E2 no prueba
-nada.
-
-**L5 — la restauración.** `m.mute`, `i.9.mute` y `m.afs.enabled` releídos por
-HTTP al terminar, comparados contra lo leído al empezar.
+Si C2 dijo que el mute no está en el camino del auxiliar, las filas que usan E2
+se declaran inservibles y sólo se informa E1.
 
 ## Lo que esta medición NO va a decir
 
-- **Nada sobre la magnitud de la fuga en otras frecuencias.** Un tono, 1 kHz.
-- **Nada sobre si la fuga es coherente o incoherente.** El bin de Goertzel da
-  amplitud, no fase, y sin fase no se sabe cómo se suma.
-- **Nada sobre el auxiliar 3 ni sobre el bloque de efectos.**
-- Si el veredicto es «queda/queda», **no dice cuál de las dos**.
+- **Nada sobre otras frecuencias.** Un tono, 1 kHz.
+- **Nada sobre si la fuga es coherente o incoherente.** El bin da amplitud y no
+  fase, y sin fase no se sabe cómo se suma.
+- **Nada sobre el auxiliar 3 ni el bloque de efectos.**
+- En dos de las cuatro filas, **no dice cuál de los dos candidatos**. Separarlos
+  pide desenchufar el cable de la entrada 1, que necesita una mano.
 
-## Lo que se escribe, y cómo vuelve
+## Aviso para quien la corra
 
-`m.mute`, `i.9.mute`, `m.afs.enabled` —éste último a 0 mientras suene, por la
-regla del 2026-09-13—. Los tres leídos por HTTP antes, restaurados por
-`restaurarClaves()` dentro de `conRestauracion`, verificados por HTTP después.
+**Mutea la salida general del usuario durante unos 7 segundos.** Es el primer
+guion de esta serie que lo hace. No se corre con público. Nada está conectado a
+ninguna salida física salvo los dos cables del bucle.
 
-**No se toca**: la instantánea «Alma Caninde», la fantasma del canal 9, ni el
-envío `i.9.aux.4.value`, que ya vale 0 y se deja.
+**No se toca**: la instantánea «Alma caninde», la fantasma del canal 9.
