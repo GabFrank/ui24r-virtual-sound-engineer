@@ -230,11 +230,29 @@ export function picoInterpolado(puntos) {
  * cruce que interpolar, y suponerlo sería inventarlo.
  */
 export function cruceEnNivel(puntos, nivel, desde, paso) {
+  // **El arranque tiene que estar del lado de arriba, o no hay cruce.**
+  //
+  // Si la curva ya empieza por debajo del nivel, el bucle dispara en el primer
+  // paso y la interpolación **extrapola hacia afuera de la malla**. Medido: una
+  // curva monótona que arranca en −10 dB, buscando el cruce en −3, devolvía
+  // **49 940 812 Hz**; una plana en −10, **14 481 Hz** — un número creíble, sobre
+  // un tono real, que se habría publicado como codo.
+  //
+  // Es el mismo defecto que `qPorAnchoMitad` documenta haber arreglado con su
+  // guarda de altura positiva, y **el arreglo no viajó con la función cuando se
+  // la extrajo de ahí**. Lo encontró un auditor el 2026-09-13.
+  const arranque = puntos[desde];
+  if (arranque === undefined || !(arranque.db > nivel)) return null;
   for (let k = desde + paso; k >= 0 && k < puntos.length; k += paso) {
     const aca = puntos[k];
     const antes = puntos[k - paso];
     if (antes === undefined) return null;
-    const cruzo = paso > 0 ? aca.db <= nivel : aca.db <= nivel;
+    // **Un cruce no tiene dirección: es que los dos puntos queden a lados
+    // distintos del nivel.** Escribirlo como `aca.db <= nivel` funciona sólo
+    // mientras el arranque esté arriba, y el docblock prometía más que eso:
+    // buscando hacia arriba desde el grave, una curva escalón devolvía 42,5 Hz
+    // en vez de 1000.
+    const cruzo = (antes.db - nivel) * (aca.db - nivel) <= 0;
     if (!cruzo) continue;
     if (antes.db === aca.db) return aca.hz;
     const t = (antes.db - nivel) / (antes.db - aca.db);
@@ -258,10 +276,20 @@ export function bandaDePaso(puntos, extremo, cuantos = 20) {
   const tramo = extremo === 'agudo'
     ? puntos.slice(Math.max(0, puntos.length - cuantos))
     : puntos.slice(0, cuantos);
+  if (tramo.length === 0) return { db: NaN, dispersionDb: NaN, margenPeorDb: NaN };
   const v = tramo.map((p) => p.db).sort((a, b) => a - b);
-  if (v.length === 0) return NaN;
   const m = Math.floor(v.length / 2);
-  return v.length % 2 === 1 ? v[m] : (v[m - 1] + v[m]) / 2;
+  const db = v.length % 2 === 1 ? v[m] : (v[m - 1] + v[m]) / 2;
+  // **Y cuánto se dispersa, y con cuánto margen.** De esta mediana cuelga el
+  // nivel del cruce de cada punto: es un punto de referencia como cualquier otro
+  // y puede estar hundido en el ruido sin que nadie mire. En el extremo grave son
+  // los tonos de 40 a 120 Hz, que es donde vive el zumbido de red.
+  const media = tramo.reduce((s, p) => s + p.db, 0) / tramo.length;
+  return {
+    db,
+    dispersionDb: Math.sqrt(tramo.reduce((s, p) => s + (p.db - media) ** 2, 0) / tramo.length),
+    margenPeorDb: Math.min(...tramo.map((p) => p.margenDb ?? Infinity)),
+  };
 }
 
 export function qPorAnchoMitad(puntos, pico) {

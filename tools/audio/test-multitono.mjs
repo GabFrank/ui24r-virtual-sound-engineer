@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { rmSync, writeFileSync } from 'node:fs';
-import { frecuenciasPorOctava, picoInterpolado, qPorAnchoMitad, respuesta }
+import { frecuenciasPorOctava, picoInterpolado, qPorAnchoMitad, respuesta, cruceEnNivel, bandaDePaso }
   from './multitono.mjs';
 
 /** La respuesta en dB de una campana, analítica: no hay simulación de por medio. */
@@ -220,4 +220,92 @@ test('el pico y el recorte viajan con la captura, y el cociente da cero', async 
       `con los dos canales iguales el cociente tiene que dar 0 dB; el peor da ${peor}`);
   }
   rmSync(ruta, { force: true });
+});
+
+test('el cruce se niega cuando la curva ya arranca abajo, en vez de extrapolar', () => {
+  // **El defecto que no viajó con la función cuando se la extrajo.**
+  // `qPorAnchoMitad` documenta haberlo arreglado con su guarda de altura
+  // positiva; `cruceEnNivel` salió de ahí sin ella. Medido por un auditor: una
+  // curva monótona que arranca en −10 dB, buscando el cruce en −3, devolvía
+  // **49 940 812 Hz**, y una plana en −10, **14 481 Hz** — un número creíble,
+  // sobre un tono real, que se habría publicado como el codo de un filtro.
+  const plana = FRECUENCIAS.map((hz) => ({ hz, db: -10 }));
+  assert.equal(cruceEnNivel(plana, -3, plana.length - 1, -1), null,
+    'una curva plana por debajo del nivel no cruza nada');
+
+  const monotona = FRECUENCIAS.map((hz, i) => ({ hz, db: -10 - i * 0.1 }));
+  assert.equal(cruceEnNivel(monotona, -3, monotona.length - 1, -1), null);
+});
+
+test('el cruce no tiene direccion: funciona subiendo y bajando', () => {
+  // La primera versión preguntaba `aca.db <= nivel` en las dos ramas de un
+  // ternario, así que sólo servía bajando desde la banda de paso. Buscando hacia
+  // arriba desde el grave, una curva escalón devolvía 42,5 Hz en vez de 1000.
+  // Cada escalón con su banda de paso del lado del que se arranca: buscar el
+  // cruce desde el lado que ya está abajo es lo que la guarda nueva rechaza.
+  const pasaAltos = FRECUENCIAS.map((hz) => ({ hz, db: hz < 1000 ? -20 : 0 }));
+  const pasaBajos = FRECUENCIAS.map((hz) => ({ hz, db: hz < 1000 ? 0 : -20 }));
+  const bajando = cruceEnNivel(pasaAltos, -10, pasaAltos.length - 1, -1);
+  const subiendo = cruceEnNivel(pasaBajos, -10, 0, +1);
+  assert.ok(bajando !== null && Math.abs(bajando - 1000) / 1000 < 0.06,
+    `bajando da ${bajando}`);
+  assert.ok(subiendo !== null && Math.abs(subiendo - 1000) / 1000 < 0.06,
+    `subiendo da ${subiendo}, y con el ternario de ramas iguales daba 42,5`);
+});
+
+const butterworth = (f0, orden) => FRECUENCIAS.map((hz) => ({
+  hz,
+  db: 10 * Math.log10(1 / (1 + Math.pow(f0 / hz, 2 * orden))),
+}));
+
+test('el cruce de un Butterworth conocido cae donde se puso el codo', () => {
+  for (const orden of [1, 2, 4]) {
+    for (const f0 of [80, 437, 1013]) {
+      const curva = butterworth(f0, orden);
+      const banda = bandaDePaso(curva, 'agudo');
+      const codo = cruceEnNivel(curva, banda.db - 3, curva.length - 1, -1);
+      assert.ok(codo !== null, `sin cruce con orden ${orden} y f0 ${f0}`);
+      const error = Math.abs(codo - f0) / f0;
+      assert.ok(error < 0.02,
+        `orden ${orden}, f0 ${f0}: el instrumento dice ${codo.toFixed(0)} `
+        + `(${(error * 100).toFixed(2)} % de error)`);
+    }
+  }
+});
+
+test('con el codo alto y la pendiente suave, la banda de paso avisa', () => {
+  // **El techo del instrumento no es la malla de tonos: es `bandaDePaso`.**
+  // Los 20 tonos del extremo agudo van de 5120 a 15343 Hz, y con una pendiente
+  // suave un codo de 3 kHz todavía los tiene DENTRO de la transición: la mediana
+  // sale por debajo de cero y el codo se lee bajo.
+  //
+  // Medido acá y por un auditor por separado: con 6 dB/octava y el codo en
+  // 2971 Hz, el instrumento dice 2691 --9,4 % bajo-- y `banda` marca −0,47 dB.
+  // **Ese número es la señal delatora**, y por eso la medición 103 anula el punto
+  // cuando la banda de paso se aparta de cero más de 0,5 dB.
+  const curva = butterworth(2971, 1);
+  const banda = bandaDePaso(curva, 'agudo');
+  assert.ok(banda.db < -0.3,
+    `la banda de paso da ${banda.db.toFixed(2)} dB: si esto sube, el aviso dejo de avisar`);
+  const codo = cruceEnNivel(curva, banda.db - 3, curva.length - 1, -1);
+  assert.ok(codo !== null && Math.abs(codo - 2971) / 2971 > 0.05,
+    'y el codo sale sesgado, que es lo que el aviso existe para delatar');
+
+  // Con la pendiente empinada, los mismos 3 kHz se recuperan bien.
+  const empinada = butterworth(2971, 4);
+  const b2 = bandaDePaso(empinada, 'agudo');
+  const c2 = cruceEnNivel(empinada, b2.db - 3, empinada.length - 1, -1);
+  assert.ok(Math.abs(b2.db) < 0.3 && c2 !== null && Math.abs(c2 - 2971) / 2971 < 0.02,
+    `con 24 dB/oct la banda da ${b2.db.toFixed(2)} y el codo ${c2?.toFixed(0)}`);
+});
+
+test('la banda de paso informa su dispersion y su peor margen', () => {
+  // De esa mediana cuelga el nivel del cruce de cada punto: es un punto de
+  // referencia como cualquier otro y puede estar hundido en el ruido.
+  const curva = FRECUENCIAS.map((hz, i) => ({ hz, db: 0, margenDb: i < 20 ? 8 : 90 }));
+  const agudo = bandaDePaso(curva, 'agudo');
+  const grave = bandaDePaso(curva, 'grave');
+  assert.ok(Math.abs(agudo.db) < 1e-9 && agudo.dispersionDb < 1e-9);
+  assert.equal(agudo.margenPeorDb, 90);
+  assert.equal(grave.margenPeorDb, 8, 'el extremo grave es el de peor margen en este banco');
 });

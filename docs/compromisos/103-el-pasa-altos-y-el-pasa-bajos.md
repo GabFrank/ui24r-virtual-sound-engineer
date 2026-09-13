@@ -83,19 +83,41 @@ estímulo, y si no, la corrida aborta nombrando `eq.easy` y `eq.prmod`.
 
 ## Las expectativas
 
-**El umbral del instrumento externo** es el de la 101: un punto vale con **45 dB**
-sobre el ruido de su bin. **Y la resolución del cruce** es del orden del **2 %**
-sobre una curva limpia, condicionada a que la dispersión punto a punto entre las
-dos líneas base sea 0,05 dB o menos — que esta corrida mide y publica.
+**El umbral no es el de la 101, y trasplantarlo habría vaciado la corrida.** Allá
+los 45 dB se aplicaban al pico de una campana **realzada 20 dB**: el punto de
+interés venía con veinte decibeles de regalo. Acá el codo está **3 dB por debajo**
+de la banda de paso, y la ventana abarca siete tonos en vez de tres. Con 45, los
+doce puntos se anulaban y la corrida duraba cuatro minutos sin medir nada — la 101
+midió en este mismo banco 8,2 dB de margen peor en su línea base.
+
+**Un punto vale con 20 dB, y el número se deriva.** Con 3 dB de caída y una
+pendiente local de unos 6 dB por octava, un margen de `M` dB mueve el cruce unas
+`(2/M)/6` octavas; para que quede por debajo del 2 % hace falta `M ≈ 20`.
+
+**Y el estímulo sube a −15 dBFS**, doce decibeles más que la 101. Aquélla tuvo que
+bajar porque su campana **sube** el pico; éste **sólo atenúa**, así que no hay
+realce que reservar y cada tono gana 12 dB de margen.
+
+**La resolución del cruce** es del orden del **2 %** sobre una curva limpia
+—verificado contra filtros Butterworth de 6, 12 y 24 dB/octava con codos de 80 a
+1013 Hz: el error es de 0,1 a 0,3 %—.
 
 | # | Predicción | Qué la falsaría |
 |---|---|---|
 | **H1** | **La línea base es plana** dentro de 1,0 dB entre 40 Hz y 15343 Hz, con los dos filtros en su extremo inerte | Que no: los extremos no son «fuera del camino» y toda la medición se corre |
 | **H2** | **El pasa-altos atenúa**: en su crudo máximo, el tono de 40 Hz cae al menos 10 dB respecto de la banda de paso | Que no: la escritura no llegó al filtro, y lo que se mediría sería ruido |
-| **H3** | **El cruce en el crudo 1,0 está más cerca de 1000 Hz que de 400**, o al revés, y la diferencia es de un factor **mayor que 1,5** | Que caiga en el medio: las dos fuentes serían indistinguibles y la corrida no decide |
-| **H4** | **Alguna de las tres leyes describe el cruce** dentro del **10 %** en al menos 5 crudos | Que ninguna: la ley no es ninguna de las tres y hay que decirlo, que también es un resultado |
+| **H3** | **El cruce en el crudo 1,0 está dentro de un factor 1,25 de una de las dos fuentes y a 1,9 o más de la otra** | Que caiga en el medio, o **lejos de las dos**: ninguno de los dos casos decide |
+| **H4** | **Alguna de las tres leyes describe el cruce** dentro del **10 %** en al menos **5 crudos distintos** —la repetición de cierre no cuenta: es el dato de H6— | Que ninguna: la ley no es ninguna de las tres. **Y con menos de 5 crudos útiles, H4 no decide nada**: decir «ninguna la describe» sin datos sería la conclusión más fuerte sacada de cero mediciones |
 | **H5** | **El pasa-bajos es el espejo**: su cruce baja cuando su crudo baja, y en el crudo 0 está más cerca de 1 kHz que de 10 | Que no: el sentido del parámetro es el contrario del que el manual declara |
 | **H6** | **Ida y vuelta.** Repetir el primer crudo al final da el mismo cruce dentro del **2 %** y la misma línea base dentro de 0,5 dB | Que no: algo del banco se movió |
+
+**H3, H4, H5 y H6 son subordinadas a H1 y a H2, y se declara acá:** sin una línea
+base plana no hay referencia contra la cual medir, y sin el control positivo lo que
+se mide es ruido. Las dos **abortan la corrida**, no se informan al final — que es
+lo que la primera versión de este guión hacía, imprimiendo H1 después de que H3 y
+H4 ya habían publicado veredicto. Es distinto de la E1 de la 101, que
+explícitamente **no** invalidaba el resto: allá lo que se cancelaba era una
+irregularidad estática del banco.
 
 **H4 no es subordinada a H3 y se declara acá**: H3 sólo separa dos extremos, y H4
 pide que una ley describa el recorrido entero. Se puede tener lo primero sin lo
