@@ -58,8 +58,8 @@ suma es −12,03 dBFS, con doce decibeles de aire en el archivo.
 ese bin **0,41 dB con +20 de realce y −0,41 con −20**: un rango de 0,82 dB. Con el
 tope de 0,5 que este contrato tenía, **C2 habría fallado justo en el escenario que
 la corrida sale a encontrar** —la ley de ±20— y el mensaje habría acusado a la
-consola por la falda del propio filtro que se está midiendo. A 37 Hz la falda es
-0,115 dB.
+consola por la falda del propio filtro que se está midiendo. A 37 Hz la falda es **0,059 dB por lado**, o sea 0,117 de
+rango.
 
 Y es **inarmónico a propósito**, que el de 100 Hz no era: 1000/100 = 10, así que el
 décimo armónico del testigo caía exactamente en el bin que se mide; y 100 Hz es el
@@ -74,8 +74,9 @@ general del usuario.
 
 **Se exige al empezar:** `i.9.eq.bypass = 0`, `i.9.eq.prmod = 0`,
 `i.9.eq.easy = 0`, las cinco bandas en `gain = 0,5`, `i.9.mute = 0`,
-`m.gate.enabled = 0`, `m.dim = 0`, y que los filtros de corte no toquen 1 kHz ni
-37 Hz —`hpf.freq` está en el crudo 0, que
+`m.gate.enabled = 0`, `m.dim = 0`, y que los filtros de corte no toquen el centro
+ni el testigo —el pasa-altos tiene que estar **por debajo** de los 37 Hz, y el del
+usuario está en 20— —`hpf.freq` está en el crudo 0, que
 son 20 Hz, y `lpf.freq` en 1, que son 22 050—.
 
 ## Los controles positivos
@@ -147,12 +148,24 @@ una ley que se aplana arriba — un hallazgo falso contra la consola. El medidor
 salida del canal es el único instrumento que puede verlo, y hasta esta versión se
 medía, se imprimía y no lo juzgaba nadie.
 
+**Y se compara contra la suma de los dos tonos, no contra el bin.** El medidor es
+de banda ancha: con dos tonos de igual amplitud, en el corte máximo el testigo
+*domina* el medidor —baja 3 dB mientras el bin baja 20—. Comparar uno con otro era
+imposible por aritmética y L8 habría fallado siempre, acusando de un recorte que no
+existe. Lo que el medidor tiene que seguir es
+`10·log10((10^(g/10) + 1) / 2)`.
+
 **L7 — el crudo escrito contra el releído**, con dos crudos fuera de la rejilla de
 centésimos a propósito.
 
-**Mínimos**: 10 puntos útiles para L3 y L3b, 20 cuadros por captura. Si falla C1,
-C2, L1, L2 o L4, **no se imprime ley**. Y si el punto de referencia está anulado,
-tampoco.
+**Mínimos y anulación**: 10 puntos útiles para L3 y L3b, 20 cuadros por captura,
+45 dB de margen sobre el piso efectivo, y **45 dB del testigo sobre su propio
+piso** —que se mide, porque 37 Hz es zona de retumbe y de la falda del pasa-altos,
+y sin eso un C2 en rojo no se puede diagnosticar—. Una captura que recorta se
+anula.
+
+Si falla **C1, C2, L1, L2, L4 o L8**, no se imprime ley. Y si el punto de
+referencia está anulado, tampoco: de él cuelga toda la ley.
 
 ## Lo que esta corrida NO va a decir
 

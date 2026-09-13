@@ -68,7 +68,9 @@ decidiendo por la que implementa**.
 | `p0-10b-vu/ley-fader.ts` | el fader del canal 10 en **0,20**, unos −38 dB | `0780a8d` |
 | `p0-10b-vu/ley-ganancia.ts` | la ganancia del previo en **0,70**, con la del usuario en 0,2508 | `987d0ec` |
 
-Los tres salieron además del trinquete del supresor: los tres hacían sonar tono
+| `p0-10b-vu/tono-por-el-aire.ts` | **a medias**: ya restaura y ahora lo verifica por HTTP, pero sigue sin `conRestauracion` | pendiente |
+
+Los tres primeros salieron además del trinquete del supresor: los tres hacían sonar tono
 sostenido —60 y 300 segundos— con el supresor del general encendido.
 
 *(Los dos últimos entraron **mezclados** en commits cuyo mensaje habla de otra
@@ -82,6 +84,14 @@ alcanza para encontrar cuándo bajó.)*
 El censo, que antes no existía, y la distinción nombrada. Cuando alguien toque
 uno de los que miden, que lo convierta; y que el que lo convierta lo saque del
 trinquete que ya existe, en el mismo commit.
+
+**Y uno quedó a medias, dicho como tal.** `tono-por-el-aire.ts` ya restauraba
+bien al final; se le agregó la verificación por HTTP y se le sacó una **afirmación
+falsa** —decía «automáticos limpiados» después de disparar `clearlive`, que el
+2026-09-13 se midió que no borra nada— pero **no se envolvió en
+`conRestauracion`**: son ochenta líneas de código secuencial de nivel superior con
+declaraciones en el medio, y envolverlo a máquina es donde se introducen errores
+que no se pueden probar sin la consola. Sigue en el trinquete.
 
 **El orden de prioridad es por probabilidad de volver a correrse**, no por
 tamaño: los `p0-10b-vu/ley-*.ts` son los que alguien va a querer repetir, y son

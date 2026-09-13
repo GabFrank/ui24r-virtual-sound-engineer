@@ -12,8 +12,9 @@
  * aplicación va a decir «realzá esta banda 3 dB» y lo que importa es que el audio
  * suba 3 dB ahí.
  *
- * **Y el estímulo tiene DOS tonos.** El de 100 Hz es el testigo de que la banda es
- * LOCAL: mientras el de 1 kHz se mueve cuarenta decibeles, ése no se puede mover.
+ * **Y el estímulo tiene DOS tonos.** El segundo es el testigo de que la banda es
+ * LOCAL: mientras el de 1 kHz se mueve cuarenta decibeles, ése no se puede mover
+ * más que la falda calculada de la propia campana.
  * Si se mueve, lo que cambió fue algo global y la corrida no mide el ecualizador.
  * Es el control que los barridos de fader no podían tener, porque ahí lo que se
  * movía era global por definición.
@@ -45,7 +46,6 @@ const banda = argIndice(3, 'banda', 2, { desde: 1, hasta: 5 });
 const maquina = argTexto(4, '192.168.0.78');
 
 const HZ = 1000;
-/** El testigo de que la banda es local. Una década abajo del centro. */
 /**
  * El testigo de que la banda es local.
  *
@@ -54,7 +54,8 @@ const HZ = 1000;
  * 0,41 dB con +20 de realce y -0,41 con -20: un rango de **0,82 dB**. Con un tope
  * de 0,5, C2 habria fallado **justo en el escenario que esta corrida sale a
  * encontrar** --la ley de ±20-- y el mensaje habria acusado a la consola por la
- * falda del propio filtro que se esta midiendo. A 37 Hz la falda es 0,115 dB.
+ * falda del propio filtro que se esta midiendo. A 37 Hz la falda es **0,059 dB
+ * por lado**, o sea 0,117 de rango: la mitad del tope que C2 usa.
  *
  * **Y es inarmonico a proposito**, que el de 100 Hz no era: 1000/100 = 10, asi que
  * el decimo armonico del testigo caia EXACTAMENTE en el bin que se mide --y con el
@@ -142,9 +143,6 @@ const L8_DESVIO_MAXIMO_DB = 1.5;
 const SEGUNDOS_DE_CAPTURA = 3;
 
 const ESCALON_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
-/** Para una DIFERENCIA de dos lecturas, dos escalones. */
-
-
 /**
  * El punto plano declarado: el arranque del barrido y la referencia de toda la ley.
  *
@@ -153,21 +151,16 @@ const ESCALON_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
  * el punto plano, la tabla que lo supone esta mal.
  */
 const CRUDO_PLANO = 0.5;
-/**
- * Lo que el ítem 105 midió en la entrada 1 con el general donde el usuario lo
- * dejó. **Se imprime como referencia y no se compara contra nada.**
- */
-/** Un punto vale si está este margen por encima del piso EFECTIVO. */
+/** Un punto vale si esta este margen por encima del piso EFECTIVO. */
 const MARGEN_MINIMO_DB = 45;
 /** L4: por debajo de esto no se distingue ±15 de ±20, que es lo que hay que decidir. */
 const RECORRIDO_MINIMO_DB = 30;
 /**
  * **Por debajo de esto, ninguna expectativa decide.**
  *
- * Sin un minimo, L3b pasa por construccion con UN punto: el denominador de la
- * pendiente da 0, `Math.abs(NaN) > 0.002` es false, `cambios < 0/3` es false, y se
- * imprime «PASA. Sin estructura que explicar» sobre un punto. Es la expectativa
- * que el contrato llama «la que decide», decidiendo en el vacio.
+ * Sin un minimo, una expectativa decide en el vacio: con un punto la recta de L3
+ * pasa exacto, la prueba de rachas no tiene rachas y la curvatura no esta
+ * determinada.
  */
 const PUNTOS_MINIMOS = 10;
 /** Menos cuadros VU2 que esto y el promedio no es un promedio. */
@@ -192,16 +185,11 @@ const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
 /**
  * L2: la referencia interna de la interfaz no puede derivar mas que esto.
  *
- * **El numero sale de L3b, y hay que recalcularlo para CADA barrido.** L3b declara
- * estructura con una pendiente de 0,002 dB/dB; sobre los 48,06 dB de recorrido de
- * esta corrida eso son 0,096 dB de deriva total. Un tope mas grueso dejaria que el
- * instrumento **fabricara el hallazgo de L3b** sin que este control se entere: el
- * control del instrumento tiene que ser mas fino que la expectativa que vigila.
- *
- * El 106 uso 0,1 sobre un recorrido de 59 dB, donde daba 0,118 y alcanzaba. Aca el
- * barrido es mas corto y ese mismo 0,1 quedaria POR ENCIMA de lo que L3b resuelve,
- * asi que se aprieta a 0,05. Sigue holgado contra lo medido: 0,00 dB de deriva
- * sobre 42 capturas en el 106 y 50 en la 104.
+ * **El numero sale de lo que L3b puede resolver.** L3b declara estructura cuando la
+ * curvatura aporta 0,15 dB en el borde del recorrido; un control del instrumento
+ * mas grueso que eso dejaria que la computadora fabricara ese hallazgo. 0,05 es
+ * holgado contra lo medido: 0,00 dB de deriva sobre 42 capturas en el 106 y 50 en
+ * la 104.
  */
 const L2_DERIVA_MAXIMA_DB = 0.05;
 
@@ -223,7 +211,7 @@ const ENTRADA_REFERENCIA = 2;
 const carpeta = mkdtempSync(join(tmpdir(), 'vse-108-'));
 
 /**
- * Estimulo de DOS tonos: el centro de la banda y el testigo una decada abajo.
+ * Estimulo de DOS tonos: el centro de la banda y el testigo, bien debajo de ella.
  *
  * Cada uno a `NIVEL_DBFS`, asi que la suma tiene un pico de 6 dB mas en el peor
  * caso. Las dos frecuencias completan un numero entero de ciclos en cada segundo
@@ -274,7 +262,9 @@ type Medida = {
   canalDb: number; cuadros: number;
   /** El bin del centro de la banda: lo que se mide. */
   centroDb: number;
-  /** El bin del testigo, una decada abajo: lo que NO se puede mover. */
+  /** El ruido del bin del testigo. Sin esto, un C2 en rojo no se diagnostica. */
+  ruidoTestigoDb: number;
+  /** El bin del testigo: lo que NO se puede mover mas que la falda. */
   testigoDb: number;
   referenciaDb: number; ruidoDb: number; margenDb: number; recorta: boolean;
 };
@@ -320,6 +310,7 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
     cuadros: xs.length,
     centroDb: c.tonoDb,
     testigoDb: tg.tonoDb,
+    ruidoTestigoDb: tg.ruidoEnBinDb,
     margenDb: c.margenEnBinDb,
     ruidoDb: c.ruidoEnBinDb,
     recorta: c.recorteExacto,
@@ -424,7 +415,7 @@ for (const k of [
   exigir('m.dim', '0', 'un dim cambia el nivel y su profundidad no esta medida');
 
   // **Las CINCO bandas planas, la que se barre incluida.** Si otra estuviera
-  // torcida, su falda podria tocar 1 kHz o 100 Hz y lo que se mediria seria la
+  // torcida, su falda podria tocar el centro o el testigo y lo que se mediria seria la
   // suma. Y la que se barre tiene que ARRANCAR plana: de ahi sale la referencia.
   {
     const torcidas: string[] = [];
@@ -435,7 +426,7 @@ for (const k of [
     }
     if (torcidas.length > 0) {
       throw new Error(`${torcidas.length} banda(s) fuera del centro: ${torcidas.join(', ')}. `
-        + 'La falda de una banda torcida podria tocar 1 kHz o 100 Hz.');
+        + 'La falda de una banda torcida podria tocar el centro o el testigo.');
     }
     console.log(`   las cinco bandas del canal en ${CRUDO_PLANO}, comprobado`);
   }
@@ -454,17 +445,35 @@ for (const k of [
     // **El Q sale del aparato y alimenta el tope de C2.** La ley `0,05·300^v` la
     // midio el item 101 contra el filtro real.
     qDeLaBanda = 0.05 * Math.pow(300, crudoQ);
+    // Sin esto, un crudo no numerico dejaba `qDeLaBanda` en NaN, el tope de C2 en
+    // NaN, y C2 fallaba cinco minutos despues acusando a la consola de «se movio
+    // algo global». Aca es gratis.
+    if (!Number.isFinite(qDeLaBanda)) {
+      throw new Error(`el Q de la banda dio ${qDeLaBanda} desde el crudo ${crudoQ}: sin Q `
+        + 'no se puede calcular la falda, y el tope de C2 sale de ahi.');
+    }
     console.log(`   banda ${banda} en ${hz.toFixed(1)} Hz, Q crudo ${crudoQ} `
       + `(${qDeLaBanda.toFixed(3)}), se registran y NO se tocan`);
-    console.log(`   falda de esa campana en el testigo de ${HZ_TESTIGO} Hz, con ±20 dB: `
-      + `${Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, 20)).toFixed(3)} dB`);
+    console.log(`   falda de esa campana en el testigo de ${HZ_TESTIGO} Hz: `
+      + `${Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, 20)).toFixed(3)} dB por lado con ±20, `
+      + `o sea ${(2 * Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, 20))).toFixed(3)} de RANGO`);
   }
 
   // Los filtros de corte no pueden estar comiendo ninguno de los dos tonos.
   {
     const hpf = Math.min(20 * Math.pow(1102.5, Number(exigirClave(e0, `i.${n}.eq.hpf.freq`))), 1000);
     const lpf = Math.max(20 * Math.pow(1102.5, Number(exigirClave(e0, `i.${n}.eq.lpf.freq`))), 1000);
-    if (hpf > HZ_TESTIGO / 2 || lpf < HZ * 2) {
+    // **`hpf < HZ_TESTIGO`, y no `HZ_TESTIGO / 2`.** Con el testigo en 100 Hz la
+    // mitad daba 50 y el pasa-altos del usuario en 20 pasaba; al bajar el testigo a
+    // 37, la mitad quedo en 18,5 y **la corrida abortaba en el montaje sobre una
+    // consola sana**. Mover el testigo cruzo una guarda que se dejo con la formula
+    // vieja.
+    //
+    // Y en sustancia la mitad pedia de mas: un pasa-altos de 20 Hz atenua el bin de
+    // 37 unos 0,3 dB, pero eso es **estatico**, y C2 mide el RANGO del testigo a lo
+    // largo del barrido, donde una atenuacion fija se cancela. Lo que si importa es
+    // que el testigo conserve margen sobre su piso, y de eso se ocupa la anulacion.
+    if (hpf >= HZ_TESTIGO || lpf < HZ * 2) {
       throw new Error(`los filtros de corte estan en ${hpf.toFixed(0)} y ${lpf.toFixed(0)} Hz, `
         + `y los tonos en ${HZ_TESTIGO} y ${HZ}: uno de los dos esta en la falda.`);
     }
@@ -519,8 +528,8 @@ await conRestauracion(
     t.enviar(codificarSetd(`i.${n}.gate.enabled`, 0));
     t.enviar(codificarSetd(`i.${n}.deesser.enabled`, 0));
     // **El fader del canal, para hacer lugar al realce.** Con el fader donde
-    // estaba, un realce de +20 dB pondria la entrada en -9,6 dBFS y la suma de los
-    // dos tonos recortaria. El fader esta DESPUES del ecualizador, asi que bajarlo
+    // estaba, un realce de +20 dB dejaria el PICO capturado en -0,18 dBFS segun la
+    // cadena que midio el item 107, o sea al borde del recorte del conversor. El fader esta DESPUES del ecualizador, asi que bajarlo
     // no cambia el nivel al que el filtro trabaja.
     t.enviar(codificarSetd(`i.${n}.mix`, FADER_PARA_HACER_LUGAR));
     await new Promise((r) => setTimeout(r, 2500));
@@ -657,7 +666,7 @@ await new Promise((r) => setTimeout(r, 1000));
 const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 const problemas: string[] = [];
 
-// La atenuacion se mide contra el tope del barrido, del mismo sentido.
+// La ganancia de cada punto se mide contra el PLANO de su mismo sentido.
 /**
  * **El punto de referencia tiene que servir, y aca es el crudo plano.**
  *
@@ -695,6 +704,38 @@ if (!referenciaSirve) {
   process.exitCode = 1;
 }
 
+// **PRIMERA PASADA: quien vale.**
+//
+// **Esta pasada se perdio en una edicion y una auditoria lo encontro.** Sin ella
+// `anulado` nacia en `null` y moria en `null`: `utiles` era `puntos`, un punto
+// hundido en el ruido o una captura que recorto puntuaban igual, `CUADROS_MINIMOS`
+// quedaba muerto, el detector de recorte pasaba de guarda a adorno, y **la guarda
+// del punto de referencia quedaba vestigial** --su `ref.anulado !== null` no podia
+// ser verdadero nunca--. El fosil que lo delataba era el rotulo «TERCERA» sin
+// primera ni segunda.
+//
+// Y el daño no era un PASA tranquilizador: un tartamudeo de `afplay` en una
+// captura la hundia al piso y L3 imprimia «la ley NO es lineal», un hallazgo falso
+// contra la consola por un hueco de reproduccion que el guion ya no podia marcar.
+for (const p of puntos) {
+  const margen = p.m.centroDb - pisoEfectivo;
+  if (!(margen >= MARGEN_MINIMO_DB)) {
+    p.anulado = `margen de ${margen.toFixed(2)} dB sobre el piso efectivo`;
+  }
+  if (p.m.recorta && p.anulado === null) p.anulado = 'la captura recorta';
+  if (p.m.cuadros < CUADROS_MINIMOS && p.anulado === null) {
+    p.anulado = `solo ${p.m.cuadros} cuadros VU2: el promedio no es un promedio`;
+  }
+  // **Y el testigo tambien tiene que estar sobre SU piso.** C2 se decide sobre el
+  // bin de 37 Hz, que es zona de retumbe y de la falda del pasa-altos; sin esto,
+  // un C2 en rojo no se puede diagnosticar. El dato ya se estaba calculando y
+  // tirando: `anTestigo` devuelve su propio ruido.
+  const margenT = p.m.testigoDb - p.m.ruidoTestigoDb;
+  if (!(margenT >= MARGEN_MINIMO_DB) && p.anulado === null) {
+    p.anulado = `el TESTIGO esta a ${margenT.toFixed(2)} dB de su piso`;
+  }
+}
+
 // **TERCERA: la ganancia de cada punto, contra un plano ya validado.**
 for (const p of referenciaSirve ? puntos : []) {
   const ref = planos.get(p.sentido)!;
@@ -708,7 +749,6 @@ if (!referenciaSirve) {
   console.log('=== NO SE IMPRIMEN VEREDICTOS ===');
 } else {
 console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
-const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 
 {
   const dif = Math.abs(planoDb - puenteadoDb);
@@ -750,10 +790,21 @@ const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x))
     // **El tope se CALCULA de la falda**, con el Q que la consola declara y el
     // realce y el corte que esta corrida midio. Un numero redondo era lo que hacia
     // imposible a C2 con el testigo en 100 Hz.
-    const falda = Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, Math.max(...ats)))
-      + Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, Math.min(...ats)));
+    // **La falda se calcula con el recorrido ACOTADO, no con el medido a secas.**
+    // Si algo que quedo vivo aplastara el canal en el corte, `min(ats)` se iria a
+    // -60, la falda daria 3,75 dB y el tope 3,96: C2 daria PASA sobre un testigo
+    // que se movio tres decibeles enteros. El control que el contrato llama «lo que
+    // hace honesta a la medicion» se volveria auto-cumplido en el unico caso en que
+    // hace falta.
+    const TOPE_DE_LEY_DB = 25;
+    const acotar = (g: number): number => Math.max(-TOPE_DE_LEY_DB, Math.min(TOPE_DE_LEY_DB, g));
+    const falda = Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, acotar(Math.max(...ats))))
+      + Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, acotar(Math.min(...ats))));
     const tope = falda + C2_HOLGURA_DB;
-    const ok = rango <= tope;
+    // Con `ats` vacio, `Math.max(...[])` da -Infinity y el tope daria Infinity: C2
+    // imprimiria PASA. Lo tapa L4 aguas abajo, pero un PASA falso impreso es un
+    // PASA falso archivado.
+    const ok = Number.isFinite(tope) && rango <= tope;
     console.log(`   rango ${d(rango)} dB mientras el centro se mueve `
       + `${d(Math.max(...ats) - Math.min(...ats))} dB`);
     console.log(`   tope ${d(tope)} = ${d(falda)} de falda de la campana (Q ${qDeLaBanda.toFixed(3)}) `
@@ -778,9 +829,21 @@ const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x))
       + `${PUNTOS_MINIMOS} puntos utiles no hay con que comparar.`);
     problemas.push('L8 sin puntos');
   } else {
+    // **El medidor es de BANDA ANCHA y `atenuacion` es un bin.** Comparar uno con
+    // otro era imposible por aritmetica: con dos tonos de igual amplitud, en el
+    // corte maximo el testigo DOMINA el medidor --baja 3 dB mientras el bin baja
+    // 20-- y L8 habria fallado siempre, con el mensaje «hubo recorte ADENTRO», que
+    // es falso. Lo encontro una auditoria calculandolo.
+    //
+    // Lo que el medidor tiene que seguir es la suma de los dos tonos: si uno se
+    // mueve `g` dB y el otro no, la potencia total cambia
+    // `10·log10((10^(g/10) + 1) / 2)`. Con eso el desvio esperado es cero en todo
+    // el recorrido, y lo que quede es lo que L8 vino a buscar.
+    const medidorPredicho = (g: number): number =>
+      10 * Math.log10((Math.pow(10, g / 10) + 1) / 2);
     let peor = 0;
     for (const p of conMedidor) {
-      const dif = Math.abs((p.m.canalDb - refM.m.canalDb) - p.atenuacion);
+      const dif = Math.abs((p.m.canalDb - refM.m.canalDb) - medidorPredicho(p.atenuacion));
       if (dif > peor) peor = dif;
     }
     const ok = peor <= L8_DESVIO_MAXIMO_DB;
@@ -857,7 +920,11 @@ if (problemas.length > 0) {
       // informa en decibeles --cuanto aporta la curvatura en el borde del
       // recorrido-- que es la unidad en la que el umbral significa algo.
       const cuad = ajusteCuadratico(pts.map((x) => x.x), pts.map((x) => x.y));
-      const aporteDb = Math.abs(cuad) * 0.25;
+      // **|c|/6 y no |c|/4.** `ajusteCuadratico` devuelve el coeficiente de x² crudo,
+      // y la desviacion maxima de ese termino respecto de su PROPIA mejor recta sobre
+      // [0,1] es |c|/6. Con 0,25 el numero impreso como «lo que aporta la curvatura»
+      // estaba 1,5 veces sobrestimado: el rotulo no decia lo que el numero era.
+      const aporteDb = Math.abs(cuad) / 6;
       const estructurado = cambios < esperados / 3 || aporteDb > L3B_CURVATURA_MAXIMA_DB;
       console.log(`\nL3b el residuo no tiene estructura: ${cambios} cambios de signo sobre `
         + `${signos.length} ordenados por crudo (con residuos independientes se `
