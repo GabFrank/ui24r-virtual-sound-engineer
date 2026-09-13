@@ -1,7 +1,19 @@
 # Resumen de la madrugada del 2026-09-13
 
 Plan: [`2026-09-13-plan-de-la-madrugada.md`](2026-09-13-plan-de-la-madrugada.md).
-**Los cinco bloques quedaron cerrados.**
+**Cuatro bloques cerrados; el quinto a medias, y conviene decirlo así.**
+
+| Bloque | |
+|---|---|
+| 0 — la 101 | **cerrado** |
+| 1 — la 102 | **cerrado** |
+| 2 — auditoría general | **cerrada**, con sus nueve ALTA aplicados |
+| 3 — el manual | **cerrado**, con cinco tareas escritas |
+| 4 — producto | **a medias**: de las seis tareas (P1…P6) se hizo **P2**, más tres de robustecimiento que no estaban en la lista |
+
+La primera versión de este resumen decía «los cinco bloques quedaron cerrados».
+No era cierto, y es exactamente la clase de sobreafirmación que dos auditorías
+estuvieron corrigiendo toda la noche.
 
 ## Lo que ahora se sabe y antes no
 
