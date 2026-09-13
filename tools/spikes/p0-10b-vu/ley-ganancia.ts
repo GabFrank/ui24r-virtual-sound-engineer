@@ -15,6 +15,16 @@
  * los dos medidores— así que la fuente se deja quieta y se verifica que la
  * escalera cierre consigo misma.
  *
+ * **Convertido a `conRestauracion` el 2026-09-13, y estaba en los tres trinquetes.**
+ * Escribía `hw.N.gain` —la ganancia del previo del canal— en diez posiciones y
+ * **nunca leía el valor previo ni lo restauraba**: terminaba dejándola en 0,70
+ * cuando la del usuario es 0,2508. No era un riesgo ante una señal: era certeza en
+ * toda corrida completa, y la ganancia del previo es de las que se notan.
+ *
+ * Y hacía sonar **trescientos segundos** de tono sostenido con el supresor del
+ * general encendido, que es como la 104 le plantó al usuario una notch de −18 dB
+ * que sólo `clearall` borra, llevándose sus filtros de ring-out.
+ *
  * Uso:
  *   node --experimental-strip-types tools/spikes/p0-10b-vu/ley-fader.ts 10
  */
@@ -25,6 +35,9 @@ import { join } from 'node:path';
 import {
   Ui24rTransport, codificarSetd, decodificarVuCanales, dbDeMedidor, gananciaADb, VU_ESCALA,
 } from '@vse/mixer-adapter';
+import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
+import { conRestauracion } from '../con-restauracion.ts';
+import { restaurarClaves } from '../restaurar.ts';
 
 const canal = Number(process.argv[2] ?? '10');
 const n = canal - 1;
@@ -81,26 +94,49 @@ t.alRecibir((linea) => {
 });
 
 await t.conectar(maquina);
+const e0 = await estadoPorHttpExigido(maquina);
+const PREVIO: readonly (readonly [string, number])[] = [
+  [`hw.${n}.gain`, Number(exigirClave(e0, `hw.${n}.gain`))],
+  // Trescientos segundos de tono sostenido con el supresor encendido le plantan al
+  // general una notch de −18 dB, y borrarla exige `clearall`, que se lleva la pila
+  // entera incluido el ring-out del usuario.
+  ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
+];
+console.log(`hw.${n}.gain antes: ${PREVIO[0]![1]} | supresor del general: ${PREVIO[1]![1]}`);
+
 const ruta = tonoLargo();
-const sonando = spawn('afplay', [ruta]);
-await new Promise((r) => setTimeout(r, 2500));
-
-console.log(`canal ${canal}, tono de ${HZ} Hz a ${NIVEL_FUENTE_DB} dBFS, fader en ${CRUDOS.length} posiciones`);
-console.log('crudo      | ganancia segun codigo | entrada leida | subida medida | subida esperada | diferencia');
-
+let sonando: ReturnType<typeof spawn> | null = null;
 const medidas: { crudo: number; salida: number; entrada: number }[] = [];
 
-for (const crudo of CRUDOS) {
-  t.enviar(codificarSetd(`hw.${n}.gain`, crudo));
-  await new Promise((r) => setTimeout(r, 1200));
-  entradas = []; salidas = [];
-  await new Promise((r) => setTimeout(r, 2500));
-  if (salidas.length === 0) { console.log(`${crudo} sin tramas`); continue; }
-  const media = (xs: number[]): number => xs.reduce((s, v) => s + v, 0) / xs.length;
-  medidas.push({ crudo, salida: media(salidas), entrada: media(entradas) });
-}
+await conRestauracion(
+  async () => {
+    sonando?.kill();
+    // El audio tarda en dejar de salir aunque `afplay` muera al instante, y
+    // reencender el supresor con el tono sonando es como se planto la notch.
+    await new Promise((r) => setTimeout(r, 1500));
+    await restaurarClaves(t, maquina, PREVIO);
+  },
+  async () => {
+    t.enviar(codificarSetd('m.afs.enabled', 0));
+    await new Promise((r) => setTimeout(r, 1200));
+    sonando = spawn('afplay', [ruta]);
+    await new Promise((r) => setTimeout(r, 2500));
 
-sonando.kill();
+    console.log(`canal ${canal}, tono de ${HZ} Hz a ${NIVEL_FUENTE_DB} dBFS, `
+      + `ganancia en ${CRUDOS.length} posiciones`);
+    console.log('crudo      | ganancia segun codigo | entrada leida | subida medida | subida esperada | diferencia');
+
+    for (const crudo of CRUDOS) {
+      t.enviar(codificarSetd(`hw.${n}.gain`, crudo));
+      await new Promise((r) => setTimeout(r, 1200));
+      entradas = []; salidas = [];
+      await new Promise((r) => setTimeout(r, 2500));
+      if (salidas.length === 0) { console.log(`${crudo} sin tramas`); continue; }
+      const media = (xs: number[]): number => xs.reduce((s, v) => s + v, 0) / xs.length;
+      medidas.push({ crudo, salida: media(salidas), entrada: media(entradas) });
+    }
+  },
+);
 
 const base = medidas[0];
 if (base !== undefined) {
@@ -124,4 +160,20 @@ if (base !== undefined) {
   console.log('Un escalon del medidor son 0,33 dB: por debajo de eso no se puede distinguir.');
 }
 
+console.log('');
+console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
+{
+  const fin = await estadoPorHttpExigido(maquina);
+  let bien = true;
+  for (const [k, v] of PREVIO) {
+    const leido = Number(exigirClave(fin, k));
+    const ok = Math.abs(leido - v) < 1e-9;
+    if (!ok) bien = false;
+    console.log(`   ${k.padEnd(16)} esperado ${String(v).padEnd(14)} leido ${leido}`
+      + (ok ? '' : '   <-- NO COINCIDE'));
+  }
+  console.log(bien ? '   Comprobado por un camino distinto del que escribio.'
+    : '   HAY CLAVES SIN RESTAURAR. Revisar la consola antes de seguir.');
+  if (!bien) process.exitCode = 1;
+}
 await t.desconectar();

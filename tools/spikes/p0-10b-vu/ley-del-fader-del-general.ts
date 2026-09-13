@@ -44,8 +44,12 @@ const ESCALON_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
 const TOLERANCIA_DIFERENCIA_DB = 2 * ESCALON_DB;
 
 /**
- * El crudo más alto del barrido. **Se recalcula contra el previo y nunca lo
- * supera**: ver `CRUDOS` más abajo.
+ * El crudo más alto del barrido.
+ *
+ * **Es una constante fija que se COMPRUEBA contra el previo, no algo que se
+ * recalcule.** Si el usuario movió el fader desde que esto se escribió, la
+ * comprobación aborta y pide ajustarla a mano — a propósito: recalcularla sola
+ * significaría que el guion elige dónde empezar a escribir sobre la sala.
  */
 const TOPE_DEL_BARRIDO = 0.7643020595;
 /**
@@ -86,14 +90,22 @@ const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
  * 0,002 dB/dB, que sobre los ~59 dB de recorrido previsto son 0,118 dB de deriva
  * total. Un tope de 0,3 dejaria pasar una deriva del instrumento **2,5 veces
  * mayor que lo que L3b puede resolver**: la Mac podria fabricar el hallazgo de
- * L3b sin que L7 se entere. El control del instrumento tiene que ser mas fino que
- * la expectativa que vigila. La 104 midio 0,00 dB sobre 50 capturas con un tope
- * de 0,2, asi que apretar a 0,1 no cuesta nada y esta medido.
+ * L3b sin que L2 se entere. El control del instrumento tiene que ser mas fino que
+ * la expectativa que vigila.
+ *
+ * **Y el numero se recalcula para ESTE barrido, que es mas corto.** El comentario
+ * heredado del 106 razonaba sobre ~59 dB de recorrido; aca son 48,06, o sea que
+ * 0,002 dB/dB dan 0,096 dB de deriva total — por DEBAJO de un tope de 0,1. Con ese
+ * tope L2 toleraria una deriva del instrumento mayor que lo que L3b resuelve, que
+ * es exactamente la inversion que este razonamiento existe para impedir. Se aprieta
+ * a 0,05, que sigue siendo holgado contra los 0,00 dB que la 104 midio sobre 50
+ * capturas.
  */
-const L2_DERIVA_MAXIMA_DB = 0.1;
+const L2_DERIVA_MAXIMA_DB = 0.05;
 
 /**
- * Dos crudos deliberadamente FUERA de la rejilla de centésimos.
+ * **Tres** crudos deliberadamente FUERA de la rejilla de centésimos: el tope
+ * —que es el valor del usuario— más `0,6741` y `0,5237`.
  * Sin ellos L6 no puede fallar: `0,95` sobrevive exacto a un cuantizador a
  * centésimos, a vigésimos o a cualquier divisor.
  */
@@ -194,14 +206,24 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
 await t.conectar(maquina);
 const e0 = await estadoPorHttpExigido(maquina);
 
+/**
+ * **`m.mix` va ULTIMO, y el orden importa.**
+ *
+ * `restaurarClaves` escribe en orden con 200 ms entre claves. Con `m.mix` primero
+ * quedaban ~400 ms con el general en el nivel del usuario, su compresor puenteado
+ * y su supresor apagado. En el camino normal el tono ya murio, asi que no suena
+ * nada; pero esta es la ruta que mueve la sala y no hay motivo para devolverla
+ * antes de devolver lo que la protege. El 106 lo tenia tercero y el puerto lo
+ * subio al primer lugar sin razon.
+ */
 const PREVIO: readonly (readonly [string, number])[] = [
-  ['m.mix', Number(exigirClave(e0, 'm.mix'))],
   // **El compresor del general esta ACTIVO y es lo unico del camino que no es una
   // ganancia estatica.** Depende del nivel, y el barrido mueve cuarenta y ocho
   // decibeles. Se puentea y no se pone en 1:1 porque lo que se compara son
   // diferencias contra el arranque y una compensacion constante se cancela.
   ['m.dyn.bypass', Number(exigirClave(e0, 'm.dyn.bypass'))],
   ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
+  ['m.mix', Number(exigirClave(e0, 'm.mix'))],
 ];
 const previo = (clave: string): number => {
   const x = PREVIO.find(([k]) => k === clave);
@@ -256,6 +278,28 @@ for (const k of [
   exigir(`i.${n}.mute`, '0', 'un canal muteado no alimenta el general');
   exigir('m.dim', '0', 'un dim cambia el nivel del general y su profundidad no esta medida');
   exigir('m.safe', '0', 'con safe puesto la consola podria ignorar la escritura en silencio');
+  // **La puerta del general, que el contrato daba por inexistente.** Decia que el
+  // compresor «es lo unico del camino que no es una ganancia estatica», y el
+  // volcado lo desmiente: `m.gate.enabled`, `thresh`, `depth`, `attack`, `hold`,
+  // `release`. Una puerta tambien depende del nivel, y el barrido mueve 48 dB.
+  //
+  // Y es un resto de derivacion al reves: el 106 SI apagaba la puerta del bus que
+  // barria, y el puerto se llevo el compresor y dejo la puerta.
+  //
+  // Se EXIGE apagada en vez de apagarla: en el volcado inicial de este proyecto
+  // estaba en 0, asi que exigirla no cuesta una corrida, y es una escritura menos
+  // sobre el general del usuario.
+  // La salida fisica tiene que traer el general, como el 106 exigia para su bus.
+  // C1 y L5 lo atraparian tarde, despues de gastar el tono.
+  for (const k of ['hwoutm.0.src', 'hwoutm.1.src']) {
+    const v = String(e0.get(k) ?? '(ausente)');
+    if (v !== 'm') {
+      throw new Error(`${k} = ${v} y esta medicion exige 'm': la salida fisica que la `
+        + 'interfaz escucha tiene que traer el general y no otra cosa.');
+    }
+  }
+  exigir('m.gate.enabled', '0', 'una puerta en el general depende del nivel, y el barrido '
+    + 'mueve 48 dB: lo que se mediria seria la ley MAS la puerta');
 
   // **EL BARRIDO SOLO BAJA, Y SE COMPRUEBA ANTES DE ESCRIBIR NADA.**
   //
@@ -270,7 +314,11 @@ for (const k of [
   {
     const previoMix = Number(exigirClave(e0, 'm.mix'));
     const masAlto = Math.max(...CRUDOS);
-    if (masAlto > previoMix + 1e-9) {
+    // **Negada, para que `NaN` ABORTE.** `exigirClave` garantiza que la clave este,
+    // no que sea numerica; con `previoMix` en NaN la comparacion directa da false y
+    // **la unica guarda que protege el fader de la sala pasaba en silencio**. El
+    // resto del guion ya usa esta forma; aca no.
+    if (!(masAlto <= previoMix + 1e-9)) {
       throw new Error(`el barrido empieza en ${masAlto} y el general esta en ${previoMix}: `
         + 'esta medicion SOLO BAJA. Ajustar CRUDOS al valor de hoy antes de correr.');
     }
@@ -284,6 +332,12 @@ for (const k of [
   // registra y se deja.
   {
     const bandas = [...e0.keys()].filter((k) => k.startsWith('m.eq.peak.'));
+    // Sin esto, un prefijo roto imprimiria «0 de 0 bandas fuera del centro» y se
+    // leeria como un pase. El 106 tenia esta guarda y el puerto la dejo.
+    if (bandas.length === 0) {
+      throw new Error('el volcado no trajo ninguna clave m.eq.peak.*: la linea de abajo '
+        + 'diria «0 de 0 fuera del centro», que se lee como que esta plano.');
+    }
     const torcidas = bandas.filter((k) => Math.abs(Number(e0.get(k)) - 0.5) > 1e-9);
     console.log(`   ecualizador del general: ${torcidas.length} de ${bandas.length} bandas `
       + `fuera del centro | bypass = ${e0.get('m.eq.bypass') ?? '?'} — se registra y NO se toca`);
@@ -302,6 +356,22 @@ let c1 = NaN;
 let fugaDb = NaN;
 let pisoEfectivo = NaN;
 
+/**
+ * **Una excepcion del cuerpo NO puede saltearse el control de la consola.**
+ *
+ * `conRestauracion` restaura y **relanza**, asi que sin este `try` cualquier
+ * aborto legitimo --C1, el tono que se murio, un `leerUnaClave` que excede su
+ * tope-- mataba el modulo antes de la relectura por HTTP y de la comparacion de la
+ * pila del supresor.
+ *
+ * Es el MISMO defecto que este guion documenta como arreglado para el caso del
+ * `process.exit`: se cerro la puerta rara y quedo abierta la frecuente. Y el caso
+ * en que dispara es una corrida que salio mal, que es justo cuando mas falta hace
+ * saber si la consola volvio limpia — sobre todo porque `restaurarClaves` tiene
+ * camino de reconexion precisamente porque ya fallo una vez.
+ */
+let falloDelCuerpo: Error | null = null;
+try {
 await conRestauracion(
   async () => {
     // **Se espera a que el tono muera antes de restaurar.** `m.afs.enabled` vuelve
@@ -374,12 +444,13 @@ await conRestauracion(
     console.log(`   PISO EFECTIVO = ${pisoEfectivo.toFixed(2)} dBFS, el mayor de los dos.`);
     console.log('   `pisoDelBin` saltea los bins de guarda, asi que una fuga coherente en');
     console.log('   1 kHz le es invisible: por eso se mide aparte y por eso se usa esta.');
-    console.log('   Y esto mira la OTRA PUNTA de lo que el item 105 dejo abierto: aquella');
-    console.log('   corrida mostro que la fuga hacia la entrada 2 viaja por el camino del');
-    console.log('   general, sin separar si el cruce ocurre adentro de la Scarlett o en la');
-    console.log('   etapa de salida de la consola. Si con el general en 0 la entrada 1');
-    console.log('   sigue viendo 1 kHz, eso es la salida de la interfaz cruzandose a su');
-    console.log('   propia entrada, y el segundo candidato queda sin sostén.');
+    console.log('   Esto NO separa los dos candidatos que el item 105 dejo abiertos, y');
+    console.log('   conviene decirlo porque una version anterior de este guion afirmaba');
+    console.log('   que si: con el general en 0, la etapa de salida de la consola tampoco');
+    console.log('   lleva tono, asi que los dos candidatos predicen lo MISMO. Y ademas ya');
+    console.log('   estaba medido: la E1 del 105 dio -133,34 dBFS en esta entrada.');
+    console.log('   El experimento que separa es el que el 105 nombro: desenchufar el');
+    console.log('   cable de la entrada 1 y repetir con el general ARRIBA.');
 
     t.enviar(codificarSetd('m.mix', CRUDOS[0]!));
     await new Promise((r) => setTimeout(r, 2500));
@@ -466,6 +537,19 @@ console.log('    que recien se sabe al terminar el barrido. Los residuos van en 
     }
   },
 );
+} catch (e) {
+  falloDelCuerpo = e instanceof Error ? e : new Error(String(e));
+  console.log('');
+  console.log('=== LA CORRIDA FALLO ===');
+  console.log(`   ${falloDelCuerpo.message}`);
+  console.log('   La consola ya se restauro: `conRestauracion` corrio su finally antes de');
+  console.log('   relanzar. Se sigue hasta la relectura por HTTP y la pila del supresor,');
+  console.log('   que son lo que mas falta hace justo cuando una corrida sale mal.');
+  process.exitCode = 1;
+  // Sin cuerpo completo no hay nada que analizar: la guarda del punto de
+  // referencia se encarga de que no se imprima ningun veredicto.
+  puntos.length = 0;
+}
 
 await new Promise((r) => setTimeout(r, 1000));
 
@@ -539,7 +623,7 @@ for (const sentido of ['baja', 'sube'] as const) {
  * La primera version usaba `process.exit(1)` aca. Estaba bien respecto de
  * `conRestauracion` --la consola ya volvio-- y mal respecto de todo lo que viene
  * despues: se saltaba el informe de los puntos anulados, o sea **el motivo por el
- * que el tope no servia**; la verificacion por HTTP de las nueve claves; y la
+ * que el tope no servia**; la verificacion por HTTP de las tres claves; y la
  * comparacion de la pila del supresor.
  *
  * Y el caso en que esto dispara es **una corrida que salio mal**, justo cuando mas
@@ -553,7 +637,9 @@ for (const sentido of ['baja', 'sube'] as const) {
 const referenciaSirve = referenciaInservible.length === 0;
 if (!referenciaSirve) {
   console.log('');
-  console.log('=== EL PUNTO DE REFERENCIA NO SIRVE ===');
+  console.log(falloDelCuerpo === null
+    ? '=== EL PUNTO DE REFERENCIA NO SIRVE ==='
+    : '=== SIN VEREDICTOS: la corrida fallo antes de terminar el barrido ===');
   for (const x of referenciaInservible) console.log(`   ${x}`);
   console.log('   De el cuelgan TODAS las atenuaciones y TODAS las predicciones, asi que');
   console.log('   ninguna expectativa se decide y no se imprime ley. Publicarla seria');
@@ -583,7 +669,7 @@ console.log('');
 if (!referenciaSirve) {
   console.log('=== NO SE IMPRIMEN VEREDICTOS: el punto de referencia no sirve ===');
 } else {
-console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
+console.log('=== VEREDICTOS, contra el contrato del item 107 ===');
 
 {
   // **C1 ya se juzgo, y se juzgo ARRIBA.** Acá había una segunda evaluación que
@@ -611,7 +697,14 @@ console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
   // 106 la habia borrado: basta un medidor que idlea en un byte distinto de cero
   // para que `canalDb` salga finito, constante y ~-80 dB, el rango de 0, y L2
   // imprima «la fuente no se movio» sin que haya habido nunca fuente.
-  if (!(techo > -75)) {
+  if (cs.length < PUNTOS_MINIMOS) {
+    // **Con un punto el rango da 0 y L1 pasaria sola**, comparando un numero
+    // consigo mismo. L2, L3/L3b, L4 y L6 recibieron su minimo y L1 quedo sin el:
+    // hoy la tapa L5 aguas abajo, pero por casualidad de orden y no por una guarda
+    // propia.
+    console.log(`   NO DECIDE: ${cs.length} lecturas finitas, y hacen falta ${PUNTOS_MINIMOS}.`);
+    problemas.push('L1 sin lecturas');
+  } else if (!(techo > -75)) {
     console.log(`   NO DECIDE: el medidor del canal nunca paso de ${d(techo)} dB. Sin señal `
       + 'el rango da cero y esta expectativa pasaria sola.');
     problemas.push('L1');
@@ -622,7 +715,7 @@ console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
   }
 }
 {
-  // **L7 — el unico testigo del INSTRUMENTO.** Todo lo demas de esta corrida vigila
+  // **L2 — el unico testigo del INSTRUMENTO.** Todo lo demas de esta corrida vigila
   // la consola. La entrada 3 es un retorno interno de la interfaz: no pasa por la
   // consola, asi que si deriva, lo que cambio es la computadora o el conversor.
   // `referenciaDb` se venia calculando, imprimiendo y descartando, que es el patron
@@ -630,7 +723,7 @@ console.log('=== VEREDICTOS, contra el contrato del item 106 ===');
   const refs = puntos.map((p) => p.m.referenciaDb).filter(Number.isFinite);
   const deriva = refs.length === 0 ? NaN : Math.max(...refs) - Math.min(...refs);
   console.log(`\nL2 la referencia interna de la interfaz: ${refs.length} capturas finitas`);
-  // **Con una sola captura la deriva da 0 y L7 pasaria sola**, que es el mismo
+  // **Con una sola captura la deriva da 0 y L2 pasaria sola**, que es el mismo
   // agujero que L4 y L6 tenian y que este mismo arreglo cerro en ellas. El puerto
   // se trajo la expectativa de la 104 y dejo su minimo.
   if (refs.length < PUNTOS_MINIMOS) {
@@ -776,7 +869,7 @@ if (problemas.length > 0) {
     console.log(costoDb < ESCALON_DB / 10
       ? '   PASA. Y es una COTA, no una identidad.'
       : '   FALLA: la consola redondea lo bastante como para verse en L3.');
-    console.log('   Dos de los crudos barridos estan fuera de la rejilla de centesimos a');
+    console.log('   Tres de los crudos barridos estan fuera de la rejilla de centesimos a');
     console.log('   proposito: sin ellos esta expectativa no podria fallar.');
       if (!(costoDb < ESCALON_DB / 10)) problemas.push('L6');
     }

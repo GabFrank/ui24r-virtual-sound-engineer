@@ -314,6 +314,20 @@ let c1 = NaN;
 let fugaDb = NaN;
 let pisoEfectivo = NaN;
 
+/**
+ * **Una excepcion del cuerpo no puede saltearse el control de la consola.**
+ *
+ * `conRestauracion` restaura y **relanza**. Sin este `try`, cualquier aborto
+ * legitimo --C1, el tono que se murio, un `leerUnaClave` que excede su tope--
+ * mataba el modulo antes de la relectura por HTTP y de la comparacion de la pila
+ * del supresor.
+ *
+ * Es el mismo defecto que este archivo documenta como arreglado para el caso del
+ * `process.exit`: se cerro la puerta rara y quedo abierta la frecuente. Lo
+ * encontro la auditoria del item 107, que se derivo de aca.
+ */
+let falloDelCuerpo: Error | null = null;
+try {
 await conRestauracion(
   async () => {
     // **Se espera a que el tono muera antes de restaurar.** `m.afs.enabled` vuelve
@@ -475,6 +489,16 @@ console.log('    que recien se sabe al terminar el barrido. Los residuos van en 
     }
   },
 );
+} catch (e) {
+  falloDelCuerpo = e instanceof Error ? e : new Error(String(e));
+  console.log('');
+  console.log('=== LA CORRIDA FALLO ===');
+  console.log(`   ${falloDelCuerpo.message}`);
+  console.log('   La consola ya se restauro: `conRestauracion` corrio su finally antes de');
+  console.log('   relanzar. Se sigue hasta la relectura por HTTP y la pila del supresor.');
+  process.exitCode = 1;
+  puntos.length = 0;
+}
 
 await new Promise((r) => setTimeout(r, 1000));
 
@@ -562,7 +586,9 @@ for (const sentido of ['baja', 'sube'] as const) {
 const referenciaSirve = referenciaInservible.length === 0;
 if (!referenciaSirve) {
   console.log('');
-  console.log('=== EL PUNTO DE REFERENCIA NO SIRVE ===');
+  console.log(falloDelCuerpo === null
+    ? '=== EL PUNTO DE REFERENCIA NO SIRVE ==='
+    : '=== SIN VEREDICTOS: la corrida fallo antes de terminar el barrido ===');
   for (const x of referenciaInservible) console.log(`   ${x}`);
   console.log('   De el cuelgan TODAS las atenuaciones y TODAS las predicciones, asi que');
   console.log('   ninguna expectativa se decide y no se imprime ley. Publicarla seria');

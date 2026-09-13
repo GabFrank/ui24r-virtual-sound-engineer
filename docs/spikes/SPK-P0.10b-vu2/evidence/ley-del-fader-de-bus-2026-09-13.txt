@@ -162,3 +162,22 @@ L6 el crudo escrito contra el releido: 42 comparados
 
 
 # salida del proceso: 1
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
+# divergencia reconocida: c6dcd9e051e99609
+================================================================================
+
+QUE CAMBIO. Una auditoria del item 107 --que se derivo de este guion-- encontro
+que una EXCEPCION del cuerpo se saltaba la relectura por HTTP de la restauracion
+y la comparacion de la pila del supresor. `conRestauracion` restaura y RELANZA,
+asi que sin un `try` el modulo moria antes de esos dos controles. Se agrego el
+`try/catch`.
+
+QUE SIGNIFICA PARA ESTOS NUMEROS: nada. **Esta corrida no lanzo ninguna
+excepcion** --termino el barrido entero, imprimio los ocho veredictos y llego a
+la restauracion, que esta archivada mas arriba con sus nueve claves releidas y la
+pila del supresor comparada--. El `try` nuevo no habria corrido nunca.
+
+Lo que el arreglo cambia es lo que habria pasado si ESTA corrida hubiera fallado,
+que no fallo.

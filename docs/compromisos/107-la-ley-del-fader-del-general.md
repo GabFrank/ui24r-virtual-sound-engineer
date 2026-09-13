@@ -48,8 +48,7 @@ El canal 10 con su tono, el fader del canal **donde está** —no se toca—, y 
 barre **`m.mix`** desde su valor actual hacia abajo. Se mide la entrada 1.
 
 **Lo que se neutraliza, y por qué:** `m.dyn.bypass = 1`. El compresor del general
-está **activo** (`bypass = 0`) y es lo único del camino que no es una ganancia
-estática: depende del nivel, y el barrido mueve cuarenta y ocho decibeles. Se
+está **activo** (`bypass = 0`) y depende del nivel: depende del nivel, y el barrido mueve cuarenta y ocho decibeles. Se
 puentea y no se pone en 1:1 porque lo que se compara son diferencias contra el
 arranque, y una compensación constante se cancela. Y `m.afs.enabled = 0`, por la
 regla del 2026-09-13.
@@ -59,9 +58,17 @@ usuario. Es estática, así que se cancela en toda atenuación relativa al arran
 lo único que podría hacer es comerse el recorrido si tuviera una caída profunda en
 1 kHz, y de eso se ocupa C1 midiendo. Se registra y se deja.
 
+**Y la puerta del general se exige apagada.** Una versión anterior de este
+contrato decía que el compresor es «lo único del camino que no es una ganancia
+estática», y el volcado lo desmiente: existen `m.gate.enabled`, `thresh`, `depth`,
+`attack`, `hold` y `release`. Una puerta también depende del nivel. Se **exige**
+en vez de apagarse, porque el volcado inicial de este proyecto la tenía en 0: así
+no cuesta una corrida y es una escritura menos sobre el general del usuario.
+
 **Se exige sin escribir:** `i.9.mute = 0`, `m.dim = 0` —un dim cambia el nivel y
-no está medido—, `m.safe = 0`, y que el crudo más alto del barrido no supere el
-previo.
+no está medido—, `m.safe = 0`, `m.gate.enabled = 0`, `hwoutm.0.src` y
+`hwoutm.1.src` iguales a `m` —la salida física que la interfaz escucha tiene que
+traer el general—, y que el crudo más alto del barrido no supere el previo.
 
 ## Los controles positivos
 
@@ -75,12 +82,12 @@ nada, así que lo que quede de 1 kHz en la entrada 1 entra por otro lado. El pis
 efectivo es el mayor entre esa fuga y el ruido del bin, y **todo punto que no esté
 45 dB por encima se anula**.
 
-Y esto responde de paso algo que el ítem 105 dejó abierto: aquella corrida mostró
-que la fuga hacia la entrada 2 **viaja por el camino del general**, sin poder
-separar si el cruce ocurre adentro de la Scarlett o en la etapa de salida de la
-consola. **Esta corrida mira la otra punta**: si con el general en 0 la entrada 1
-sigue viendo 1 kHz, eso es la salida de la interfaz cruzándose a su propia
-entrada, y el candidato «etapa de salida de la consola» queda sin sostén.
+**Y NO separa los dos candidatos que el ítem 105 dejó abiertos**, aunque una
+versión anterior de este contrato decía que sí. Con el general en 0, la etapa de
+salida de la consola tampoco lleva tono, así que los dos candidatos predicen lo
+mismo; y además ya estaba medido —la E1 del 105 dio −133,34 dBFS en esta misma
+entrada—. El experimento que separa es el que el propio 105 nombró: desenchufar
+el cable de la entrada 1 y repetir con el general **arriba**.
 
 ## Las expectativas, declaradas antes de mirar
 
@@ -88,7 +95,12 @@ entrada, y el candidato «etapa de salida de la consola» queda sin sostén.
 está aguas abajo, así que la fuente tiene que quedarse quieta. Si se mueve, la
 corrida no vale.
 
-**L2 — la referencia interna de la interfaz no deriva** más de 0,1 dB. Es el único
+**L2 — la referencia interna de la interfaz no deriva** más de **0,05 dB**. El
+número sale de L3b y hay que recalcularlo para este barrido: una pendiente de
+0,002 dB/dB sobre los 48,06 dB de recorrido son 0,096 dB, así que un tope de 0,1
+—el del ítem 106, cuyo recorrido era de 59 dB— dejaría que el instrumento
+fabricara el hallazgo de L3b. El control del instrumento tiene que ser más fino
+que la expectativa que vigila. Es el único
 control sobre el **instrumento**; todo lo demás vigila la consola.
 
 **L3 — la salida real contra `faderADb`**, desvío máximo por debajo de un escalón
@@ -110,8 +122,8 @@ arranque en −18 dBFS y el piso cerca de −117, la regla de 45 dB corta en −
 sea 54 dB disponibles; el barrido cubre 48. Pasa con holgura **si el tono llega**.
 
 **L6 — el crudo escrito contra el releído**, con el veredicto en decibeles: el
-tope es una décima de escalón. Dos crudos fuera de la rejilla de centésimos a
-propósito.
+tope es una décima de escalón. **Tres** crudos fuera de la rejilla de centésimos a propósito: el tope —que es el
+valor del usuario— más 0,6741 y 0,5237.
 
 **Mínimos, porque sin ellos una expectativa decide en el vacío:** 10 puntos
 útiles para L3 y L3b, 20 cuadros VU2 por captura, y L4 y L6 informan cuántos
