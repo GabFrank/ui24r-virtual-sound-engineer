@@ -160,11 +160,31 @@ export function analizar(ruta, frecuencia = 1000) {
       // Puede dar negativo por redondeo cuando el tono es todo lo que hay.
       const potenciaRuido = Math.max(0, total * total - (tono * tono) / 2);
       const p = pico(x);
+      // **El ruido DENTRO del bin, medido y no deducido.**
+      //
+      // El ruido de banda ancha no es lo que limita esta medición: una medición
+      // en un bin de 0,25 Hz sólo compite con el ruido que cae en ese bin, que
+      // está unos 50 dB más abajo. Usar el de banda ancha como criterio anula
+      // puntos perfectamente medibles --en el banco del 2026-09-12 daba 25 dB de
+      // recorrido útil donde hay 95.
+      //
+      // Se mide corriendo el mismo Goertzel **al lado** del tono, lo bastante
+      // lejos para no tomar su energía y lo bastante cerca para que el ruido sea
+      // el mismo. No se deduce del ruido total suponiendo que el espectro es
+      // plano: se mide en el mismo archivo.
+      const separacion = Math.max(5, 20 * (w.frecuencia / w.cuadros));
+      const ruidoEnBin = Math.max(
+        amplitudDelTono(x, frecuencia + separacion, w.frecuencia),
+        amplitudDelTono(x, frecuencia - separacion, w.frecuencia),
+      );
       return {
         tonoDb: dB(tono),
         picoDb: dB(p),
         rmsDb: dB(total),
         ruidoDb: dB(Math.sqrt(potenciaRuido)),
+        ruidoEnBinDb: dB(ruidoEnBin),
+        /** Lo que de verdad limita: cuánto sobresale el tono en su propio bin. */
+        margenEnBinDb: dB(tono) - dB(ruidoEnBin),
         recorteExacto: p >= 1.0,
       };
     }),
@@ -199,13 +219,13 @@ if (process.argv[1] !== undefined
       + `${salida.segundos.toFixed(2)} s, bin de ${salida.anchoDelBinHz.toFixed(3)} Hz`);
     console.log(`  tono buscado: ${frecuencia} Hz`);
     console.log('');
-    console.log('  canal |  tono   |  pico   |   RMS   |  ruido  | tono-ruido');
+    console.log('  canal |  tono   |  pico   |   RMS   | ruido ancho | ruido en bin | margen');
     salida.canales.forEach((c, i) => {
       const f = (v) => (Number.isFinite(v) ? v.toFixed(2).padStart(7) : '   -inf');
-      const margen = Number.isFinite(c.tonoDb) && Number.isFinite(c.ruidoDb)
-        ? (c.tonoDb - c.ruidoDb).toFixed(1).padStart(6) : '     -';
+      const margen = Number.isFinite(c.margenEnBinDb)
+        ? c.margenEnBinDb.toFixed(1).padStart(6) : '     -';
       console.log(`   ${String(i + 1).padStart(4)} | ${f(c.tonoDb)} | ${f(c.picoDb)} | `
-        + `${f(c.rmsDb)} | ${f(c.ruidoDb)} | ${margen} dB`
+        + `${f(c.rmsDb)} | ${f(c.ruidoDb)} | ${f(c.ruidoEnBinDb)} | ${margen} dB`
         + (c.recorteExacto ? '   RECORTA' : ''));
     });
     console.log('');
