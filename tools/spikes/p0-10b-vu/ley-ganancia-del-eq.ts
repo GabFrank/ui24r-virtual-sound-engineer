@@ -142,7 +142,6 @@ const L6_HISTERESIS_MAXIMA_DB = 0.5;
 const L8_DESVIO_MAXIMO_DB = 1.5;
 const SEGUNDOS_DE_CAPTURA = 3;
 
-const ESCALON_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
 /**
  * El punto plano declarado: el arranque del barrido y la referencia de toda la ley.
  *
@@ -667,43 +666,6 @@ const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x))
 const problemas: string[] = [];
 
 // La ganancia de cada punto se mide contra el PLANO de su mismo sentido.
-/**
- * **El punto de referencia tiene que servir, y aca es el crudo plano.**
- *
- * De el cuelga TODA la ley: la ganancia de cada punto es su nivel menos el del
- * plano. Con la referencia mala, los veintitantos puntos salen sesgados lo mismo y
- * en el mismo sentido, y eso no se lee como un error sino **como una ley corrida**
- * --una ordenada al origen que no es cero-- que es justo lo que L1 mira.
- *
- * Ninguna guarda de `NaN` puede ver esto: con la referencia anulada todos los
- * numeros son finitos.
- */
-const referenciaInservible: string[] = [];
-const planos = new Map<'baja' | 'sube', Punto>();
-for (const sentido of ['baja', 'sube'] as const) {
-  const ref = puntos.find((p) => p.sentido === sentido && p.crudo === CRUDO_PLANO);
-  if (ref === undefined || ref.anulado !== null
-    || !Number.isFinite(ref.m.centroDb) || !Number.isFinite(ref.crudoLeido)) {
-    referenciaInservible.push(`${sentido}: ${ref === undefined ? 'no existe'
-      : ref.anulado ?? 'lectura no finita'}`);
-    continue;
-  }
-  planos.set(sentido, ref);
-}
-const referenciaSirve = referenciaInservible.length === 0;
-if (!referenciaSirve) {
-  console.log('');
-  console.log(falloDelCuerpo === null
-    ? '=== EL PUNTO DE REFERENCIA NO SIRVE ==='
-    : '=== SIN VEREDICTOS: la corrida fallo antes de terminar el barrido ===');
-  for (const x of referenciaInservible) console.log(`   ${x}`);
-  console.log('   De el cuelga TODA la ley: la ganancia de cada punto es su nivel menos');
-  console.log('   el del plano. Con la referencia mala, los veintitantos puntos salen');
-  console.log('   sesgados lo mismo y en el mismo sentido, y eso se leeria como una ley');
-  console.log('   corrida, no como un error. Se sigue hasta la restauracion.');
-  process.exitCode = 1;
-}
-
 // **PRIMERA PASADA: quien vale.**
 //
 // **Esta pasada se perdio en una edicion y una auditoria lo encontro.** Sin ella
@@ -734,6 +696,51 @@ for (const p of puntos) {
   if (!(margenT >= MARGEN_MINIMO_DB) && p.anulado === null) {
     p.anulado = `el TESTIGO esta a ${margenT.toFixed(2)} dB de su piso`;
   }
+}
+
+/**
+ * **El punto de referencia tiene que servir, y aca es el crudo plano.**
+ *
+ * De el cuelga TODA la ley: la ganancia de cada punto es su nivel menos el del
+ * plano. Con la referencia mala, los veintitantos puntos salen sesgados lo mismo y
+ * en el mismo sentido, y eso no se lee como un error sino **como una ley corrida**
+ * --una ordenada al origen que no es cero-- que es justo lo que L1 mira.
+ *
+ * Ninguna guarda de `NaN` puede ver esto: con la referencia anulada todos los
+ * numeros son finitos.
+ */
+// **SEGUNDA PASADA: el punto de referencia, ya con las anulaciones decididas.**
+//
+// **El orden importa y se rompio dos veces.** Al restaurar la pasada de anulacion
+// quedo DESPUES de este bloque, asi que `ref.anulado` seguia siendo `null` cuando
+// se lo miraba y la guarda seguia siendo vestigial — el mismo defecto que el item
+// 106 tuvo y que este guion copio de su arreglo. Lo encontro
+// `tools/spikes/restos-de-edicion.mjs` en su primera corrida, por el rotulo
+// «TERCERA» sin «SEGUNDA».
+const referenciaInservible: string[] = [];
+const planos = new Map<'baja' | 'sube', Punto>();
+for (const sentido of ['baja', 'sube'] as const) {
+  const ref = puntos.find((p) => p.sentido === sentido && p.crudo === CRUDO_PLANO);
+  if (ref === undefined || ref.anulado !== null
+    || !Number.isFinite(ref.m.centroDb) || !Number.isFinite(ref.crudoLeido)) {
+    referenciaInservible.push(`${sentido}: ${ref === undefined ? 'no existe'
+      : ref.anulado ?? 'lectura no finita'}`);
+    continue;
+  }
+  planos.set(sentido, ref);
+}
+const referenciaSirve = referenciaInservible.length === 0;
+if (!referenciaSirve) {
+  console.log('');
+  console.log(falloDelCuerpo === null
+    ? '=== EL PUNTO DE REFERENCIA NO SIRVE ==='
+    : '=== SIN VEREDICTOS: la corrida fallo antes de terminar el barrido ===');
+  for (const x of referenciaInservible) console.log(`   ${x}`);
+  console.log('   De el cuelga TODA la ley: la ganancia de cada punto es su nivel menos');
+  console.log('   el del plano. Con la referencia mala, los veintitantos puntos salen');
+  console.log('   sesgados lo mismo y en el mismo sentido, y eso se leeria como una ley');
+  console.log('   corrida, no como un error. Se sigue hasta la restauracion.');
+  process.exitCode = 1;
 }
 
 // **TERCERA: la ganancia de cada punto, contra un plano ya validado.**
