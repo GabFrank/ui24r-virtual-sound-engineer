@@ -199,7 +199,7 @@ crudo  | desvio vs faderADb | error del instrumento | motivo
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
-# divergencia reconocida: 7c0438aa1ff915f6
+# divergencia reconocida: ed2775001605396f
 ================================================================================
 
 La huella de arriba --sha256:6dc0409e400b4b77-- YA NO COINCIDE con el guion de
@@ -233,3 +233,20 @@ QUE SIGNIFICA PARA ESTOS NUMEROS.
 Se anota y no se remide porque remedir daria otra configuracion, no la misma. Lo
 que este archivo registra es lo que la consola hizo esa noche, con el guion que
 tenia esa noche, y eso sigue siendo cierto.
+
+--------------------------------------------------------------------------------
+EL RECONOCIMIENTO CADUCO UNA VEZ, Y ASI TIENE QUE SER.
+--------------------------------------------------------------------------------
+
+La linea de arriba decia 7c0438aa1ff915f6. Ese mismo dia se extrajo `leerUnaClave`
+del guion a un modulo compartido --porque el guion del item 106 volvio a copiarla
+y se separo-- y la huella paso a ed2775001605396f. El validador volvio a poner ✘
+solo, sin que nadie se lo pidiera.
+
+Es el punto del mecanismo: el reconocimiento esta atado a un hash, no a una
+promesa. Si el guion vuelve a cambiar, caduca de nuevo y alguien tiene que
+mirarlo otra vez.
+
+Y de paso muestra su limite honesto: ese cambio fue un MOVIMIENTO de codigo, no
+una modificacion, y el validador lo informa como «TOCO CODIGO» porque no puede
+distinguir mover de cambiar. Acusa de mas, que es el lado correcto.

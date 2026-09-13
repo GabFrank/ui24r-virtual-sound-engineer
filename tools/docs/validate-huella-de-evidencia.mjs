@@ -146,7 +146,10 @@ let reconocidas = 0;
 const guionQueNoEsta = [];
 
 for (const ruta of evidencias(join(RAIZ, 'docs', 'spikes'))) {
-  const texto = readFileSync(ruta, 'utf8').slice(0, 2000);
+  const completo = readFileSync(ruta, 'utf8');
+  // El encabezado se busca en los primeros 2000; el reconocimiento de divergencia,
+  // en el archivo ENTERO, porque una anotacion va al final: la evidencia no se pisa.
+  const texto = completo.slice(0, 2000);
   const m = texto.match(/^# guion: (\S+) sha256:([0-9a-f]+)/m);
   if (m === null) { sinHuella += 1; continue; }
   const [, guion, hex] = m;
@@ -172,7 +175,7 @@ for (const ruta of evidencias(join(RAIZ, 'docs', 'spikes'))) {
     // huella de hoy. No es una exencion por prosa: **si el guion vuelve a
     // cambiar, la huella reconocida deja de ser la de hoy y vuelve el ✘**. El
     // reconocimiento caduca solo.
-    const reconocida = texto.match(/^# divergencia reconocida: ([0-9a-f]+)/m);
+    const reconocida = completo.match(/^# divergencia reconocida: ([0-9a-f]+)/m);
     if (reconocida !== null && reconocida[1] === h.hex) {
       noCoinciden.push(`${relative(RAIZ, ruta)}\n     archivada ${hex}, hoy ${h.hex} `
         + '\n     DIVERGENCIA RECONOCIDA en el archivo, y la huella reconocida es la de hoy');
