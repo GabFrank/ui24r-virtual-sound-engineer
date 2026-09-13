@@ -157,6 +157,23 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // base entre 949 y 1268, o sea que en el crudo 1,0 la frecuencia queda entre
   // 17 530 y 27 675 Hz: **el tope no esta medido**, y por eso no se declara.
   //
+  // **Y dos salvedades que la entrada no puede expresar, escritas acá.**
+  //
+  // 1. **El Q se midio SOLO a 1 kHz.** La propia corrida documenta que arriba de
+  //    ~3 kHz el ancho medido se despega del Q nominal --a 10,9 kHz un Q de 1,00
+  //    se mide como 1,55, por la deformacion del biquad cerca de Nyquist--. La
+  //    entrada no acota la frecuencia y `aRaw` acepta un Q para cualquiera. Lo que
+  //    esta medido es la LEY crudo->Q; que el filtro se comporte igual arriba de
+  //    3 kHz es otra pregunta.
+  //
+  // 2. **Se midio crudo -> fisico, y `PROBADO` habilita `toRaw`**, que es la
+  //    direccion inversa. El contrato de la 101 lo declaro como no probado, y
+  //    conviene decir por que igual se promueve en vez de dejar las dos
+  //    afirmaciones en pie: las dos funciones son **monotonas** y el error esta
+  //    acotado al 0,24 % sobre el tramo medido, asi que la cota se invierte. Lo
+  //    que NO se invierte es fuera del tramo, y de eso se encarga
+  //    `FUERA_DE_RANGO`.
+  //
   // Evidencia:
   // `docs/spikes/SPK-P0.2b/evidence/curvas-del-ecualizador-2026-09-13b.txt`
   medido(

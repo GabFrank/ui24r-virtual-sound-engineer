@@ -1,0 +1,66 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T05:45:50.635Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ecualizador-de-los-buses.ts 3 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ecualizador-de-los-buses.ts sha256:5ab9f115a1a0390f
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== LAS CLAVES eq.peak DE DOS BUSES, LEIDAS DEL APARATO ===
+6665 claves por HTTP | auxiliar 3 = a.2 | auxiliar 5 = a.4
+
+a.2.eq.peak.*: 31 claves | a.4.eq.peak.*: 31 claves
+
+indice | a.2 (aux 3) | a.4 (aux 5) | difieren
+     0 |  0.5000000000 |  0.5000000000 | 
+     1 |  0.5000000000 |  0.5000000000 | 
+     2 |  0.5000000000 |  0.5000000000 | 
+     3 |  0.5000000000 |  0.5000000000 | 
+     4 |  0.5000000000 |  0.5000000000 | 
+     5 |  0.5000000000 |  0.5000000000 | 
+     6 |  0.4922671858 |  0.5000000000 | SI
+     7 |  0.5108833633 |  0.5000000000 | SI
+     8 |  0.4998839516 |  0.5000000000 | SI
+     9 |  0.4974418811 |  0.5000000000 | SI
+    10 |  0.4305289519 |  0.5000000000 | SI
+    11 |  0.3707881482 |  0.5000000000 | SI
+    12 |  0.2639234961 |  0.5000000000 | SI
+    13 |  0.0504404409 |  0.5000000000 | SI
+    14 |  0.0477799637 |  0.5000000000 | SI
+    15 |  0.0000000000 |  0.5000000000 | SI
+    16 |  0.0000000000 |  0.5000000000 | SI
+    17 |  0.0278296340 |  0.5000000000 | SI
+    18 |  0.5000000000 |  0.5000000000 | 
+    19 |  0.5000000000 |  0.5000000000 | 
+    20 |  0.5000000000 |  0.5000000000 | 
+    21 |  0.5000000000 |  0.5000000000 | 
+    22 |  0.5000000000 |  0.5000000000 | 
+    23 |  0.5000000000 |  0.5000000000 | 
+    24 |  0.5000000000 |  0.5000000000 | 
+    25 |  0.5000000000 |  0.5000000000 | 
+    26 |  0.5000000000 |  0.5000000000 | 
+    27 |  0.5000000000 |  0.5000000000 | 
+    28 |  0.5000000000 |  0.5000000000 | 
+    29 |  0.5000000000 |  0.5000000000 | 
+    30 |  0.5000000000 |  0.5000000000 | 
+
+fuera del centro (0,5): a.2 tiene 12 de 31, a.4 tiene 0 de 31
+
+LO QUE ESTO NO DICE:
+   A que frecuencia corresponde cada indice. No esta medido y el propio
+   proyecto declara DESCONOCIDO si estas claves son la PEQ de 4 bandas o
+   la GEQ de 31 --no existe clave `geq`--. Que sean 31 lo sugiere y no lo
+   prueba.
+   Cuantos decibeles vale cada crudo. La ley de conversion de estas claves
+   no esta en RAW_MAP ni medida en ningun lado.
+   Y por lo tanto, cuanto atenua este ecualizador en 1 kHz.
+   a.2.eq.bypass      0
+   a.4.eq.bypass      0
+   a.2.eq.prmod       1
+   a.4.eq.prmod       0
+   a.2.eq.linked      0
+   a.4.eq.linked      0
+
+
+# salida del proceso: 0

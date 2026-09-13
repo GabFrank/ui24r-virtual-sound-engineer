@@ -32,7 +32,7 @@ Si 1 es FIXED, se explica de una:
 | Lo que se había medido | Por qué |
 |---|---|
 | Un filtro plantado resistió `clearlive` y cayó con `clearall` | Era un filtro **fijo**, y `clearlive` sólo limpia los flotantes |
-| `m.afs.numfixed = 6`, `m.afs.numtotal = 12` | **Seis fijas y seis flotantes**, que es lo que el manual dice: *«parametric EQ's (6 fixed, … floating)»* |
+| `m.afs.numfixed = 6`, `m.afs.numtotal = 12` | **El manual confirma las seis fijas** —*«parametric EQ's (6 fixed, … floating)»*, donde el número de flotantes se perdió en la extracción—. **El total de doce lo dice el aparato**, no el manual, y las dos lecturas encajan |
 | Un tono sostenido de 1 kHz plantó un notch de −18 dB en el general | **Es el comportamiento declarado del modo FIXED**, no una falla |
 
 **Y eso último es una advertencia sobre el método de este proyecto, no una
@@ -51,8 +51,8 @@ y estaban bien leídas. Lo que sigue es lo que **no se podía leer** y es nuevo.
 
 | Parámetro | Manual | En el código hoy |
 |---|---|---|
-| **Pasa-altos de canal** | **20 Hz … 1 kHz**, con pendientes seleccionables | `lineal(20, 400)` — **contradice** |
-| **Pasa-bajos de canal** | **22 kHz … 1 kHz**, con pendientes seleccionables | **no existe la entrada** |
+| **Pasa-altos de canal** | **20 Hz … 1 kHz**, con pendientes seleccionables ⁽¹⁾ | `lineal(20, 400)` — **contradice** |
+| **Pasa-bajos de canal** | **22 kHz … 1 kHz**, con pendientes seleccionables ⁽¹⁾ | **no existe la entrada** |
 | **Puerta: ataque** | 1 ms … 400 ms | sin entrada |
 | **Puerta: relajación** | 5 ms … 2000 ms | sin entrada |
 | **Puerta: retención** | 1 ms … 2000 ms | sin entrada |
@@ -62,6 +62,11 @@ y estaban bien leídas. Lo que sigue es lo que **no se podía leer** y es nuevo.
 | Ruido equivalente de entrada | **−128 dB** | no estaba |
 | Entradas de micrófono y línea | **+19,5 dBu** máximo | no estaba |
 | Impedancias | mic 1–2: 4,2 k; mic 3–20: 6 k; línea 12 k; **Hi-Z >600 k**; salidas <150 Ω | no estaban |
+
+⁽¹⁾ **Las etiquetas de esas dos filas quedaron ilegibles en la extracción** —salen
+como `+3)` y `/3)`— así que cuál de los dos rangos es el pasa-altos y cuál el
+pasa-bajos es una **interpretación**, no una lectura: se asigna por el sentido de
+cada rango. La tarea T1 cuelga de eso y lo va a decidir midiendo.
 
 **El pasa-altos es el hallazgo accionable.** `raw-map.ts` declara `lineal(20, 400)`
 en estado `DESCONOCIDO` —un número puesto a ojo— y el manual dice **1 kHz**. Van

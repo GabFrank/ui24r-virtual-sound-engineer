@@ -22,8 +22,12 @@ La **99b** ancló la escala del medidor **de canal** a un instrumento externo
 > trama, tienen otro paso, y cuya escala en dB `protocol-spec` §4.4 declara **no
 > medida** sobre esos bloques.»*
 
-**Esta corrida cierra esa mitad para el bloque de auxiliar 5. Y la 94 leyó el
-auxiliar 3.**
+**Esta corrida cierra esa mitad para el bloque de AUXILIAR, y no para la cola de
+la trama entera.** El texto de §4.4 que se cita arriba habla del bloque de
+**efectos**, que esta corrida **no** toca: es estéreo de 7 bytes contra el mono de
+5 del auxiliar. §4.4 sigue abierto para la 96b.
+
+**Y la 94 leyó el auxiliar 3.**
 
 Eso hay que decirlo primero, porque la primera versión de este contrato afirmaba
 que «las cifras de la 94 quedan en pie» sin mencionar que está midiendo **otro
@@ -58,13 +62,18 @@ interfaz sin tocar el medidor. El reconocimiento del 2026-09-13 midió el camino
 
 | | |
 |---|---|
-| Envío en 0,75, fader del auxiliar en **el crudo 0,7647** — la unidad de *ganancia*, 0 dB, **no** el crudo 1,0, que son +10 | `pre` = `post` = **−47,33 dB** |
+| Envío en 0,75, fader del auxiliar en **la unidad de ganancia** (0 dB, **no** el crudo 1,0, que son +10) | `pre` = `post` = **−47,33 dB** |
 | Lo que ve la interfaz | **−8,55 dBFS**, con **107,3 dB** de margen en el bin |
 | Ganancia de cadena desde `post` hasta la interfaz | **38,8 dB** |
 
 Esa distinción entre «unidad» y «crudo 1,0» no es pedantería: confundirlas son
 **diez decibeles** en toda la aritmética de niveles, y es exactamente el error que
 costó la primera corrida de la 99b.
+
+**Y la corrida real no usó ese fader.** El reconocimiento midió con el fader en
+unidad; el barrido lo puso en **0,45** como atenuador fijo, porque desde unidad el
+envío en 1,0 habría recortado la interfaz. Los dos números son del banco y se
+publican los dos para que nadie los confunda.
 
 O sea que el auxiliar llega a la interfaz **veinte decibeles más caliente** que el
 general. Sin bajarlo, subir el envío recorta.
@@ -197,19 +206,30 @@ así que esta corrida no hace ruido en la sala.
 | **B4** | byte `pre` contra la salida real, 0,667 dB | **0,18 dB** máximo, 16 puntos sobre 38,0 dB | **PASA** |
 | **B5** | paso del bloque, 1 % | **0,331617** dB/byte contra 0,333401 — **0,53 %** | **PASA** |
 | **B6** | histéresis, 0,667 dB | **0,00 dB** | **PASA** |
-| **B7** | auxiliar 3 contra el 5, 0,667 dB de rango | **0,36 dB** de rango, 10 puntos | **PASA** |
+| **B7** | auxiliar 3 contra el 5, 0,667 dB de rango | **0,36 dB** de rango, 10 puntos — **pero con 22,67 dB de desplazamiento**, ver abajo | **PASA con reserva** |
 | **B8** | camino de captura, 0,2 dB | **0,00 dB** | **PASA** |
 
 ## Lo que queda establecido
 
-**El paso del bloque de auxiliar es el mismo que el del canal.** El byte `pre` y
-la salida real coinciden dentro de **0,18 dB sobre 38 dB de recorrido**, medidos
-con un conversor que no es el de la consola.
+**El paso del bloque de auxiliar no se aparta del declarado más de 0,53 % sobre
+los 16 puntos medidos.** El byte `pre` y la salida real coinciden dentro de
+**0,18 dB sobre 38 dB de recorrido**, medidos con un conversor que no es el de la
+consola.
 
-**Y el rango implicado es 79,57 dB** contra el 80 declarado. La 99b había medido
+**Y eso es una cota, no una identidad** — el propio cierre de este documento lo
+dice y la primera versión de esta línea lo escribía al revés, en negrita. Lo
+medido son tres números distintos: **0,331617** dB/byte en el auxiliar,
+**0,333017** en el canal (99b), **0,333401** declarado. Si los dos bloques
+difieren entre sí, difieren menos que el 1 % en el tramo medido.
+
+**Y el rango implicado es 79,57 dB** contra el 80 declarado; la 99b había medido
 **79,91** sobre el bloque de **canal**. Dos bloques distintos de la trama, dos
-instrumentos externos, dos corridas independientes, y los dos caen a medio punto
-porcentual del 80.
+corridas, **0,54 %** y **0,11 %** por debajo del 80.
+
+**Pero no son dos instrumentos.** Las dos salieron de la **misma Scarlett**, por
+entradas distintas. Un error de escala común al conversor es invisible en las dos,
+así que lo que la coincidencia corrobora es que **los dos bloques de la trama
+comparten escala**, no que la escala sea 80 en términos absolutos.
 
 **Con eso, las cifras en dB de la medición 94 quedan en pie** — pero sólo gracias
 a B7, y conviene decir por qué.
@@ -240,22 +260,36 @@ canales **no aportan nada**, están abiertos y mudos. Y una contribución aditiv
 daría una diferencia **variable**; la medida dio −22,67 / −22,67 / −22,33 dB en
 tres crudos distintos.
 
-**Lo que sí era: el ecualizador gráfico del auxiliar 3.** Comparando las dos tiras
-clave por clave, la única diferencia son las 31 bandas del gráfico y `eq.prmod`:
+**Lo que queda: una ganancia estática, y una hipótesis que NO está medida.**
 
-| Banda | Centro | Auxiliar 3 | En dB | Auxiliar 5 |
-|---|---|---|---|---|
-| 14 | 500 Hz | 0,0478 | **−13,6** | 0,5 (plano) |
-| 15 | 630 Hz | 0 | **−15,0** | 0,5 |
-| 16 | 800 Hz | 0 | **−15,0** | 0,5 |
-| 17 | **1 kHz** | 0,0278 | **−14,2** | 0,5 |
+Comparando las dos tiras clave por clave, la única diferencia son las 31 claves
+`eq.peak` y `eq.prmod`. Archivado en
+[`ecualizador-de-los-buses-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/ecualizador-de-los-buses-2026-09-13.txt):
 
-Cuatro bandas contiguas al fondo alrededor de 500–1000 Hz: un ring-out de monitor.
-**El tono de 1 kHz cae justo ahí.**
+| | Auxiliar 3 (`a.2`) | Auxiliar 5 (`a.4`) |
+|---|---|---|
+| Claves `eq.peak` | 31 | 31 |
+| **Fuera del centro (0,5)** | **12** | **0** |
+| `eq.prmod` | 1 | 0 |
 
-**El desplazamiento es estático, así que se cancela en una atenuación relativa al
-arranque y la conclusión de B7 se sostiene.** Pero deja una pregunta nueva y
-barata, anotada abajo.
+**Y ahí se acaba lo que se puede afirmar.** La primera versión de esta sección
+publicaba una tabla de cuatro bandas con sus frecuencias y sus valores en
+decibeles, y **ninguno de esos números estaba en una corrida archivada**: salían
+de un volcado suelto, la asignación de frecuencias era una suposición, y la
+columna en dB venía de una ley de conversión que este proyecto declara
+desconocida. La auditoría técnica lo tenía escrito desde antes:
+
+> *«[DESCONOCIDO]: unidades/escala de cada valor; si `a.B.eq.peak` es la PEQ de 4
+> bandas o la GEQ de 31 bandas (no existe clave `geq`)»*
+
+Es el mismo error que la 94 ya había documentado y corregido —citar un número que
+no está en el archivo citado— cometido otra vez.
+
+**Lo que la evidencia sostiene**: el auxiliar 3 tiene doce claves de ecualizador
+fuera del centro y el 5 ninguna; la diferencia entre los dos buses es una ganancia
+estática; y esa ganancia **se cancela en una atenuación relativa al arranque**, que
+es de lo que dependen B4, B5 y B7. Cuánto atenúa y en qué frecuencia **no está
+medido**, y queda como tarea abajo.
 
 ## Lo que la 94 no pudo decidir, y esta corrida sí
 

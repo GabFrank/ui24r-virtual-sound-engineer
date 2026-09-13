@@ -51,8 +51,11 @@ const ANCHO_DEL_BIN = 1 / SEGUNDOS;
  * el recorrido se reserva para el peor caso.
  *
  * **Y la cadena no esta a unidad.** La 99b midio en ESTE banco, este canal, con
- * `hw.9.gain = 0,2508445026`: tono a −15 dBFS, pico capturado −6,9. Son **+8,1 dB
- * de ganancia de cadena**. Con el estimulo a −8 dBFS de pico —que es lo que la
+ * `hw.9.gain = 0,2508445026`, un tono a −15 dBFS con pico capturado en **−7,95**:
+ * son **+7,05 dB** de ganancia de cadena. (El −6,9 que esta nota citaba era la
+ * PREDICCION del contrato de la 99b, que su propia corrida corrigio. La guarda de
+ * recorrido no depende de este numero --lo mide del banco-- pero citarlo mal es
+ * citar un numero que no esta en el archivo que se cita.) Con el estimulo a −8 dBFS de pico —que es lo que la
  * primera version de este guion tenia— la **linea base** llegaria a +0,1 dBFS:
  * recortaria antes de medir nada.
  *

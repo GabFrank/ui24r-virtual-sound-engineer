@@ -267,3 +267,56 @@ Comprobada **releyendo por HTTP**, camino distinto del que escribió:
 `i.9.aux.2.value = 0` y `i.9.mix = 0.7647058824`. Evidencia:
 `controles-del-bus-2026-09-12.txt`. No se tocó ninguna instantánea, ni la
 fantasma del canal 9, ni el supresor de ningún bus.
+
+
+---
+
+# Lo que la medición 102 encontró en este banco, el 2026-09-13
+
+**El criterio con el que esta medición eligió su bus fue insuficiente, por la misma
+razón que ella misma había nombrado.**
+
+Esta medición rechazó el auxiliar 1 con este motivo, textual:
+
+> *«Tiene el supresor encendido y un filtro plantado de −18 dB en 999,97 Hz. Un
+> barrido con tono de 1 kHz por ahí mediría el notch y daría una curva creíble y
+> falsa.»*
+
+Y eligió el auxiliar 3 comprobando **sólo `a.2.afs.enabled = 0`**. La medición 102
+midió después que ese bus atenúa el tono de 1 kHz **22,67 dB**, de forma constante
+—verificado en tres crudos distintos: −22,67 / −22,67 / −22,33— y que tiene **doce
+de sus treinta y una claves `eq.peak` fuera del centro**, mientras el auxiliar 5
+las tiene todas en 0,5. Evidencia:
+[`diferencia-entre-buses-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/diferencia-entre-buses-2026-09-13.txt)
+y
+[`ecualizador-de-los-buses-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/ecualizador-de-los-buses-2026-09-13.txt).
+
+O sea: **se evitó un notch del supresor y se cayó en una atenuación del
+ecualizador del bus**, que hace exactamente lo mismo y que el censo no miraba.
+
+## Qué sobrevive y qué no
+
+**La ley relativa sobrevive, y eso está medido.** La atenuación es **estática** —no
+depende del nivel— así que se cancela en una atenuación relativa al arranque, que
+es lo que esta medición calcula. La 102 lo argumenta con su propia evidencia y
+además ancló la escala del bloque de auxiliar contra un instrumento externo: el
+byte `pre` sigue a la salida real dentro de 0,18 dB sobre 38 dB, y el auxiliar 3 y
+el 5 comparten pendiente dentro de 0,36 dB de rango.
+
+**Lo que NO sobrevive intacto es la explicación del residuo.** Esta medición
+declaró indecidible un residuo unilateral y creciente hacia el fondo del barrido, y
+se quedó en **27,87 dB de recorrido**. Los 22,67 dB de atenuación del bus se comen
+unos sesenta y ocho bytes de medidor: **el barrido empezaba mucho más abajo de lo
+que su banco permitía**, y por eso chocó contra el piso tan pronto.
+
+Y la 102 midió que **el medidor no se comprime gradualmente cerca del piso**: en
+los bytes 13, 10, 7 y 4 sigue a la salida real dentro de 0,16 dB, y cae a pico en
+el 0. Así que el residuo de esta medición **no era el piso comportándose mal**:
+era el barrido llegando al piso antes de tiempo.
+
+## Qué haría falta para cerrarlo
+
+Rehacer este barrido **por el auxiliar 5**, que tiene el ecualizador plano y está
+cableado a la interfaz. Con 22,67 dB más de recorrido y la salida real mirando, la
+ley del envío se mediría sobre el doble de tramo y contra un instrumento externo.
+No está hecho.

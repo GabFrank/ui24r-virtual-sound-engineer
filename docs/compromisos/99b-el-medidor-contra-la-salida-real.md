@@ -356,12 +356,33 @@ este documento diciendo que salió a la primera.
 | **M2** | referencia interna, 0,2 dB | **0,00 dB** | **PASA** |
 | **M3** | salida real vs `faderADb`, 0,5 dB | **0,12 dB** máximo, 22 puntos | **PASA** |
 | **M4** | medidor vs salida real, 0,667 dB | **0,17 dB** máximo, 17 puntos sobre 35,0 dB | **PASA** |
-| **M5** | escalón del medidor, 1 % | **0,333017** dB/byte contra 0,333401 — **0,11 %** | **PASA** |
+| **M5** | escalón del medidor, 1 % | **0,333017** dB/byte contra 0,333401 — **0,11 %** | **PASA**, pero ver abajo |
 | **M6** | histéresis, 0,667 dB | **0,00 dB** | **PASA** |
 
 Y los controles del camino que M2 no cubre: el punto de arranque repetido al
 cierre difiere **0,00 dB**, y la alineación de frecuencia cae en el centro exacto
 al abrir y al cerrar.
+
+### M5 se declaró subordinada en la corrida, y este documento no lo decía
+
+La evidencia archivada imprime, en el veredicto de M5:
+
+> *«SUBORDINADA: con 34,9 dB de tramo (más de 33,4), M5 no puede fallar si M4
+> pasó. **Es un resumen de M4 en una cifra y sirve para nombrar el rango, no como
+> prueba independiente.**»*
+
+**Este documento la listaba entre «las seis expectativas» sin esa marca**, y
+titulaba su resultado «el escalón queda anclado». La 101 sí lo hizo bien con su E4.
+
+**Y hay una segunda corrección, que este proyecto descubrió después.** El auditor
+de la 102 rehízo esa aritmética y encontró que **la subordinación es falsa**: con
+M4 pasando, la pendiente todavía puede errar unos 5 %, cinco veces el 1 % que M5
+exige. La regla que hacía falta no eran 33,4 dB de tramo sino unos 187, y la
+ventana entera del medidor son 74.
+
+Así que M5 **no era subordinada**, y su resultado vale como medición
+independiente — pero la evidencia archivada sigue diciendo lo contrario, porque la
+evidencia no se pisa. Queda dicho acá, que es donde se lee.
 
 ## Lo que queda establecido
 
@@ -376,9 +397,17 @@ la aplicación lo usa —saber qué está pasando— el medidor sirve. Esto **no
 distingue «medido» de «calculado y correcto», y eso sigue abierto.
 
 **El escalón del medidor queda anclado a un instrumento externo.** El **rango
-implicado es 79,91 dB** contra el 80 declarado. Dos corridas independientes dieron
-79,90 y 79,91. La hipótesis de los **84,5 dB** que este proyecto tuvo que retirar
-queda descartada **con evidencia de afuera**, no por autoconsistencia.
+implicado es 79,91 dB** contra el 80 declarado, y la hipótesis de los **84,5 dB**
+que este proyecto tuvo que retirar queda descartada **con evidencia de afuera**.
+
+**La primera versión de este párrafo decía «dos corridas independientes dieron
+79,90 y 79,91», y eso no se sostiene por dos motivos.** El 79,90 sale de la corrida
+**(b)**, la misma que tres secciones más abajo se declara inservible y **cuya M1
+falló** —`FALLA: o se movió la fuente, o el fader no está donde este proyecto
+cree`, con 0,81 dB de deriva—. Y aunque hubiera pasado, no serían independientes:
+mismo banco, mismo guión, siete minutos de diferencia. Se anota como coincidencia
+y no como segunda medición. Es exactamente el error que la 94 ya había documentado
+y corregido: citar un número que no está en el archivo que se cita.
 
 **El general es una ganancia estática: medido, no supuesto.** De `pre` a `post`
 del general, 0,21 dB en todo el barrido, con el compresor puenteado y su medidor

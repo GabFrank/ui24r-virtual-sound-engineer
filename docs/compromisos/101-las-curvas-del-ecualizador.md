@@ -174,6 +174,14 @@ con esa salvedad y **no se toca la entrada de la ganancia**.
   crudo → Hz. Que `toRaw` acierte es lo mismo invertido **sólo si la función es la
   que se midió**; si `f0` sigue la exponencial pero con otra base, la inversa
   también cambia. Se declara qué quedó medido y en qué dirección.
+
+  **Y sin embargo la entrada quedó `PROBADO`, que es lo que habilita `toRaw`.** No
+  es una contradicción olvidada: las dos funciones son **monótonas** y el error
+  medido está acotado al 0,24 % sobre el tramo, así que la cota se invierte dentro
+  de ese tramo. Lo que no se invierte es lo de afuera, y de eso se encarga que
+  `rawMin`/`rawMax` sean los medidos y `aRaw` rechace con `FUERA_DE_RANGO`. Queda
+  escrito acá porque dejar las dos afirmaciones en pie sin reconciliarlas era el
+  defecto.
 - **Un canal, una banda, un nivel de estímulo.**
 - **El tope del recorrido no queda medido.** El `mixer.html` declara 20 Hz …
   22 050 Hz y esta corrida mide `V` entre 0,15 y 0,90, porque afuera de eso el
@@ -220,7 +228,7 @@ instrumento lo imprimió--, pico del estímulo a
 |---|---|---|---|
 | **E1** | línea base plana, 1,0 dB | **0,82 dB** | **PASA** |
 | **E2** | campana, 6 dB de caída a los dos lados | **6 de 6** curvas | **PASA** |
-| **E3** | `f0` contra `20·1102,5^V`, 5 % | **0,24 %** sobre 6 crudos | **PASA** |
+| **E3** | `f0` contra `20·1102,5^V`, 5 % | **0,24 %** sobre 6 crudos de los 8 barridos | **PASA** |
 | **E4** | la recta excluida, factor > 2 | **factor 43,4** | **PASA** (subordinada) |
 | **E5** | `Q` contra `0,05·300^V`, factor 1,3 | **×1,02** sobre 5 crudos | **PASA** |
 | **E6** | la vuelta, 1,5 % y 0,5 dB | **0,03 %** y 0,09 dB | **PASA** |
@@ -228,6 +236,18 @@ instrumento lo imprimió--, pico del estímulo a
 Y la dispersión punto a punto entre las dos líneas base dio **0,024 dB rms**, por
 debajo de los 0,05 de los que cuelga la resolución declarada: el ±1,5 % se
 sostiene.
+
+**Se barrieron ocho crudos y dos se anularon por margen**, que la primera versión
+de esta sección no mencionaba: el crudo 0,15 con **8,5 dB** sobre el ruido de su
+bin y el 0,45 con **43,8 dB**, contra el mínimo de 45 —el segundo por 1,2 dB—.
+E3 se juzga sobre los seis restantes, que es lo que su umbral pedía.
+
+**Y el margen del estímulo que este contrato calculó —56 dB— era una predicción,
+no una medida.** Salía del piso de bin que la 99b midió en **otro banco**. Lo que
+la corrida imprimió fue **8,2 dB de margen peor** en la línea base: el multitono
+reparte su energía entre 104 tonos, así que cada uno queda mucho más cerca del
+ruido que un tono solo. La guarda que importa se aplicó donde tenía que aplicarse
+—en el pico y sus dos vecinos— y anuló los dos puntos de arriba.
 
 ## Las dos leyes, medidas contra el filtro
 
@@ -269,10 +289,15 @@ en los crudos medidos tiene la base entre **949 y 1268**, o sea que en el crudo
 1,0 la frecuencia queda entre **17 530 y 27 675 Hz** contra los 22 050 declarados.
 El tope **no está medido**.
 
+*(Las cifras equivalentes que este contrato calculó **antes** de correr —968 a 1256
+para E3, y 67 a 1343 para E5— eran estimaciones sobre los crudos planeados. Las que
+valen son las de la corrida: **949 a 1268** y **65 a 1262**.)*
+
 ## Un hallazgo que no era el objetivo: la ganancia sube 20 dB, no 15
 
-La campana subió **20,0 dB exactos** en los ocho puntos del barrido, con el crudo
-de ganancia en 1,0. `raw-map.ts` declara ±15 dB y el manual ±20.
+La campana subió **20,0 dB en los seis crudos de frecuencia que puntuaron**, y
+**19,8** en el punto más alto del barrido de Q. La primera versión de esta línea
+decía «los ocho puntos», y dos de los ocho estaban anulados y no tienen altura. `raw-map.ts` declara ±15 dB y el manual ±20.
 
 **No alcanza para cambiar la entrada, y se dice por qué.** El pico de una campana
 no es el parámetro de ganancia salvo que el filtro esté normalizado de cierta
