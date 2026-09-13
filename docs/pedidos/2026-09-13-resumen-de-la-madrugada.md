@@ -232,6 +232,59 @@ escribía `m.mute`, una clave que **no existe** en esta consola. Hay 736 claves
 con `mute` en el volcado y ninguna es del general. Las dos auditorías leyeron el
 código; el código era consistente consigo mismo.
 
+## Bloque 4: P1 quedó desbloqueado, y en el camino apareció una guarda muerta
+
+La 104 midió la ley del envío, que era lo que bloqueaba **P1** —el llamador del
+monitor, la tarea que el plan marca como «lo que hace que una sesión con sonido
+real valga el tiempo del usuario»—. Al ir a conectarla aparecieron dos cosas que
+nadie sabía.
+
+### La guarda que ata la magnitud al crudo no podía disparar nunca
+
+`RAW_MAP` se indexa por plantillas —`i.N.eq.b1.freq`— y `entrada()` era un
+`Map.get` de la cadena cruda. O sea que **`entrada('i.3.eq.b1.freq')` devolvía
+`undefined` para los veinticuatro canales.**
+
+Con eso, `verificarAtadura` —escrita el mismo día para cerrar un agujero que una
+auditoría había demostrado explotable: un recorrido completo del parámetro
+aprobado bajo un techo de −6 dB declarando otras magnitudes— devolvía
+`SIN_LEY_VERIFICADA` siempre, que está documentado como **«no es un rechazo»**.
+La guarda estaba enchufada al motor y era inerte.
+
+Nadie lo vio porque ningún llamador de producción usa `aRaw`, y las pruebas
+usaban la plantilla, que sí resolvía.
+
+Arreglado con `canonizarRuta`, que exige forma canónica —`i.03` no resuelve,
+porque el techo por ruta se indexa por cadena cruda— e índice en rango real.
+Comprobado: el ataque de la auditoría ahora se rechaza en un canal de verdad.
+
+### Y 96 rutas que se contaban como escribibles no lo eran
+
+Al arreglar eso, el arnés que cuenta rutas escribibles tuvo que declarar la
+unidad de verdad en vez de `dB` para todo. Y ahí se vio que **`LIMITES` da una
+unidad por `kind`, y un `kind` cubre hojas de unidades distintas**:
+`CHANNEL_EQ` tiene su tope en dB y cubre `freq` (Hz), `gain` (dB) y `q`.
+
+El motor las rechaza —«comparar los dos números sería comparar especies
+distintas»— y **tiene razón**: un tope de 4 dB no acota un salto de frecuencia.
+La cuenta baja de 930 a 834. No se cayeron 96 rutas: **nunca habían sido
+escribibles**, y el 930 las contaba porque el arnés mentía la unidad.
+
+Consecuencia incómoda: **las cuatro leyes del ecualizador que midió la 101 no
+sirven para escribir nada**, y no por la medición. Medir más tampoco alcanzaría.
+Hay tres salidas y las tres son decisión tuya; están escritas en
+[`hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`](../backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md).
+
+**El envío a monitor no tiene ese problema**: su tope está en dB y su ley medida
+también. Es la quinta ruta `PROBADO` y la primera que el motor puede usar.
+
+### Lo que le queda a P1
+
+Ya no es técnico. Falta decidir **cuándo** la aplicación propone bajar un envío a
+monitor, y eso no está escrito en ningún lado. Los otros dos huecos que ADR-028
+declara —el techo que no se llena y el acumulado por sesión— necesitan el
+historial de la sesión.
+
 ## Lo que queda abierto
 
 | | |
@@ -240,7 +293,8 @@ código; el código era consistente consigo mismo.
 | **`m.afs.fmode`** | cuál valor es LIVE, FIXED y LOCK. **Decide si una corrida planta filtros permanentes** |
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |
 | **La puerta** | ataque, relajación y retención declarados por el manual, ninguno en el código |
-| **El llamador del monitor** | `MONITOR_AUX_SEND` y `techoPorRuta` **sólo existen en tests**. Es lo que haría que una sesión con sonido real valga el tiempo del usuario |
+| **El llamador del monitor** | **desbloqueado**: la ley está medida y en la tabla, y la guarda que la usa ya dispara. Lo que falta es decidir *cuándo* la app propone bajar un envío, que es de producto |
+| **Un `kind`, una unidad** | el ecualizador se puede medir todo lo que quieras y sigue sin poder escribirse. Tres salidas posibles, **las tres decisión tuya** |
 | **77 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer. De ellos, **9 sólo mandan consultas** y no tienen nada que restaurar: el detector es `.enviar(` y no distingue |
 | **46 guiones** | hacen sonar un estímulo sin apagar el supresor del general. Trinquete nuevo |
 | **La fuga de 1 kHz** | medida: viaja por la salida del general. Falta **un minuto tuyo**: desenchufar el cable de la entrada 1 y repetir la lectura, para separar Scarlett de consola |

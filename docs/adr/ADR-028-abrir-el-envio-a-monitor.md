@@ -207,6 +207,26 @@ se los come a los otros dos.
 nada observable hoy**: abre una puerta que nadie usa todavía. Lo que hace es
 dejar la regla escrita y probada para cuando el camino exista.
 
+**Actualización del 2026-09-13: el hueco 1 ya no tiene excusa técnica.** Faltaba
+la ley de conversión —sin ella el motor no podía atar la magnitud al crudo— y la
+midió el ítem 104 contra un convertidor externo: `i.N.aux.M.value` entró a la
+tabla en `PROBADO`, en dB, que es la unidad del tope de este `kind`.
+
+Y con eso se destaparon dos cosas que hacían falta y nadie sabía:
+
+- **`entrada()` no resolvía ninguna ruta concreta.** `verificarAtadura` devolvía
+  `SIN_LEY_VERIFICADA` en los 24 canales, o sea que la guarda que ata la magnitud
+  al crudo estaba enchufada al motor y no podía disparar nunca. Arreglado con
+  `canonizarRuta`.
+- **Los tests de este ADR ponían el nivel en dB en el campo del CRUDO**
+  —`valorPropuesto: -6`, cuando el crudo de un envío va de 0 a 1—, que es la
+  misma confusión que la guarda existe para cazar. Pasaban porque no podía
+  disparar.
+
+Lo que queda del hueco 1 **no es técnico: es de producto.** Falta decidir cuándo
+la aplicación propone bajar un envío a monitor, y eso no está escrito en ningún
+lado. Ver `docs/backlog/hallazgo-la-guarda-de-magnitud-no-podia-disparar.md`.
+
 **2. El techo no se llena.** `techoPorRuta` llega vacío porque hace falta el
 historial de la sesión, que tampoco alimenta `acumuladoPorRuta` ni
 `rutasYaTocadas`.
