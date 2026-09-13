@@ -272,10 +272,19 @@ export function cruceEnNivel(puntos, nivel, desde, paso) {
  * `extremo` es `'agudo'` para un pasa-altos —cuya banda de paso está arriba— y
  * `'grave'` para un pasa-bajos.
  */
-export function bandaDePaso(puntos, extremo, cuantos = 20) {
-  const tramo = extremo === 'agudo'
-    ? puntos.slice(Math.max(0, puntos.length - cuantos))
-    : puntos.slice(0, cuantos);
+export function bandaDePaso(puntos, extremo, { cuantos = 20, desdeHz, hastaHz } = {}) {
+  // **Una ventana de frecuencias, cuando el extremo no sirve.**
+  //
+  // El extremo grave de este banco --40 a 120 Hz-- tiene sólo unos 8 dB de margen
+  // sobre el ruido: ahí vive el zumbido de red. Medido el 2026-09-13: los cinco
+  // puntos del pasa-bajos se anularon porque su banda de paso colgaba de esa
+  // mediana. Para un filtro cuyo codo está arriba, la banda de paso se puede tomar
+  // de un tramo intermedio que esté por debajo del codo y por encima del zumbido.
+  const tramo = desdeHz !== undefined && hastaHz !== undefined
+    ? puntos.filter((p) => p.hz >= desdeHz && p.hz <= hastaHz)
+    : extremo === 'agudo'
+      ? puntos.slice(Math.max(0, puntos.length - cuantos))
+      : puntos.slice(0, cuantos);
   if (tramo.length === 0) return { db: NaN, dispersionDb: NaN, margenPeorDb: NaN };
   const v = tramo.map((p) => p.db).sort((a, b) => a - b);
   const m = Math.floor(v.length / 2);

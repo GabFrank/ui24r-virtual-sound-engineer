@@ -173,6 +173,14 @@ let atenuacionDelControl = NaN;
 await conRestauracion(
   async () => {
     sonando?.kill();
+    // **La pausa no es cortesia: el supresor esta en la lista a restaurar.**
+    //
+    // `afplay` muere al instante pero el audio tarda en dejar de salir, y
+    // `restaurarClaves` escribe enseguida. Encender el supresor con señal sonando
+    // **planta filtros permanentes** --es lo que el fabricante documenta del modo
+    // FIXED, y el 2026-09-13 costo cuatro notches de −18 dB en el general del
+    // usuario y tres filtros suyos al limpiarlos.
+    await new Promise((r) => setTimeout(r, 2000));
     await restaurarClaves(t, maquina, PREVIO);
     rmSync(carpeta, { recursive: true, force: true });
   },
@@ -245,7 +253,14 @@ await conRestauracion(
       t.enviar(codificarSetd(clave, crudo));
       await new Promise((r) => setTimeout(r, 1800));
       const curva = contraLaBase(await capturar(`${extremo}-${crudo}`), base);
-      const banda = bandaDePaso(curva, extremo) as {
+      // **El pasa-bajos toma su banda de paso de 200 a 800 Hz, no del extremo.**
+      // Los 20 tonos de 40 a 120 Hz tienen ~8 dB de margen en este banco --es
+      // donde vive el zumbido de red-- y de esa mediana cuelga el nivel del cruce.
+      // Medido: con el extremo, los cinco puntos del pasa-bajos se anulan. El
+      // tramo de 200 a 800 Hz esta por debajo de todos los codos esperados
+      // --el manual dice que el mas bajo es 1 kHz-- y muy por encima del zumbido.
+      const banda = bandaDePaso(curva, extremo, extremo === 'grave'
+        ? { desdeHz: 200, hastaHz: 800 } : {}) as {
         db: number; dispersionDb: number; margenPeorDb: number;
       };
       const desde = extremo === 'agudo' ? curva.length - 1 : 0;

@@ -1,0 +1,26 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T06:51:35.711Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/borrar-filtros-fijos.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/borrar-filtros-fijos.ts sha256:af3131c4cf5d65d7
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+punto de retorno: VSE_AUTO_1789282301936
+
+al empezar: 1000.0Hz(-18dB) 1000.0Hz(-18dB) 1000.0Hz(-18dB) 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+
+m.afs.clearfixed = 1  con supresor encendido  ->  7 filtro(s): 1000.0Hz(-18dB) 1000.0Hz(-18dB) 1000.0Hz(-18dB) 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+m.afs.clearall = 1  con supresor encendido  ->  4 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+m.afs.clearfixed = 1  con supresor apagado  ->  4 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+m.afs.clearall = 1  con supresor apagado  ->  4 filtro(s): 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+
+al terminar: 200.0Hz(-6dB) 1000.0Hz(-18dB) 8190.1Hz(-6dB) 4226.4Hz(-6dB)
+  m.afs.enabled = 1  (leido por HTTP)
+  m.afs.clearfixed = 0  (leido por HTTP)
+  m.afs.clearlive = 1  (leido por HTTP)
+  m.afs.clearall = 0  (leido por HTTP)
+
+
+# salida del proceso: 0
