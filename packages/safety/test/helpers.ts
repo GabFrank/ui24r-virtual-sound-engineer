@@ -2,7 +2,7 @@ import type { MixerDomainAPI, ReadResult, WriteResult, ConnectionState,
   DeviceInfo, BulkExternalChange, PresenciaAjena } from '@vse/mixer-adapter';
 import type { ContextoSeguridad, CambioPropuesto } from '../src/types.ts';
 import { LIMITES } from '@vse/domain';
-import { entrada } from '@vse/mixer-adapter';
+import { entrada, dbAFader } from '@vse/mixer-adapter';
 import type { ParameterKind } from '@vse/domain';
 
 /**
@@ -244,3 +244,23 @@ export function cambioDeInventario(kind: ParameterKind, path: string): CambioPro
     magnitudEsperada: 0,
   } as CambioPropuesto;
 }
+
+
+/**
+ * El crudo que le corresponde a un nivel de envío a monitor en dB.
+ *
+ * **Por qué hace falta desde el 2026-09-13.** Estos tests ponían el número en dB
+ * directamente en `valorPropuesto` —`valorPropuesto: -6`—, y el crudo de un envío
+ * va de 0 a 1: −6 no es un crudo posible. O sea que codificaban exactamente la
+ * confusión que `verificarAtadura` existe para cazar, y pasaban porque esa guarda
+ * no podía disparar: `entrada()` no resolvía ninguna ruta concreta.
+ *
+ * Al arreglar eso y agregar la ley del envío medida por la 104, la guarda empezó
+ * a mirar los dos números y los encontró incompatibles. **Los tests estaban mal,
+ * no el motor.**
+ *
+ * Usar esto en vez de un literal es lo que mantiene los tests midiendo la puerta
+ * de permiso: el par va atado, así que lo único que puede rechazar es la regla
+ * que cada test quiere probar.
+ */
+export const crudoDeEnvio = (db: number): number => dbAFader(db);

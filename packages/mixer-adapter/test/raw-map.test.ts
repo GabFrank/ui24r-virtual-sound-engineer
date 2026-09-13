@@ -25,12 +25,23 @@ test('ADR-006: una conversión no verificada en hardware no se escribe', () => {
 test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // Hasta el 2026-09-13 esta lista estaba vacía y el test decía que eso era
   // correcto. Lo era: ninguna conversión se había medido. La medición 101 midió
-  // dos contra el filtro real, así que ahora la lista tiene exactamente esas dos.
+  // cuatro contra el filtro real.
   //
-  // **El test sigue siendo un trinquete**: si aparece una tercera sin que alguien
+  // **La quinta, `i.N.aux.M.value`, es del ítem 104 del 2026-09-13**: barrió el
+  // envío de un canal a un auxiliar con un tono y midió la salida física del bus
+  // con un convertidor externo. `VtoLIN` describe esa salida con 0,007 dB sobre
+  // los primeros 32 dB de atenuación. Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-del-envio-a-monitor-2026-09-13.txt`.
+  //
+  // Es la única de las cinco que el motor puede usar de verdad: las otras cuatro
+  // están en Hz y en Q, y el tope de su `kind` está en dB, así que el motor las
+  // rechaza por INV-004. Ver
+  // `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una sexta sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
   assert.deepEqual([...rutasProbadas()].sort(),
-    ['i.N.eq.b1.freq', 'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
+    ['i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 

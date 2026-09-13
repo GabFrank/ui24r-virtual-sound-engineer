@@ -4,7 +4,7 @@ import { SafetyEngine } from '../src/engine.ts';
 import { DiarioEnMemoria } from '../src/journal.ts';
 import { EjecutorDeTransacciones } from '../src/runner.ts';
 import type { CambioPropuesto } from '../src/types.ts';
-import { MezcladoraFalsa, contexto } from './helpers.ts';
+import { MezcladoraFalsa, contexto , crudoDeEnvio } from './helpers.ts';
 
 const sinEspera = { pacingMs: 0, dormir: async () => {} };
 
@@ -210,7 +210,7 @@ test('una transacción rechazada no deja rastro en el diario', async () => {
   const r = await ejecutor.ejecutar(
     'tx1', 's1', 'x',
     [{ kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-       valorPropuesto: -6, valorEsperado: -10,
+       valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-10),
   magnitudPropuesta: -6, magnitudEsperada: -10 }],
     contexto(), conSnapshot,
   );

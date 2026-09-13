@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SafetyEngine } from '../src/engine.ts';
 import type { CambioPropuesto } from '../src/types.ts';
-import { contexto } from './helpers.ts';
+import { contexto , crudoDeEnvio } from './helpers.ts';
 import type { ContextoSeguridad } from '../src/types.ts';
 
 const ok = { conexionPermiteEscribir: true, snapshotVerificado: true };
@@ -34,7 +34,7 @@ test('ADR-028: un envío de monitor se puede ajustar durante el soundcheck', () 
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -6, valorEsperado: -7,
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
     magnitudPropuesta: -6, magnitudEsperada: -7,
   }], contexto(), ok);
   assert.equal(v.permitido, true, motivos(v).join(', '));
@@ -44,7 +44,7 @@ test('ADR-028: la lista blanca exige la forma canonica y el rango real', () => {
   const e = new SafetyEngine();
   const pedir = (path: string, ctx = contexto()) => e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path, unidad: 'dB',
-    valorPropuesto: -6, valorEsperado: -7,
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
     magnitudPropuesta: -6, magnitudEsperada: -7,
   }], ctx, ok);
 
@@ -80,7 +80,7 @@ test('ADR-028: un alias con ceros no esquiva el techo de la ruta real', () => {
   const ctx = contexto({ techoPorRuta: new Map([['i.3.aux.1.value', -6]]) });
   const porElAlias = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.03.aux.1.value', unidad: 'dB',
-    valorPropuesto: 0, valorEsperado: -6,
+    valorPropuesto: crudoDeEnvio(0), valorEsperado: crudoDeEnvio(-6),
     magnitudPropuesta: 0, magnitudEsperada: -6,
   }], ctx, ok);
   assert.equal(porElAlias.permitido, false);
@@ -93,7 +93,7 @@ test('ADR-028: el envío de monitor no sube más allá de donde estaba', () => {
   const ctx = contexto({ techoPorRuta: new Map([['i.3.aux.1.value', -6]]) });
   const subirDeMas = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -5, valorEsperado: -6,
+    valorPropuesto: crudoDeEnvio(-5), valorEsperado: crudoDeEnvio(-6),
     magnitudPropuesta: -5, magnitudEsperada: -6,
   }], ctx, ok);
   assert.equal(subirDeMas.permitido, false);
@@ -102,7 +102,7 @@ test('ADR-028: el envío de monitor no sube más allá de donde estaba', () => {
   // Hasta el techo exacto, sí: «hasta donde estaba» lo incluye.
   const justo = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -6, valorEsperado: -7,
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
     magnitudPropuesta: -6, magnitudEsperada: -7,
   }], ctx, ok);
   assert.equal(justo.permitido, true, motivos(justo).join(', '));
@@ -110,7 +110,7 @@ test('ADR-028: el envío de monitor no sube más allá de donde estaba', () => {
   // Y bajar no tiene techo: la asimetría es del usuario y es deliberada.
   const bajar = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -8, valorEsperado: -7,
+    valorPropuesto: crudoDeEnvio(-8), valorEsperado: crudoDeEnvio(-7),
     magnitudPropuesta: -8, magnitudEsperada: -7,
   }], ctx, ok);
   assert.equal(bajar.permitido, true, motivos(bajar).join(', '));
@@ -120,7 +120,7 @@ test('ADR-028: el envío de monitor no se toca durante el show', () => {
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -6, valorEsperado: -7,
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
     magnitudPropuesta: -6, magnitudEsperada: -7,
   }], contexto({ sessionState: 'SHOW' }), ok);
   assert.equal(v.permitido, false);
@@ -572,7 +572,7 @@ test('ADR-028: con todo abajo al empezar, la app puede levantar', () => {
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: -88, valorEsperado: -90,
+    valorPropuesto: crudoDeEnvio(-88), valorEsperado: crudoDeEnvio(-90),
     magnitudPropuesta: -88, magnitudEsperada: -90,
   }], contexto(), ok);
   assert.equal(v.permitido, true, motivos(v).join(', '));

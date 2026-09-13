@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { registrarTecho, registrarTechos, olvidarTecho } from '../src/techo-por-ruta.ts';
+import { crudoDeEnvio } from './helpers.ts';
 
 /**
  * **El mapa que el motor consultaba y que nadie llenaba.**
@@ -115,8 +116,12 @@ test('el lazo completo: bajar ancla, y el motor rechaza la vuelta de mas', async
     kind: 'MONITOR_AUX_SEND' as const,
     path: ruta,
     unidad: 'dB',
-    valorPropuesto: 0.8,
-    valorEsperado: 0.7,
+    // **El crudo va atado a la magnitud.** Era 0,8 y 0,7 —números sueltos— y con
+    // la ley del envío medida (ítem 104) eso es +2,8 dB y +0,3 dB, no −5,5 y −8.
+    // `verificarAtadura` lo rechazaba por MAGNITUD_NO_ATADA y el test celebraba un
+    // rechazo que no era el del techo.
+    valorPropuesto: crudoDeEnvio(-5.5),
+    valorEsperado: crudoDeEnvio(-8),
     magnitudPropuesta: -5.5,
     magnitudEsperada: -8,
   };

@@ -1,4 +1,5 @@
 import { canonizarRuta } from './clasificar-ruta.ts';
+import { faderADb, dbAFader } from './conversiones.ts';
 
 /**
  * Tabla de conversión entre las rutas crudas del protocolo y unidades físicas.
@@ -287,6 +288,55 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // puerta, asi que declararla refutada seria afirmar mas de lo medido. Pero
   // apoyarse en ella sabiendo que la misma recta fallo al lado seria peor.
   deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
+
+  /**
+   * El nivel del envío a monitor. **Medido contra un convertidor externo**, ítem
+   * 104 del 2026-09-13.
+   *
+   * Es `VtoLIN` —la curva que la consola sirve en su propio `mixer.html`— y hasta
+   * hoy estaba verificada sólo **contra la pantalla de la consola**, que no es lo
+   * mismo que contra el aire. La 104 barrió `i.9.aux.4.value` con un tono y midió
+   * la salida física del auxiliar con la interfaz: el acuerdo es de **0,007 dB
+   * sobre los primeros 32 dB de atenuación**, y se mantiene dentro de 0,028 dB
+   * hasta el crudo 0,25. Evidencia:
+   * `docs/spikes/SPK-P0.10b-vu2/evidence/ley-del-envio-a-monitor-2026-09-13.txt`.
+   *
+   * **El tramo declarado es el que se midió, y para abajo. Por qué corta en 0,25.**
+   * La corrida siguió midiendo hasta el crudo 0,15 y ahí el residuo se dispara a
+   * 0,146 dB. No es la ley: es una **fuga** de 1 kHz que entra por el camino del
+   * general y se suma a lo que se mide (ítem 105). Pero la fuga es del banco, no de
+   * la tabla, así que lo honesto es declarar hasta donde la medición separó una
+   * cosa de la otra. Por debajo de −32 dB de envío, `aRaw` contesta
+   * `FUERA_DE_RANGO`, que es exactamente lo correcto.
+   *
+   * **Lo que esta entrada NO afirma, y hay que leerlo antes de usarla.** La 104 es
+   * una medición **relativa al crudo 1,0**: un error de escala constante es
+   * invisible por construcción. Que el crudo 0,7647 sea «0 dB de envío» **no está
+   * medido** — sale de `zeroDbPos` del `mixer.html`, o sea de lo que la consola le
+   * muestra al operador.
+   *
+   * Y para los dos usos que tiene esta tabla, eso alcanza, que es el motivo de
+   * declararla `PROBADO` y no dejarla en `INFERIDO`:
+   *
+   * - **atar la magnitud al crudo** (`verificarAtadura`) compara `fromRaw(crudo)`
+   *   contra la magnitud declarada. Las dos salen de la misma ley, así que un
+   *   corrimiento constante se cancela: lo que la guarda impide —declarar −30 dB
+   *   mientras se escribe el recorrido entero— lo impide igual;
+   * - **el techo por ruta** (`techoPorRuta`) registra dónde estaba el envío y no
+   *   deja subir más allá. Es una diferencia contra un valor anterior, y el
+   *   corrimiento también se cancela.
+   *
+   * En los dos casos lo que hace falta es que la **forma** sea la del aparato, y
+   * eso es justo lo que la 104 midió. Lo que sigue sin medirse es el cero
+   * absoluto, y ninguno de los dos usos lo necesita. Si algún día aparece un uso
+   * que sí —«poné el envío en −6 dBu»—, esta entrada no lo sostiene.
+   */
+  medido(
+    'i.N.aux.M.value', 'dB',
+    faderADb, dbAFader,
+    0.25, 1.0,
+    'SPK-P0.10b-vu2 (104)',
+  ),
   // Del manual técnico del firmware 3.5.8328, que confirma las de arriba y
   // agrega estas. No están medidas contra el aparato: son del cliente, igual
   // que las otras de esta familia.
