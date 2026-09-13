@@ -223,9 +223,29 @@ Y con eso se destaparon dos cosas que hacían falta y nadie sabía:
   misma confusión que la guarda existe para cazar. Pasaban porque no podía
   disparar.
 
-Lo que queda del hueco 1 **no es técnico: es de producto.** Falta decidir cuándo
-la aplicación propone bajar un envío a monitor, y eso no está escrito en ningún
-lado. Ver `docs/backlog/hallazgo-la-guarda-de-magnitud-no-podia-disparar.md`.
+**Actualización de la misma fecha: los huecos 1 y 2 están cerrados.**
+
+- **El hueco 1**, con `apps/mobile/src/app/monitor/bajar-envio.service.ts` y la
+  regla `puedeBajarEnvioAMonitor` en `@vse/assistants`, donde se prueba. Es el
+  segundo sitio de producción del repositorio que construye un
+  `CambioPropuesto`, y el centinela que contaba «exactamente uno» lo comprobó el
+  día que nació: pasa el crudo como crudo y los decibeles como magnitud.
+- **El hueco 2 también, y resultó no necesitar lo que esta sección decía.**
+  `techoPorRuta` no hace falta que salga del «historial de la sesión»:
+  `registrarTecho` lo construye **de los cambios mismos** —guarda dónde estaba la
+  ruta la primera vez que la aplicación la bajó, y el primer descenso gana—. El
+  dueño natural de esa memoria es quien baja, y quien baja es ese servicio. El
+  mapa vive ahí y se pasa lleno en cada transacción.
+
+**El hueco 3 sigue abierto**: `acumuladoPorRuta` y `rutasYaTocadas` siguen
+vacíos, así que `acumuladoPorSesion: 4` no acota nada y sólo funciona el
+`porTransaccion: 2`.
+
+**Y lo que falta para que esto se vea: ninguna pantalla llama al servicio.**
+Existe el camino y está probado; falta quién lo dispare. Decirlo es la diferencia
+entre una función y la promesa de una función.
+
+Ver `docs/backlog/hallazgo-la-guarda-de-magnitud-no-podia-disparar.md`.
 
 **2. El techo no se llena.** `techoPorRuta` llega vacío porque hace falta el
 historial de la sesión, que tampoco alimenta `acumuladoPorRuta` ni

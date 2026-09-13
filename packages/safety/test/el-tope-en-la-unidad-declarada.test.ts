@@ -167,8 +167,18 @@ test('ningun sitio de produccion pasa el crudo como si fuera la magnitud', () =>
     }
   }
   // **Centinela**: si el barrido no encuentra nada, este test celebra el
-  // conjunto vacio. Hoy hay exactamente un sitio de produccion que construye
-  // cambios; si aparece otro, esto sube y hay que mirarlo.
-  assert.equal(vistos, 1, 'sitios de produccion que construyen un CambioPropuesto');
+  // conjunto vacio. Si aparece otro sitio, esto sube y hay que mirarlo.
+  //
+  // **1 -> 2 el 2026-09-13**, y el salto es el que ADR-028 esperaba. Ese ADR
+  // declara como su primer hueco que «ningun camino de la aplicacion propone un
+  // cambio de envio a monitor: el unico `CambioPropuesto` que se construye en
+  // produccion en todo el repositorio es `aplicar-ganancia.service.ts`». El
+  // segundo es `apps/mobile/src/app/monitor/bajar-envio.service.ts`, y baja el
+  // envio de un canal a una cuña con la ley que midio el item 104.
+  //
+  // Lo miro, que es lo que este centinela pide: `malos` sigue vacio, o sea que
+  // el sitio nuevo pasa el crudo como crudo y los decibeles como magnitud. La
+  // guarda comprobo al llamador nuevo el dia que nacio.
+  assert.equal(vistos, 2, 'sitios de produccion que construyen un CambioPropuesto');
   assert.deepEqual(malos, [], 'el crudo pasado como magnitud: el defecto de vuelta');
 });
