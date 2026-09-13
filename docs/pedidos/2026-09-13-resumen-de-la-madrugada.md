@@ -314,28 +314,61 @@ servicio, y con eso el hueco 2 también quedó cerrado.
 camino y está probado; falta quién lo dispare. Lo digo porque la diferencia entre
 una función y la promesa de una función es exactamente esa frase.
 
-## El 106, en tercera auditoría y sin correr
+## El 106 corrió: la ley del fader de bus está medida
 
-La ley del fader de bus (`a.N.mix`) es lo que desbloquea P6. El contrato viejo
-—la 99a— declaraba su propio techo: *«esto es autoconsistencia y no
-calibración»*. Ese techo ya no está, así que la medición se rehizo contra el
-convertidor externo.
+Cuatro auditorías antes de tocar la consola. `faderADb` —la curva que la consola
+sirve en su propio `mixer.html`— describe la salida **física** del bus auxiliar
+con **0,010 dB sobre los primeros 42 dB** de atenuación, y con una cota de
+0,14 dB sobre los 55 dB del recorrido, contra un escalón de medidor de 0,333.
 
-**No corrió todavía, y las dos auditorías encontraron bloqueantes cada una.** La
-primera: la corrida no podía terminar —567 s de barrido contra un tono de 300—, y
-la guarda del ecualizador del bus no matcheaba ninguna clave real. La segunda
-encontró el peor, y es de forma: **el arreglo anterior agregó el control bueno y
-no sacó el malo**. El C1 circular seguía vivo setenta líneas más abajo, todavía
-bloqueando la ley, y el contrato tenía el gemelo documental: afirmaba una frase y
-la refutaba veintiocho líneas después.
+**Eso desbloquea P6**, que era el primero de los tres requisitos escritos en
+`decision-bajar-buses-para-cazar-acoples.md`. Faltan los otros dos: la ley de
+`m.mix` —el general, que es otra ruta y otra medición— y **decidir el techo del
+general, que es tuyo**, porque tenés una referencia que la aplicación no: cuánta
+gente hay en la sala.
 
-Ese defecto —el mismo arreglo aplicado en un lugar y no en el otro— es el que más
-me costó en toda la noche, y es el que le pedí que busque en la tercera vuelta.
+### Y L3b falló, que es el hallazgo
+
+El residuo está estructurado: pendiente +0,00146 dB/dB, 26 signos positivos
+contra 12, dos cambios de signo donde se esperarían diecinueve. Estaba declarada
+antes de mirar y es la que decide.
+
+**Y el signo es el opuesto al de la 104**, que midió el envío en este mismo banco:
+allá el residuo era negativo y se explicó por una fuga que **suma**. Acá es
+positivo, y una fuga que suma no puede hacer eso. El candidato que quedaba —una
+fuga en antifase— **lo descarta la propia corrida**: haría falta a −90 dB de la
+referencia, y C2 midió la fuga total en −104,4.
+
+Lo que el hallazgo **no aguanta**: la estructura la cargan los dos puntos más
+bajos, que son también los dos más cercanos al umbral de anulación. Sobre los
+diecisiete de arriba el residuo es plano en ±0,010 dB.
+
+### Y una corroboración que no buscaba
+
+C2 midió la fuga de 1 kHz con el fader del general en 0: **−117,07 dBFS**, el
+ruido del bin, **25,3 dB por debajo** de lo que midió la 104. El ítem 105 había
+dejado una cota —«cayó al menos 30,4 dB»— y otra corrida, con otro propósito y
+otro barrido, la confirma sin estar buscándola.
+
+### Lo que costaron las cuatro auditorías
+
+Cada una encontró un bloqueante, y ninguno era de física:
+
+1. la corrida **no podía terminar** —567 s de barrido contra un tono de 300— y la
+   guarda del ecualizador del bus no matcheaba ninguna clave real;
+2. el **C1 circular seguía vivo** al lado del bueno: el arreglo agregó el control
+   correcto y no sacó el que aborta justo cuando hay hallazgo;
+3. el **punto de referencia nunca se validaba**, así que un tope recortado habría
+   publicado un hallazgo **falso** contra la consola, con la firma exacta que la 94
+   dejó indecidible;
+4. el `process.exit` que agregué al arreglar el anterior **se saltaba la
+   comparación de la pila del supresor**, justo en la corrida que salió mal.
 
 ## Lo que queda abierto
 
 | | |
 |---|---|
+| **El residuo positivo del 106** | por debajo de −42 dB la atenuación real es mayor que la que predice la ley. No es una fuga; qué es, no se sabe |
 | **La 96b** | el bloque de efectos, estéreo de 7 bytes, sin medir |
 | **`m.afs.fmode`** | cuál valor es LIVE, FIXED y LOCK. **Decide si una corrida planta filtros permanentes** |
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |
@@ -344,7 +377,6 @@ me costó en toda la noche, y es el que le pedí que busque en la tercera vuelta
 | **Un `kind`, una unidad** | el ecualizador se puede medir todo lo que quieras y sigue sin poder escribirse. Tres salidas posibles, **las tres decisión tuya** |
 | **77 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer. De ellos, **9 sólo mandan consultas** y no tienen nada que restaurar: el detector es `.enviar(` y no distingue |
 | **46 guiones** | hacen sonar un estímulo sin apagar el supresor del general. Trinquete nuevo |
-| **El ítem 106** | la ley del fader de bus, en tercera auditoría. Sin correr |
 | **La fuga de 1 kHz** | medida: viaja por la salida del general. Falta **un minuto tuyo**: desenchufar el cable de la entrada 1 y repetir la lectura, para separar Scarlett de consola |
 | **Los 4,73 dB de G1** | si el supresor del general explica la diferencia entre la 104 y la 105. Probarlo cuesta filtros plantados: **es decisión tuya** |
 | **El extremo superior del pasa-bajos** | el manual dice 22 kHz; el estímulo no llega |

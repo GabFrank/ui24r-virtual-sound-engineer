@@ -199,7 +199,7 @@ crudo  | desvio vs faderADb | error del instrumento | motivo
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-13. NO ES OTRA CORRIDA.
-# divergencia reconocida: 
+# divergencia reconocida: 0a3cfa1a893e6391
 ================================================================================
 
 La huella de arriba --sha256:6dc0409e400b4b77-- YA NO COINCIDE con el guion de
