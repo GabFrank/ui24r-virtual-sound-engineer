@@ -155,7 +155,12 @@ const e0 = await estadoPorHttpExigido(maquina);
 
 const PREVIO: readonly (readonly [string, number])[] = [
   [`i.${n}.aux.${a}.value`, Number(exigirClave(e0, `i.${n}.aux.${a}.value`))],
-  ['m.mute', Number(exigirClave(e0, 'm.mute'))],
+  // **El general de esta consola NO TIENE MUTE.** Comprobado el 2026-09-13 sobre
+  // el volcado: hay 736 claves con `mute` y ninguna es `m.*`. Sólo existe `m.dim`,
+  // cuya profundidad nadie midió, así que usarlo dejaría una atenuación de tamaño
+  // desconocido justo donde se clasifica por umbrales de 3 y 10 dB.
+  // E1 baja el fader del general a 0, que es −infinito y no admite discusión.
+  ['m.mix', Number(exigirClave(e0, 'm.mix'))],
   [`i.${n}.mute`, Number(exigirClave(e0, `i.${n}.mute`))],
   [`a.${a}.mix`, Number(exigirClave(e0, `a.${a}.mix`))],
   [`a.${a}.gate.enabled`, Number(exigirClave(e0, `a.${a}.gate.enabled`))],
@@ -211,7 +216,7 @@ console.log('=== ESTADO, LEIDO DEL APARATO ===');
 console.log(`   ${e0.size} claves por HTTP`);
 for (const k of [
   `i.${n}.aux.${a}.value`, `i.${n}.aux.${a}.post`, `i.${n}.mute`, `i.${n}.mix`,
-  'm.mute', 'm.mix', 'm.afs.enabled', 'm.afs.fmode',
+  'm.mix', 'm.dim', 'm.afs.enabled', 'm.afs.fmode',
   `a.${a}.mix`, `a.${a}.mute`, `a.${a}.afs.enabled`, `hwoutaux.${a}.src`,
 ]) {
   console.log(`   ${k.padEnd(24)} ${e0.get(k) ?? '(ausente)'}`);
@@ -226,7 +231,13 @@ for (const k of [
   exigir(`i.${n}.aux.${a}.value`, '0',
     'con el envio abierto lo que se mide es el envio y no la fuga');
   exigir(`a.${a}.mute`, '0', 'un bus muteado no deja pasar nada y las cuatro lecturas serian el piso');
-  exigir('m.mute', '0', 'E1 escribe m.mute = 1, y si ya valia 1 no saca nada del camino');
+  {
+    const mix = Number(exigirClave(e0, 'm.mix'));
+    if (!(mix > 0.1)) {
+      throw new Error(`m.mix = ${mix}: el fader del general ya esta abajo, asi que E1 `
+        + 'no sacaria nada del camino y su «queda» seria indetectable.');
+    }
+  }
   exigir(`i.${n}.mute`, '0', 'E2 escribe este mute, y si ya valia 1 no hay tono en ningun lado');
   exigir(`a.${a}.afs.enabled`, '0', 'un supresor en el bus del tono planta notches a mitad de corrida');
   exigir(`hwoutaux.${a}.src`, `a.${a}`, 'la salida fisica tiene que traer ESTE bus');
@@ -255,8 +266,8 @@ for (const k of [
       + 'Lo que se mediria es la suma.');
   }
   console.log('');
-  console.log('   exigido sin escribir: envio en 0, bus y canal sin mutear, general sin');
-  console.log(`   mutear, supresor del bus apagado, hwoutaux.${a}.src = a.${a}, 0 tiras mas`);
+  console.log('   exigido sin escribir: envio en 0, bus y canal sin mutear, fader del general no');
+  console.log(`   abajo, supresor del bus apagado, hwoutaux.${a}.src = a.${a}, 0 tiras mas`);
 }
 
 const L: Record<string, Lectura> = {};
@@ -342,12 +353,12 @@ await conRestauracion(
     L.E0 = await medir('E0', true);
     mostrar('E0  banco de la 104, envio en 0', L.E0);
 
-    t.enviar(codificarSetd('m.mute', 1));
+    t.enviar(codificarSetd('m.mix', 0));
     await new Promise((r) => setTimeout(r, 2000));
     L.E1 = await medir('E1', true);
-    mostrar('E1  general muteado', L.E1);
+    mostrar('E1  fader del general en 0', L.E1);
 
-    t.enviar(codificarSetd('m.mute', 0));
+    t.enviar(codificarSetd('m.mix', previo('m.mix')));
     t.enviar(codificarSetd(`i.${n}.mute`, 1));
     await new Promise((r) => setTimeout(r, 2000));
     L.E2 = await medir('E2', true);
@@ -474,10 +485,11 @@ if (problemas.length > 0) {
     console.log('      esta en el camino del auxiliar, asi que E2 no separa nada y las');
     console.log('      filas que lo usan no valen. Esto manda sobre lo que diga E1.');
   } else if (v1 === 'cae' && v2 === 'cae') {
-    console.log('   => LA FUGA ENTRA POR EL CAMINO DEL GENERAL. Dos candidatos que esta');
-    console.log('      corrida NO separa: diafonia de la entrada 1 a la entrada 2 adentro de');
-    console.log('      la Scarlett, o diafonia del bus general al auxiliar adentro de la');
-    console.log('      consola. Separarlos pide desenchufar el cable de la entrada 1.');
+    console.log('   => LA FUGA VIAJA AGUAS ABAJO DEL FADER DEL GENERAL. Un fader de');
+    console.log('      general es post-suma, asi que E1 no toca el bus interno: queda');
+    console.log('      EXCLUIDA la diafonia del sumador. Lo que sigue sin separarse es si');
+    console.log('      el cruce ocurre adentro de la Scarlett --entrada 1 a entrada 2-- o');
+    console.log('      en la etapa de salida de la consola. Eso pide desenchufar un cable.');
   } else if (v1 === 'queda' && v2 === 'cae') {
     console.log('   => LA FUGA ES DE LA CONSOLA: la tira le llega al bus auxiliar sin pasar');
     console.log('      por el envio. Es una propiedad del aparato, no del banco.');

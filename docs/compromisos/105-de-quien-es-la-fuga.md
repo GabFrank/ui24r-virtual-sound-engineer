@@ -39,7 +39,7 @@ Igual que la 104, y por eso se listan: `a.4.mix = 0,45`,
 Todas leídas por HTTP antes, restauradas por `restaurarClaves()`.
 
 Y se **exige**, sin escribir: `i.9.aux.4.value = 0` al empezar, `a.4.mute = 0`,
-`m.mute = 0`, `i.9.mute = 0`, `hwoutaux.4.src = a.4`, y que ninguna otra tira
+`m.mix` no abajo, `i.9.mute = 0`, `hwoutaux.4.src = a.4`, y que ninguna otra tira
 tenga el envío a este auxiliar abierto.
 
 ## El control positivo, que va ANTES de todo
@@ -72,8 +72,8 @@ una plausibilidad fuerte, no una prueba, y la fila que la usa hereda esa limitac
 | | estado | qué saca del camino |
 |---|---|---|
 | **E0** | banco reproducido, envío en 0 | reproduce el número de la 104 |
-| **E1** | `m.mute = 1` | el general en la entrada 1 de la interfaz — y adentro de la consola **sólo si el mute está antes del sumador, que nadie midió** |
-| **E2** | `m.mute = 0`, `i.9.mute = 1` | la tira, **si C2 dijo que el mute está en ese camino** |
+| **E1** | `m.mix = 0` | el general en la entrada 1 de la interfaz — y adentro de la consola **sólo si el mute está antes del sumador, que nadie midió** |
+| **E2** | `m.mix` restaurado, `i.9.mute = 1` | la tira, **si C2 dijo que el mute está en ese camino** |
 | **E3** | el tono apagado, **con la consola como en E0** | el piso real del bin |
 
 En los cuatro se mide el bin de 1 kHz de la **entrada 2** (el auxiliar) y de la
@@ -90,8 +90,14 @@ está a 7 dB del piso, una caída de más de 7 dB **no puede ocurrir**, la fila
 «cae» es inalcanzable por construcción y el guion está obligado a imprimir
 «queda» diga lo que diga la física.
 
+**El general de esta consola no tiene mute.** Comprobado sobre el volcado el
+2026-09-13: 736 claves con `mute` y ninguna es `m.*`. Sólo existe `m.dim`, cuya
+profundidad nadie midió, así que usarlo dejaría una atenuación de tamaño
+desconocido justo donde se clasifica con umbrales de 3 y 10 dB. **E1 baja el
+fader del general a 0**, que es −∞ y no admite discusión.
+
 **G3 — el testigo del general.** `generalDb` tiene que caer más de 10 dB en E1
-respecto de E0. Es la comprobación de que `m.mute = 1` llegó y de que el bucle
+respecto de E0. Es la comprobación de que la escritura llegó y de que el bucle
 del general desapareció de la entrada 1 — la premisa entera de E1. Ídem para E2.
 
 **G4 — E3 baja al piso.** Por debajo de −110 dBFS, **medido con la consola como
@@ -110,7 +116,7 @@ eso el instrumento no separa una subida de «no cambió».
 
 | E1 | E2 | conclusión |
 |---|---|---|
-| cae | cae | la fuga entra **por el camino del general**. Dos candidatos que esta corrida NO separa: diafonía de la entrada 1 a la entrada 2 adentro de la Scarlett, o diafonía del bus general al auxiliar adentro de la consola. **Y el segundo candidato cuelga de una suposición sin medir**: si `m.mute` fuera un mute de salida post-suma, el bus interno seguiría llevando el tono, E1 no lo eliminaría, y la fila apuntaría sólo al lado analógico. El control que lo decidiría es el mismo truco de C2 aplicado a `m.mute`, y no está en esta corrida |
+| cae | cae | la fuga viaja **aguas abajo del fader del general**. Y acá el cambio de `m.mute` a `m.mix` ayuda en vez de estorbar: un fader de general es **post-suma por construcción**, así que E1 no toca el bus interno, sólo lo que sale de él. Si el nivel cae, la fuga está en la salida del general, su cable, la entrada 1 y lo que se cruce desde ahí — y **queda excluida** la diafonía del sumador interno, que E1 no habría eliminado. Lo que esta corrida sigue sin separar es si el cruce ocurre adentro de la Scarlett o en la etapa de salida de la consola |
 | queda | cae | la fuga es **de la consola**: la tira le llega al bus auxiliar sin pasar por el envío |
 | queda | queda | la fuga es **anterior al mute del canal**. Dos candidatos que esta corrida NO separa: la salida de la interfaz cruzándose a su propia entrada 2, o la etapa de entrada de la consola |
 | cae | queda | **contradictorio**: mutear el canal saca el tono también del general, así que si E1 cae, E2 tiene que caer. Si aparece, es un hallazgo sobre `i.9.mute` y no un veredicto sobre la fuga |
@@ -129,8 +135,8 @@ se declaran inservibles y sólo se informa E1.
 
 ## Aviso para quien la corra
 
-**Mutea la salida general del usuario durante unos 7 segundos.** Es el primer
-guion de esta serie que lo hace. No se corre con público. Nada está conectado a
+**Baja el fader del general del usuario a 0 durante unos 7 segundos.** Es el
+primer guion de esta serie que lo hace. No se corre con público. Nada está conectado a
 ninguna salida física salvo los dos cables del bucle.
 
 **Y abre el envío del canal 10 al auxiliar 5 en 1,0 durante unos 7 segundos**,
@@ -140,9 +146,8 @@ lo avisa por pantalla antes de hacerlo. Durante toda la corrida —unos 48 s— 
 fader de ese bus queda en 0,45 donde el usuario lo tenía en 0: es el banco de la
 104 y no hay forma de medir sin eso.
 
-**Hace falta que el general y el canal 10 estén sin mutear para arrancar.** El
-guion se niega a correr si no, porque con el general ya muteado E1 no saca nada
-del camino y el falso «queda» sería indetectable. Si la consola está en reposo con
-el general muteado, hay que desmutearlo a mano antes.
+**Hace falta que el fader del general esté arriba y el canal 10 sin mutear.** El
+guion se niega a correr si no, porque con el general ya abajo E1 no saca nada del
+camino y el falso «queda» sería indetectable.
 
 **No se toca**: la instantánea «Alma caninde», la fantasma del canal 9.
