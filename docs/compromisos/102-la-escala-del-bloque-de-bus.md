@@ -22,9 +22,22 @@ La **99b** ancló la escala del medidor **de canal** a un instrumento externo
 > trama, tienen otro paso, y cuya escala en dB `protocol-spec` §4.4 declara **no
 > medida** sobre esos bloques.»*
 
-**Esta corrida cierra esa mitad para el bloque de auxiliar.** Si el paso resulta
-ser el mismo 0,333401 dB, las cifras en dB de la 94 quedan en pie. Si no, la 94
-queda tocada y hay que decir en cuánto.
+**Esta corrida cierra esa mitad para el bloque de auxiliar 5. Y la 94 leyó el
+auxiliar 3.**
+
+Eso hay que decirlo primero, porque la primera versión de este contrato afirmaba
+que «las cifras de la 94 quedan en pie» sin mencionar que está midiendo **otro
+bus**. La 94 leyó `decodificarVuBuses(...).auxiliares[2].pre` —el auxiliar 3— y
+escribió ella misma: *«No prueba nada sobre los otros nueve auxiliares. Que los
+diez compartan ley es plausible y no está medido.»* Hacer la extrapolación inversa
+sin declararla sería el mismo error al revés.
+
+El auxiliar 5 es el único cableado a la interfaz, así que no hay elección de qué
+medir. **Lo que sí se puede es cerrar el salto midiendo en vez de suponerlo**, y
+cuesta dos minutos: se barre **también** el envío al auxiliar 3 por los mismos
+crudos y se comprueba que su byte `pre` dé el mismo. Si coinciden, la escala del
+auxiliar 3 queda anclada al instrumento externo **por transitividad** y ahí sí la
+94 queda en pie. Eso es **B7**.
 
 ## Qué se barre, y por qué ése y no otro
 
@@ -45,9 +58,13 @@ interfaz sin tocar el medidor. El reconocimiento del 2026-09-13 midió el camino
 
 | | |
 |---|---|
-| Envío en 0,75, fader del auxiliar en unidad | `pre` = `post` = **−47,33 dB** |
+| Envío en 0,75, fader del auxiliar en **el crudo 0,7647** — la unidad de *ganancia*, 0 dB, **no** el crudo 1,0, que son +10 | `pre` = `post` = **−47,33 dB** |
 | Lo que ve la interfaz | **−8,55 dBFS**, con **107,3 dB** de margen en el bin |
-| Ganancia de cadena hasta la interfaz | **38,8 dB** |
+| Ganancia de cadena desde `post` hasta la interfaz | **38,8 dB** |
+
+Esa distinción entre «unidad» y «crudo 1,0» no es pedantería: confundirlas son
+**diez decibeles** en toda la aritmética de niveles, y es exactamente el error que
+costó la primera corrida de la 99b.
 
 O sea que el auxiliar llega a la interfaz **veinte decibeles más caliente** que el
 general. Sin bajarlo, subir el envío recorta.
@@ -87,14 +104,47 @@ los bytes 240 a 255 informan posiciones mayores que 1.
 |---|---|---|
 | **B1** | **El medidor del canal no se mueve** más de 0,667 dB en todo el barrido | Que se mueva: el envío no está donde este proyecto cree, o se movió la fuente |
 | **B2** | **La referencia interna de la interfaz no se mueve** más de 0,2 dB | Que se mueva: cambió el camino de reproducción |
-| **B3** | **`post` sigue a `pre`** dentro de 0,667 dB en todo el barrido | Que no: entre los dos hay algo que no es una ganancia estática, y el fader del auxiliar estuvo quieto todo el tiempo |
+| **B3** | **`post` sigue a `pre`** dentro de 0,667 dB **en los puntos donde los dos bytes están en la ventana**, medido como el **rango** de `pre − post` y no como la distancia a un punto elegido | Que no: entre los dos hay algo que no es una ganancia estática |
 | **B4** | **La atenuación del byte `pre` y la de la salida real coinciden** dentro de 0,667 dB, en la ventana | Que difieran. **El paso del bloque de auxiliar no es el del canal, y las cifras en dB de la 94 quedan tocadas** |
 | **B5** | **El paso del bloque de auxiliar es 0,333401 dB**: la recta de bytes contra dB reales, por mínimos cuadrados con la ordenada libre sobre los puntos de la ventana, tiene esa pendiente dentro del **1 %** | Otra pendiente. El bloque de bus tiene su propia escala y **hay que rehacer las cifras de la 94 y de la 96b** |
 | **B6** | **Ida y vuelta.** El mismo crudo da la misma atenuación bajando y subiendo, dentro de 0,667 dB | Histéresis o falta de asentamiento |
 
-**B5 queda declarada subordinada a B4 por adelantado**, igual que la 99b: con un
-tramo mayor a 33,4 dB, B5 no puede fallar si B4 pasa. Su valor es publicar el
-**rango implicado** —`paso / VU_ESCALA`— para contrastarlo contra el 80 declarado.
+**B5 NO es subordinada a B4, y la primera versión de este contrato decía que sí.**
+La cuenta, que no había hecho: si B4 pasa, cada punto queda a menos de 0,667 dB de
+la recta exacta, y por mínimos cuadrados sobre este barrido eso **todavía admite
+un error de pendiente de unos 5 %** — cinco veces el 1 % que B5 exige. Para que la
+subordinación fuera cierta harían falta ~560 bytes de rango, o sea 187 dB, y la
+ventana entera son 223.
+
+Así que **B5 es independiente, y su modo de falla propio es el residuo
+correlacionado con el byte** — que es exactamente el que la 94 midió: catorce
+residuos del mismo signo creciendo hacia el piso. **Si B4 pasa y B5 falla, lo que
+hay es un residuo estructurado, y eso es un hallazgo, no una contradicción.** Gana
+B5, porque una cota puntual como B4 no ve la estructura.
+
+### Y dos expectativas más, que el auditor levantó
+
+| # | Predicción | Qué la falsaría |
+|---|---|---|
+| **B7** | **El auxiliar 3 y el 5 dan el mismo byte `pre` para el mismo envío**, dentro de 0,667 dB de rango | Que no: los dos buses no comparten escala, lo medido en el 5 no dice nada del 3, y **la 94 sigue sin rescatarse** |
+| **B8** | **El punto de arranque repetido al cierre** cae dentro de **0,2 dB** en la salida real y de 0,667 dB en el medidor | Que no: se movió la perilla de entrada, el cable o el conversor — o el medidor tiene histéresis, que sería un hallazgo sobre el instrumento bajo prueba |
+
+**B8 va aparte de B6 porque B6 no sirve para esto**: usa umbral 0,667, toma el
+máximo sobre todos los crudos —así que el arranque queda diluido entre los
+ruidosos de abajo— y compara sólo la salida real, nunca el medidor.
+
+### Y lo que se informa sin puntuar
+
+**Los puntos que caen debajo de la ventana.** Ahí el byte está aplastado contra el
+piso y la salida real sigue viva: es el régimen exacto donde la 94 vio un residuo
+unilateral y creciente y **no pudo decidir si era el piso del medidor o una
+diferencia de ley**. Con la interfaz mirando, la pregunta tiene respuesta — si el
+residuo es el piso, tiene que crecer exactamente lo que el byte deja de bajar. Se
+agregaron crudos a propósito para poblar esa zona, y **se informa sin umbral
+porque no estaba declarado antes de medir**.
+
+**Y el piso del medidor del bus se mide en esta corrida**, con el envío en cero.
+De ahí sale el 16 de la ventana, que hasta hoy era una afirmación heredada.
 
 ## Lo que esta corrida NO va a poder decir
 
@@ -109,7 +159,13 @@ tramo mayor a 33,4 dB, B5 no puede fallar si B4 pasa. Su valor es publicar el
   toca.
 - **Nada sobre un error de escala constante**, invisible por construcción en una
   medición relativa al arranque.
-- **Un auxiliar, un canal, una frecuencia, un nivel de fuente.**
+- **Dos auxiliares, un canal, una frecuencia, un nivel de fuente.** B7 ancla el
+  auxiliar 3 al 5; de los otros ocho no se dice nada.
+- **B3 no puede hablar de todo el barrido, por construcción.** `post` está unos
+  14,7 dB por debajo de `pre` —es el atenuador fijo— así que toca su piso 14,7 dB
+  antes, y la parte baja de la ventana queda sin control de `post`. Es una
+  limitación del banco, no un resultado: bajar más el fader recorta menos pero
+  ciega más a B3, y subirlo recorta.
 - **Y un acuerdo dentro del umbral es una cota, no una identidad.**
 
 ## Restauración
