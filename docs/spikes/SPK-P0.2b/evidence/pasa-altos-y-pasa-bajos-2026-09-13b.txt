@@ -1,0 +1,55 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T06:58:17.085Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/pasa-altos-y-pasa-bajos.ts 10 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/pasa-altos-y-pasa-bajos.ts sha256:5b171fe24f440c3a
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 103 — EL PASA-ALTOS Y EL PASA-BAJOS, MEDIDOS CONTRA EL FILTRO ===
+canal 10 (i.9), multitono de 104 tonos de 40.0 a 15343 Hz
+
+=== ESTADO, LEIDO DEL APARATO ===
+   i.9.eq.hpf.freq        0
+   i.9.eq.hpf.slope       0
+   i.9.eq.lpf.freq        1
+   i.9.eq.lpf.slope       0
+   i.9.eq.bypass          0
+   i.9.eq.easy            0
+   i.9.eq.prmod           0
+   i.9.eq.b1.gain         0.5
+   i.9.eq.b2.gain         0.5
+   i.9.eq.b3.gain         0.5
+   i.9.eq.b4.gain         0.5
+   i.9.eq.b5.gain         0.5
+   i.9.mix                0.7647058824
+   hw.9.gain              0.2508445026
+   i.9.gate.thresh        0
+   m.mix                  0.7643020595
+   m.gate.enabled         0
+   m.dyn.bypass           0
+   m.eq.bypass            0
+   m.eq.hpf.l             0
+   m.eq.lpf.l             1
+   m.delayL               0
+   m.afs.enabled          1
+   m.afs.fmode            1
+   las cinco bandas del ecualizador estan en 0,5 (neutro), comprobado
+
+neutralizado lo dependiente del nivel: compresor, puerta y de-esser del
+canal, compresor del general, y el supresor --que con un tono sostenido
+planta filtros, que es su comportamiento declarado en modo FIXED.
+estimulo: pico -15 dBFS, -46.2 dBFS por tono, dura 600 s
+
+linea base con los dos filtros en su extremo: se aparta 0.83 dB de su media | pico -17.8 dBFS
+   Que esos extremos sean «fuera del camino» es lo que esto comprueba.
+
+control positivo: con el pasa-altos en su extremo, el tono de 40 Hz cae 53.8 dB
+
+=== EL PASA-ALTOS ===
+ crudo |    codo    | las tres leyes en disputa          | banda de paso
+  0.25 |     115 Hz | recta   115 | exp400    42 | exp1000    53 | banda  -0.00 dB (disp 0.007, margen 61) | margen del codo    8
+  0.40 |     330 Hz | recta   172 | exp400    66 | exp1000    96 | banda   0.00 dB (disp 0.008, margen 58) | margen del codo    7
+  0.55 |     945 Hz | recta   229 | exp400   104 | exp1000   172 | banda  -0.00 dB (disp 0.005, margen 61) | margen del codo   -1
+  0.70 |    1005 Hz | recta   286 | exp400   163 | exp1000   309 | banda  -0.00 dB (disp 0.006, margen 60) | margen del codo   -9

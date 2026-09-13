@@ -57,7 +57,9 @@ be set»*. El modo era FIXED (`m.afs.fmode = 1`).
 es `clearall` con el supresor **encendido** —`clearfixed` no hace nada, y
 `clearall` con el supresor apagado tampoco, las cuatro combinaciones están
 medidas en
-[`borrar-filtros-plantados-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/borrar-filtros-plantados-2026-09-13.txt)—
+[`borrar-filtros-plantados-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/borrar-filtros-plantados-2026-09-13.txt),
+y la limpieza repetida en
+[`limpiar-filtros-repetido-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/limpiar-filtros-repetido-2026-09-13.txt)—
 pero `clearall` **borra todo, no sólo lo plantado**. Al repetirlo para sacar el
 último de 1 kHz se llevó también:
 
@@ -83,10 +85,23 @@ toque `afs.enabled` tiene que **apagar la fuente primero**.
 
 ## Lo que costó esta vez
 
-La corrida de la 103 quedó **contaminada** y se descarta: sus escrituras y las
+La corrida de la 103 quedó **contaminada** y se descarta
+—[`pasa-altos-y-pasa-bajos-2026-09-13.txt`](../spikes/SPK-P0.2b/evidence/pasa-altos-y-pasa-bajos-2026-09-13.txt),
+y la corrida limpia que la reemplaza es
+[`-2026-09-13b.txt`](../spikes/SPK-P0.2b/evidence/pasa-altos-y-pasa-bajos-2026-09-13b.txt)—: sus escrituras y las
 mías se intercalaron, y no hay forma de saber qué punto quedó medido con qué
 estado. Se rehace entera. La consola se restaura y se comprueba por HTTP, como
 siempre.
 
 **Y la corrida contaminada se archiva igual**, con esta nota: una corrida que se
 descarta también es evidencia de qué pasó.
+
+**Dos cosas suyas NO están contaminadas y se conservan:**
+
+1. **H6 detectó la contaminación**, con 7,010 dB rms de desviación en la línea
+   base de cierre contra un umbral de 0,05. El control que un auditor había hecho
+   agregar cazó exactamente lo que tenía que cazar.
+2. **El pasa-bajos se anuló entero por su banda de paso**, que en este banco está
+   en los graves con ~8,2 dB de margen: ahí vive el zumbido de red. Eso pasó antes
+   de la contaminación y es un hallazgo del banco, no del incidente. Por eso la
+   corrida limpia toma la banda de paso del pasa-bajos entre 200 y 800 Hz.
