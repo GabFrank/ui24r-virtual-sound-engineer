@@ -411,7 +411,8 @@ recorrido, y ahora está medido en dos faders.
 | | |
 |---|---|
 | **El residuo positivo, ahora en dos faders** | la forma ajusta con una constante restada a la ganancia lineal, del orden de 2⁻¹⁶ pero no igual en los dos. Candidato, no medición |
-| **El techo del general** | **decisión tuya.** Es lo único que le falta a P6 |
+| **El techo del general** | **decisión tuya, y es lo único que le falta a P6.** ADR-029 la plantea como cuatro opciones concretas |
+| **P6, implementado** | el ADR decide y el código no cambió: abrir `a.N.mix` pide un `kind` propio en el dominio, porque sus límites son más apretados que los del envío |
 | **La 96b** | el bloque de efectos, estéreo de 7 bytes, sin medir |
 | **`m.afs.fmode`** | cuál valor es LIVE, FIXED y LOCK. **Decide si una corrida planta filtros permanentes** |
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |

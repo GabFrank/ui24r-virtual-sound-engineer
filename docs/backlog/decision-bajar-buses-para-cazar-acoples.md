@@ -24,6 +24,14 @@ merece pensarse aparte: bajar el general durante un soundcheck es distinto de
 bajarlo con gente adelante, y el usuario ya dejó escrito que el modo live es una
 función que hoy no existe.
 
+## Estado al 2026-09-13: dos de tres
+
+Los dos requisitos de medición están cumplidos —ítems **106** y **107**, los dos
+contra un convertidor externo— y la decisión quedó registrada en
+[`ADR-029`](../adr/ADR-029-bajar-los-buses-para-cazar-acoples.md), en estado
+**parcial**: el auxiliar decidido, el general esperando **una decisión tuya sobre
+su techo**, que el ADR plantea como cuatro opciones concretas.
+
 ## Lo que hace falta antes
 
 1. **La ley de `a.N.mix` y de `m.mix`.** Son faders de bus, y la ley del fader
