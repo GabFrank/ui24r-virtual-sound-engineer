@@ -1,0 +1,198 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T08:16:13.781Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-del-envio-a-monitor.ts 10 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-del-envio-a-monitor.ts sha256:6dc0409e400b4b77
+# la huella cubre 6 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 104 — LA LEY DEL ENVIO A MONITOR, CONTRA LA SALIDA REAL ===
+canal 10 (i.9) -> auxiliar 5 (a.4) -> entrada 2 de la interfaz
+escalon declarado: 0.333401 dB | tolerancia 0.6668 dB
+ventana util: bytes 16..239 = -74.67 .. -0.32 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.aux.4.value          0
+   i.9.aux.4.post           0
+   i.9.aux.4.postproc       1
+   a.4.mix                  0
+   a.4.mute                 0
+   a.4.gate.enabled         1
+   a.4.gate.thresh          0
+   a.4.dyn.bypass           0
+   a.4.dyn.ratio            1
+   a.4.eq.bypass            0
+   a.4.afs.enabled          0
+   i.9.mix                  0.7647058824
+   hw.9.gain                0.2508445026
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   i.9.deesser.enabled      0
+   hwoutaux.4.src           a.4
+
+=== QUIEN MAS ALIMENTA EL AUXILIAR 5 ===
+   0 tiras con el envio abierto ademas del canal 10
+   supresor del auxiliar: apagado (a.4.afs.enabled = 0), comprobado
+
+   ecualizador del auxiliar: 0 de 31 claves fuera del centro | eq.prmod = 0
+   hwoutaux.4.src, post, postproc, mute del bus y del canal: comprobados
+
+   El envio es PRE-FADER (i.9.aux.4.post = 0),
+   asi que el fader del canal no lo toca y el medidor del canal sirve de
+   testigo: tiene que quedarse quieto durante todo el barrido.
+
+=== LO QUE SE NEUTRALIZA ===
+   puerta del auxiliar: estaba en 1, se apaga
+   compresor del auxiliar: bypass estaba en 0, se puentea
+   compresor, puerta y de-esser del canal: puenteados
+   fader del auxiliar puesto en 0.45 como ATENUADOR FIJO:
+   baja lo que llega a la interfaz sin tocar `pre`, que esta antes de el.
+   Es una ganancia estatica: se cancela en toda atenuacion relativa al arranque.
+
+=== EL PISO DEL MEDIDOR, MEDIDO Y NO HEREDADO ===
+   con el envio en 0: pre -Infinity dB = byte -Infinity | la interfaz ve -91.77 dBFS
+
+=== EL RECORRIDO, CALCULADO ANTES DE BARRER ===
+   arranque: pre -36.66 dB = byte 130
+   interfaz: -12.68 dBFS, pico -12.65, margen 103.5 dB
+   hueco del medidor hasta el piso de la ventana: 38.0 dB
+   el crudo mas bajo (0.1) deja pre en -Infinity dB = byte -Infinity
+   RECORRIDO QUE LOS CRUDOS CUBREN: 38.0 dB  <-- el que decide
+
+crudo  | pre    | byte | post   | real   | ref    | at.pre | at.real | pre-real | canal  | margen | n
+  1.00 | -36.66 |  130 | -51.33 | -12.68 | -15.00 |   0.00 |    0.00 |     0.00 | -46.66 |    104 |  75
+  0.95 | -39.30 |  122 | -53.98 | -15.16 | -15.00 |   2.64 |    2.48 |     0.16 | -46.66 |    101 |  80
+  0.90 | -41.33 |  116 | -56.00 | -17.39 | -15.00 |   4.67 |    4.71 |    -0.04 | -46.66 |     98 |  78
+  0.85 | -43.33 |  110 | -58.00 | -19.43 | -15.00 |   6.67 |    6.75 |    -0.09 | -46.66 |     98 |  79
+  0.82 | -44.33 |  107 | -59.00 | -20.46 | -15.00 |   7.67 |    7.77 |    -0.11 | -46.66 |     96 |  77
+  0.80 | -45.33 |  104 | -60.00 | -21.36 | -15.00 |   8.67 |    8.68 |    -0.01 | -46.66 |     94 |  80
+  0.75 | -47.33 |   98 | -62.00 | -23.23 | -15.00 |  10.67 |   10.55 |     0.12 | -46.66 |     94 |  77
+  0.70 | -48.99 |   93 | -63.66 | -25.12 | -15.00 |  12.34 |   12.44 |    -0.10 | -46.66 |     94 |  78
+  0.65 | -50.99 |   87 | -65.66 | -27.10 | -15.00 |  14.34 |   14.42 |    -0.08 | -46.66 |     91 |  79
+  0.61 | -52.66 |   82 | -67.33 | -28.62 | -15.00 |  16.00 |   15.94 |     0.07 | -46.66 |     89 |  80
+  0.60 | -53.33 |   80 | -68.00 | -29.24 | -15.00 |  16.67 |   16.56 |     0.11 | -46.66 |     89 |  79
+  0.55 | -55.66 |   73 | -70.33 | -31.62 | -15.00 |  19.00 |   18.93 |     0.07 | -46.66 |     86 |  80
+  0.50 | -58.33 |   65 | -73.00 | -34.29 | -15.00 |  21.67 |   21.61 |     0.06 | -46.66 |     83 |  78
+  0.45 | -61.33 |   56 | -76.00 | -37.35 | -15.00 |  24.67 |   24.67 |     0.01 | -46.66 |     80 |  78
+  0.40 | -65.00 |   45 | -79.67 | -40.85 | -15.00 |  28.34 |   28.17 |     0.17 | -46.66 |     76 |  77
+  0.35 | -69.00 |   33 | -Infinity | -44.88 | -15.00 |  32.34 |   32.20 |     0.14 | -46.66 |     71 |  78
+  0.30 | -73.67 |   19 | -Infinity | -49.50 | -15.00 |  37.01 |   36.82 |     0.19 | -46.66 |     67 |  78
+  0.29 | -74.67 |   16 | -Infinity | -50.51 | -15.00 |  38.01 |   37.83 |     0.18 | -46.66 |     67 |  78
+  0.28 | -75.67 |   13 | -Infinity | -51.54 | -15.00 |  39.01 |   38.86 |     0.15 | -46.66 |     67 |  77  [fuera]
+  0.27 | -76.67 |   10 | -Infinity | -52.59 | -15.00 |  40.01 |   39.91 |     0.09 | -46.66 |     64 |  78  [fuera]
+  0.26 | -77.67 |    7 | -Infinity | -53.68 | -15.00 |  41.01 |   41.00 |     0.00 | -46.66 |     64 |  77  [fuera]
+  0.25 | -78.67 |    4 | -Infinity | -54.79 | -15.00 |  42.01 |   42.11 |    -0.10 | -46.66 |     61 |  78  [fuera]
+  0.20 | -Infinity | -Infinity | -Infinity | -60.84 | -15.00 | Infinity |   48.16 | Infinity | -46.66 |     57 |  77  [fuera]
+  0.15 | -Infinity | -Infinity | -Infinity | -67.61 | -15.00 | Infinity |   54.93 | Infinity | -46.66 |     49 |  77  [fuera]
+  0.10 | -Infinity | -Infinity | -Infinity | -74.88 | -15.00 | Infinity |   62.20 | Infinity | -46.66 |     42 |  79  [fuera]   ANULADO: margen de 42.3 dB: el instrumento erraria 0.07 dB
+  0.10 | -Infinity | -Infinity | -Infinity | -75.07 | -15.00 | Infinity |   62.39 | Infinity | -46.66 |     43 |  79  [fuera]   ANULADO: margen de 43.1 dB: el instrumento erraria 0.06 dB
+  0.15 | -Infinity | -Infinity | -Infinity | -67.60 | -15.00 | Infinity |   54.92 | Infinity | -46.66 |     51 |  78  [fuera]
+  0.20 | -Infinity | -Infinity | -Infinity | -60.84 | -15.00 | Infinity |   48.16 | Infinity | -46.66 |     56 |  79  [fuera]
+  0.25 | -78.68 |    4 | -Infinity | -54.79 | -15.00 |  42.02 |   42.11 |    -0.09 | -46.66 |     61 |  79  [fuera]
+  0.26 | -77.67 |    7 | -Infinity | -53.68 | -15.00 |  41.01 |   41.00 |     0.01 | -46.66 |     66 |  77  [fuera]
+  0.27 | -76.67 |   10 | -Infinity | -52.59 | -15.00 |  40.01 |   39.91 |     0.09 | -46.66 |     63 |  77  [fuera]
+  0.28 | -75.67 |   13 | -Infinity | -51.53 | -15.00 |  39.01 |   38.85 |     0.16 | -46.66 |     65 |  78  [fuera]
+  0.29 | -74.67 |   16 | -Infinity | -50.51 | -15.00 |  38.01 |   37.83 |     0.18 | -46.66 |     65 |  77
+  0.30 | -73.67 |   19 | -Infinity | -49.50 | -15.00 |  37.01 |   36.82 |     0.19 | -46.66 |     68 |  77
+  0.35 | -69.00 |   33 | -Infinity | -44.88 | -15.00 |  32.34 |   32.20 |     0.14 | -46.66 |     72 |  79
+  0.40 | -65.00 |   45 | -79.67 | -40.85 | -15.00 |  28.34 |   28.17 |     0.17 | -46.66 |     75 |  78
+  0.45 | -61.33 |   56 | -76.00 | -37.35 | -15.00 |  24.67 |   24.67 |     0.01 | -46.66 |     79 |  82
+  0.50 | -58.33 |   65 | -73.00 | -34.29 | -15.00 |  21.67 |   21.61 |     0.06 | -46.66 |     82 |  78
+  0.55 | -55.66 |   73 | -70.33 | -31.61 | -15.00 |  19.00 |   18.93 |     0.07 | -46.66 |     84 |  78
+  0.60 | -53.33 |   80 | -68.00 | -29.24 | -15.00 |  16.67 |   16.56 |     0.11 | -46.66 |     88 |  80
+  0.61 | -52.66 |   82 | -67.33 | -28.62 | -15.00 |  16.00 |   15.94 |     0.07 | -46.66 |     88 |  78
+  0.65 | -50.99 |   87 | -65.66 | -27.10 | -15.00 |  14.34 |   14.42 |    -0.08 | -46.66 |     88 |  78
+  0.70 | -48.99 |   93 | -63.66 | -25.12 | -15.00 |  12.34 |   12.44 |    -0.10 | -46.66 |     95 |  80
+  0.75 | -47.33 |   98 | -62.00 | -23.23 | -15.00 |  10.67 |   10.55 |     0.12 | -46.66 |     93 |  78
+  0.80 | -45.33 |  104 | -60.00 | -21.36 | -15.00 |   8.67 |    8.67 |    -0.01 | -46.66 |     95 |  78
+  0.82 | -44.33 |  107 | -59.00 | -20.45 | -15.00 |   7.67 |    7.77 |    -0.11 | -46.66 |     96 |  78
+  0.85 | -43.33 |  110 | -58.00 | -19.43 | -15.00 |   6.67 |    6.75 |    -0.08 | -46.66 |     96 |  81
+  0.90 | -41.33 |  116 | -56.00 | -17.39 | -15.00 |   4.67 |    4.71 |    -0.04 | -46.66 |     99 |  83
+  0.95 | -39.32 |  122 | -53.99 | -15.16 | -15.00 |   2.66 |    2.48 |     0.18 | -46.66 |    102 |  81
+  1.00 | -36.66 |  130 | -51.33 | -12.68 | -15.00 |   0.00 |   -0.00 |     0.00 | -46.66 |    104 |  78
+
+=== VEREDICTOS, contra el contrato del item 104 ===
+   48 puntos utiles de 50 | 36 en la ventana
+     crudo 0.1 baja: margen de 42.3 dB: el instrumento erraria 0.07 dB
+     crudo 0.1 sube: margen de 43.1 dB: el instrumento erraria 0.06 dB
+
+L1 deriva del medidor del canal: 0.00 dB
+   PASA. La fuente no se movio en todo el barrido.
+   **L1 NO prueba que el envio sea pre-fader**: barrer un envio no mueve el
+   medidor del canal del que se deriva, este donde este la derivacion. Que
+   `post = 0` se lee del aparato y se exige, no se deduce de aca.
+
+L2 deriva de la referencia interna: 0.00 dB
+   PASA. **Y vigila la computadora, no el camino de captura:** la entrada 3
+   es un retorno interno de la interfaz. El camino analogico lo vigila L7.
+
+L3 la salida real contra faderADb: desvio maximo 0.14 dB en el crudo 0.15
+   24 puntos sobre 54.9 dB de recorrido
+   signo: 0 positivas, 3 negativas, 21 dentro de 0,02 dB
+   PASA. **Y un PASA de L3 con el maximo por encima de 0,10 dB no es un
+   acuerdo: es el residuo de la 94 dentro de la cota.** Lo que decide es L3b.
+
+L3b el residuo contra faderADb: pendiente -0.00121 dB/dB sobre 23 puntos
+   signo: 0 positivos, 23 negativos, 0 cambios de signo (con residuos independientes se esperarian ~12)
+   FALLA. **El residuo ESTA estructurado**, y eso es un hallazgo, no una
+   contradiccion con L3: una cota puntual no ve la estructura. Es la firma
+   que la medicion 94 declaro indecidible, ahora en un banco sin piso de
+   medidor que la explique. **Gana L3b.**
+   L3b es INDEPENDIENTE de L3 y se declaro antes de mirar: su modo de
+   falla propio es el residuo correlacionado con el crudo, que una cota
+   de maximo absoluto no puede ver.
+
+L4 recorrido medido: 54.9 dB (la 94 tuvo 27,87)
+   PASA.
+   **Y L4 casi no puede fallar, declarado aca:** la regla que anula por
+   debajo de 45 dB de margen, con el piso del bin de este banco, garantiza
+   puntos utiles hasta unos −73 dBFS, o sea unos 60 dB de tramo. L4 no es
+   una prediccion sobre la consola: es un control de que el banco no se
+   degrado.
+
+L5 el crudo escrito contra el releido: diferencia maxima 0.00e+0 en el crudo NaN, que son 0.0000 dB
+   PASA. Si la consola redondea el crudo del envio, redondea menos de
+   0,03 dB, que es la decima parte del umbral de L3. **Es una cota, no una
+   identidad.**
+   Dos de los crudos barridos estan fuera de la rejilla de centesimos a
+   proposito: sin ellos esta expectativa no podria fallar.
+
+L6 histeresis en la salida real: 0.01 dB en el crudo 0.15
+   PASA.
+
+L7 ganancia analogica de captura: el arranque repetido difiere 0.00 dB
+   PASA.
+
+
+=== LOS PUNTOS ANULADOS, QUE NO SE PUNTUAN PERO SE INFORMAN ===
+crudo  | desvio vs faderADb | error del instrumento | motivo
+  0.10 |              -0.65 |                 0.066 | margen de 42.3 dB: el instrumento erraria 0.07 dB
+   Si el desvio supera al error del instrumento, el punto esta
+   descartado por HIGIENE y no por ruido, y eso es parte del resultado.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   **Nada sobre el cero absoluto.** Es una medicion RELATIVA al crudo 1,0, asi
+   que un error de escala constante es invisible por construccion. Que el crudo
+   0,7647 sea «0 dB de envio» no se mide aca: la 94 ya habia declarado esa
+   prediccion infalsable desde el diseño.
+   Nada sobre la ley INVERSA: esto mide crudo -> dB, y `dbAFader` es lo mismo
+   invertido SOLO si la funcion es la que se midio.
+   Un auxiliar, un canal, una frecuencia, un nivel de fuente.
+   Y un acuerdo dentro del umbral es una COTA, no una identidad.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.aux.4.value          esperado 0              leido 0
+   a.4.mix                  esperado 0              leido 0
+   a.4.gate.enabled         esperado 1              leido 1
+   a.4.dyn.bypass           esperado 0              leido 0
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   Todo restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

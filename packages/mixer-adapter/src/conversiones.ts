@@ -18,6 +18,17 @@
  * con tonos y bucle físico, y no está medido. Lo que estas funciones garantizan
  * es que **nuestra lectura coincide con la que ve el operador en la consola**,
  * que es lo que hacía falta para que los dos números se puedan comparar.
+ *
+ * **Actualización del 2026-09-13, ítem 104.** La FORMA de la curva del fader ya
+ * no está verificada sólo contra la pantalla: se barrió el envío a auxiliar de
+ * un canal contra un convertidor externo y `VtoLIN` describe la salida física
+ * con **0,007 dB sobre los primeros 32 dB de atenuación**. Sigue sin medirse el
+ * cero absoluto —la corrida es relativa al crudo 1,0, así que un error de escala
+ * constante es invisible por construcción— y sigue sin medirse que 0,764706 sea
+ * 0 dB físicos. Lo que se cayó es la duda sobre la curva; lo que queda en pie es
+ * la duda sobre dónde está su cero.
+ * Evidencia: `docs/spikes/SPK-P0.10b-vu2/evidence/ley-del-envio-a-monitor-2026-09-13.txt`
+ * y `docs/backlog/hallazgo-el-residuo-de-la-94-no-es-la-ley.md`.
  */
 
 /**
