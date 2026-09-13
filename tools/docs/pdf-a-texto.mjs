@@ -213,6 +213,63 @@ function correr29(token) {
  */
 const YA_LIMPIO = /^[A-Za-z][A-Za-z'-]*[.,;:!?)]?$/;
 
+/**
+ * La **otra** fuente corrida: números y notación, hacia el otro lado.
+ *
+ * En el manual de la Ui24R conviven dos fuentes en subconjunto con corrimientos
+ * **opuestos**. Una pone las letras 29 abajo —`7KH` es `The`— y la otra pone los
+ * números 29 **arriba**: `N` es `1`, `K` es `.`, `W` es `:`, `M`…`V` son `0`…`9`.
+ * Así, `NKNW` es `1.1:`, `OMNT` es `2017`, y en la tabla de especificaciones
+ * `20Hz-20kHz HLJ MKR dB` es **`20Hz-20kHz +/- 0.5 dB`**.
+ *
+ * **Esto no es cosmético: la tabla que compara el manual contra `raw-map.ts` se
+ * construyó leyendo este texto.** Un rango mal leído entra al proyecto como un
+ * dato del fabricante.
+ *
+ * **El peligro de corregirlo, y cómo se evita.** Las letras `M`…`V` mapean a los
+ * dígitos, así que una palabra en mayúsculas hecha sólo con ellas se destruiría:
+ * `OUTPUT` daría `287387`. Por eso el corrimiento **no se aplica token por
+ * token**: se aplica **por renglón**, y sólo en los renglones donde hay al menos
+ * un token *inequívoco* — uno que contenga `K` o `W`, que son el punto y los dos
+ * puntos, y que al correrlo dé notación. `OUTPUT` no tiene ninguno de los dos, y
+ * un renglón de prosa no tiene tokens inequívocos, así que no se toca.
+ */
+const NOTACION = /^[+/<>%.:,0-9-]+$/;
+const SOLO_SIGNOS = new Set(['+/-', '<', '>', '%', '+/', '-']);
+
+function correrMenos29(token) {
+  let salida = '';
+  for (let i = 0; i < token.length; i++) {
+    salida += String.fromCharCode(token.charCodeAt(i) - 29);
+  }
+  return salida;
+}
+
+function esNotacion(x) {
+  if (!NOTACION.test(x)) return false;
+  return /[0-9]/.test(x) || SOLO_SIGNOS.has(x);
+}
+
+function repararNumerosCorridos(t) {
+  return t.split('\n').map((linea) => {
+    const tokens = linea.split(/(\s+)/);
+    // Un token inequívoco: trae el punto o los dos puntos de la fuente numérica.
+    const hayAncla = tokens.some((w) => /[KW]/.test(w) && !/^[a-z]/.test(w)
+      && esNotacion(correrMenos29(w)) && /[0-9]/.test(correrMenos29(w)));
+    if (!hayAncla) return linea;
+    return tokens.map((w) => {
+      // **Longitud dos como mínimo.** Una sola letra del rango `M`…`V` se
+      // convierte en un dígito y eso destruye etiquetas: la `Q` del ecualizador
+      // salía como `4`, y la línea «Q .05 - 15» quedaba «4 .05 - 15». Un número de
+      // una cifra escrito con una sola letra es indistinguible de una etiqueta, y
+      // ante la duda se deja lo que está.
+      if (w.length < 2 || /^\s*$/.test(w) || /[a-z]/.test(w)) return w;
+      const c = correrMenos29(w);
+      return esNotacion(c) ? c : w;
+    }).join('');
+  }).join('\n');
+}
+
 function repararCorrimientoDeUnByte(t) {
   return t.replace(/\S+/g, (token) => {
     if (token.length < 2 || YA_LIMPIO.test(token)) return token;
@@ -263,9 +320,9 @@ function repararUtf16Corrido(t) {
  * 29 da `ZZZ`, que sí lo es. El extractor corrompía su propia salida —«ZZZ [flujo
  * de texto Nz ZZZ»— y encima esos tokens entraban en la cuenta de palabras.
  */
-const reparar = (x) => repararCorrimientoDeUnByte(
+const reparar = (x) => repararNumerosCorridos(repararCorrimientoDeUnByte(
   repararCaracteresDeFuente(repararUtf16Corrido(x)),
-);
+));
 const texto = partes
   .map((p, i) => `\n\n=== [flujo de texto ${i + 1}] ===\n${reparar(p)}`)
   .join('')

@@ -12,7 +12,7 @@ User Guide v1.0For Soundcraft Ui24R
 === [flujo de texto 4] ===
 INFORMATIONINFORMATION
 INFORMATIONIMPORTANT
-Please read this manual carefully before using your mixer for the first time.This equipment complies with the EMC directive OMMQLPMLbr and LVD 2014/35/EUThis product is approved to safety standards:EN SMVRMJNWOMMS + A11:2009 + A1:2010 + A12:2011 + A2:2013And EMC standardsEN55032:2012+AC:2013EN55103-2:2009EN61000-3-3: OMNPbkSNMMMJPJOW OMNQ
+Please read this manual carefully before using your mixer for the first time.This equipment complies with the EMC directive OMMQLPMLbr and LVD 2014/35/EUThis product is approved to safety standards:EN 60950-1:2006 + A11:2009 + A1:2010 + A12:2011 + A2:2013And EMC standardsEN55032:2012+AC:2013EN55103-2:2009EN61000-3-3: OMNPbkSNMMMJPJOW 2014
 Warning: Any modification or changes made to this device, unless explicitly approved by Harman, will 
  
 invalidate the authorisation of this device. Operation of an unauthorised device is prohibited under Section 
@@ -23,120 +23,120 @@ Part NR of the FCC Rules. a residential installation. , f and on, the user is
 * Increase the separation between the equipment and the receiver* Connect the equipment into an outlet on a circuit different from that to which the receiver is connected.* Consult the dealer or an experienced radio/TV technician for help.
 For further details contact: 
 Harman Professional Inc, URMM Balboa Blvd. Northridge,CA VNPOV USAemail: soundcraft@harman.com
-© Harman International Industries Ltd. OMNT All rights reservedPart No. RMTSRUR USA, RMTSRUS EU, RMURQOV AU Rev NKMbClb January OMNTK Soundcraft shall not be liable for any written permission of Soundcraft.Harman International Industries Limited8500 Balboa Blvd. Northridge,CA VNPOV USAhttp://www.soundcraft.comUi24R User Manual
+© Harman International Industries Ltd. 2017 All rights reservedPart No. 5076585 USA, 5076586 EU, 5085429 AU Rev NKMbClb January 2017. Soundcraft shall not be liable for any written permission of Soundcraft.Harman International Industries Limited8500 Balboa Blvd. Northridge,CA 91329 USAhttp://www.soundcraft.comUi24R User Manual
 
 === [flujo de texto 5] ===
 CONTENTSCONTENTS
 CONTENTS1.0 AN INTRODUCTION TO Ui 
  
-NKNW Safety 
+1.1: Safety 
  
-NKOW Warranty
+1.2: Warranty
  1.3: Specifications
-OKMW GETTING STARTED 
+2.0: GETTING STARTED 
  
-OKNW System Overview 
+2.1: System Overview 
  
-OKOW Hardware fLl & Control 
+2.2: Hardware fLl & Control 
  
-OKPW Input Channel Routing 
+2.3: Input Channel Routing 
  
-OKQW Getting Connected
-PKMW SOFTWARE CONTROL 
-PKMKNW Updates & Requirements 
+2.4: Getting Connected
+3.0: SOFTWARE CONTROL 
+3.0.1: Updates & Requirements 
  
-PKMKOW Reset The Mixer 
+3.0.2: Reset The Mixer 
  
-PKNW Software Navigation 
+3.1: Software Navigation 
  
-PKNKNW Control / Gesture Summary 
+3.1.1: Control / Gesture Summary 
  
-PKOW 
+3.2: 
 Tablet Navigation 
  
-PKOKNW Keyboard Control 
+3.2.1: Keyboard Control 
  
-PKPW Tablet Screens 
+3.3: Tablet Screens 
  
-PKQW Phone Navigation 
+3.4: Phone Navigation 
  
-PKRW Phone Screens
-QKMW MIXER CHANNELS 
-QKMKNW Channel Strip 
+3.5: Phone Screens
+4.0: MIXER CHANNELS 
+4.0.1: Channel Strip 
  
-QKMKOW Ui Side Panel 
+4.0.2: Ui Side Panel 
  
-QKNW Input Gain Page 
+4.1: Input Gain Page 
  
-QKOW Input Mix Page 
+4.2: Input Mix Page 
  
-QKOKNW Input Sub Menu 
+4.2.1: Input Sub Menu 
  
-QKOKOW VCA Groups 
- QKOKPW Matrix 
- QKOKQW Meters 
+4.2.2: VCA Groups 
+ 4.2.3: Matrix 
+ 4.2.4: Meters 
  
-QKPW Aux Sends 
- QKPKNW Aux Master 
+4.3: Aux Sends 
+ 4.3.1: Aux Master 
  
-QKQW FX Sends 
+4.4: FX Sends 
  
-QKRW Sub Group Master 
+4.5: Sub Group Master 
  
-QKRKNW View/Mute Groups 
+4.5.1: View/Mute Groups 
  
-QKSW Master Channel 
+4.6: Master Channel 
  
-QKSKNW Master Channel Sub-Menu
-RKMW CHANNEL EDIT 
+4.6.1: Master Channel Sub-Menu
+5.0: CHANNEL EDIT 
  
-RKNW DigiTech 
+5.1: DigiTech 
  
-RKOW Parametric EQ 
+5.2: Parametric EQ 
  
-RKPW Graphic EQ 
- RKPKN AFS2 - Feedback Elimination 
+5.3: Graphic EQ 
+ 5.3.1 AFS2 - Feedback Elimination 
  
-RKQWNW Gate 
+5.4:1: Gate 
  
-RKQKOW Compressor 
+5.4.2: Compressor 
  
-RKRW Aux / FX Sends 
+5.5: Aux / FX Sends 
  
-RKSW Patching
-SKMW MIX FEATURES 
-SKNW View & Mute Groups 
+5.6: Patching
+6.0: MIX FEATURES 
+6.1: View & Mute Groups 
  
-SKOW MOREME
-TKMW LEXICON FX EDIT 
+6.2: MOREME
+7.0: LEXICON FX EDIT 
  
-TKNW Reverb 
+7.1: Reverb 
  
-TKOW Delay 
+7.2: Delay 
  
-TKPW Chorus 
+7.3: Chorus 
  
-TKQW Effects Screen
-UKMW SHOWS & SNAPSHOTS9.0: MEDIA PLAYER & RECORDER 
+7.4: Effects Screen
+8.0: 6+2:6 & SNAPSHOTS9.0: MEDIA PLAYER & RECORDER 
  
-VKMKNW Multitrack Playback & Recording 
+9.0.1: Multitrack Playback & Recording 
  
-VKMKOW USB Playback & Recording
-NMKMW SETTINGS
+9.0.2: 86% Playback & Recording
+10.0: SETTINGS
  10.1: Network Configuration 
  
-NMKNKNW Hotspot Settings 
+10.1.1: Hotspot Settings 
  
-NMKNKOW Wi-Fi Settings 
+10.1.2: Wi-Fi Settings 
  
-NMKNKPW LAN Settings 
- NMKNKQW Access control 
-APPENDIX MNW Troubleshooting: No Sound?APPENDIX MOW Troubleshooting: System FAQFor clarity
+10.1.3: LAN Settings 
+ 10.1.4: Access control 
+APPENDIX 01: Troubleshooting: No Sound?APPENDIX 02: Troubleshooting: System FAQFor clarity
 may extend to several pages.Ui24R User Manual
 
 === [flujo de texto 6] ===
-NKMW INTRODUCTIONINTRODUCTION TO Ui
-NKMW INTRODUCTION TO UiThe Ui Series mixers feature cross-platform compatibility with iOS, Android, Windows, Mac OS, and 
+1.0: INTRODUCTIONINTRODUCTION 72 Ui
+1.0: INTRODUCTION 72 UiThe Ui Series mixers feature cross-platform compatibility with iOS, Android, Windows, Mac OS, and 
 Linux devices, and can use up to NM control devices simultaneously. In addition, the Ui24R features built-in HARMAN signal processing from dbx, DigiTech and Lexicon, including dbx AFS2, DigiTech 
 Amp Modeling, and more. phantom power designed by Studer.MAIN FEATURES
  
@@ -162,8 +162,8 @@ Audio Interface
 Hi-Z/instrument inputs, as well as a stereo RCA line input. A 2-channel USB media player is included, along with eight balanced XLR balanced stereo XLR and quarter-inch main outputs. Two-channel USB audio playback is compatible with jmPI WAV and AIFF formats. It also includes a OO multi-track recorder/player, PO x PO low latency audio interface and direct HDMI display connection output.
 
 === [flujo de texto 7] ===
-NKNW SAFETYINTRODUCTION > SAFETY
-NKNW INTRODUCTION > SAFETYThe internal power supply unit contains no user serviceable parts. Refer all servicing to a qualified service 
+1.1: SAFETYINTRODUCTION > SAFETY
+1.1: INTRODUCTION > SAFETYThe internal power supply unit contains no user serviceable parts. Refer all servicing to a qualified service 
 engineer, through the appropriate Soundcraft dealer.
 Radio frequency exposure 
 follow the specific operating instructions for satisfying RF exposure compliance. 
@@ -189,8 +189,8 @@ CautionsAlerts the user to the presence of important operating and maintenance (
 instructions in the literature accompanying the appliance.Ui24R User Manual
 
 === [flujo de texto 8] ===
-NKNW SAFETYINTRODUCTION > SAFETY
-NKNW INTRODUCTION > SAFETYWARNINGS* Read these instructions.
+1.1: SAFETYINTRODUCTION > SAFETY
+1.1: INTRODUCTION > SAFETYWARNINGS* Read these instructions.
  Keep these instructions.
  Heed all warnings.
  Follow all instructions. Clean the apparatus only with a dry cloth.
@@ -235,8 +235,8 @@ naked flame sources, such as lighted candles, should be placed on the apparatus.
 such as newspapers, table cloths, curtains etc or mounting in enclosures where ari cannot circulate to an appropriate level to keep the Ui24R under 40C or 104F.Ui24R User Manual
 
 === [flujo de texto 9] ===
-NKNW SAFETYINTRODUCTION > SAFETY
-NKNW INTRODUCTION > SAFETYWARNINGSADVICE FOR THOSE WHO PUSH THE BOUNDARIES
+1.1: SAFETYINTRODUCTION > SAFETY
+1.1: INTRODUCTION > SAFETYWARNINGSADVICE FOR THOSE :+2 386+ THE BOUNDARIES
  
 capability 
 WR 
@@ -274,8 +274,8 @@ $
 brouilleur du Canada.Ui24R User Manual
 
 === [flujo de texto 10] ===
-NKOW WARRANTYINTRODUCTION > SAFETY
-NKOW INTRODUCTION > WARRANTYWARRANTY 
+1.2: WARRANTYINTRODUCTION > SAFETY
+1.2: INTRODUCTION > WARRANTYWARRANTY 
  End User means the person who first puts the equipment into regular operation. Dealer means the person other than Soundcraft (if any) from whom the End User purchased the Equipment, 
 
 . Equipment means the equipment supplied with this manual.
@@ -317,16 +317,16 @@ Acts of God, neglect, deficiency in electrical
  power, air-conditioning or humidity control.
  
 7KH benefit of this Warranty may not be assigned by the End User.
-TK End Users who are consumers should note their rights under this Warranty are in addition to and do not affect 
+7. End Users who are consumers should note their rights under this Warranty are in addition to and do not affect 
 Ui24R User Manual
 
 === [flujo de texto 11] ===
-NKPW SPECIFICATIONSINTRODUCTION > SAFETY
-NKPW SPECIFICATIONSUi24R User ManualSOUNDCRAFT Ui TYPICAL SPECIFICATIONS* Frequency Response
-20Hz-20kHz HLJ MKR dB
+1.3: SPECIFICATIONSINTRODUCTION > SAFETY
+1.3: SPECIFICATIONSUi24R User ManualSOUNDCRAFT Ui TYPICAL SPECIFICATIONS* Frequency Response
+20Hz-20kHz +/- 0.5 dB
 * THD
-0LF input (Min gain to bus) # 1kHz YMKMMRB
-0LF input (Max gain to bus) # 1kHz YMKMMUB
+0LF input (Min gain to bus) # 1kHz <0.005%
+0LF input (Max gain to bus) # 1kHz <0.008%
  
 * Noise
 Residual Noise -96dBu
@@ -346,27 +346,27 @@ Release 5ms to 2000msHold 1ms to 2000ms
 Depth -inf to 0dB
 * Compressor
 Threshold -90dB +6dB
-Ratio NWN - RMWN
+Ratio 1:1 - 50:1
 Attack 1ms - 400msRelease 10ms - 2000ms
 Makeup Gain -24dB - +48dB
 * EQ Channel
  
 4 band parametriq EQ
 Each Band Freq 20Hz to 22kHz
-Q KMR - 15Gain -20dB to +20dB
+Q .05 - 15Gain -20dB to +20dB
 +3) ½ 20Hz to 1kHz (selectable slopes)
 /3) 22kHz to 1kHz (selectable slopes)
 * De-esser  
 
 Threshold -90dB to 6dB
-Ratio infinity to NWN
+Ratio infinity to 1:1
 Frequency 2kHz to 15kHz
  
 * EQ Outputs
 PN band GEQ, 20Hz - 20KHz   +-15dB
 * Compressor outputs
 Threshold -90dB +6dB
-Ratio NWN - 50:1Attack 1ms - 400msRelease 10ms - 2000msMakeup Gain -24dB - +48dB
+Ratio 1:1 - 50:1Attack 1ms - 400msRelease 10ms - 2000msMakeup Gain -24dB - +48dB
 * dbx(R) AFS on all outputs
  parametric EQ's (6 fixed, floating)
 * Latency
@@ -399,20 +399,20 @@ out notice.
 
 === [flujo de texto 12] ===
 Ui24R User Manual2.0: GETTING STARTEDGETTING STARTED - AN INTRODUCTION TO THIS MANUAL
-OKMW INTRODUCTION TO THIS MANUAL
+2.0: INTRODUCTION 72 7+,6 MANUAL
 $Q excellent place to start would be the feature list on the introductory page (section 1.0), the Wi-Fi and software set-up guide (3.1), and the software control guides for phone (3.2) and tablet (3.3) soft
 -
-ware.PDFIf you're reading the PDF version of the manual, you can use the thumbnail view and links from the Contents page to navigate quickly.For clarity, this manual uses section references rather than page numbers. In some instances, one section reference may extend to several pages.To get started with Ui control, go to the 'Getting Connected' section: OKQ
+ware.PDFIf you're reading the PDF version of the manual, you can use the thumbnail view and links from the Contents page to navigate quickly.For clarity, this manual uses section references rather than page numbers. In some instances, one section reference may extend to several pages.To get started with Ui control, go to the 'Getting Connected' section: 2.4
 
 === [flujo de texto 13] ===
-OKNW SYSTEM OVERVIEWGETTING STARTED > SYSTEM OVERVIEW
-OKNW SYSTEM OVERVIEW. Phones, 
+2.1: SYSTEM OVERVIEWGETTING STARTED > SYSTEM OVERVIEW
+2.1: SYSTEM OVERVIEW. Phones, 
 Ui24R User ManualNOTE: When mouting the Ui24R in any kind of enclosure make sure you 
 have sufficient space above, bellow and on bothsides of the Ui24R for pas-sive cooling of the device. In exterme environments a fan may need to be added to your enclosure!
 
 === [flujo de texto 14] ===
-OKOW HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
-OKOW Hardware fLl And Control7KH Ui main unit's front panel hosts all local audio inputs and outputs plus three master level controls. 
+2.2: HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
+2.2: Hardware fLl And Control7KH Ui main unit's front panel hosts all local audio inputs and outputs plus three master level controls. 
 2Q one side panel you will find the power connector and power switch; on the other you will find the RESET 
  button, FOOTSWITCH connection, two USB ports, and the Ethernet (wired LAN) connection).COMBO INPUTConnection for 1/4" 
 TRS/TS Jack (Line) or XLR (Mic level)XLR InputMic XLR InputUi24R User ManualPHONESSet level for headphones outputsachieved through the SETTINGS control page. The headphone source signal defaults to the main stereo signal but switches to the Solo bus when AFL or PFL is selected. MIX L / MIX RSet levels for MIX L and Mix R outputs7KH Mix output is the Ui's main left/right stereo output and appears on both the XLR and Jack Mix L/R out
@@ -422,16 +422,16 @@ puts.LINE INLine level RCA inputsThe RCA inputs feed the Line In L and Line In R
 pendently controlled in the SETTINGS page as well as the SOLO level.
 
 === [flujo de texto 15] ===
-OKOW HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
-OKOW Hardware fLl And ControlMIX iLo OUTPUT - JACKMaster Channel Jack outputs7KH Master Channel XLR and jack outputs are parallel connections (identical).AUX/MATRIX OUTPUTSPhysical outputs for the Aux/Matrix outputsThe Ui24R has 8 x Aux/Matrix outputs. Aux/Matrix outputs are assigned in software.2 TRK MEDIA - PLAYUSB Socket for USB Flash Drive with audio playback files2 track 
+2.2: HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
+2.2: Hardware fLl And ControlMIX iLo 287387 - JACKMaster Channel Jack outputs7KH Master Channel XLR and jack outputs are parallel connections (identical).AUX/MATRIX OUTPUTSPhysical outputs for the Aux/Matrix outputsThe Ui24R has 8 x Aux/Matrix outputs. Aux/Matrix outputs are assigned in software.2 75. MEDIA - PLAYUSB Socket for USB Flash Drive with audio playback files2 track 
 Audio files must be saved to the USB stick as either MP3, 
 AAC, .WAV, .OGG, .AIFF, or .FLAC files. 
-See section VKMK
+See section 9.0.
 There are two additional USB sockets on the side of the unit.Ui24R User ManualMIX iLo OUTPUT - XLRMaster Channel XLR outputs7KH Master Channel XLR and jack outputs are parallel connections (identical).MEDIA - REC plus Multi-track Play and RecordUSB Socket for USB Flash Drive - for multi-track play and record audio7KH Soundcraft Ui24RR mixer will record the Master Channel stereo output as D stereo file or multitrack USB B (DAW Connection)USB Socket for connection directly to PC/MacThe Soundcraft Ui24RR mixer can be used as a PO x PO USB Audio Interface with CORE Audio and ASIO drivers.
 
 === [flujo de texto 16] ===
-OKOW HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
-OKOW Hardware fLl And ControlRESETRecessed push switch used to reset the unit.To reset Network settings ONLY
+2.2: HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
+2.2: Hardware fLl And ControlRESETRecessed push switch used to reset the unit.To reset Network settings 21/<
 -
 onds. For a full system reset, see section 3.0.2.FOOTSWITCHFootswtich connector used to toggle selected configurations.Use a footswitch with a quarter-inch jack connection. The unit will auto-detect the connector type, though 
 the footswitch itself must be a non-latching type. The SETTINGS page has a variety of functions that can be assigned.Side USB Connectors 1 & 2May be used for Connecting Keyboard, Mouse and TouchscreenETHERNET Standard RJ45-wired connector for use with wired Ethernet.A
@@ -440,8 +440,8 @@ tings and configurations. By default the IP
  address is NMKNMKOKNKeajf ConnectorSupports HDMI Video standardComplete Mixer W adaptors mixer. (eg. while recording to USB MTK stick you may see D slow down in screen update)Ui24R User ManualPWRPower Connector & SwitchThe Ui mixer has an AC IC connection universal power supply. Use the power switch with the reset button (other side panel) to reset the unit to factory default settings if required.
 
 === [flujo de texto 17] ===
-OKOW HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
-OKOW Hardware fLl And ControlWi-Fi IndicatorShows Wi-Fi is operating normally7KH indicator also shows Wi-Fi boot status during power up. It stops its timed flash sequence when booted 
+2.2: HARDWARE fLl & CONTROLGETTING STARTED > HARDWARE
+2.2: Hardware fLl And ControlWi-Fi IndicatorShows Wi-Fi is operating normally7KH indicator also shows Wi-Fi boot status during power up. It stops its timed flash sequence when booted 
 DQG available for connections. 
 Then flashes with data activity.
 ,I the WiFi LED keeps flashing it can mean the firmware is not loading into the DSP. Make sure latest firm-Ui24R User ManualETHERNET 2Future Expansion PortWi-Fi AntennaNecessary for wireless network connection - Hotspot or WiFiMake sure the 
@@ -452,8 +452,8 @@ WHU wifi performance.
 7KH second antenna is on the right side of the Ui24R.
 
 === [flujo de texto 18] ===
-OKPW INPUT CHANNEL ROUTINGGETTING STARTED > INPUT CHANNEL ROUTING
-OKPW INPUT CHANNEL ROUTING
+2.3: ,1387 CHANNEL ROUTINGGETTING STARTED > ,1387 CHANNEL ROUTING
+2.3: ,1387 CHANNEL ROUTING
  
 (Aux, FX, Mix, and so on).
 Please note: 
@@ -463,8 +463,8 @@ Please note:
 Sufficiently reducing the level on the Master Channel strip will get rid of any clipping on the output.Ui24R User Manual
 
 === [flujo de texto 19] ===
-OKQW GETTING CONNECTEDGETTING STARTED > GETTING CONNECTED
-OKQW GETTING CONNECTED - SOFTWARE CONTROL, tablet, and 
+2.4: GETTING CONNECTEDGETTING STARTED > GETTING CONNECTED
+2.4: GETTING CONNECTED - SOFTWARE CONTROL, tablet, and 
 phone-based in-browser control of all functions simply connect to the Ui Wi-Fi access point (hotspot) and browse to the appropriate URL. Alternatively, you can connect via an existing Wi-Fi network, or via D wired LAN (Local 
 Area Network) using the Ethernet port on the side of the unit. See Section 10.1 for 
 details on network configuration.Ui24R User ManualConnecting To Ui Hotspot with computer, tablet, or phone.
@@ -481,7 +481,7 @@ word, please assign one that you can remember)
  ui.io
 . For Android users, you must use Android brows
 -
-er QKQ or later
+er 4.4 or later
 
  
 <RX should see the device selection screen showing icons for large screen (tab icon) and small screen IMPORTANT!
@@ -492,7 +492,7 @@ PASSWORD: scuiwlan
 
 === [flujo de texto 20] ===
 Ui24R User Manual3.0: SOFTWARE CONTROLSOFTWARE CONTROL
-PKMW SOFTWARE CONTROL
+3.0: SOFTWARE CONTROL
  
 7KH small-screen version is optimised for phone-sized devices; the large-screen version is optimised 
 for tablets and computers.
@@ -500,10 +500,10 @@ In order to make best use of your Ui mixer, please read this section of software
 
 === [flujo de texto 21] ===
 Ui24R User Manual3.0.1: UPDATES & REQUIREMENTSSOFTWARE UPDATES & REQUIREMENTS
-PKMKNW SOFTWARE UPDATES & REQUIREMENTS
+3.0.1: SOFTWARE UPDATES & REQUIREMENTS
 
  
-device. For Android users, you must use Android browser QKQ or later, or another modern browser like Chrome to use the Ui web app.
+device. For Android users, you must use Android browser 4.4 or later, or another modern browser like Chrome to use the Ui web app.
 8S to 10 control devices can be used simultaneously.(Depending on available bandwidth)Software Updates
 In the Tand selecting the ABOUTnavigating to the SETTINGS page and selecting the HELP tab.
 To update the Ui software:1. Download the Ui update file from the website and leave in .zip format.
@@ -512,7 +512,7 @@ To update the Ui software:1. Download the Ui update file from the website and le
 can reside in any directory. Any USB port on the mixer is also acceptable.3. Ensure your client device is connected to the Ui mixer drfQK Connect the USB media 
 7KH GUI display will display that the USB device has been mounted. 
 After the stick has been read (may-
-EH 10 more seconds) the update will be recognised.6. The GUI will ask if you would like to update. Choose lhKTK The mixer will perform the update8. VK You must power-cycle the unit and reconnect a client device.10. YIMPORTANT!Note that if you have any type of zip file (other than the update file) in any directory on the USB key already, the software update will not work. Note Mac OS by default unzips down
+EH 10 more seconds) the update will be recognised.6. The GUI will ask if you would like to update. Choose lhKTK The mixer will perform the update8. 9. You must power-cycle the unit and reconnect a client device.10. YIMPORTANT!Note that if you have any type of zip file (other than the update file) in any directory on the 86% key already, the software update will not work. Note Mac 26 by default unzips down
 -
 loaded files which will render the firmware update incompatible.
 USB AUDIO DRIVERThe Ui24R requires the use of the Soundcraft SI Impact Audio Driver for multichannel USB playback and recording. 
@@ -521,7 +521,7 @@ http://www.soundcraft.com/en/softwares/soundcraft-multichannel-usb-audio-driver-
 
 === [flujo de texto 22] ===
 Ui24R User Manual3.0.2: RESET THE MIXERSOFTWARE > RESET THE MIXER
-PKMKOW RESET THE MIXERThere are two levels of reset for the Ui mixer. 
+3.0.2: RESET THE MIXERThere are two levels of reset for the Ui mixer. 
 7KH first will reset network settings in the event that you 
 DUH unable to connect. 
 7KH second (uses D fullreset.txt file on D USB memory stick in conjunction with 
@@ -550,8 +550,8 @@ This will initialise the Ui's networking and admin password to the
 default state.
 
 === [flujo de texto 23] ===
-PKNW SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
-PKNW SOFTWARE NAVIGATIONUi24R User ManualScroll Mixer
+3.1: SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
+3.1: SOFTWARE NAVIGATIONUi24R User ManualScroll Mixer
 Touch /Click and slide on the mixer screen to scroll along to whole available mixer - including FX Send, Aux Send and Group masters.
 Fader / Channel NameSelect a channel by touching or clicking on a fader or channel name. 
 7KH selected channel will remain active (keep focus) regardless of 
@@ -560,14 +560,14 @@ function screen until a new channel is selected.Double Tap Fader
 Access the channel EQ from MIX Screen. Double tap or double click.There are many navigation / gesture techniques common to both the Tablet and Phone versions of the Ui control software. Please Note: differ significantly in content.
 
 === [flujo de texto 24] ===
-PKNW SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
-PKNW SOFTWARE NAVIGATIONUi24R User ManualScroll Channel Names
+3.1: SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
+3.1: SOFTWARE NAVIGATIONUi24R User ManualScroll Channel Names
 Touch/click-hold and slide on channel names to access channel names across the whole mixer, including FX Sends, Aux Sends, and Group Faders.
 Double Tap Channel NamePhone: Access the Dashboard screen for that channel - access to EQ, dynamics, Aux and FX Sends, and more.Tablet: Access EDIT Page > Dynamics tab.Double Tap Channel StripGAIN screen.
 
 === [flujo de texto 25] ===
-PKNW SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
-PKNW SOFTWARE NAVIGATIONUi24R User ManualLong (held) Tap/Click
+3.1: SOFTWARE NAVIGATIONSOFTWARE > SOFTWARE NAVIGATION
+3.1: SOFTWARE NAVIGATIONUi24R User ManualLong (held) Tap/Click
 $ 
  long tap/click on certain controls brings up D sub-menu specific to that control. For example, D long hold or 
 stereo linking, channel reset, and the ASSIGN ME function.
@@ -583,8 +583,8 @@ buttons, plus JUMP
 GROUPS (Mute View Groups), and FUNCTIONS (fast functions such as playback and record) options. You can pin the Slideout View in place via the SETTINGS Screen. 
 
 === [flujo de texto 26] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:MIX PAGE SHORTCUTS
-PKNKNW CONTROL SUMMARYUi24R User ManualDouble Click/Tap on 
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:MIX PAGE SHORTCUTS
+3.1.1: CONTROL SUMMARYUi24R User ManualDouble Click/Tap on 
 Virtual LCD Display
 to return Channel Volume to 0dbSingle click/tap
  on channel Pan or 
@@ -618,8 +618,8 @@ cap)
 to navigate to METERS Page
 
 === [flujo de texto 27] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:MIX PAGE SHORTCUTS
-PKNKNW CONTROL SUMMARYUi24R User ManualDouble click/tap
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:MIX PAGE SHORTCUTS
+3.1.1: CONTROL SUMMARYUi24R User ManualDouble click/tap
  in AUX MASTER 
 channel strip zone (excluding fader 
 cap) 
@@ -655,15 +655,15 @@ Long click/press-and-hold
 on top 
 level navigation panel virtual LCD 
 display
-to navigate to SETTINGS page SHOWS tab
+to navigate to SETTINGS page 6+2:6 tab
 Single click/tap
  on MASTER 
 channel virtual LCD display
 to navigate to METERS Page
 
 === [flujo de texto 28] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE PARAMETRIC EQ
-PKNKNW CONTROL SUMMARYUi24R User ManualDouble click/tap
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE PARAMETRIC EQ
+3.1.1: CONTROL SUMMARYUi24R User ManualDouble click/tap
  in vacant space 
 to navigate to MIX page.
 Drag PEQ frequency balls
@@ -690,10 +690,10 @@ Drag imcLemc frequency ball
 to adjust LC/HPF frequency value.Note: The slope of the curve can also be adjusted by selecting the desired curve from the right panel menu.
 
 === [flujo de texto 29] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE GRAPHIC EQ
-PKNKNW CONTROL SUMMARYUi24R User ManualOn Master EQ and AUX1-2 you 
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE GRAPHIC EQ
+3.1.1: CONTROL SUMMARYUi24R User ManualOn Master EQ and AUX1-2 you 
 may also DRAG HPF and LPF EQ's to select the desired fre-quency. 
-Note, only available on MASTER Left/Right and AUX/MATRIX 1 and OK
+Note, only available on MASTER Left/Right and AUX/MATRIX 1 and 2.
 GEQ frequency
 to adjust dB gain of selected fre
 -
@@ -705,8 +705,8 @@ Drag GEQ to see the rest of the frequencies (size depends on screen size being u
 Top Left hand corner you will see a representation of all PN bands
 
 === [flujo de texto 30] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT:AUX SENDS
-PKNKNW CONTROL SUMMARYUi24R User ManualLong click/press-and-hold
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT:AUX SENDS
+3.1.1: CONTROL SUMMARYUi24R User ManualLong click/press-and-hold
  chan-
 nel strip mobLmlpq button 
 IRU 'set all Pre or Post' 
@@ -729,8 +729,8 @@ WR 'Return
 7R Zero Level'
 
 === [flujo de texto 31] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL bafqWcu SENDS
-PKNKNW CONTROL SUMMARYUi24R User ManualDouble click/tap 
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL bafqWcu SENDS
+3.1.1: CONTROL SUMMARYUi24R User ManualDouble click/tap 
 in channel send 
 strip zone (excluding fader cap)
  to navigate to MIX Page.
@@ -748,8 +748,8 @@ WR 'Return
 7R Zero Level'
 
 === [flujo de texto 32] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL bafqWcu SENDS
-PKNKNW CONTROL SUMMARYUi24R User ManualDouble click/tap 
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL bafqWcu SENDS
+3.1.1: CONTROL SUMMARYUi24R User ManualDouble click/tap 
 in channel strip 
 zone (excluding fader cap) 
 to navigate to MIX Page.
@@ -767,8 +767,8 @@ channel label
 to engage channel pop-up menu.
 
 === [flujo de texto 33] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:SLIDEOUT PANEL SHORTCUTS
-PKNKNW CONTROL SUMMARYUi24R User ManualList selectors
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:SLIDEOUT PANEL SHORTCUTS
+3.1.1: CONTROL SUMMARYUi24R User ManualList selectors
 Item selections available in list 
 boxes can be made by 
 double 
@@ -799,8 +799,8 @@ TAP TEMPO
 for numeric tempo entry.. It is recommeded for easy use to select the BIGGER SLIDOUT panel from the settings menu and PIN it to the mixer so it is available at any time.
 
 === [flujo de texto 34] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE
-PKNKNW CONTROL SUMMARYUi24R User ManualDigitech Tab:
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:CHANNEL EDIT PAGE
+3.1.1: CONTROL SUMMARYUi24R User ManualDigitech Tab:
 Single click/tap
  on amp head 
 to bring up amp list selector
@@ -824,8 +824,8 @@ in vacant space
 to navigate to MIX page.
 
 === [flujo de texto 35] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:METERS PAGE
-PKNKNW CONTROL SUMMARYUi24R User ManualSingle click/tap
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY:METERS PAGE
+3.1.1: CONTROL SUMMARYUi24R User ManualSingle click/tap
  on any channel 
 meter VU zone 
 to navigate to relevant channel on 
@@ -836,8 +836,8 @@ TAP button
 for numeric tempo entry.
 
 === [flujo de texto 36] ===
-PKNKNW CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY/SHORTCUTS
-PKNKNW CONTROL SUMMARYUi24R User ManualSLO-MO FINE ADJUSTMENT
+3.1.1: CONTROL / GESTURE SUMMARYSOFTWARE > CONTROL SUMMARY/SHORTCUTS
+3.1.1: CONTROL SUMMARYUi24R User ManualSLO-MO FINE ADJUSTMENT
 Hold on fader
 Allows fiune adjustment of param
 -
@@ -855,8 +855,8 @@ Any tab with dot in right corner will
 have a shortcut function that can be activated via pressing and holding.
 
 === [flujo de texto 37] ===
-PKOW TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
-PKOW TABLET NAVIGATIONYou can navigate from there to 
+3.2: TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
+3.2: TABLET NAVIGATIONYou can navigate from there to 
  
 other screens and functions in a variety of ways. The Level 1 Navigation controls take you directly to 
  
@@ -870,24 +870,24 @@ Tempo, and CLEAR SOLO, MUTE
 ALL, AND MUTE FX directly from this page. 
 
 === [flujo de texto 38] ===
-PKOW TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
-PKOW TABLET NAVIGATIONUi24R User ManualEDITAccess the EDIT page for the selected channelResulting page configuration depends on selected channel. For example, the EDIT 
+3.2: TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
+3.2: TABLET NAVIGATIONUi24R User ManualEDITAccess the EDIT page for the selected channelResulting page configuration depends on selected channel. For example, the EDIT 
  page for an input chan
 -
 nel will have EQ, Dynamics, Aux Sends, and FX Send tabs. Certain Tabs will be preselected if you navigate 
 from certain views. For example, selecting EDIT from the FX Sends main page will preselect the FX Sends tab in for the highlighted channel. FX SENDSAccess the FX SENDS pageAlso shows FX Return channel on right hand side. Selecting EDIT from the FX SENDS page will preselect the FX Send tab for the selected input channel.SETTINGSAccess the SETTING pageSystem and mixer settings and configurations.AUX SENDSAccess the AUX SENDS pageAlso shows the Aux Master chan-nel on right hand side. Selecting EDIT from the AUX SENDS page will preselect the AUX SENDS tab for the selected input channel.MEDIAAccess the MEDIA pagePlayback and record controls, plus playlist and track selections. Also shows Playback L and Playback R channels on left hand side.MIX / GAINAccess the MIX and GAIN pagesWhen the button is orange, the MIX page is shown (channel faders) and when the button is Red, the GAIN page is shown (remote gain faders and input stage controls).
 
 === [flujo de texto 39] ===
-PKOW TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
-PKOW TABLET NAVIGATIONUi24R User ManualSNAPSHOTAccess the Show and Snapshots pop-up selectorLoad shows and snapshots directly from this pop-up.SLIDEOUTAccess the SLIDEOUT view on the right hand side of the screenOffers fast view and status switching functionality. 
+3.2: TABLET NAVIGATIONSOFTWARE > TABLET / LARGE SCREEN NAVIGATION
+3.2: TABLET NAVIGATIONUi24R User ManualSNAPSHOTAccess the Show and Snapshots pop-up selectorLoad shows and snapshots directly from this pop-up.SLIDEOUTAccess the SLIDEOUT view on the right hand side of the screenOffers fast view and status switching functionality. 
 7KH Slideout view can be configured as 'pinned' 
  
 (permanent) in the SETTINGS page for Mix and 
 Aux/FX Sends pages independently.
 
 === [flujo de texto 40] ===
-PKOKNW KEYBOARD CONTROLSOFTWARE > KEYBOARD CONTROL and shortcuts
-PKOKNW KEYBOARD CONTROL
+3.2.1: KEYBOARD CONTROLSOFTWARE > KEYBOARD CONTROL and shortcuts
+3.2.1: KEYBOARD CONTROL
 -
 mands, making it quick and efficient to access the most used features on the mixer. Ui24R User ManualKeys
 1 = Meters2 = Toggle Mix/Gain3 = Edit4 = Aux Sends5 = FX Sends6 = Player7 = Settings8 = Slide Out9 = Meters
@@ -904,8 +904,8 @@ Left Arrow = Select previous channelUp Arrow = Bank jump forward to next visible
 ESC key = Take me home
 
 === [flujo de texto 41] ===
-PKOKNW KEYBOARD CONTROLSOFTWARE > GUI shortcuts
-PKOKNW KEYBOARD CONTROLUi24R User ManualNav bar LCD - long click to jump to SETTINGS->SHOWS
+3.2.1: KEYBOARD CONTROLSOFTWARE > GUI shortcuts
+3.2.1: KEYBOARD CONTROLUi24R User ManualNav bar LCD - long click to jump to SETTINGS->SHOWS
 
 Pan slider - single click to show value in LCD
 Pan slider - Double click to reset to CENTERFader cap - Double click fader cap to jumpt to EDIT->GEQFader cap if MASTER LOCK ENABLED and HOLD FADER FOR FINE TUNING ON in Settings:
@@ -937,8 +937,8 @@ VTap Tempo button - Long click to manuall enter Tempo value
 Tap tempo button - long click to enter manual value
 
 === [flujo de texto 42] ===
-PKPW TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
-PKPW TABLET SOFTWARE SCREENS
+3.3: TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
+3.3: TABLET SOFTWARE SCREENS
 screen area, or via fast-access routes, such as double-tapping on D fader to access the EQ screen (see section 3.1). Ui24R User Manual0,;MIX is the most used screen and includes a scrollable display of every channel 
  
 fader. The channel order from left to right is: input channel faders, line in faders, media player faders, FX return faders, Sub Group faders, and AUX Master faders. The Ui hardware you own will determine how many channels you see in the control software.METERSThe 
@@ -959,8 +959,8 @@ ing DAW or USB A playback these will br disabled and another set available for r
 nels.
 
 === [flujo de texto 43] ===
-PKPW TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
-PKPW TABLET SOFTWARE SCREENSUi24R User ManualAUX SENDS
+3.3: TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
+3.3: TABLET SOFTWARE SCREENSUi24R User ManualAUX SENDS
 AUX SENDS is where the aux mixes are 
  
 created. The faders determine the level of signal sent to the selected aux bus. Select an aux mix from those available at the top of the view to adjust that mix. The Aux Master will be available on the right hand end of the screen, next to the Master Channel.EDITThe EDIT page provides access to audio processing such as EQ, DYNAMICS, and ); 
@@ -974,8 +974,8 @@ Tablet software, select MOREME
 in the Slideout panel, or turn the ipad to a portrait view to access the MOREME screen.
 
 === [flujo de texto 44] ===
-PKPW TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
-PKPW TABLET SOFTWARE SCREENSUi24R User ManualMEDIA
+3.3: TABLET SCREENSSOFTWARE > TABLET SOFTWARE SCREENS
+3.3: TABLET SOFTWARE SCREENSUi24R User ManualMEDIA
 The Ui mixer has a built in media player. This can be used for backing tracks or for background music in between sets. The ¿OH playback is streamed directly from D USB stick. Press the MEDIA icon to enter the player page. Files can be played from D playlist or directly from the file list. Press and hold the PLAYER channel name to bring up the channel menu.
 SETTINGS
 System, network, and security settings, as well as Shows and Snapshots 
@@ -984,16 +984,16 @@ management. See section NM for more
 details.
 
 === [flujo de texto 45] ===
-PKQW PHONE NAVIGATIONSOFTWARE > PHONE NAVIGATION
-PKQW PHONE NAVIGATIONThe MIX screen is the default for the Ui software - You can navigate from there to other screens and 
+3.4: PHONE NAVIGATIONSOFTWARE > PHONE NAVIGATION
+3.4: PHONE NAVIGATIONThe MIX screen is the default for the Ui software - You can navigate from there to other screens and 
  
 functions in a variety of ways. To access the Menu screen, press the NAV icon in the top right corner of the 
 screen. Press it again to return to the MIX screen.Ui24R User Manual1$9Access the main menu screenWhen in use, the NAV button changes to the 'Return' 
  icon. Use this to return to the MIX screen.SHOWS / SNAPSHOTSAccess the Show and Snapshots load/save page.
 
 === [flujo de texto 46] ===
-PKQW PHONE SCREENSSOFTWARE > PHONE SOFTWARE SCREENS
-PKQW PHONE SOFTWARE SCREENSFrom the MENU screen you can access the MIX screen (Return button, top right corner) and nine other 
+3.4: PHONE SCREENSSOFTWARE > PHONE SOFTWARE SCREENS
+3.4: PHONE SOFTWARE SCREENSFrom the MENU screen you can access the MIX screen (Return button, top right corner) and nine other 
 primary screens via the large colour-coded buttons. Ui24R User ManualPLAYERThe Ui mixer has a built in media player. This can be used for backing tracks or for background music in between sets. The ¿OH playback is streamed directly from a USB stick. Files can be played from a playlist or directly from the file list. Press and hold the PLAYER channel name to bring up the channel menu.MOREMEMOREME allows users to assign their own personal channel, and create a per
 -
 sonal monitoring mix with a single large fader. MOREME channel names are 
@@ -1006,8 +1006,8 @@ ACCESS (multi-user
 security), and HELP.
 
 === [flujo de texto 47] ===
-PKRW PHONE SCREENSSOFTWARE > PHONE SOFTWARE SCREENS
-PKRW PHONE SOFTWARE SCREENSUi24R User ManualAUX SENDS
+3.5: PHONE SCREENSSOFTWARE > PHONE SOFTWARE SCREENS
+3.5: PHONE SOFTWARE SCREENSUi24R User ManualAUX SENDS
 AUX SENDS is where the AUX mix is created. The AUX input channel faders determine the signal level sent to that aux bus. Select an aux mix on the right to adjust the mix from all channels. GAINAll Ui mixer models include remote gain control and remote phantom power. 7KH GAIN screen easily identified by its red fader level lines - features Gain 
  
 Faders, and the QUs phantom power and PHASE buttons.SHOWSShows and Snapshots management, 
@@ -1020,10 +1020,10 @@ Dashboard. This screen allows editing of EQ, dynamics, FX and aux sends. Simply 
 
 === [flujo de texto 48] ===
 Ui24R User Manual4.0: MIXER CHANNELSMIXER CHANNELS
-QKMW MIXER CHANNELSThe Ui mixers has a variety of input and output channel types. You can view all channels in the main 
+4.0: MIXER CHANNELSThe Ui mixers has a variety of input and output channel types. You can view all channels in the main 
 MIX screen and drag-scrolling along the virtual console. You can also use the MIX page Slideout 
  
-panels to select specific channel types and preset views.INPUT CHANNEL - sections QKN and 4.2A 
+panels to select specific channel types and preset views.INPUT CHANNEL - sections 4.1 and 4.2A 
 8L Input channel consists of D GAIN section (physical input, pre-amp, phase, phantom power etc) and the 
 0,; section. Input channels feed the main stereo bus (to the Master Channel), the aux send busses (to the 
 $X[ 
@@ -1037,18 +1037,18 @@ These outputs each have
 their own mix of input sources, separate from the master mix. Generally, aux outputs are used for musicians to hear their own mix on stage via D stage monitor speaker or to headphone amplifiers for in-ear monitoring. 
  
 Alternatively, the aux outputs can be sent to external hardware FX units.
-SUB GROUP MASTER CHANNEL - section QKR
+68% GROUP MASTER CHANNEL - section 4.5
 control over the whole kit's contribution to the mix, you would use D Sub Group.
-FX SENDS / FX RETURN CHANNEL - section QKQ
+FX SENDS / FX RETURN CHANNEL - section 4.4
 FX SENDS faders effectively determine the amount of effect on each input channel. They work much like aux 
  
 processor. 
-MASTER CHANNEL - section QKS
+MASTER CHANNEL - section 4.6
 7KH Master Stereo Channel is the output channel for the main stereo (left right) mix determined by the input channel and FX Return channel faders and pan/balance controls.
 
 === [flujo de texto 49] ===
 Ui24R User Manual4.0:1 CHANNEL STRIPCHANNEL STRIP
-QKMWN CHANNEL STRIP7KH Channel Strip has D host of information right at your fingertips. 
+4.0:1 CHANNEL STRIP7KH Channel Strip has D host of information right at your fingertips. 
 7KH following is D breakdown of 
 what D user can expect to find.VCA and Subgroup 
 indicators are displayed in bottom RH corner when activated.When channel mute is activated the gain meter is displayed in blue.Mute and Solo buttons when acti
@@ -1057,7 +1057,7 @@ vated will either Mute the channel, removing it from the mix or Solo it by remov
 
 === [flujo de texto 50] ===
 Ui24R User Manual4.0:2 Ui SIDE PANELCHANNEL STRIP
-QKMWO Ui SIDE PANELiew and Mute Groups. The 
+4.0:2 Ui SIDE PANELiew and Mute Groups. The 
 
 -
 cessibility. The Large format Slideout Ui Strip in Banks Mode expands on the standard slideout strip with Smart Scrolling through the Ui display and quick tabs to trans-port the user to the Start or End of the display. The Large format Slideout Ui Strip in Player mode al
@@ -1067,13 +1067,13 @@ lows quick access to Muliti-track and 2-track USB Playback and Recording. The Sl
 ous snapshot/next snapshot scrolling through snapshots.
 
 === [flujo de texto 51] ===
-QKNW INPUT: GAIN PAGECHANNELS > INPUT: GAIN PAGE
-QKNW INPUT: GAIN PAGEUi24R User Manual
+4.1: INPUT: GAIN PAGECHANNELS > INPUT: GAIN PAGE
+4.1: INPUT: GAIN PAGEUi24R User Manual
 display with red fader level indicators. 
 TABLET: Click/tap MIX/GAIN button to toggle MIX and GAIN pages.
 PHONE: Use the GAIN menu button to navigate to the GAIN page.
 NOTE: 
-please see section QKO for details.
+please see section 4.2 for details.
 . This great feature allows you to WKH hardware).
 GAIN
 7KH audio inputs have an input gain range from -10dB up to +60dB. It's D good idea to make sure the gain 
@@ -1092,7 +1092,7 @@ channel name to switch to the EDIT
 trol will be moved to the DAW gain section.
 
 === [flujo de texto 52] ===
-QKNW INPUT: GAIN PAGE4.1: INPUT: GAIN PAGEUi24R User ManualPHANTOM POWER
+4.1: INPUT: GAIN PAGE4.1: INPUT: GAIN PAGEUi24R User ManualPHANTOM POWER
 or other active devices such as an active DI. It is activated per channel. You can get an overview of phan
 -
 WRP power status in the METERS screen (blue indicator).
@@ -1110,8 +1110,8 @@ ISOLATE
 This protects the parameter from being overridden by snapshot changes.
 
 === [flujo de texto 53] ===
-QKOW INPUT: MIX PAGECHANNELS > INPUT: MIX PAGE
-QKOW INPUT: MIX PAGEUi24R User Manual7KH MIX page is the Ui control software's default page and allows you to control the routing and panning 
+4.2: INPUT: MIX PAGECHANNELS > INPUT: MIX PAGE
+4.2: INPUT: MIX PAGEUi24R User Manual7KH MIX page is the Ui control software's default page and allows you to control the routing and panning 
 status, but for control you should use the EDIT page. Those controls are described in this section.
 TABLET: Click/tap MIX/GAIN button to toggle MIX and GAIN pages.
 PHONE: The RETURN button will always return you to the MIX page.
@@ -1123,8 +1123,8 @@ page) and the yellow meters over the top show the volume level. Please note, EQ 
 meters.
 
 === [flujo de texto 54] ===
-QKOW INPUT: MIX PAGECHANNELS > INPUT: GAIN PAGE
-QKOW INPUT: MIX PAGEUi24R User ManualMUTETurn off the audio signal of a channelMUTE is an immediate audio off, rather than having to slide down the fader (and removes the possibility of 
+4.2: INPUT: MIX PAGECHANNELS > INPUT: GAIN PAGE
+4.2: INPUT: MIX PAGEUi24R User ManualMUTETurn off the audio signal of a channelMUTE is an immediate audio off, rather than having to slide down the fader (and removes the possibility of 
 forgetting its original position). 
 7KH MUTE button mutes the channel output to the main stereo bus. It can 
 also mute an aux output, depending on the aux's PRE or POST 
@@ -1145,11 +1145,11 @@ TYPE parameter in GLOBAL
  SETTINGS (see section 10).PAN / BALANCEAdjust the Pan / BalanceCHANNEL DISPLAYNumeric fader level and panmoved. CHANNEL NAMEChannel sub menu access, channel name scrolling, channel selectThe Channel Name is usually a name/description of that channel. You can click on channel names to select that channel, double click/tap a channel name to go to the EDIT screen for that channel, or you can Long-Click/Tap on D channel name to access the channel sub-menu (See section QKPFK
 
 === [flujo de texto 55] ===
-QKOKNW INPUT SUB-MENUCHANNELS ! INPUT 
+4.2.1: ,1387 SUB-MENUCHANNELS ! INPUT 
  SUB-MENU (Add VCA 
  after 
 Assign Sub Group on image grab) 
-QKOKNW INPUT SUB-MENUUi24R User Manual
+4.2.1: ,1387 SUB-MENUUi24R User Manual
 channel parameters...
 CHANNEL PRESETSRecall and save whole channel settings - Factory and User preset banks.
 RENAME
@@ -1169,7 +1169,7 @@ SUBGROUP'
  option.
 
 === [flujo de texto 56] ===
-QKOKOW VCA dolrmpQKOKOW VCA GROUPSUi24R User ManualHOW TO ADD/REMOVE MEMBER CHANNELS
+4.2.2: VCA dolrmpQKOKOW VCA GROUPSUi24R User ManualHOW 72 ADD/REMOVE MEMBER CHANNELS
 VCAAll changes can be made through this menu.
 VCA INDICATORS ON CHANNEL STRIP Color indicator for channel virtual LCD panel turns green when VCA is engaged for that channel. Also the chan-
 nel strip will display sNJS in green depending on which VCA is engaged.VCA MUTEWhen mute is placed on a VCA master, all member channels are also muted.STEREO LINKCreate and stereo channel from two mono channels. Odd/even (L/R) pairs are linked, so if you link channel (right), it will create D stereo channel with channel (left).
@@ -1183,7 +1183,7 @@ Reset channel sends a channel back to its default setting.VCA SPILLBy clicking o
 LV able to assign VCA's from the METERS Sub Menu or from individual Channel Sub-Menu's.
 
 === [flujo de texto 57] ===
-QKOKPW MATRIX4.2.3: MATRIXUi24R User ManualMATRIX CONTRIBUTIONS
+4.2.3: MATRIX4.2.3: MATRIXUi24R User ManualMATRIX CONTRIBUTIONS
 Matrix Contributions can come from:AUX SendsSub GroupsMaster L/R (can be Pre/Post fader)Note that XLR outputs 1/2 which are automatically assigned to 
 $8; 1/2 or Matrix 1/2 have HPF and LPF filters 
 which can be used as crossovers.
@@ -1194,12 +1194,12 @@ Matrix systems offer sig-
 f
 
 === [flujo de texto 58] ===
-QKOKQW jbqbopQKOKQW METERSUi24R User ManualMETERS
+4.2.4: jbqbopQKOKQW METERSUi24R User ManualMETERS
 Phantom 48v power and Phase Reverse.Alterna-tivelyColor coded indicators for 48v Phantom power, Inverse, Mute and Solo.At a glance the user can keep an eye on peak levels for all channels
 
 === [flujo de texto 59] ===
-QKPW AUX SENDSCHANNELS > AUX SENDS
-QKPW AUX SENDSUi24R User Manual$X[ Outputs (short for 
+4.3: AUX SENDSCHANNELS > AUX SENDS
+4.3: AUX SENDSUi24R User Manual$X[ Outputs (short for 
 Auxiliary) are the outputs on the top right of the Ui hardware. 
 These outputs each 
 , aux outputs are used for 
@@ -1243,8 +1243,8 @@ AUX SENDS page. (2 channels panned left right with D green link line above the d
 FX ON AUX
 
 === [flujo de texto 60] ===
-QKPW AUX SENDSCHANNELS > AUX SENDS
-QKPW AUX SENDSUi24R User ManualPRE/POST (Tablet software)Switch input channel's 
+4.3: AUX SENDSCHANNELS > AUX SENDS
+4.3: AUX SENDSUi24R User ManualPRE/POST (Tablet software)Switch input channel's 
 $X[ contribution between PRE and POST 
  sourcesfect the aux 
 levels. Press the PRE button to change individual channels to POST fader. A long press on the mobLmlpq button opens a dialog for ALL CHANNELS TO PRE or POST. AUX SEND MUTE (Tablet software)Mute the input channel's contribution to this aux mix.Separate to the normal input channel mute - only affects contribution to the selected aux mix.M-AUX / COPY MIXCopy the main mix to this aux mix
@@ -1252,8 +1252,8 @@ levels. Press the PRE button to change individual channels to POST fader. A long
 tion on the AUX SENDS page. This is a handy starting point for an AUX mix rather than starting from all faders down. Y)RU safety, user confirmation is required.PRE/POST PROCESSING
 
 === [flujo de texto 61] ===
-QKPW AUX SENDSCHANNELS > AUX POP MENU
-QKPW AUX SENDSUi24R User ManualCHANNEL PRESETS
+4.3: AUX SENDSCHANNELS > AUX 323 MENU
+4.3: AUX SENDSUi24R User ManualCHANNEL PRESETS
 Recall and save whole AUX channel settings - Factory and User preset banks.
 RENAME
 Rename the 
@@ -1280,16 +1280,16 @@ personal "My OUT". 'MY
  OUT" will also work for stereo linked channels which is perfect for IEMs.
 
 === [flujo de texto 62] ===
-QKPW AUX SENDSCHANNELS > AUX SENDS
-QKPW AUX SENDSUi24R User ManualAUX SENDS
+4.3: AUX SENDSCHANNELS > AUX SENDS
+4.3: AUX SENDSUi24R User ManualAUX SENDS
 ,Q Channel edit mode the 
 $8; Sends tab will show the selected Channels sends to all 
 AUX's creating an 
 alternate Channel based AUX view.
 
 === [flujo de texto 63] ===
-QKPKNW AUX MASTERCHANNELS > AUX MASTER CHANNEL
-QKPKNW AUX MASTER CHANNELUi24R User ManualThe Aux Master channel is the output path for Aux busses. In other words, the Aux 1 mix of contribu-
+4.3.1: AUX MASTERCHANNELS > AUX MASTER CHANNEL
+4.3.1: AUX MASTER CHANNELUi24R User ManualThe Aux Master channel is the output path for Aux busses. In other words, the Aux 1 mix of contribu-
 tions from all input channels passes through the Aux 1 Master channel before being sent out of the physical Aux 1 output. Ui24R has four Aux busses available, and Ui24R has six. The highest-num
 -
 bered aux pairs (3/4 for Ui24R and 5/6 for Ui24R) are available as physical outputs when the HEAD
@@ -1306,8 +1306,8 @@ software Slideout panel or from the JUMP TO pop-up menu in the phone software Sl
 TABLET
 
 === [flujo de texto 64] ===
-QKQW FX SENDSCHANNELS > FX SENDS
-QKQW FX SENDSUi24R User Manual); SENDS faders effectively determine the amount of effect (delay, reverb, chorus) on each input channel. 
+4.4: FX SENDSCHANNELS > FX SENDS
+4.4: FX SENDSUi24R User Manual); SENDS faders effectively determine the amount of effect (delay, reverb, chorus) on each input channel. 
 page - one for each FX processor. After processing, that mix is returned via its own FX Return channel, which works just like an input channel adjusting the overall level of that processor's mix in the master stereo mix. , next to the Master Channel.
 , by choosing FX RETURNS from the Slideout panel in the tablet software, or from the JUMP TO option in the phone software Slideout panel.
 <RX can view all FX contributions from D single channel by navigating to that channel's EDIT 
@@ -1320,24 +1320,24 @@ Input channel FX Sends can be individually muted in the FX SENDS page.NOTE: FX s
 sent to the FX processor. This ensures that each input channel's contribution to the FX send is always proportional to its prominence in the main mix.
 
 === [flujo de texto 65] ===
-QKRW SUB GROUP MASTERCHANNELS ! SUB GROUP 
+4.5: 68% GROUP MASTERCHANNELS ! SUB GROUP 
  MASTER CHANNEL 
  [ Sub Groups)
-QKRW SUB GROUP MASTER CHANNELUi24R User Manual
+4.5: 68% GROUP MASTER CHANNELUi24R User Manual
 whole kit's contribution to the mix, you would use D Sub Group.
 
 Sub Group Master channels have their own EDIT channels, as per any other Ui input channel.ASSIGN SUB GROUPSSub Groups are assigned within METERS>SUBS
 
 === [flujo de texto 66] ===
-QKRKNW sfbtLjrqb GROUPSCHANNELS > VIEW & MUTE GROUPS
-QKRKNW sfbtLjrqb GROUPSUi24R User ManualVIEW & MUTE GROUPS
+4.5.1: sfbtLjrqb GROUPSCHANNELS > VIEW & MUTE GROUPS
+4.5.1: sfbtLjrqb GROUPSUi24R User ManualVIEW & MUTE GROUPS
  
 There are 6 View and 6 Mute groups available for users on the Ui24R. These can be navigated to via 
 the Ui24R sidebarscreen. MUTE GROUPSVIEW GROUPS
 
 === [flujo de texto 67] ===
-QKSW MASTER CHANNELCHANNELS > MASTER CHANNEL
-QKSW MASTER CHANNELUi24R User Manual7KH Master Stereo Channel is the output channel for the main stereo (left right) mix determined by the 
+4.6: MASTER CHANNELCHANNELS > MASTER CHANNEL
+4.6: MASTER CHANNELUi24R User Manual7KH Master Stereo Channel is the output channel for the main stereo (left right) mix determined by the 
 input channel and FX Return channel faders and pan/balance controls. The Master Channel has its own EDIT 
  page tabs, just like other channels (see section 5). 
 7KH EQ for Ui Output channels (including 
@@ -1375,8 +1375,8 @@ When shown the DIM button will DIM (reduce) the output level by 20dB, this is ge
 TABLET
 
 === [flujo de texto 68] ===
-QKSKNW MASTER SUB-MENUCHANNELS > MASTER CHANNEL > SUB MENU
-QKSKNW MASTER CHANNEL SUB-MENUUi24R User ManualSET TO ZERO DB
+4.6.1: MASTER SUB-MENUCHANNELS > MASTER CHANNEL > 68% MENU
+4.6.1: MASTER CHANNEL SUB-MENUUi24R User ManualSET 72 ZERO DB
 then touch SET TO ZERO DB.
 MASTER PRESETS
 Save Master Channel setups as presets. Useful for building up D library of final-stage processing set-ups.LEFT DELAY/RIGHT DELAYmodal and click OK.access to the 'Set 
@@ -1385,7 +1385,7 @@ Save Master Channel setups as presets. Useful for building up D library of final
 
 === [flujo de texto 69] ===
 Ui24R User Manual5.0: CHANNEL EDITCHANNEL EDIT
-RKMW CHANNEL EDITThe EDIT
+5.0: CHANNEL EDITThe EDIT
  
 and auxiliary sends. 
  
@@ -1408,7 +1408,7 @@ WDE (Global FX parameters).
 
 === [flujo de texto 70] ===
 Ui24R User Manual5.1: DIGITECHCHANNEL EDIT > DIGITECH
-RKNW DIGITECHDigiTech input processing and channel view is available to the first two Ui mixer channels, and 
+5.1: DIGITECHDigiTech input processing and channel view is available to the first two Ui mixer channels, and 
  
 includes Hi-Z (high input impedance) selection for sources such direct-input guitar pick-ups. 
  
@@ -1426,12 +1426,12 @@ models.HI-Z ON/OFFTurn the Hi-Z input on or offguitar pick-ups - turn the Hi-Z o
 
 === [flujo de texto 71] ===
 Ui24R User Manual5.1: DIGITECHCHANNEL EDIT > DIGITECH
-RKNW DIGITECHDIGITECH ON/OFFTurn DigiTech processing on or offWhen DigiTech processing is turned off, the channel will revert to its standard input stage.PRESETSOpen the PRESETS management pop-upYou can save and load settings presets for the DigiTech processing using this pop-up.AMP CONTROLSAdjust detailed settings for the selected amp modelThe controls include GAIN, LEVEL, BASS, MID, and TREBLE. Use the GAIN control to overdrive the amp 
+5.1: DIGITECHDIGITECH ON/OFFTurn DigiTech processing on or offWhen DigiTech processing is turned off, the channel will revert to its standard input stage.PRESETSOpen the PRESETS management pop-upYou can save and load settings presets for the DigiTech processing using this pop-up.AMP CONTROLSAdjust detailed settings for the selected amp modelThe controls include GAIN, LEVEL, BASS, MID, and TREBLE. Use the GAIN control to overdrive the amp 
 model.CHANNEL CONTROLSSingle view editing of selected input channel controlsAvailable input channel sections are: FX, High Pass Filter, Notch Filter, Compressor, Gate
 
 === [flujo de texto 72] ===
 Ui24R User Manual5.2: PARAMETRIC EQCHANNEL EDIT > PARAMETRIC EQ
-RKOW PARAMETRIC EQ
+5.2: PARAMETRIC EQ
 (HPF), and D De-Esser controlled from the same screen. 
 7KH display also incorporates an optional 
 Real 
@@ -1447,7 +1447,7 @@ vated it will deactivate any other channel's active RTA
 
 === [flujo de texto 73] ===
 Ui24R User Manual5.2: PARAMETRIC EQCHANNEL EDIT > PARAMETRIC EQ
-RKOW PARAMETRIC EQRESETReset the EQ to default values7KH EQ is set 'flat', and frequency and 4 values are reset to defaults.BYPASSBypass the EQ section of channel processingfected.EQ / DE-ESSER FADER CONTROLChoose EQ or De-Esser fader control
+5.2: PARAMETRIC EQRESETReset the EQ to default values7KH EQ is set 'flat', and frequency and 4 values are reset to defaults.BYPASSBypass the EQ section of channel processingfected.EQ / DE-ESSER FADER CONTROLChoose EQ or De-Esser fader control
 for the currently selected band.DS - DE-ESSER BALLDraggable graphic 'ball' 
  for De-Esser controlDrag this graphic element to control. UP/DOWN adjusts 
 Threshold, LEFT/RIGHT 
@@ -1462,7 +1462,7 @@ individual band.
 
 === [flujo de texto 74] ===
 Ui24R User Manual5.2: PARAMETRIC EQCHANNEL EDIT > PARAMETRIC EQ
-RKOW PARAMETRIC bnemcLimc BALLDraggable graphic 'ball' 
+5.2: PARAMETRIC bnemcLimc BALLDraggable graphic 'ball' 
  for High Pass and Low Pass Filter controlsDrag this graphic element to control. Left/Right adjusts Cut-Off frequency. Double-click/tap to reset. Right 
 Hand side of the screen displays selectable slope.DE-ESSER THRESHOLDFader control of De-Esser ThresholdDe-Esser threshold is the level at which the De-Esser starts to attenuate the 'ess' 
  band. 
@@ -1474,12 +1474,12 @@ Threshold. T button.DE-ESSER FREQUENCYFader control of De-Esser FrequencyDetermi
 
 === [flujo de texto 75] ===
 Ui24R User Manual5.2: PARAMETRIC EQCHANNEL EDIT > PARAMETRIC EQ
-RKOW PARAMETRIC EQEQ QFader control of EQ DnDn is ef
+5.2: PARAMETRIC EQEQ QFader control of EQ DnDn is ef
 the bandwidth afclick/tap to reset.EQ GAINFader control of EQ Gainavailable with tablet software. Double-click/tap to reset.EQ FREQUENCYFader control of EQ band Frequency
 
 === [flujo de texto 76] ===
 Ui24R User Manual5.3: GRAPHIC EQCHANNEL EDIT > GRAPHIC EQ
-RKPW GRAPHIC EQ8L 
+5.3: GRAPHIC EQ8L 
 $X[ Send Master channels and the Stereo Master Channel incorporate Graphic EQ (GEQ) instead 
 RI the parametric EQ of the input channels. 
 This includes 31 fixed frequency bands (which can be 
@@ -1492,7 +1492,7 @@ Analyser (RTA), which shows D spectral view of the incoming signal.HPF/LPF Maste
 
 === [flujo de texto 77] ===
 Ui24R User Manual5.3: GRAPHIC EQCHANNEL EDIT > GRAPHIC EQ
-RKPW GRAPHIC EQBYPASSBypass the GEQ processingdbx AFS2 SETUPSet up and operate the feedback elimination system for this bus.Only available with tablet software. See section RKPKN for more detail.PRESETSSave / load GEQ presetsBrings up a standard preset management pop-up box.SCROLLING SCREEN
+5.3: GRAPHIC EQBYPASSBypass the GEQ processingdbx AFS2 SETUPSet up and operate the feedback elimination system for this bus.Only available with tablet software. See section 5.3.1 for more detail.PRESETSSave / load GEQ presetsBrings up a standard preset management pop-up box.SCROLLING SCREEN
 ,Q those scenarios where the users interface is unable to fit the full Graphic EQ. It can be accessed by 
  HPF and LPF 
 The Graphic EQ of Aux/Master channels.
@@ -1556,7 +1556,7 @@ AFS2 filter display modal
 
 === [flujo de texto 80] ===
 Ui24R User Manual5.4.1: GATECHANNEL EDIT > GATE
-RKQKNW GATEThe Ui24R Gate section is accesible via the Edit Tab on the top toolbar. A Gate is a threshold-driven 
+5.4.1: GATEThe Ui24R Gate section is accesible via the Edit Tab on the top toolbar. A Gate is a threshold-driven 
 Threshold. Setting the 
 Threshold just above D noise floor or background noise, for example, will allow the Gate to 
 attenuate the source during periods when the main input (voice, instrument etc) is silent. THRESHOLDAdjust the Threshold of the gate7KH tablet version of the software includes D horizontal 
@@ -1567,18 +1567,18 @@ in the dynamics graphic in both phone and tablet versions.ATTACKAdjust the Attac
 
 === [flujo de texto 81] ===
 Ui24R User Manual5.4.1: GATECHANNEL EDIT > DYNAMICS
-RKQKNW GATEDEPTHAdjust the gate DepthRELEASEAdjust the Gate ReleaseThis is the speed at which the gate returns to 'no attenuation' 
+5.4.1: GATEDEPTHAdjust the gate DepthRELEASEAdjust the Gate ReleaseThis is the speed at which the gate returns to 'no attenuation' 
  after the signal level has fallen below the 
 threshold level.GRM - METERINGGain reduction metering
 being applied due to the dynamics processing.RESETReset the Dynamics for this channel to default valuesBYPASSBypass the Dynamics for this channelSOFT KNEE / HARD KNEESet SOFT KNEE or HARD KNEE mode for the compressoran abrupt transition. SOFT KNEE means that it represents a gradual transition.
 
 === [flujo de texto 82] ===
 Ui24R User Manual5.4.1: GATECHANNEL EDIT > DYNAMICS
-RKQKNW GATEPRESETSSave / load Dynamics presetsBrings up a standard preset management pop-up box.
+5.4.1: GATEPRESETSSave / load Dynamics presetsBrings up a standard preset management pop-up box.
 
 === [flujo de texto 83] ===
 Ui24R User Manual5.4.2: COMPRESSORCHANNEL EDIT > COMPRESSOR
-RKQKOW COMPRESSORThe Ui24R Compressor section is accesible via the Edit Tab on the top toolbar. A compressor is a 
+5.4.2: COMPRESSORThe Ui24R Compressor section is accesible via the Edit Tab on the top toolbar. A compressor is a 
 when the signal level exceeds the threshold and applying 'make-up gain' 
 WR keep the overall level con
 -
@@ -1590,12 +1590,12 @@ ball in the dynamics graphic in both phone and tablet versions. This refers to h
 
 === [flujo de texto 84] ===
 Ui24R User Manual5.4.2: COMPRESSORCHANNEL EDIT > COMPRESSOR
-RKQKOW COMPRESSORRELEASEAdjust the Release of the compressorGAINAdjust the Gain of the compressorAllows you to boost the compressed signal. as compression often attenuates the signal significantlyHOLDAdjust the Hold time.
+5.4.2: COMPRESSORRELEASEAdjust the Release of the compressorGAINAdjust the Gain of the compressorAllows you to boost the compressed signal. as compression often attenuates the signal significantlyHOLDAdjust the Hold time.
 milliseconds to prevent chatterfluctuating signal level. PRESETSSave / load Dynamics presetsBrings up a standard preset management pop-up box.
 
 === [flujo de texto 85] ===
 Ui24R User Manual5.5: AUX/FX SENDSCHANNEL EDIT > AUX/FX SENDS
-RKRW AUX/FX SENDSThe AUX and FX SENDS tabs in the EDIT screen are a convenient way to access all output 
+5.5: AUX/FX SENDSThe AUX and FX SENDS tabs in the EDIT screen are a convenient way to access all output 
  
 contributions for D single channel as opposed to the 'mix view' 
  approach of the dedicated 
@@ -1606,7 +1606,7 @@ The FX SENDS view/tab for both phone and tablet software versions offer MUTE but
 selections for editing the settings of the different FX processors. In the phone software, clicking/
  
 .
-For details on the internal FX processors, please see section TK
+For details on the internal FX processors, please see section 7.
 
 === [flujo de texto 86] ===
 Ui24R User Manual5.6 PATCHING5.6 PATCHINGLOCAL
@@ -1621,8 +1621,8 @@ USB-DAWMultitrack USB files can be patched from your DAW to available Slots 1-32
 DAW
 RESET
 Reset will quickly reset the patch screen to its default setting..
-PATCH NWN
-for all channels.Patches can be set up for Local inputs, Multitrack USB A and Multi-track USB-DAWQuick reset and Patch NWN make setting and resetting patches a one touch solution.
+PATCH 1:1
+for all channels.Patches can be set up for Local inputs, Multitrack 86% A and Multi-track USB-DAWQuick reset and Patch 1:1 make setting and resetting patches a one touch solution.
 
 === [flujo de texto 87] ===
 Ui24R User Manual5.6 PATCHING5.6 PATCHINGSOUNDCHECK
@@ -1636,7 +1636,7 @@ This will appear to indicate when the Ui is in Soundcheck Mode.
 
 === [flujo de texto 89] ===
 Ui24R User Manual6.1: VIEW & MUTE GROUPSMIX FEATURES > VIEW & MUTE GROUPS
-SKNW VIEW & MUTE GROUPSIn Ui software you can mute channels individually, or in Mute Groups. There are six Mute Groups 
+6.1: VIEW & MUTE GROUPSIn Ui software you can mute channels individually, or in Mute Groups. There are six Mute Groups 
 available to be assigned to any muteable channels. To mute all channels in a Mute Group, simply select the required Mute Group button. View Groups work in much the same way, though these define iew Group for instant recall. 
 7KH 'INPUTS', FX RETURNS, SUB GROUPS, and 
 $8; MASTERS buttons 
@@ -1649,7 +1649,7 @@ ton in the Slideout panel. You can then choose groups and assign channels to the
 
 === [flujo de texto 90] ===
 Ui24R User Manual6.2: MOREMEMIX FEATURES > MOREME
-SKOW MOREMEMOREME allows users to assign their own channels (which may include D vocal mic and an 
+6.2: MOREMEMOREME allows users to assign their own channels (which may include D vocal mic and an 
  
 instrument channel for example) and mix the balance of those channels with D single large fader. 
 This is a simple way to mix your own sound against other band members.
@@ -1662,7 +1662,7 @@ ASSIGN ME.AUX MASTER faders, Long press on your AUX Master output channel and se
 
 === [flujo de texto 91] ===
 Ui24R User Manual6.2: MOREMEMIX FEATURES > MOREME
-SKOW MOREME "MOREME" Portrait Mode lkLlcc
+6.2: MOREME "MOREME" Portrait Mode lkLlcc
 ,W is now possible to define whether MOREME is displayed automatically in portrait mode on devices 
 offering orientation support. Some users prefer to operate fader view pages (MIX, 
 AUX, FX) in por-
@@ -1677,17 +1677,17 @@ Changing the MOREME Mode:
 
 === [flujo de texto 92] ===
 Ui24R User Manual7.0: FX EDITFX EDIT
-TKMW FX EDITThe Ui24R has three 
+7.0: FX EDITThe Ui24R has three 
 internal Lexicon FX processors: Reverb, Delay, and Chorus. The Ui24R has an additional processor that can either be an additional reverb or delay.
 
  
-See section QKQ for more details of FX Sends.
+See section 4.4 for more details of FX Sends.
 
 style numeric display.
 
 === [flujo de texto 93] ===
 Ui24R User Manual7.1: REVERBFX EDIT > REVERB
-TKNW REVERBReverberation (or "reverb" for short) is the complex effect created by the way we perceive sound in an enclosed 
+7.1: REVERBReverberation (or "reverb" for short) is the complex effect created by the way we perceive sound in an enclosed 
 
  
 something is missing without it.+)HF Damping%\ damping the high frequencies you can 'tune in' 
@@ -1702,7 +1702,7 @@ tings create darker reverbs with more bass frequency emphasis.+3)High Pass Filte
 
 === [flujo de texto 94] ===
 Ui24R User Manual7.2: DELAYFX EDIT > DELAY
-TKOW DELAYDelays repeat D sound D short time after it first occurs. Delay becomes echo when the output is fed back into 
+7.2: DELAYDelays repeat D sound D short time after it first occurs. Delay becomes echo when the output is fed back into 
 WKH input (feedback). 
 This turns D single repeat into D series of repeats, each D little softer than the last
 . The Ui 
@@ -1727,12 +1727,12 @@ The TAP TEMPO button is also available in the control software SlideOut panel.',
 
 === [flujo de texto 95] ===
 Ui24R User Manual7.3: CHORUSFX EDIT > CHORUS
-TKPW CHORUSfected and the 
+7.3: CHORUSfected and the 
 DENSITYAdjust the density of the chorus effectThe more dense the chorus, the thicker and richer the result will be.DETUNEAmount of deviation from the pitch of the original signalLPFLow Pass Filter Frequencies above this are filtered removedCut the high frequency content by adjusting the cut-off frequency of D shelving filter.
 
 === [flujo de texto 96] ===
 Ui24R User Manual7.4: FX SCREENFX EDIT > 
-TKQW FX SCREENClick and Hold on the ef
+7.4: FX SCREENClick and Hold on the ef
 -
 fect name will bring up a 
 menu for quick selection of Reverb or DelayClick and Hold on the ef
@@ -1745,8 +1745,8 @@ fect name will bring up a menu for quick selection of Room or DelayEFFECTS SCREE
 the other three are assignable.
 
 === [flujo de texto 97] ===
-Ui24R User Manual8.0: SHOWS & SNAPSHOTSSHOWS & SNAPSHOTS
-UKMW SHOWS & SNAPSHOTSA SHOW is a collection of SNAPSHOTS. A SNAPSHOT is a record of every setting on the console. 
+Ui24R User Manual8.0: 6+2:6 & SNAPSHOTSSHOWS & SNAPSHOTS
+8.0: 6+2:6 & SNAPSHOTSA 6+2: is a collection of SNAPSHOTS. A SNAPSHOT is a record of every setting on the console. 
 YTablet.
 A snapshot remembers every setting of your mixer at one time. A common usage for snapshots is to 
 
@@ -1757,12 +1757,12 @@ song to start.   tapping/clicking the LED display in the top navigation bar (wh
 Master Channel) to update the current snapshot or create D new one. In the phone software, simply tap the disk icon or assign the SlideOut cN key to a snapshot function.
 
 === [flujo de texto 98] ===
-Ui24R User Manual8.0: SHOWS & SNAPSHOTSSHOWS & SNAPSHOTS
-UKMW SHOWS & SNAPSHOTS
+Ui24R User Manual8.0: 6+2:6 & SNAPSHOTSSHOWS & SNAPSHOTS
+8.0: 6+2:6 & SNAPSHOTS
 
 7R set up D show, from D SHOWS SNAPSHOTS view (Settings) select SHOWS and press the NEW but
 -
-ton. Then name your show.In the SHOWS 1RZ take D snapshot by pressing the SAVE button (next to the SNAPSHOTS column or in the 
+ton. Then name your show.In the 6+2:6 1RZ take D snapshot by pressing the SAVE button (next to the SNAPSHOTS column or in the 
 SNAPSHOTS view). 
 <RX can also assign the Update Snaphot and New Snapshot functions to the F1 and 
 ) keys (Settings menu).
@@ -1785,7 +1785,7 @@ AFS2 filter display modal
 
 === [flujo de texto 99] ===
 Ui24R User Manual9.0: MEDIA PLAYER & RECORDERPLAYBACK & RECORDING
-VKMW MEDIA PLAYBACK & RECORDINGThe Ui mixer has built-in media factilities. The Ui24R can playback via a USB memory stick, and the 
+9.0: MEDIA PLAYBACK & RECORDINGThe Ui mixer has built-in media factilities. The Ui24R can playback via a 86% memory stick, and the 
 Ui24R can play and record. The player can be used for backing tracks or for background music in PLAYBACK L and PLAplayback function.
 7KH Record (Ui24R) and Playback features use one or two USB Memory sticks placed in the USB sockets on the Ui hardware. 'PLAY' 
  socket. 
@@ -1805,7 +1805,7 @@ AIFF, or FLAC files. Once this
 
 === [flujo de texto 100] ===
 Ui24R User Manual9.0: MEDIA PLAYER & RECORDERPLAYBACK & RECORDING
-VKMW MEDIA PLAYBACK & RECORDINGis completed, insert your USB stick into the USB slot labelled PLAY on the top of the Ui hardware and your 
+9.0: MEDIA PLAYBACK & RECORDINGis completed, insert your 86% stick into the 86% slot labelled PLAY on the top of the Ui hardware and your 
 song files will be shown in the USB media files column. cN & cO PLAYIn the tablet software the F1 F2 buttons above the Master fader(and in the phone software the F1 button in the SlideOut panel) can be assigned to play next song (in the SETTINGS ! CONFIG/SETUP 
  screens). 
 ,I the player is set to manual, then the player will stop at the finish of each song. Pressing the F1/F2 play button will play the next song in the list. This allows the musician to play the next song in his set without having to view the player page. Manual / AutoAuto mode means the player will automatically start playing the next song in the file list.
@@ -1818,26 +1818,26 @@ Cue
 ing to jump to the media player page before every song.
 Recorder 
 You can assign cN and/or Oqh USB2-Track Stereo USB recording is available on the Ui24R. 1HZ shuffle button. 
-MTK USB Record
+07. 86% Record
 Along with 2-Tcan then be imported into any DAW software for further processing or mastering.
-MTK USB Playback
+07. 86% Playback
 
-Note. MTK Playback and Record USB stick needs to be inserted in the front recording slot and 
+Note. 07. Playback and Record 86% stick needs to be inserted in the front recording slot and 
 to enable OO simultaneous tracks to be recorded, the USB write and read speed off the inserted media must be compliant ( the buffer setting in the mixer interface will indicate buffer size and any write speed issues.
 
 === [flujo de texto 101] ===
-Ui24R User Manual9.0.1: MTK PLAYER & RECORDERMTK PLAYBACK & RECORDING
-VKMKNW MTK PLAYBACK & RECORDINGMULTI-TRACK PLAYBACK & RECORDING FROM USB
+Ui24R User Manual9.0.1: 07. PLAYER & RECORDERMTK PLAYBACK & RECORDING
+9.0.1: 07. PLAYBACK & RECORDINGMULTI-TRACK PLAYBACK & RECORDING FROM 86%
 
 -
 Any changes will By clicking on a session number, playback will commence once the play icon is activated and stopped with the stop button, Recording will commence or stop by activating the record button.
 
 === [flujo de texto 102] ===
 Ui24R User Manual9.0.2: USB PLAYBACK & RECORDINGPLAYBACK & RECORDING
-VKMKOW USB PLAYBACK & RECORDINGUSB STICK COMPATIBILITY
+9.0.2: 86% PLAYBACK & RECORDINGUSB STICK COMPATIBILITY
 
 -
-back will require a minimum of USB PKM with a transfer rate of 25mb/s.
+back will require a minimum of 86% 3.0 with a transfer rate of 25mb/s.
 SPEED BUFFER INDICATORThe Speed bufAs 
 the buffer value increases the Speed buffer indicator will change from Green to Yellow to Orange WR finally displaying an error message. 
 7KH minimum requirement for Multi-track transfer rate is 
@@ -1845,11 +1845,11 @@ the buffer value increases the Speed buffer indicator will change from Green to 
 
 === [flujo de texto 103] ===
 Ui24R User Manual9.0.2: USB PLAYER & RECORDERPLAYBACK & RECORDING FROM USB-DAW
-Patching of USB-DAW can be done within an individual channels Patching Screen9.0.2: USB PLAYBACK & RECORDINGUSING THE USB-DAW PROCESSING AS AN INSERT WITHIN THE Ui24RW processing as an insert on an input channel. SELECTING INPUT CHANNELS ON YOUR DAW When recording to DAW via USB Channels 1 - 2 will be Master Left/Right fader Channels 3 - NM will be AUX 1-8Channels NN - PO will be Channel 1 onwards 
+Patching of USB-DAW can be done within an individual channels Patching Screen9.0.2: 86% PLAYBACK & RECORDINGUSING THE USB-DAW PROCESSING AS AN INSERT :,7+,1 THE Ui24RW processing as an insert on an input channel. SELECTING ,1387 CHANNELS 21 <285 DAW When recording to DAW via 86% Channels 1 - 2 will be Master Left/Right fader Channels 3 - 10 will be AUX 1-8Channels 11 - 32 will be Channel 1 onwards 
 
 === [flujo de texto 104] ===
 Ui24R User Manual10.0: SETTINGSSETTINGS
-NMKMW SETTINGS7KH SETTINGS page allows the user to manage basic setup configurations, network parameters 
+10.0: SETTINGS7KH SETTINGS page allows the user to manage basic setup configurations, network parameters 
  
 (including the password setting for the WiFi access point), GUI preferences, and access permissions 
 ferent forms, but al are accessible on either platform. The sub headings used in this section refer to the Tablet software.
@@ -1864,7 +1864,7 @@ HP CHANNELSSelect between iLo or oLi headphone split.SOLO MODESINGLE, MULTIPLESI
 WKH channel signal without having to push the fader up. 
 $)/ 
  (After-Fade Listen) is D tap after (and affected by) the 
-channel fader.2 TRK RECORD MODE32-bit, 24-bit, 16-bitChoose a sample rate for the media recording function. 
+channel fader.2 75. RECORD MODE32-bit, 24-bit, 16-bitChoose a sample rate for the media recording function. 
  AUX SEND MUTE INHERITENCE 
  Aux mute affecting global settings can be set to on or off in post mode only. The inheritance means taking 
  
@@ -1878,7 +1878,7 @@ phones
 
 === [flujo de texto 105] ===
 Ui24R User Manual10.0: SETTINGSSETTINGS
-NMKMW SETTINGSGUI PERFORMANCE
+10.0: SETTINGSGUI PERFORMANCE
 FRAME RATE
 FULL, NLOI NPI 1/4DISABLE RESCALING
 ON, OFFDISABLE LED METERSOFF, ONIf you are using a slower CPU, you may wish to turn off the LED channel meters to reduce CPU usage. LOCAL
@@ -1887,12 +1887,12 @@ ON, OFFHOLD FADER FOR FINE TUNING
 OFF, ONAllow fader fine tuning mode. 
 METER QUANTISATION
 OFF, ONChoose between quantised metering rather like an LED bargraph or non-quantised (continuous).FADERGLOWOFF, THIN, NORM
-Options for the coloured lines under the faders. NK On, OK Thin and PK Off. These lines are handy to quickly VHH which group of faders you are viewing (blue for FX, orange for 
+Options for the coloured lines under the faders. 1. On, 2. Thin and 3. Off. These lines are handy to quickly VHH which group of faders you are viewing (blue for FX, orange for 
 AUX, and so on).
 
 === [flujo de texto 106] ===
 Ui24R User Manual10.0: SETTINGSSETTINGS
-NMKMW SETTINGSDISABLE VU INPUT ibsbilccIlk
+10.0: SETTINGSDISABLE 98 ,1387 ibsbilccIlk
 Disable/Enable input level VU meters.
 DISABLE VU PEAK
 OFF, ONDisable / Enable the peak indicators for VU meters.
@@ -1918,12 +1918,12 @@ Enable,disable Moreme portrait mode.
 
 === [flujo de texto 107] ===
 Ui24R User Manual10.0: SETTINGSSETTINGS
-NMKMW SETTINGSPEDAL FUNCTIONMUTE FX
+10.0: SETTINGSPEDAL FUNCTIONMUTE FX
 Enable pedal to mute FX MUTE ALLEnable pedal to mute all channelsPLAY Enable pedal to activate USB playback
  
-RECORDEnable pedal to activate USB recordTAP TEMPOEnable pedal to set delay tempo via tap tempo functionMTK PLAYEnable pedal to activate MTK playback from USB or DAW MTK RECORD
-Enable pedal to activate MTK record to USB or DAWBUTTON FUNCTIONF1, cO
-NEW SNAPSHOT, UPDATE CURRENT SNAPSHOT, PLAY, RECORD, MTK PLAY, MTK RECORD
+RECORDEnable pedal to activate 86% recordTAP TEMPOEnable pedal to set delay tempo via tap tempo functionMTK PLAYEnable pedal to activate 07. playback from 86% or DAW 07. RECORD
+Enable pedal to activate 07. record to 86% or DAWBUTTON FUNCTIONF1, cO
+NEW SNAPSHOT, UPDATE CURRENT SNAPSHOT, PLAY, RECORD, 07. PLAY, 07. RECORD
 Master Channel. In the phone software only F1 is available; F2 is always the MENU or RETURN button.LANGUAGEENGLISH, CHINESEThe browser will automatically refresh when these options are selected.
 GLOBAL PRE-FADE AUX SEND POINT Î PRE-PROCESSING OR POST-PROCESSING
 7KH 
@@ -1948,7 +1948,7 @@ SYNC ID's can run concurrently on the Ui mixer.
 
 === [flujo de texto 108] ===
 Ui24R User Manual10.0: SETTINGSSETTINGS
-NMKMW SETTINGSLOCAL USER GUI PRESETS
+10.0: SETTINGSLOCAL USER GUI PRESETS
 This al-lows users to change devices with ease, taking their predefined local user presets with them, without having to set up their GUI every time they change devices!
 
 -
@@ -1974,7 +1974,7 @@ Y
 
 === [flujo de texto 110] ===
 Ui24R User Manual10.1: NETWORK CONFIGSETTINGS > NETWORK CONFIG
-NMKNW NETWORK CONFIG7KH Ui Config page allows you to enable/disable and edit settings for Hotspot wireless connection to 
+10.1: NETWORK CONFIG7KH Ui Config page allows you to enable/disable and edit settings for Hotspot wireless connection to 
 WKH Ui hotspot), WiFi (connection to an existing WiFi network), and LAN (wired connection via Ethernet). There is also an 
 Administration password change page, and D summary 'Network State' 
  page. IMPORTANT: 
@@ -1985,11 +1985,11 @@ You can either use the rfOQo as a hotspot or
 connect to an external Wifi network. LAN is available at anytime unless disabled.
 You can change the password using the Administrator Password page once you are in the CONFIG area.
 ,Q order to reset the unit's network settings back to the factory default settings you can use the hardware reset 
-procedure, detailed in section PKMKOK 
+procedure, detailed in section 3.0.2. 
 
 === [flujo de texto 111] ===
 Ui24R User Manual10.1.1: HOTSPOTSETTINGS > NETWORK CONFIG > HOTSPOT
-NMKNKNW HOTSPOT SETTINGSUse the Save/Update button to save Hotspot settings.
+10.1.1: +276327 SETTINGSUse the Save/Update button to save Hotspot settings.
 IMPORTANT: You cannot have both Hotspot and Client WIFI enabled at the same time. 7KH Ui has it's own hotspot, so it can create it's own network so other devices can connect to it and ac
 -
 cess the software in it's built-in webserver. Select the Hotspot Configuration menu in Network Config to 
@@ -2008,7 +2008,7 @@ a password.
 
 === [flujo de texto 112] ===
 Ui24R User Manual10.0.1: HOTSPOT SETTINGS > NETWORK CONFIG > HOTSPOT
-NMKNKNW HOTSPOT SETTINGSENABLE/DISABLE BROADCAST OF THE UI's HOTSPOT NETWORK SSID
+10.1.1: +276327 SETTINGSENABLE/DISABLE BROADCAST OF THE UI's +276327 NETWORK SSID
 
 To enable/disable broadcast of the Uis hotspot SSID:
 - Go to the SETTINGS-->NETWORK tab page Select CONFIG (you may beed to login with your 
@@ -2022,7 +2022,7 @@ To view network interface MAC addresses:
 
 === [flujo de texto 113] ===
 Ui24R User Manual10.1.2: WI-FISETTINGS > NETWORK CONFIG > WI-FI
-NMKNKOW Wi-FI SETTINGSUse the Save/Update button to save Wi-Fi settings.
+10.1.2: Wi-FI SETTINGSUse the Save/Update button to save Wi-Fi settings.
 IMPORTANT: 
 <RX must recycle the Ui power (turn the unit off and on) for settings to take effect.
  
@@ -2040,11 +2040,11 @@ administrator for manual IP allocation.
 
 === [flujo de texto 114] ===
 Ui24R User Manual10.1.3: LANSETTINGS > NETWORK CONFIG > LAN
-NMKNKPW LAN SETTINGSUse the Save/Update button to save LAN settings.
+10.1.3: LAN SETTINGSUse the Save/Update button to save LAN settings.
 IMPORTANT: 
 <RX must recycle the Ui power (turn the unit off and on) for settings to take effect.
 Default Settings
-LAN IP: 10.10.2.1Subnet mask: ORRKORRKORRKM
+LAN IP: 10.10.2.1Subnet mask: 255.255.255.0
 Direct Connection
 Most computers with D GigaBit adapter will 
 AutoNegotiate and so when connected directly to the unit (not via D 
@@ -2079,7 +2079,7 @@ $
  logged in user can define GLOBAL 
  client access limitations for non logged in users by allowing access to 
 certain parts of the mixer as defined below:AUX LEVELS - AUX PROCESSING - MIX LEVELS - MIX PROCESSING - MIX GAIN - PLAYER - MASTER 
-LEVEL - MASTER PROCESSING - SHOWS - GLOBAL SETTINGS
+LEVEL - MASTER PROCESSING - 6+2:6 - GLOBAL SETTINGS
 LOCAL AUX CONTROL Eplcq ACCESS ENABLER)
 $ 
  local client soft access eabler for 
@@ -2097,7 +2097,7 @@ RESET
 will be reset.
 
 === [flujo de texto 116] ===
-Ui24R User ManualAPPENDIX MNW NO SOUND?NO SOUND? A TROUBLESHOOTING GUIDE
+Ui24R User ManualAPPENDIX 01: 12 SOUND?NO SOUND? A TROUBLESHOOTING GUIDE
 APP01: NO SOUND?A Troubleshooting Guide.
 2QH of the most common problems experienced with mixing consoles is finding that an input isn't 
  
@@ -2120,7 +2120,7 @@ Output Channel metering is tapped just before the physical output.Are they 'in p
 routed the same way<RX can check if phase is an issue by switching the Phase (GAIN page) on ONE of those channels. If the audio comes back, , for example.
 
 === [flujo de texto 117] ===
-Ui24R User ManualAPPENDIX MNW NO SOUND?NO SOUND? A TROUBLESHOOTING GUIDE
+Ui24R User ManualAPPENDIX 01: 12 SOUND?NO SOUND? A TROUBLESHOOTING GUIDE
 APP01: NO SOUND?Is the Gate shut?It is possible for an incorrectly set Gate process to stop all signal.
 
 You can 
@@ -2128,7 +2128,7 @@ easily check this by bypassing active Gates in the dynamics (DYN) tab of the cha
  page.Are there any active mutes?The Ui allows you to mute channels individually, via Mute Groups, or via MUTE ALL and MUTE FX buttons the in the DASHBOARD. Mute Group operation is described in section 6.1.Is the Fader up?route is pre-fader, then fader position will have no effect.Is the Output Master Channel Path valid?Almost exactly the same checks as above can be done on an output channel (Aux Sends, Master Output).Run through the same checks as above but for the Output channel.Is the Physical Output Valid?Check the connection, and your replay system., the physical output.
 
 === [flujo de texto 118] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSYSTEM FAQ
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSYSTEM FAQ
 APP02: SYSTEM FAQ, and it runs sophisticated 
 control software for phone and tablet-type devices. The following FAQ addresses any issues you might have with this 'system' 
  aspect of Ui operation.Q: How do I download the Ui app?
@@ -2147,7 +2147,7 @@ Both
 Apple Configurator and OS ; Server Profile Manager support this option in the user interface.
 https://support.apple.com/en-au/HT4989Q: The GUI doesn't work on my android device?A: 7KH Ui web application requires D 'modern' 
  browser that supports HTML5 features like canvas and 
-websockets. Android devices using the stock built in Android browser prior to Version QKQ do NOT support 
+websockets. Android devices using the stock built in Android browser prior to Version 4.4 do 127 support 
 websockets, and as such will not function. We suggest upgrading your device to a more current version of OS and browser. W
  
 modern browser features.Q: How do I operate fullscreen just like an app?
@@ -2172,8 +2172,8 @@ Other popular Android browsers also offer this feature. For example, Firefox for
 tap the menu button, tap the Page option, and tap Add to Home Screen.
 
 === [flujo de texto 119] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSYSTEM FAQ
-APP02: SYSTEM FAQA (Windows UI UKNI oqFW 
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSYSTEM FAQ
+APP02: SYSTEM FAQA (Windows 8, 8.1, oqFW 
 This is obviously most useful on tablets, not on desktop PCs where you don't
 
 or swiping up from the bottom of your screen and tap the star icon. Tap the pin icon, enter a name for the shortcut, and click Pin to Start. The website will appear as a tile on your Start screen.A (Windows Phone): Open the website you want to pin in Internet Explorer. 
@@ -2207,7 +2207,7 @@ After the stick has been read (maybe 10 more seconds) the update will be recogni
  The GUI will prompt you if you would like to update the Ui mixer. Options are Ok/Cancel. Select OK to confirm
 
 === [flujo de texto 120] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSYSTEM FAQ
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSYSTEM FAQ
 APP02: SYSTEM FAQ 
 7KH Ui mixer will perform D firmware update 
  
@@ -2233,18 +2233,18 @@ allow connections after changing the WPA password until network is forgotten on 
 network information.Q: Why do I have lost connections?high powered antenna or external router.
 
 === [flujo de texto 121] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSYSTEM FAQ-HDMI
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSYSTEM FAQ-HDMI
 APP02: SYSTEM FAQHDMI connection issues:
 other. This is referred to as the "HDMI handshake". If the "handshake" doesn't work, the HDCP 
  encryption 
 components. 
 .Before frustration sets in, there are some things you can do yourself if you find that your HDMI-connected 
 components are not communicating properly.
-NK Try A Different Turn-on Sequence For Your Components:In other words, if you have D habit of turning on your Monitpr first, then your Ui24R try the reverse 
+1. Try A Different Turn-on Sequence For Your Components:In other words, if you have D habit of turning on your Monitpr first, then your Ui24R try the reverse 
 turn on sequence and see if that works.
 ,I you find D sequence that works, remember it. Of course, make sure when everything is turned 
 on, and that you have selected the correct input on your monitor.
-OK Check Your Source Device's Video Resolution Output Setting:Ui24R output resolution is fixed at 720p check that your monitor is set to the same resolution as 
+2. Check Your Source Device's Video Resolution Output Setting:Ui24R output resolution is fixed at 720p check that your monitor is set to the same resolution as 
 
 -
 tion.3. Troubleshooting HDMI-to-DVI or DVI-to-HDMI Connection Problems
@@ -2264,7 +2264,7 @@ source component you are trying to connect.
 An ACTIVE HDMI to DVI or HDMI to VGA adapter normally works better than a passive one.
 
 === [flujo de texto 122] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSYSTEM FAQ-Touch screen
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSYSTEM FAQ-Touch screen
 APP02: SYSTEM FAQTouch connection issues:A con-
 nections.
 Each screen has it's own USB ID number called VID and PID, in some instances even the same model 
@@ -2282,7 +2282,7 @@ Please email this information to the Soundcraft Support email
 address.
 
 === [flujo de texto 123] ===
-Ui24R User ManualAPPENDIX MOW SYSTEM FAQSetting up a connection
+Ui24R User ManualAPPENDIX 02: SYSTEM FAQSetting up a connection
 APP02: SYSTEM FAQAlthough the Ui24R has Wifi connectivity, care must be taken in using such D connection where interfer
 -
 ence can occur and longer distance control is required. 
@@ -2315,7 +2315,7 @@ Android loads the website as D "web app" when you tap the icon,
 VR it will get its own entry in the app switcher and won't have any browser interface getting in the way.
 Other popular Android browsers also offer this feature. For example, Firefox for Android can do this if you 
 tap the menu button, tap the Page option, and tap Add to Home Screen.
-Windows UI UKNI RT
+Windows 8, 8.1, 57
 This is obviously most useful on tablets, not on desktop PCs where you don't want to see the Start screen.of your screen and tap the star icon. TThe website will appear as a tile on your Start screen.
 Windows Phone
 Open the website you want to pin in Internet Explorer. 

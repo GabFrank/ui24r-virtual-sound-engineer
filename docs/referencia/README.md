@@ -11,6 +11,10 @@ proyecto sabía del aparato salía de dos fuentes, el `mixer.html` de la consola
 —el JavaScript de su propio cliente— y las mediciones. Nunca se había mirado la
 documentación del fabricante.
 
+**Lo que el manual dijo, leído entero, está en
+[`hallazgos-del-manual.md`](hallazgos-del-manual.md)** — incluido el enigma del
+supresor, que queda explicado.
+
 ## La regla, antes que los datos
 
 **El manual es una tercera fuente, no una superior.** Cuando choca con una

@@ -178,3 +178,122 @@ comprueba **releyendo por HTTP**, un camino distinto del que escribió.
 
 **No hay nada conectado a ninguna salida física** salvo los dos cables del bucle,
 así que esta corrida no hace ruido en la sala.
+
+---
+
+# Resultado
+
+**Corrida del 2026-09-13**, archivada en
+[`escala-del-bloque-de-bus-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/escala-del-bloque-de-bus-2026-09-13.txt).
+46 puntos, 44 útiles, 32 en la ventana del medidor.
+
+## Las ocho expectativas
+
+| # | Umbral | Resultado | |
+|---|---|---|---|
+| **B1** | medidor del canal quieto, 0,667 dB | **0,00 dB** | **PASA** |
+| **B2** | referencia interna, 0,2 dB | **0,00 dB** | **PASA** |
+| **B3** | `post` sigue a `pre`, 0,667 dB | **0,05 dB** de rango, 22 puntos sobre 21,7 dB | **PASA** |
+| **B4** | byte `pre` contra la salida real, 0,667 dB | **0,18 dB** máximo, 16 puntos sobre 38,0 dB | **PASA** |
+| **B5** | paso del bloque, 1 % | **0,331617** dB/byte contra 0,333401 — **0,53 %** | **PASA** |
+| **B6** | histéresis, 0,667 dB | **0,00 dB** | **PASA** |
+| **B7** | auxiliar 3 contra el 5, 0,667 dB de rango | **0,36 dB** de rango, 10 puntos | **PASA** |
+| **B8** | camino de captura, 0,2 dB | **0,00 dB** | **PASA** |
+
+## Lo que queda establecido
+
+**El paso del bloque de auxiliar es el mismo que el del canal.** El byte `pre` y
+la salida real coinciden dentro de **0,18 dB sobre 38 dB de recorrido**, medidos
+con un conversor que no es el de la consola.
+
+**Y el rango implicado es 79,57 dB** contra el 80 declarado. La 99b había medido
+**79,91** sobre el bloque de **canal**. Dos bloques distintos de la trama, dos
+instrumentos externos, dos corridas independientes, y los dos caen a medio punto
+porcentual del 80.
+
+**Con eso, las cifras en dB de la medición 94 quedan en pie** — pero sólo gracias
+a B7, y conviene decir por qué.
+
+## B7, que es la expectativa que de verdad rescata a la 94
+
+La 94 leyó `auxiliares[2].pre`, o sea el **auxiliar 3**, y esta corrida mide el
+**5**, que es el único cableado a la interfaz. Medir uno no mide el otro, y la
+propia 94 escribió que no prueba nada sobre los otros nueve auxiliares.
+
+B7 cierra el salto: se barrió **también** el envío al auxiliar 3, con el mismo
+crudo, y sus bytes `pre` siguieron a los del 5 con un rango de diferencia de
+**0,36 dB**. Misma pendiente ⇒ **la escala anclada en el auxiliar 5 vale para el 3
+por transitividad**.
+
+### Y hubo que explicar 22,67 dB antes de publicarlo
+
+B7 informó la misma pendiente **con un desplazamiento constante de 22,67 dB**, y
+el veredicto que el guión imprime dice «los dos buses dan el mismo byte», que es
+**falso**. Publicar un número así sin explicarlo habría dejado la conclusión
+colgando de algo que nadie entendía, así que se midió aparte
+—[`diferencia-entre-buses-2026-09-13.txt`](../spikes/SPK-P0.10b-vu2/evidence/diferencia-entre-buses-2026-09-13.txt)—.
+
+**La hipótesis obvia era falsa.** El auxiliar 3 tiene **tres canales más con el
+envío abierto** —`i.1` en 0,355, `i.15` en 0,297 y `i.18` en 0,756— que la 94 ya
+había encontrado. Pero con el tono apagado los dos buses leen el piso: esos
+canales **no aportan nada**, están abiertos y mudos. Y una contribución aditiva
+daría una diferencia **variable**; la medida dio −22,67 / −22,67 / −22,33 dB en
+tres crudos distintos.
+
+**Lo que sí era: el ecualizador gráfico del auxiliar 3.** Comparando las dos tiras
+clave por clave, la única diferencia son las 31 bandas del gráfico y `eq.prmod`:
+
+| Banda | Centro | Auxiliar 3 | En dB | Auxiliar 5 |
+|---|---|---|---|---|
+| 14 | 500 Hz | 0,0478 | **−13,6** | 0,5 (plano) |
+| 15 | 630 Hz | 0 | **−15,0** | 0,5 |
+| 16 | 800 Hz | 0 | **−15,0** | 0,5 |
+| 17 | **1 kHz** | 0,0278 | **−14,2** | 0,5 |
+
+Cuatro bandas contiguas al fondo alrededor de 500–1000 Hz: un ring-out de monitor.
+**El tono de 1 kHz cae justo ahí.**
+
+**El desplazamiento es estático, así que se cancela en una atenuación relativa al
+arranque y la conclusión de B7 se sostiene.** Pero deja una pregunta nueva y
+barata, anotada abajo.
+
+## Lo que la 94 no pudo decidir, y esta corrida sí
+
+La 94 vio debajo del piso del medidor un residuo unilateral y creciente, y no pudo
+decir si era el piso o una diferencia de ley. Con la interfaz mirando:
+
+| Crudo | Byte | Atenuación del medidor | De la salida real | Diferencia |
+|---|---|---|---|---|
+| 0,28 | **13** | 39,01 | 38,85 | **0,16** |
+| 0,27 | **10** | 40,01 | 39,91 | **0,10** |
+| 0,26 | **7** | 41,01 | 41,01 | **0,00** |
+| 0,25 | **4** | 42,01 | 42,11 | **−0,11** |
+| 0,20 | 0 | ∞ | 48,13 | — |
+
+**El medidor no se comprime gradualmente cerca del piso: sigue siendo exacto hasta
+el byte 4 y después cae a pico.** Es un acantilado en el byte 0, no una curva. La
+ventana de bytes 16..239 que este proyecto usa es **conservadora por doce bytes**,
+y eso ahora está medido.
+
+Se informa sin umbral porque no estaba declarado antes de medir.
+
+## Lo que sigue sin saberse
+
+- **El bloque de EFECTOS sigue tocado.** Es estéreo de 7 bytes contra el mono de 5
+  del auxiliar: son formatos distintos y medir uno no da el otro. **La 96b no
+  queda rescatada por esta corrida.**
+- **¿El byte `pre` de un bus está antes o después del ecualizador gráfico?** El
+  corte del auxiliar 3 aparece en su `pre`, lo que dice que el gráfico está
+  **aguas arriba** de ese medidor — y eso contradice la idea de que `pre` es «antes
+  de todo el procesamiento del bus». La otra diferencia entre las dos tiras es
+  `a.2.eq.prmod = 1` contra `a.4.eq.prmod = 0`, que podría ser justamente el
+  selector de posición. **Se mide barato**: poner un corte profundo en el
+  ecualizador del auxiliar 5 —que está plano y no tiene nada conectado— y ver si su
+  `pre` baja.
+- **Los otros ocho auxiliares.** B7 ancla el 3 al 5; de los demás no se dice nada.
+
+## Restauración, comprobada
+
+Las ocho claves releídas por HTTP, todas coincidiendo. Se puentearon durante la
+corrida la puerta y el compresor del auxiliar y el compresor, la puerta y el
+de-esser del canal, y se restauraron.
