@@ -1,0 +1,162 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T12:17:06.651Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-del-fader-del-general.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-del-fader-del-general.ts sha256:1d3dabe92ef8f591
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 107 — LA LEY DEL FADER DEL GENERAL, CONTRA LA SALIDA REAL ===
+canal 10 (i.9) -> general -> entrada 1 de la interfaz
+se barre m.mix, SOLO HACIA ABAJO desde donde el usuario lo dejo
+escalon del medidor: 0.333401 dB | tolerancia de diferencia 0.6668 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.mute                 0
+   i.9.mix                  0.7647058824
+   hw.9.gain                0.2508445026
+   m.mix                    0.7643020595
+   m.dim                    0
+   m.safe                   0
+   m.dyn.bypass             0
+   m.eq.bypass              0
+   m.gate.enabled           0
+   m.afs.enabled            1
+   m.afs.fmode              1
+   el barrido empieza en 0.7643020595 y el general esta en 0.7643020595: solo baja
+   ecualizador del general: 0 de 62 bandas fuera del centro | bypass = 0 — se registra y NO se toca
+
+   exigido sin escribir: canal sin mutear, sin dim, sin safe, y que el
+   barrido empieza donde el usuario dejo el fader, o mas abajo
+
+=== LO QUE SE NEUTRALIZA ===
+   compresor del general: bypass estaba en 0, se puentea.
+   Depende del nivel y el barrido mueve cuarenta y ocho decibeles.
+   (NO es lo unico del camino que depende del nivel: la puerta tambien,
+   y por eso se EXIGE apagada en el montaje en vez de escribirla.)
+   supresor del general: estaba en 1, apagado mientras suene
+   ecualizador del general: NO se toca. Es la correccion de sala del
+   usuario, es estatica, y se cancela en la atenuacion relativa.
+
+=== LOS CONTROLES POSITIVOS ===
+C2 con el general en 0: -133.19 dBFS
+   ruido del bin en esa misma captura: -126.92 dBFS
+   PISO EFECTIVO = -126.92 dBFS, el mayor de los dos.
+   `pisoDelBin` saltea los bins de guarda, asi que una fuga coherente en
+   1 kHz le es invisible: por eso se mide aparte y por eso se usa esta.
+   Esto NO separa los dos candidatos que el item 105 dejo abiertos, y
+   conviene decirlo porque una version anterior de este guion afirmaba
+   que si: con el general en 0, la etapa de salida de la consola tampoco
+   lleva tono, asi que los dos candidatos predicen lo MISMO. Y ademas ya
+   estaba medido: la E1 del 105 dio -133,34 dBFS en esta entrada.
+   El experimento que separa es el que el 105 nombro: desenchufar el
+   cable de la entrada 1 y repetir con el general ARRIBA.
+C1 general en 0.7643020595: -18.00 dBFS, 108.9 dB sobre el piso efectivo
+   (el item 105 midio -18 dBFS en esta misma entrada)
+
+=== EL BARRIDO ===
+crudo  | leido    | real     | canal    | at.real | prev~   | margen
+   (prev~ es provisoria: la que decide se calcula con el crudo LEIDO del tope,
+    que recien se sabe al terminar el barrido. Los residuos van en L3/L3b.)
+0.7643 |   0.7643 |   -18.00 |   -46.66 |       — |    0.00~|    109
+0.7400 |   0.7400 |   -18.91 |   -46.66 |       — |    0.91~|    108
+0.7200 |   0.7200 |   -19.66 |   -46.66 |       — |    1.66~|    107
+0.7000 |   0.7000 |   -20.42 |   -46.66 |       — |    2.43~|    106
+0.6741 |   0.6741 |   -21.43 |   -46.66 |       — |    3.44~|    105
+0.6500 |   0.6500 |   -22.41 |   -46.66 |       — |    4.41~|    105
+0.6200 |   0.6200 |   -23.67 |   -46.66 |       — |    5.67~|    103
+0.5900 |   0.5900 |   -25.00 |   -46.66 |       — |    7.00~|    102
+0.5600 |   0.5600 |   -26.42 |   -46.66 |       — |    8.43~|    100
+0.5237 |   0.5237 |   -28.29 |   -46.66 |       — |   10.29~|     99
+0.4900 |   0.4900 |   -30.18 |   -46.66 |       — |   12.18~|     97
+0.4600 |   0.4600 |   -32.01 |   -46.66 |       — |   14.01~|     95
+0.4300 |   0.4300 |   -34.00 |   -46.66 |       — |   16.00~|     93
+0.4000 |   0.4000 |   -36.16 |   -46.66 |       — |   18.16~|     91
+0.3700 |   0.3700 |   -38.51 |   -46.66 |       — |   20.51~|     88
+0.3400 |   0.3400 |   -41.06 |   -46.66 |       — |   23.07~|     86
+0.3100 |   0.3100 |   -43.84 |   -46.66 |       — |   25.84~|     83
+0.2800 |   0.2800 |   -46.86 |   -46.66 |       — |   28.86~|     80
+0.2500 |   0.2500 |   -50.13 |   -46.66 |       — |   32.12~|     77
+0.2200 |   0.2200 |   -53.67 |   -46.66 |       — |   35.66~|     73
+0.1900 |   0.1900 |   -57.50 |   -46.66 |       — |   39.48~|     69
+0.1600 |   0.1600 |   -61.64 |   -46.66 |       — |   43.61~|     65
+0.1300 |   0.1300 |   -66.11 |   -46.66 |       — |   48.06~|     61
+0.1300 |   0.1300 |   -66.09 |   -46.66 |       — |   48.06~|     61
+0.1600 |   0.1600 |   -61.63 |   -46.66 |       — |   43.61~|     65
+0.1900 |   0.1900 |   -57.50 |   -46.66 |       — |   39.48~|     69
+0.2200 |   0.2200 |   -53.67 |   -46.66 |       — |   35.66~|     73
+0.2500 |   0.2500 |   -50.13 |   -46.66 |       — |   32.12~|     77
+0.2800 |   0.2800 |   -46.86 |   -46.66 |       — |   28.86~|     80
+0.3100 |   0.3100 |   -43.84 |   -46.66 |       — |   25.84~|     83
+0.3400 |   0.3400 |   -41.07 |   -46.66 |       — |   23.07~|     86
+0.3700 |   0.3700 |   -38.51 |   -46.66 |       — |   20.51~|     88
+0.4000 |   0.4000 |   -36.16 |   -46.66 |       — |   18.16~|     91
+0.4300 |   0.4300 |   -34.00 |   -46.66 |       — |   16.00~|     93
+0.4600 |   0.4600 |   -32.01 |   -46.66 |       — |   14.01~|     95
+0.4900 |   0.4900 |   -30.18 |   -46.66 |       — |   12.18~|     97
+0.5237 |   0.5237 |   -28.29 |   -46.66 |       — |   10.29~|     99
+0.5600 |   0.5600 |   -26.42 |   -46.66 |       — |    8.43~|    100
+0.5900 |   0.5900 |   -25.00 |   -46.66 |       — |    7.00~|    102
+0.6200 |   0.6200 |   -23.67 |   -46.66 |       — |    5.67~|    103
+0.6500 |   0.6500 |   -22.41 |   -46.66 |       — |    4.41~|    105
+0.6741 |   0.6741 |   -21.43 |   -46.66 |       — |    3.44~|    105
+0.7000 |   0.7000 |   -20.42 |   -46.66 |       — |    2.43~|    106
+0.7200 |   0.7200 |   -19.66 |   -46.66 |       — |    1.66~|    107
+0.7400 |   0.7400 |   -18.91 |   -46.66 |       — |    0.91~|    108
+0.7643 |   0.7643 |   -18.00 |   -46.66 |       — |    0.00~|    109
+
+=== VEREDICTOS, contra el contrato del item 107 ===
+
+C1 el tono llega: -18.00 dBFS, juzgado en el sitio antes de barrer.
+   No se compara contra un nivel absoluto: ese numero saldria de suponer
+   que el fader del GENERAL sigue faderADb, que es la hipotesis bajo prueba.
+
+L1 el medidor del canal no se mueve: rango 0.00 dB sobre 46 puntos, techo -46.66 dB
+   PASA. La fuente no se movio.
+
+L2 la referencia interna de la interfaz: 46 capturas finitas
+   deriva 0.00 dB (tope 0.05)
+   PASA. El instrumento no se movio, y eso NO lo dice ningun otro control.
+
+L5 recorrido util: 48.11 dB sobre 46 puntos (minimo 40)
+   PASA.
+
+L3 la salida real contra faderADb: desvio maximo 0.05 dB en el crudo 0.13 (tope 0.3334)
+   PASA. Y es una COTA, no una identidad: dice que si hay diferencia es menor que la resolucion.
+
+L3b el residuo contra faderADb: pendiente 0.00057 dB/dB sobre 44 puntos
+   signos: 27 positivos, 17 negativos, 2 cambios de signo (con residuos independientes se esperarian ~22)
+   FALLA. El residuo ESTA estructurado, y eso es un hallazgo y no una contradiccion con L3: una cota puntual no ve la estructura. Gana L3b.
+
+L4 ida y vuelta: 23 pares comparados
+   diferencia maxima 0.01 dB en el crudo 0.13
+   PASA.
+
+L6 el crudo escrito contra el releido: 46 comparados
+   el peor costo en dB sobre todos los puntos: 0.0000 dB (tope 0.0333)
+   PASA. Y es una COTA, no una identidad.
+   Tres de los crudos barridos estan fuera de la rejilla de centesimos a
+   proposito: sin ellos esta expectativa no podria fallar.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada sobre el techo del general, que es la decision que falta y no es mia.
+   Nada sobre el cero absoluto: es relativa al tope del barrido.
+   Nada sobre la ley INVERSA: esto mide crudo -> dB.
+   Nada POR ENCIMA de donde el usuario dejo el fader: el barrido solo baja.
+   Un dia, una frecuencia, un nivel de fuente.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.dyn.bypass             esperado 0              leido 0
+   m.afs.enabled            esperado 1              leido 1
+   m.mix                    esperado 0.7643020595   leido 0.7643020595
+   Las 3 claves volvieron, por un camino distinto del que escribio.
+
+   filtros del supresor: 0 antes, 0 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 1

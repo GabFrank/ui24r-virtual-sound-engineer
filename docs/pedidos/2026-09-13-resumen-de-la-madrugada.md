@@ -364,11 +364,54 @@ Cada una encontró un bloqueante, y ninguno era de física:
 4. el `process.exit` que agregué al arreglar el anterior **se saltaba la
    comparación de la pila del supresor**, justo en la corrida que salió mal.
 
+## El 107: P6 tiene sus dos requisitos técnicos
+
+La ley del fader del **general** quedó medida contra la salida real: `faderADb`
+la describe con **0,007 dB sobre los primeros 26 dB** de atenuación y una cota de
+0,05 dB sobre los 48 del recorrido, contra un escalón de medidor de 0,333.
+
+Con eso `decision-bajar-buses-para-cazar-acoples.md` tiene dos de sus tres
+requisitos. **El tercero es tuyo y no es técnico: decidir el techo del general.**
+Para una cuña, «hasta donde estaba» alcanza; para la sala, vos tenés una
+referencia que la aplicación no tiene, que es cuánta gente hay.
+
+El barrido **sólo bajó** desde donde dejaste el fader, y nunca escribió un crudo
+mayor que el previo — comprobado contra el volcado, no contra una constante del
+guion. La parte de arriba del recorrido, de 0,7643 a 1,0, **queda sin medir** a
+propósito.
+
+### Y el residuo positivo aparece en dos faders distintos
+
+El contrato del 107 había declarado antes de mirar qué significaría cada
+resultado: si el general repetía el residuo del 106, es de la ley o de la
+consola; si no, era del bus. **Lo repite.**
+
+| corrida | qué barrió | pendiente | signo |
+|---|---|---|---|
+| **104** | el envío de un canal a un auxiliar | −0,00125 dB/dB | negativo, **explicado** por una fuga |
+| **106** | el fader de un bus auxiliar | +0,00146 dB/dB | positivo |
+| **107** | el fader del general | +0,00057 dB/dB | positivo |
+
+Dos faders, dos caminos físicos distintos, la misma forma: plano arriba,
+creciente abajo. Eso es lo que deja **una constante restada a la ganancia
+lineal**, y ajustándola el residuo del general baja de 0,043 a 0,0067 dB con los
+signos repartidos — o sea que no queda estructura que explicar.
+
+**Lo que no se puede decir**: las dos constantes difieren un 26 % entre sí y
+ninguna es exactamente 2⁻¹⁶. La firma es *compatible* con un coeficiente
+truncado, y eso no es haberlo medido.
+
+**Para el producto no cambia nada**: la desviación está dos órdenes de magnitud
+por debajo de los límites de 2 y 3 dB por transacción. Lo que cambia es lo que se
+puede afirmar — `faderADb` no es la ley exacta del aparato en el fondo del
+recorrido, y ahora está medido en dos faders.
+
 ## Lo que queda abierto
 
 | | |
 |---|---|
-| **El residuo positivo del 106** | por debajo de −42 dB la atenuación real es mayor que la que predice la ley. No es una fuga; qué es, no se sabe |
+| **El residuo positivo, ahora en dos faders** | la forma ajusta con una constante restada a la ganancia lineal, del orden de 2⁻¹⁶ pero no igual en los dos. Candidato, no medición |
+| **El techo del general** | **decisión tuya.** Es lo único que le falta a P6 |
 | **La 96b** | el bloque de efectos, estéreo de 7 bytes, sin medir |
 | **`m.afs.fmode`** | cuál valor es LIVE, FIXED y LOCK. **Decide si una corrida planta filtros permanentes** |
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |
