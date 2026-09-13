@@ -6,7 +6,7 @@ Plan: [`2026-09-13-plan-de-la-madrugada.md`](2026-09-13-plan-de-la-madrugada.md)
 | Bloque | |
 |---|---|
 | 0 — la 101 | **cerrado** |
-| 1 — las mediciones | **cerrado, y se extendió mucho**: además de la 102 salieron la **104** (la ley del envío), la **105** (de dónde viene la fuga), la **106** (el fader de bus), la **107** (el fader del general) y la **108** (la ganancia del ecualizador), ésta última escrita y en auditoría |
+| 1 — las mediciones | **cerrado, y se extendió mucho**: además de la 102 corrieron la **104** (la ley del envío), la **105** (de dónde viene la fuga), la **106** (el fader de bus) y la **107** (el fader del general). La **108** —la ganancia del ecualizador— quedó **escrita, auditada cinco veces y sin correr**, y [dice por qué](../backlog/el-108-esta-escrito-y-sin-correr.md) |
 | 2 — auditoría general | **cerrada**, con sus nueve ALTA aplicados |
 | 3 — el manual | **cerrado**, con cinco tareas escritas |
 | 4 — producto | **a medias, pero mucho menos**: **P1 hecho** —la app puede bajar un monitor—, **P2** hecho, **P6** con su ADR escrito y esperándote, **P3** con cuatro guiones convertidos, y **P4** con uno. Falta **P5** entero |
@@ -14,6 +14,22 @@ Plan: [`2026-09-13-plan-de-la-madrugada.md`](2026-09-13-plan-de-la-madrugada.md)
 La primera versión de este resumen decía «los cinco bloques quedaron cerrados».
 No era cierto, y es exactamente la clase de sobreafirmación que dos auditorías
 estuvieron corrigiendo toda la noche.
+
+## Dónde quedó todo (cerrado el 2026-09-13 a pedido tuyo)
+
+**El gatillo de cada veinte minutos está desactivado**, no hay ningún proceso
+corriendo y la consola quedó verificada por lectura: 6665 claves, el canal 10 y el
+general donde los dejaste, cero filtros plantados en el supresor.
+
+| | |
+|---|---|
+| suite | **1128 tests**, todo verde |
+| huellas de evidencia | validador en verde: dos divergencias reconocidas por hash y una de sólo prosa |
+| restos de edición | una señal sobre 154 guiones, y es de un guion viejo |
+| commiteado y empujado | todo |
+
+**Lo único a medio hacer, y está dicho en su propio archivo**: la 108. Le falta
+una sexta ronda de auditoría y seis minutos de consola.
 
 ## Lo que necesita algo tuyo, por orden de consecuencia
 
