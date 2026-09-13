@@ -332,3 +332,112 @@ sostenido le planta notches de −18 dB, y ya pasó dos veces hoy.
 **No hay nada conectado a ninguna salida física** —el usuario desconectó la
 Rokit y el B2— salvo los dos cables del bucle a la interfaz. Así que esta corrida
 no hace ruido en la sala.
+
+
+---
+
+# Resultado
+
+**Corrida del 2026-09-13**, archivada en
+`docs/spikes/SPK-P0.10b-vu2/evidence/medidor-contra-salida-real-2026-09-13c.txt`
+con la huella del guión. Banco: tono de 1 kHz a −15 dBFS por la Scarlett al canal
+10, `hw.9.gain = 0,2508445026` —**el mismo que la 97 y la 98**—, 48 puntos de ida
+y vuelta, 44 útiles, 34 dentro de la ventana del medidor.
+
+Hubo **tres corridas**. Las dos primeras no llegaron a barrer o no sirvieron, por
+errores míos que las guardas atajaron; están al final, porque callarlas dejaría
+este documento diciendo que salió a la primera.
+
+## Las seis expectativas
+
+| # | Umbral | Resultado | |
+|---|---|---|---|
+| **M1** | `pre` y `entrada` quietos, 0,667 dB | rango **0,12 dB**, 0 puntos fuera | **PASA** |
+| **M2** | referencia interna, 0,2 dB | **0,00 dB** | **PASA** |
+| **M3** | salida real vs `faderADb`, 0,5 dB | **0,12 dB** máximo, 22 puntos | **PASA** |
+| **M4** | medidor vs salida real, 0,667 dB | **0,17 dB** máximo, 17 puntos sobre 35,0 dB | **PASA** |
+| **M5** | escalón del medidor, 1 % | **0,333017** dB/byte contra 0,333401 — **0,11 %** | **PASA** |
+| **M6** | histéresis, 0,667 dB | **0,00 dB** | **PASA** |
+
+Y los controles del camino que M2 no cubre: el punto de arranque repetido al
+cierre difiere **0,00 dB**, y la alineación de frecuencia cae en el centro exacto
+al abrir y al cerrar.
+
+## Lo que queda establecido
+
+**`faderADb` queda verificada desde afuera de la consola.** Es la primera vez en
+este proyecto. Los 0,12 dB son de un conversor que no es el de la consola, sobre
+22 puntos y 60 dB de recorrido de fader. **Y es una cota, no una identidad**: dice
+que si la ley se aparta del fader real se aparta menos que eso *en los puntos
+medidos*.
+
+**El medidor predice la salida real**, 0,17 dB sobre 35 dB de tramo. Para lo que
+la aplicación lo usa —saber qué está pasando— el medidor sirve. Esto **no**
+distingue «medido» de «calculado y correcto», y eso sigue abierto.
+
+**El escalón del medidor queda anclado a un instrumento externo.** El **rango
+implicado es 79,91 dB** contra el 80 declarado. Dos corridas independientes dieron
+79,90 y 79,91. La hipótesis de los **84,5 dB** que este proyecto tuvo que retirar
+queda descartada **con evidencia de afuera**, no por autoconsistencia.
+
+**El general es una ganancia estática: medido, no supuesto.** De `pre` a `post`
+del general, 0,21 dB en todo el barrido, con el compresor puenteado y su medidor
+de reducción en 0,00 dB en los 48 puntos.
+
+**La consola no redondea el crudo del fader.** 1 → 1, 0,4 → 0,4, 0,05 → 0,05
+exactos, releídos por HTTP. Cierra la duda de si `faderADb` había que evaluarla en
+lo escrito o en lo devuelto: son lo mismo.
+
+## Dos cosas que aparecieron sin buscarlas
+
+**1. Los medidores de la consola se movieron y el audio no.** En la segunda
+corrida, en un punto —crudo 0,52 de la vuelta— los **cuatro** medidores de la
+consola subieron juntos ~0,8 dB:
+
+| | bajando | subiendo |
+|---|---|---|
+| `pre` | −46,66 | −45,85 |
+| `salida` | −57,33 | −56,46 |
+| `pre`/`post` del general | −57,00 | −56,20 |
+| **salida real, por la interfaz** | **−28,49** | **−28,50** |
+
+La salida real no se movió **0,01 dB**. En la tercera corrida no se repitió, así
+que fue un transitorio y no algo sistemático — pero **sin el segundo instrumento
+habría entrado al registro como un evento real de 0,8 dB**. Es exactamente para lo
+que sirve medir por dos caminos.
+
+**2. El medidor de canal y el del general no tienen el mismo fondo.** Cerca del
+piso del medidor de canal los dos se separan hasta **1,14 dB**, y por debajo el de
+canal da `-Infinity` mientras el del general sigue informando −77 dB. Eso toca la
+mitad abierta del `protocol-spec` §4.4 —a cuántos dB equivale un escalón en los
+bloques de la cola— y **esta corrida no la cierra**: mide el bloque de entradas.
+
+## Las tres corridas, y por qué hubo tres
+
+| | Qué pasó | Quién lo atajó |
+|---|---|---|
+| **a** | Abortó antes de barrer: la interfaz recortaba, pico 0,00 dBFS | La guarda de recorte |
+| **b** | Barrió, pero con el estimador de piso de una sola muestra y M1 como veredicto global | Los datos: dos tomas del mismo silencio dieron −106,70 y −136,12 dBFS |
+| **c** | La buena | |
+
+**El error de la (a) fue calcular el recorrido desde `pre`** cuando el barrido
+arranca en el crudo 1,0, que son **+10 dB de fader** por encima. El medidor y la
+interfaz empezaban los dos diez decibeles más arriba de lo que la cuenta suponía.
+
+**El error de la (b) fue estimar un piso de ruido con una muestra.** Un bin
+aislado de ruido no es «el piso»: es una variable aleatoria con **5,6 dB** de
+desviación y cola hacia abajo. Ahora se promedian 40 bins, y **la guarda juzga
+cada punto contra el ruido de su propia captura** en vez de contra un número de
+hace cinco minutos.
+
+Los dos errores estaban en **la aritmética del guión, no en la prosa del
+contrato**, y el auditor de expectativas —que leyó el contrato— no vio ninguno de
+los dos. Eso es un hallazgo sobre el método: **el auditor tiene que correr contra
+el guión además del contrato.**
+
+## Restauración, comprobada
+
+`i.9.mix`, `m.afs.enabled` y `m.dyn.bypass` restaurados a lo leído del aparato
+antes de empezar, y comprobados **por HTTP**, que es un camino distinto del que
+escribió. `hw.9.gain` y `m.mix` nunca se tocaron. La instantánea **Alma caninde**
+se verificó presente leyendo `SHOWLIST` y `SNAPSHOTLIST`, no por «no la toqué».

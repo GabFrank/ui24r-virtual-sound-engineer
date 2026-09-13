@@ -135,6 +135,48 @@ export function pico(x) {
 }
 
 /**
+ * El piso de ruido alrededor de una frecuencia, **promediando muchos bins**.
+ *
+ * **Por qué no alcanza con mirar un bin.** El valor de un bin aislado de ruido de
+ * banda ancha no es «el piso»: es una muestra de una variable aleatoria. Parte
+ * real y parte imaginaria son gaussianas independientes, así que la potencia sale
+ * exponencial y en decibeles eso tiene una desviación de **5,6 dB** y una cola
+ * que baja sin fondo — cuando el número complejo cae cerca del cero, el bin
+ * informa un silencio que no existe.
+ *
+ * **Y se vio.** Dos tomas del mismo silencio, con diez minutos de diferencia y
+ * nada tocado en el medio, dieron **−106,70 y −136,12 dBFS**. Treinta decibeles.
+ * De ese número cuelga la guarda que decide qué puntos de una medición valen: con
+ * el piso subestimado la guarda deja pasar puntos que el ruido está moviendo, y
+ * con el piso sobrestimado anula puntos buenos.
+ *
+ * Promediando la **potencia** de `BINS_DEL_PISO` bins a cada lado, la desviación
+ * baja con la raíz del número de bins: con 40, a unos 0,7 dB.
+ *
+ * **Se saltea la falda del tono.** La ventana de Hann derrama a los dos bins
+ * vecinos, así que el promedio arranca `BINS_DE_GUARDA` más allá; si no, lo que
+ * se mediría como piso sería el propio tono.
+ */
+const BINS_DEL_PISO = 20;
+const BINS_DE_GUARDA = 4;
+
+export function pisoDelBin(x, frecuencia, fm) {
+  const anchoDelBin = fm / x.length;
+  let potencia = 0;
+  let n = 0;
+  for (let k = BINS_DE_GUARDA; k < BINS_DE_GUARDA + BINS_DEL_PISO; k++) {
+    for (const signo of [1, -1]) {
+      const f = frecuencia + signo * k * anchoDelBin;
+      if (f <= 0 || f >= fm / 2) continue;
+      const a = amplitudDelTono(x, f, fm);
+      potencia += a * a;
+      n += 1;
+    }
+  }
+  return n === 0 ? 0 : Math.sqrt(potencia / n);
+}
+
+/**
  * El análisis completo de un archivo, que es lo que las mediciones importan.
  *
  * Se separó de la interfaz de línea de órdenes cuando la medición 99b necesitó
@@ -172,11 +214,7 @@ export function analizar(ruta, frecuencia = 1000) {
       // lejos para no tomar su energía y lo bastante cerca para que el ruido sea
       // el mismo. No se deduce del ruido total suponiendo que el espectro es
       // plano: se mide en el mismo archivo.
-      const separacion = Math.max(5, 20 * (w.frecuencia / w.cuadros));
-      const ruidoEnBin = Math.max(
-        amplitudDelTono(x, frecuencia + separacion, w.frecuencia),
-        amplitudDelTono(x, frecuencia - separacion, w.frecuencia),
-      );
+      const ruidoEnBin = pisoDelBin(x, frecuencia, w.frecuencia);
       return {
         tonoDb: dB(tono),
         picoDb: dB(p),

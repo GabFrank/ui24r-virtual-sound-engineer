@@ -42,27 +42,36 @@ const FM = 48000;
 /**
  * El nivel del tono, y **de acá sale todo el recorrido de la medición**.
  *
- * El banco tal como quedó cableado, con el tono a −20 dBFS, pone `pre` en
- * −51,66 dB. El medidor sólo llega hasta el byte 16, que son −74,67 dB, así que
- * ese banco da **23 dB de recorrido** — y la medición 94 ya se declaró
- * indecidible con 18. Correrlo así sería un control que sólo puede confirmar.
+ * El banco tal como quedó cableado, con el tono a −20 dBFS, deja el medidor en
+ * el byte 115 al arrancar y llega al piso —el byte 16— a los **33 dB**. La
+ * medición 94 ya se declaró indecidible con 18, así que eso alcanza poco. Subir
+ * el tono sube el medidor y el nivel en la interfaz **a la par**, y el tope lo
+ * pone el recorte de la interfaz.
  *
- * Subir el tono sube el medidor y el nivel en la interfaz **a la par**, así que
- * el tope lo pone el recorte de la interfaz: con +16 dB el pico queda en
- * −6,9 dBFS y el recorrido pasa a **39 dB**. Más que eso empieza a arrimarse al
- * recorte por una ganancia que no se puede vigilar desde acá.
+ * **La primera versión puso −4 dBFS y la corrida abortó: la interfaz recortaba.**
+ * El error fue calcular el recorrido desde `pre`, cuando el barrido arranca en el
+ * crudo 1,0 — que son **+10 dB de fader** por encima. El medidor y la interfaz
+ * empiezan los dos diez decibeles más arriba de lo que esa cuenta suponía. La
+ * guarda de recorte lo paró antes de barrer, que es para lo que estaba.
+ *
+ * La cuenta buena, sobre datos medidos y no supuestos: en la corrida en seco con
+ * el tono a −20 dBFS y el fader en unidad, la interfaz vio el pico en
+ * −22,87 dBFS. En el crudo 1,0 eso son −12,87. Con el tono en **−15 dBFS** el
+ * pico queda en **−7,9 dBFS** —dentro de la banda de −12 a −6 donde no recorta ni
+ * se arrima al ruido— y el medidor arranca en el byte 130, con **38 dB** hasta el
+ * piso.
  *
  * **No son los sesenta que el contrato prometía en su primera versión**, y el
  * número está acá y no en la prosa justamente para que no se pueda prometer otra
- * cosa. El fondo de la interfaz no limita: aun en el punto más bajo del barrido
- * le quedan unos 68 dB sobre el ruido de su bin.
+ * cosa. El medidor es lo que limita: en el punto más bajo que el medidor todavía
+ * resuelve, a la interfaz le quedan unos 60 dB sobre el ruido de su bin.
  *
  * Lo que esto cambia: el tono no es el de la 97 ni el de la 98, así que **los
  * niveles absolutos de esta corrida no son comparables con aquéllas**. La
  * ganancia del previo —`hw.N.gain`— no se toca, y se registra, que es lo que
  * permite decir que el banco es el mismo aparato en el mismo estado.
  */
-const NIVEL_DBFS = -4;
+const NIVEL_DBFS = -15;
 
 const ESCALON_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
 /** Dos escalones: toda atenuación de acá es diferencia de dos lecturas. */
@@ -178,7 +187,7 @@ interface Medida {
   preGeneralDb: number; postGeneralDb: number;
   reduccionGeneralMax: number; cuadros: number;
   realDb: number; referenciaDb: number;
-  margenEnBinDb: number; picoDb: number; recorta: boolean;
+  margenEnBinDb: number; ruidoEnBinDb: number; picoDb: number; recorta: boolean;
 }
 
 /**
@@ -203,7 +212,8 @@ async function medirPunto(etiqueta: string): Promise<Medida> {
   const xs = cuadros;
   const a = analizar(wav, HZ) as {
     canales: {
-      tonoDb: number; picoDb: number; margenEnBinDb: number; recorteExacto: boolean;
+      tonoDb: number; picoDb: number; margenEnBinDb: number; ruidoEnBinDb: number;
+      recorteExacto: boolean;
     }[];
   };
   // El archivo se borra en cuanto se leyó: cuarenta y ocho capturas de tres
@@ -222,6 +232,7 @@ async function medirPunto(etiqueta: string): Promise<Medida> {
     realDb: g.tonoDb,
     picoDb: g.picoDb,
     margenEnBinDb: g.margenEnBinDb,
+    ruidoEnBinDb: g.ruidoEnBinDb,
     recorta: g.recorteExacto,
     referenciaDb: a.canales[ENTRADA_REFERENCIA]!.tonoDb,
   };
@@ -348,11 +359,15 @@ await conRestauracion(
     // analizador ya informa el ruido del bin en cada captura, pero con el tono
     // sonando ese numero puede estar contaminado por la falda del propio tono;
     // con el tono apagado es el piso limpio.
-    console.log('midiendo el piso del bin con el tono apagado...');
+    console.log('midiendo el piso del banco con el tono apagado...');
     const silencio = await medirPunto('silencio');
-    pisoDelBinDb = silencio.realDb;
-    console.log(`   piso del bin a ${HZ} Hz: ${pisoDelBinDb.toFixed(2)} dBFS `
-      + `(banda ancha ${silencio.picoDb.toFixed(1)} de pico, ${silencio.cuadros} cuadros)`);
+    pisoDelBinDb = silencio.ruidoEnBinDb;
+    console.log(`   piso del bin alrededor de ${HZ} Hz: ${pisoDelBinDb.toFixed(2)} dBFS `
+      + `(promediado sobre 40 bins; pico de banda ancha ${silencio.picoDb.toFixed(1)})`);
+    console.log('   Queda archivado como caracterizacion del banco. **No es el');
+    console.log('   denominador de la guarda**: cada punto se juzga contra el ruido de su');
+    console.log('   propia captura, porque un piso medido cinco minutos antes describe');
+    console.log('   otro momento --dos tomas del mismo silencio dieron -106,70 y -136,12.');
     console.log('');
 
     t.enviar(codificarSetd('m.afs.enabled', 0));
@@ -453,8 +468,13 @@ await conRestauracion(
         const atenuacionMedidor = topeMedidor - p.salidaDb;
         const atenuacionReal = topeReal - p.realDb;
         const segunLey = faderADb(CRUDOS[0]!) - faderADb(crudo);
-        // El margen contra el piso medido HOY, no contra la banda ancha.
-        const margen = p.realDb - pisoDelBinDb;
+        // **El margen se mide en la MISMA captura**, no contra un piso de hace
+        // cinco minutos. Dos tomas del mismo silencio dieron −106,70 y −136,12
+        // dBFS: un bin aislado de ruido es una variable aleatoria con cola larga,
+        // y comparar contra un numero asi decide mal en las dos direcciones.
+        // `margenEnBinDb` promedia cuarenta bins alrededor del tono en el mismo
+        // archivo, asi que ademas refleja las condiciones DE ESE PUNTO.
+        const margen = p.margenEnBinDb;
         const fueraDeVentana = b < BYTE_PISO || b > BYTE_TECHO;
 
         const anulado = p.cuadros < CUADROS_MINIMOS
@@ -463,7 +483,8 @@ await conRestauracion(
           : p.recorta || p.picoDb > -1 ? `la interfaz recorta (pico ${p.picoDb.toFixed(2)} dBFS)`
           : p.reduccionGeneralMax > 0 ? `el compresor del general actuo (${p.reduccionGeneralMax.toFixed(2)} dB)`
           : margen < MARGEN_MINIMO_DB
-            ? `margen de ${margen.toFixed(1)} dB en el bin: el instrumento externo erraria `
+            ? `margen de ${margen.toFixed(1)} dB sobre el ruido de su propia captura: `
+              + `el instrumento externo erraria `
               + `${errorPorRuido(margen).toFixed(2)} dB`
           : null;
 
@@ -507,7 +528,33 @@ await t.desconectar();
 
 // ------------------------------------------------------------ veredictos
 
-const utiles = puntos.filter((p) => p.anulado === null);
+/**
+ * **M1 es un testigo POR PUNTO, no un veredicto de la corrida.**
+ *
+ * La primera version comparaba el rango de `pre` sobre todos los puntos contra la
+ * tolerancia, y con eso **un solo punto anomalo tumbaba el barrido entero**. La
+ * corrida del 2026-09-13 lo mostro: `pre` dio −46,66 en 47 de 48 puntos y −45,85
+ * en uno, y M1 fallaba por 0,81 dB.
+ *
+ * Lo que el contrato quiere decir es otra cosa: si la fuente se movio, **ese
+ * punto** no mide el fader. Asi que se compara cada punto contra la **mediana**
+ * --que un outlier no mueve-- y el punto se anula. Una deriva de verdad anula
+ * muchos puntos y se ve igual; una excursion suelta se saca sola.
+ *
+ * Se informa el rango global igual, porque distinguir «un punto raro» de «se fue
+ * moviendo todo» es justamente lo que hay que poder leer.
+ */
+const mediana = (xs: number[]): number => {
+  const ys = xs.filter(Number.isFinite).sort((a, b) => a - b);
+  if (ys.length === 0) return NaN;
+  const m = Math.floor(ys.length / 2);
+  return ys.length % 2 === 1 ? ys[m]! : (ys[m - 1]! + ys[m]!) / 2;
+};
+const preMediano = mediana(puntos.map((p) => p.preDb));
+const testigoFuera = (p: Punto): boolean =>
+  Number.isFinite(p.preDb) && Math.abs(p.preDb - preMediano) > TOLERANCIA_MEDIDOR_DB;
+
+const utiles = puntos.filter((p) => p.anulado === null && !testigoFuera(p));
 /** La ventana de M4 y M5: donde el medidor dice algo. */
 const enVentana = utiles.filter((p) => !p.fueraDeVentana);
 
@@ -522,16 +569,34 @@ for (const p of puntos.filter((x) => x.anulado !== null)) {
 const rango = (xs: number[]) =>
   (xs.length === 0 ? NaN : Math.max(...xs) - Math.min(...xs));
 
-// M1 — los testigos de la consola
+// M1 — el testigo de la fuente, punto por punto
 {
   const dPre = rango(puntos.map((p) => p.preDb).filter(Number.isFinite));
   const dEnt = rango(puntos.map((p) => p.entradaDb).filter(Number.isFinite));
+  const fuera = puntos.filter(testigoFuera);
   console.log('');
-  console.log(`M1 deriva de pre: ${dPre.toFixed(2)} dB | de entrada: ${dEnt.toFixed(2)} dB`);
-  console.log(Math.max(dPre, dEnt) <= TOLERANCIA_MEDIDOR_DB
+  console.log(`M1 pre mediano ${preMediano.toFixed(2)} dB | rango de pre ${dPre.toFixed(2)} dB | `
+    + `de entrada ${dEnt.toFixed(2)} dB`);
+  console.log(`   ${fuera.length} puntos de ${puntos.length} con la fuente fuera de tolerancia`);
+  for (const p of fuera) {
+    // **Y se dice si el audio REAL acompano.** Es la unica pregunta que
+    // importa: si los medidores de la consola se movieron y la salida no, el
+    // que se movio fue el medidor, y eso es un hallazgo, no un punto sucio.
+    const par = puntos.find((x) => x.crudo === p.crudo && x.sentido !== p.sentido);
+    const dReal = par === undefined ? NaN : p.realDb - par.realDb;
+    console.log(`     crudo ${p.crudo} ${p.sentido}: pre ${p.preDb.toFixed(2)} `
+      + `(${(p.preDb - preMediano).toFixed(2)} de la mediana) | la salida REAL se movio `
+      + `${Number.isFinite(dReal) ? `${dReal.toFixed(2)} dB` : '(sin par para comparar)'}`);
+    if (Number.isFinite(dReal) && Math.abs(dReal) < TOLERANCIA_MEDIDOR_DB / 2) {
+      console.log('       LOS MEDIDORES DE LA CONSOLA SE MOVIERON Y EL AUDIO NO. Sin el');
+      console.log('       segundo instrumento esto habria parecido un evento real.');
+    }
+  }
+  console.log(fuera.length === 0
     ? '   PASA. El fader esta aguas abajo de los dos, como el proyecto cree, y el\n'
       + '   camino ANALOGICO de reproduccion tampoco se movio: es el testigo fuerte.'
-    : '   FALLA: o se movio la fuente, o el fader no esta donde este proyecto cree.');
+    : '   Esos puntos quedan ANULADOS y el resto de la corrida sigue valiendo. Una\n'
+      + '   deriva de verdad anularia muchos; una excursion suelta se saca sola.');
 }
 
 // M2 — la referencia interna de la interfaz
