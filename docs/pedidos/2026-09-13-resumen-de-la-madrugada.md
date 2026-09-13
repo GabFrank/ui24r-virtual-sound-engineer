@@ -122,6 +122,53 @@ código del camino de restauración— y la huella de la evidencia, que ahora cu
 **el guion y sus imports**, porque cubrir sólo el archivo de nivel superior dejaba
 abierta la puerta que la huella existe para cerrar.
 
+## La segunda mitad de la noche: la 104, y lo que destapó
+
+### La ley del envío a monitor aguanta, y el residuo viejo tiene dueño
+
+La **104** barrió `i.9.aux.4.value` contra el convertidor externo. Resultado:
+`VtoLIN` —la curva que la consola sirve en su propio `mixer.html`— describe la
+salida **física** con **0,007 dB sobre los primeros 32 dB de atenuación**. Es la
+primera vez que esa curva se compara contra algo que no es la propia consola.
+
+Y el residuo que la medición **94** había declarado indecidible quedó explicado.
+Reapareció igual en este banco, que no tiene piso de medidor que lo justifique
+—`L3b` falló con 23 signos de 23—, pero su **forma** no es la de una ley
+distinta: es plana arriba y creciente abajo, o sea algo que se **suma**. Un
+factor de escala empeora el acuerdo arriba para mejorarlo abajo; un término
+aditivo lo mejora en los dos extremos.
+
+El número que lo cierra está medido y no ajustado: **con el envío en 0, la
+interfaz ve un tono de 1 kHz a −91,77 dBFS**, que son 25 dB por encima del piso
+del bin de este banco. Hay una fuga. De quién es —consola o banco— lo mide el
+ítem **105**, cuyo contrato ya está escrito.
+
+Detalle: [`hallazgo-el-residuo-de-la-94-no-es-la-ley.md`](../backlog/hallazgo-el-residuo-de-la-94-no-es-la-ley.md).
+
+### Y la 104 le plantó un filtro al general del usuario
+
+Su guion exigió apagado el supresor del **auxiliar** por el que iba el tono y se
+olvidó del **general**, que recibe lo mismo porque el canal tiene `i.9.mix` sin
+mutear. Dejó puesta una notch de **1000,008 Hz, Q 7, −18 dB** en el general.
+
+Borrarla mostró que la creencia del proyecto estaba al revés: `clearlive` borró
+0, `clearfixed` borró 0, **`clearall` la borró**. El docblock del limpiador
+afirmaba lo contrario desde el 2026-09-10. O sea que el precio de olvidarse no
+es «limpiarlo después»: **lo único que borra se lleva la pila entera**, incluido
+el ring-out del usuario. Esta vez no costó nada sólo porque las seis ranuras
+fijas ya estaban vacías — y están vacías porque la vez anterior sí costó.
+
+Van tres arreglos: el guion de la 104 apaga y restaura `m.afs.enabled` por
+`PREVIO`; el docblock dice lo que la corrida mostró; y hay un **trinquete nuevo**
+que exige que todo guion que haga sonar algo apague el supresor. Hoy **46** no lo
+hacen y la lista no puede crecer.
+
+El censo de esos 46 lo escribí mal —buscaba `codificarSetd` y se perdía los que
+apagan con un ayudante— y **lo encontró el propio test**, que exige que lo que ya
+cumple no figure en la lista.
+
+Detalle: [`hallazgo-solo-clearall-borra-y-se-lleva-todo.md`](../backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md).
+
 ## Lo que queda abierto
 
 | | |
@@ -131,13 +178,25 @@ abierta la puerta que la huella existe para cerrar.
 | **La ganancia del ecualizador** | la campana sube 20,0 dB exactos y el código dice ±15, pero se midió **un solo crudo**: de la forma no se sabe nada |
 | **La puerta** | ataque, relajación y retención declarados por el manual, ninguno en el código |
 | **El llamador del monitor** | `MONITOR_AUX_SEND` y `techoPorRuta` **sólo existen en tests**. Es lo que haría que una sesión con sonido real valga el tiempo del usuario |
-| **74 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer |
+| **77 guiones** | escriben a la consola sin restauración garantizada. El trinquete los cuenta y no los deja crecer. De ellos, **9 sólo mandan consultas** y no tienen nada que restaurar: el detector es `.enviar(` y no distingue |
+| **46 guiones** | hacen sonar un estímulo sin apagar el supresor del general. Trinquete nuevo |
+| **La fuga de 1 kHz** | el ítem **105** tiene contrato y guion escritos, en auditoría. Decide si toda medición de esta serie arrastra un piso a ~70 dB |
 | **El extremo superior del pasa-bajos** | el manual dice 22 kHz; el estímulo no llega |
 
 ## Y lo único que hace falta del usuario
 
-La instantánea **«Alma Caninde»** quedó intacta —verificada leyendo `SHOWLIST` y
-`SNAPSHOTLIST`, no por «no la toqué»—. La fantasma del canal 9 no se tocó. Nada
+La instantánea **«Alma caninde»** quedó intacta —verificada leyendo `SHOWLIST` y
+`SNAPSHOTLIST` de nuevo a las 05:50, no por «no la toqué»: está en el show
+`Prueba`, junto a `Prueba asistente`—.
+
+Dos cosas que vi al mirar esa lista y que son decisión tuya, no mía:
+
+- El show **`VSE`** acumuló **17 instantáneas automáticas** (`VSE_AUTO_…`) que
+  dejó este proyecto. Son basura nuestra en tu consola. Borrarlas es destructivo
+  y no lo hago sin que lo pidas.
+- `var.currentSnapshot` apunta a `VSE_AUTO_1789097773977`, que **no está en
+  ninguna de las tres listas**. El puntero quedó colgado. No lo toqué: mover
+  punteros de instantánea es lo que aplicaría una y cambiaría la consola entera. La fantasma del canal 9 no se tocó. Nada
 sonó en la sala: no hay nada conectado a ninguna salida salvo los dos cables del
 bucle.
 
