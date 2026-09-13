@@ -48,7 +48,8 @@ El canal 10 con su tono, el fader del canal **donde está** —no se toca—, y 
 barre **`m.mix`** desde su valor actual hacia abajo. Se mide la entrada 1.
 
 **Lo que se neutraliza, y por qué:** `m.dyn.bypass = 1`. El compresor del general
-está **activo** (`bypass = 0`) y depende del nivel: depende del nivel, y el barrido mueve cuarenta y ocho decibeles. Se
+está **activo** (`bypass = 0`) y depende del nivel, y el barrido mueve cuarenta y
+ocho decibeles. Se
 puentea y no se pone en 1:1 porque lo que se compara son diferencias contra el
 arranque, y una compensación constante se cancela. Y `m.afs.enabled = 0`, por la
 regla del 2026-09-13.
@@ -66,8 +67,8 @@ en vez de apagarse, porque el volcado inicial de este proyecto la tenía en 0: a
 no cuesta una corrida y es una escritura menos sobre el general del usuario.
 
 **Se exige sin escribir:** `i.9.mute = 0`, `m.dim = 0` —un dim cambia el nivel y
-no está medido—, `m.safe = 0`, `m.gate.enabled = 0`, `hwoutm.0.src` y
-`hwoutm.1.src` iguales a `m` —la salida física que la interfaz escucha tiene que
+no está medido—, `m.safe = 0`, `m.gate.enabled = 0`, `hwoutm.0.src = m.0` y `hwoutm.1.src = m.1` —indexados igual que
+`hwoutaux.N.src = a.N`— —la salida física que la interfaz escucha tiene que
 traer el general—, y que el crudo más alto del barrido no supere el previo.
 
 ## Los controles positivos

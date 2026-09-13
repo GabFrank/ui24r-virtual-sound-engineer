@@ -84,22 +84,18 @@ const CUADROS_MINIMOS = 20;
  */
 const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
 /**
- * L7: la referencia interna de la interfaz no puede derivar mas que esto.
+ * L2: la referencia interna de la interfaz no puede derivar mas que esto.
  *
- * **0,1 y no 0,3, por aritmetica.** L3b declara estructura con una pendiente de
- * 0,002 dB/dB, que sobre los ~59 dB de recorrido previsto son 0,118 dB de deriva
- * total. Un tope de 0,3 dejaria pasar una deriva del instrumento **2,5 veces
- * mayor que lo que L3b puede resolver**: la Mac podria fabricar el hallazgo de
- * L3b sin que L2 se entere. El control del instrumento tiene que ser mas fino que
- * la expectativa que vigila.
+ * **El numero sale de L3b, y hay que recalcularlo para CADA barrido.** L3b declara
+ * estructura con una pendiente de 0,002 dB/dB; sobre los 48,06 dB de recorrido de
+ * esta corrida eso son 0,096 dB de deriva total. Un tope mas grueso dejaria que el
+ * instrumento **fabricara el hallazgo de L3b** sin que este control se entere: el
+ * control del instrumento tiene que ser mas fino que la expectativa que vigila.
  *
- * **Y el numero se recalcula para ESTE barrido, que es mas corto.** El comentario
- * heredado del 106 razonaba sobre ~59 dB de recorrido; aca son 48,06, o sea que
- * 0,002 dB/dB dan 0,096 dB de deriva total — por DEBAJO de un tope de 0,1. Con ese
- * tope L2 toleraria una deriva del instrumento mayor que lo que L3b resuelve, que
- * es exactamente la inversion que este razonamiento existe para impedir. Se aprieta
- * a 0,05, que sigue siendo holgado contra los 0,00 dB que la 104 midio sobre 50
- * capturas.
+ * El 106 uso 0,1 sobre un recorrido de 59 dB, donde daba 0,118 y alcanzaba. Aca el
+ * barrido es mas corto y ese mismo 0,1 quedaria POR ENCIMA de lo que L3b resuelve,
+ * asi que se aprieta a 0,05. Sigue holgado contra lo medido: 0,00 dB de deriva
+ * sobre 42 capturas en el 106 y 50 en la 104.
  */
 const L2_DERIVA_MAXIMA_DB = 0.05;
 
@@ -217,9 +213,9 @@ const e0 = await estadoPorHttpExigido(maquina);
  * subio al primer lugar sin razon.
  */
 const PREVIO: readonly (readonly [string, number])[] = [
-  // **El compresor del general esta ACTIVO y es lo unico del camino que no es una
-  // ganancia estatica.** Depende del nivel, y el barrido mueve cuarenta y ocho
-  // decibeles. Se puentea y no se pone en 1:1 porque lo que se compara son
+  // **El compresor del general esta ACTIVO y depende del nivel**, y el barrido mueve
+  // cuarenta y ocho decibeles. No es lo unico: la puerta tambien, y por eso se exige
+  // apagada en el montaje. Se puentea y no se pone en 1:1 porque lo que se compara son
   // diferencias contra el arranque y una compensacion constante se cancela.
   ['m.dyn.bypass', Number(exigirClave(e0, 'm.dyn.bypass'))],
   ['m.afs.enabled', Number(exigirClave(e0, 'm.afs.enabled'))],
@@ -289,12 +285,20 @@ for (const k of [
   // Se EXIGE apagada en vez de apagarla: en el volcado inicial de este proyecto
   // estaba en 0, asi que exigirla no cuesta una corrida, y es una escritura menos
   // sobre el general del usuario.
-  // La salida fisica tiene que traer el general, como el 106 exigia para su bus.
+  // **La salida fisica tiene que traer el general**, como el 106 exigia para su bus.
   // C1 y L5 lo atraparian tarde, despues de gastar el tono.
-  for (const k of ['hwoutm.0.src', 'hwoutm.1.src']) {
+  //
+  // **El valor es `m.0` y `m.1`, no `m`.** La primera version comparaba contra `'m'`
+  // y habria abortado en el montaje sobre una consola sana. Esta indexado igual que
+  // `hwoutaux.N.src = a.N`, que es el patron que el 106 exigia bien. Comprobado
+  // contra el volcado de la consola y contra el inventario — que es exactamente lo
+  // que este mismo defecto pedia la vuelta pasada: una guarda escrita contra un
+  // valor supuesto en vez de contra el aparato, repetida en la ronda que la cita.
+  for (let i = 0; i < 2; i++) {
+    const k = `hwoutm.${i}.src`;
     const v = String(e0.get(k) ?? '(ausente)');
-    if (v !== 'm') {
-      throw new Error(`${k} = ${v} y esta medicion exige 'm': la salida fisica que la `
+    if (v !== `m.${i}`) {
+      throw new Error(`${k} = ${v} y esta medicion exige m.${i}: la salida fisica que la `
         + 'interfaz escucha tiene que traer el general y no otra cosa.');
     }
   }
@@ -409,8 +413,9 @@ await conRestauracion(
     console.log('');
     console.log('=== LO QUE SE NEUTRALIZA ===');
     console.log(`   compresor del general: bypass estaba en ${previo('m.dyn.bypass')}, se puentea.`);
-    console.log('   Es lo UNICO del camino que no es una ganancia estatica: depende del');
-    console.log('   nivel y el barrido mueve cuarenta y ocho decibeles.');
+    console.log('   Depende del nivel y el barrido mueve cuarenta y ocho decibeles.');
+    console.log('   (NO es lo unico del camino que depende del nivel: la puerta tambien,');
+    console.log('   y por eso se EXIGE apagada en el montaje en vez de escribirla.)');
     console.log(`   supresor del general: estaba en ${previo('m.afs.enabled')}, apagado mientras suene`);
     console.log('   ecualizador del general: NO se toca. Es la correccion de sala del');
     console.log('   usuario, es estatica, y se cancela en la atenuacion relativa.');
@@ -465,7 +470,7 @@ await conRestauracion(
     // `faderADb` supone lo que la corrida esta por poner a prueba, asi que el
     // control abortaria justo cuando hay hallazgo.
     //
-    // El control del banco que NO es circular es L7: la referencia interna de la
+    // El control del banco que NO es circular es L2: la referencia interna de la
     // interfaz, que no pasa por la consola.
     //
     // Y lanza aca adentro, que es donde la excepcion pasa por `conRestauracion`.
@@ -546,9 +551,13 @@ console.log('    que recien se sabe al terminar el barrido. Los residuos van en 
   console.log('   relanzar. Se sigue hasta la relectura por HTTP y la pila del supresor,');
   console.log('   que son lo que mas falta hace justo cuando una corrida sale mal.');
   process.exitCode = 1;
-  // Sin cuerpo completo no hay nada que analizar: la guarda del punto de
-  // referencia se encarga de que no se imprima ningun veredicto.
-  puntos.length = 0;
+  // **Los puntos medidos NO se tiran.** Una version anterior hacia `puntos.length = 0`
+  // aca, y eso borraba el informe de anulados y los datos de L6 de todo lo que SI se
+  // midio. Ademas era redundante: la vuelta del barrido termina en `CRUDOS[0]`, asi
+  // que cualquier fallo previo ya deja el tope de «sube» inexistente y la guarda del
+  // punto de referencia corta sola. Se pagaba un informe por una guarda que no hacia
+  // falta, y contradecia el comentario de mas abajo que dice que los anulados se
+  // informan SIEMPRE.
 }
 
 await new Promise((r) => setTimeout(r, 1000));
@@ -667,7 +676,9 @@ const utiles = puntos.filter((p) => p.anulado === null);
 
 console.log('');
 if (!referenciaSirve) {
-  console.log('=== NO SE IMPRIMEN VEREDICTOS: el punto de referencia no sirve ===');
+  console.log(falloDelCuerpo === null
+    ? '=== NO SE IMPRIMEN VEREDICTOS: el punto de referencia no sirve ==='
+    : '=== NO SE IMPRIMEN VEREDICTOS: la corrida no termino el barrido ===');
 } else {
 console.log('=== VEREDICTOS, contra el contrato del item 107 ===');
 
