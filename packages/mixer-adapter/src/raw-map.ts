@@ -19,8 +19,21 @@ export interface RawMapEntry {
   readonly rawMax: number;
   readonly fisicoMin: number;
   readonly fisicoMax: number;
-  /** Estado de la evidencia. Solo `PROBADO` habilita escritura. */
-  readonly estado: 'PROBADO' | 'INFERIDO' | 'DESCONOCIDO';
+  /**
+   * Estado de la evidencia. Solo `PROBADO` habilita escritura.
+   *
+   * **`REFUTADO` no es un grado más de «no verificado»: es lo contrario.**
+   * `DESCONOCIDO` e `INFERIDO` dicen «nadie lo comprobó»; `REFUTADO` dice **se
+   * comprobó contra el aparato y no dio**. Un lector que ve «no probado` supone
+   * que la fórmula es lo mejor que hay; con «refutado» sabe que usarla es peor
+   * que no tener nada, porque propone un número con cara de medido.
+   *
+   * El `protocol-spec` §6.3 tuvo que hacer exactamente esta distinción el
+   * 2026-09-12, cuando la medición 97 tumbó dos fórmulas del compresor. **La
+   * corrección se aplicó allá y no acá**, que es el patrón que este proyecto ya
+   * se conoce: la corrección va donde se descubre y no donde se propagó.
+   */
+  readonly estado: 'PROBADO' | 'INFERIDO' | 'DESCONOCIDO' | 'REFUTADO';
   readonly spike: string;
   toRaw(fisico: number): number;
   fromRaw(raw: number): number;
@@ -74,10 +87,42 @@ function lineal(
 export const RAW_MAP: readonly RawMapEntry[] = [
   // Pendiente de SPK-P0.2b: filtro, ecualizador, compresor, puerta, deesser.
   // Pendiente de SPK-P0.2c: ecualización de salida, retardo, polaridad.
+  // **El ecualizador: dos de estas eran rectas donde la consola usa exponenciales.**
+  //
+  // Decian `lineal(20, 20000)` para la frecuencia y `lineal(0,3, 10)` para el Q,
+  // en `DESCONOCIDO`. Las dos cosas estaban mal: el rango y, peor, **la forma de
+  // la curva**. El `mixer.html` --el cliente de la propia consola-- usa
+  // `20·1102,5^V` y `0,05·300^V`, y el manual del fabricante, que es una tercera
+  // fuente independiente, coincide en los dos rangos.
+  //
+  // Con la recta, pedir 1 kHz aterrizaba en 28 Hz y un Q de 2 en 0,14. Hoy eso
+  // no puede pasar --`aRaw` rechaza todo lo que no este en `PROBADO`, y
+  // `rutasProbadas()` devuelve vacio--, pero el dia que alguien mida el
+  // ecualizador y ponga la entrada en `PROBADO` iba a estar mirando una recta. Y
+  // **comprobar los extremos no delata la curva**: una recta y una exponencial
+  // que comparten extremos se separan en todo el medio.
+  //
+  // Van en `INFERIDO`, igual que las tres del compresor: leidas del cliente
+  // oficial, no medidas contra el aparato. Ninguna de las dos esta probada --el
+  // `protocol-spec` §6.3 las da como «sin probar»-- y la medicion es barata:
+  // escribir un crudo y leer que frecuencia informa la consola.
+  deLaConsola(
+    'i.N.eq.b1.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+  ),
+  deLaConsola(
+    'i.N.eq.b1.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+  ),
+  // **Estas dos se dejan como estan, y por un motivo.** El manual da −20…+20 dB
+  // para la ganancia del ecualizador, contra los ±15 de aca, pero el `mixer.html`
+  // no da formula: es **una sola** fuente contra el codigo. No se cambia un
+  // numero inventado por otro; se mide. Y del filtro pasa-altos no hay ni manual
+  // ni formula, asi que su recta queda como lo que es: un marcador de sitio.
   lineal('i.N.eq.hpf.freq', 'Hz', 20, 400, 'DESCONOCIDO', 'SPK-P0.2b'),
   lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
-  lineal('i.N.eq.b1.freq', 'Hz', 20, 20000, 'DESCONOCIDO', 'SPK-P0.2b'),
-  lineal('i.N.eq.b1.q', 'Q', 0.3, 10, 'DESCONOCIDO', 'SPK-P0.2b'),
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
   // entradas salen de mediciones. Las funciones de abajo estan **leidas del
@@ -110,8 +155,23 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   //
   // Lo encontro una auditoria de coherencia cruzada: la refutacion habia entrado
   // a la medicion y no a los dos lugares que la implementan.
-  deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
+  // **El umbral del compresor esta REFUTADO, y figuraba como INFERIDO.**
+  //
+  // `VtoTHRESH(a) = −90 + 96a` salio del `mixer.html`, y la **medicion 97** del
+  // 2026-09-12 la tumbo: con ese umbral el exceso despejado no es constante y
+  // los cocientes salen 1,58 a 2,42 donde el modelo pide 3,00. El
+  // `protocol-spec` §6.3 ya lo dice --«REFUTADA por la medicion 97»-- y esta
+  // tabla seguia diciendo INFERIDO, que es «nadie lo comprobo».
+  //
+  // Y el rango tampoco es un rango medido: **es la formula refutada evaluada en
+  // 0 y en 1**. Se deja escrito para que nadie lo cite como si fuera otra cosa.
+  { ...deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
+    estado: 'REFUTADO' as const },
   deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
+  // **La puerta usa la MISMA funcion que quedo refutada en el compresor**, y eso
+  // hay que decirlo aunque no cambie su estado: la 97 midio el compresor, no la
+  // puerta, asi que declararla refutada seria afirmar mas de lo medido. Pero
+  // apoyarse en ella sabiendo que la misma recta fallo al lado seria peor.
   deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
   // Del manual técnico del firmware 3.5.8328, que confirma las de arriba y
   // agrega estas. No están medidas contra el aparato: son del cliente, igual
@@ -143,7 +203,11 @@ const PORPATH = new Map(RAW_MAP.map((e) => [e.path, e]));
 
 export type ResultadoConversion =
   | { readonly ok: true; readonly raw: number }
-  | { readonly ok: false; readonly codigo: 'SIN_MAPEO' | 'NO_PROBADO' | 'FUERA_DE_RANGO'; readonly mensaje: string };
+  | {
+      readonly ok: false;
+      readonly codigo: 'SIN_MAPEO' | 'NO_PROBADO' | 'REFUTADO' | 'FUERA_DE_RANGO';
+      readonly mensaje: string;
+    };
 
 /**
  * Convierte un valor físico a crudo, o explica por qué no se puede.
@@ -159,6 +223,20 @@ export function aRaw(path: string, fisico: number): ResultadoConversion {
       ok: false,
       codigo: 'SIN_MAPEO',
       mensaje: `${path} no está en la tabla de conversión: no se escribe`,
+    };
+  }
+  // **Refutado y no probado no llevan el mismo consejo.** Con `NO_PROBADO` la
+  // salida razonable es proponer el valor absoluto para que el usuario lo aplique
+  // a mano. Con `REFUTADO` no: el numero que saldria de la formula tiene cara de
+  // medido y se sabe que esta mal, asi que proponerlo es peor que no decir nada.
+  if (e.estado === 'REFUTADO') {
+    return {
+      ok: false,
+      codigo: 'REFUTADO',
+      mensaje:
+        `${path} tiene una conversión REFUTADA: se midió contra el aparato ` +
+        `(${e.spike}) y no dio. No se propone ningún valor, porque el que saldría ` +
+        `de esta fórmula se sabe incorrecto`,
     };
   }
   if (e.estado !== 'PROBADO') {

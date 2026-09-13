@@ -77,3 +77,110 @@ test('el ratio del compresor no esta en la tabla, y es a proposito', () => {
   //    cocientes dan 1,58 a 2,42 donde el modelo pide 3,00.
   assert.equal(entrada('i.N.dyn.ratio'), undefined);
 });
+
+/**
+ * Las curvas del ecualizador, contra el `mixer.html` de la consola.
+ *
+ * **Por qué este test existe.** Hasta el 2026-09-13 la frecuencia y el Q estaban
+ * en la tabla como **rectas**, con rangos puestos a ojo, mientras el cliente de
+ * la propia consola usa exponenciales. Pedir 1 kHz aterrizaba en 28 Hz.
+ *
+ * `aRaw` lo frenaba —esas entradas no están en `PROBADO`— así que nunca llegó a
+ * la consola. El daño era latente: **el día que alguien mida el ecualizador y
+ * ponga la entrada en `PROBADO`, iba a estar mirando una recta.**
+ *
+ * Y comprobar los extremos no alcanza: una recta y una exponencial que comparten
+ * los dos extremos se separan en todo el medio. Por eso este test mira **el
+ * medio**.
+ */
+const CURVAS_DE_LA_CONSOLA = [
+  {
+    path: 'i.N.eq.b1.freq',
+    // `protocol-spec` §6.3, leído del `mixer.html`: 20·1102,5^V.
+    f: (v: number) => 20 * Math.pow(1102.5, v),
+    rango: [20, 22050] as const,
+  },
+  {
+    path: 'i.N.eq.b1.q',
+    // `protocol-spec` §6.3: 0,05·300^V. El manual del fabricante coincide.
+    f: (v: number) => 0.05 * Math.pow(300, v),
+    rango: [0.05, 15] as const,
+  },
+];
+
+test('el ecualizador usa la curva de la consola, no una recta', () => {
+  for (const c of CURVAS_DE_LA_CONSOLA) {
+    const e = entrada(c.path);
+    assert.ok(e, `${c.path} no está en la tabla`);
+
+    // 1. La función coincide con la del `mixer.html` en todo el recorrido.
+    for (const v of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]) {
+      const esperado = c.f(v);
+      assert.ok(Math.abs(e.fromRaw(v) - esperado) / esperado < 1e-9,
+        `${c.path} en el crudo ${v}: da ${e.fromRaw(v)} y la consola ${esperado}`);
+    }
+
+    // 2. Los extremos son los que declaran las dos fuentes.
+    assert.ok(Math.abs(e.fisicoMin - c.rango[0]) / c.rango[0] < 1e-9,
+      `${c.path} arranca en ${e.fisicoMin} y no en ${c.rango[0]}`);
+    assert.ok(Math.abs(e.fisicoMax - c.rango[1]) / c.rango[1] < 1e-9,
+      `${c.path} termina en ${e.fisicoMax} y no en ${c.rango[1]}`);
+
+    // 3. **Y NO es una recta.** Ésta es la guarda que atrapa una vuelta atrás:
+    // los dos puntos de arriba los cumpliría cualquier curva que comparta los
+    // extremos. En el medio, una exponencial y la recta que une sus extremos se
+    // separan por un factor grande, y acá se exige que se separen.
+    const recta = e.fisicoMin + 0.5 * (e.fisicoMax - e.fisicoMin);
+    const curva = e.fromRaw(0.5);
+    assert.ok(recta / curva > 5,
+      `${c.path} se parece demasiado a una recta en el medio: la recta da ${recta} `
+      + `y la curva ${curva}. Si esto falla, alguien la volvió a poner lineal.`);
+  }
+});
+
+test('el ecualizador queda INFERIDO: leído del cliente, no medido', () => {
+  for (const c of CURVAS_DE_LA_CONSOLA) {
+    // Que la curva sea la correcta no la hace medida. `protocol-spec` §6.3 las
+    // da como «sin probar», y subirlas a PROBADO sin medir sería cambiar una
+    // invención por una lectura y llamarla evidencia.
+    assert.equal(entrada(c.path)?.estado, 'INFERIDO',
+      `${c.path} no está medido contra el aparato: no puede estar en PROBADO`);
+  }
+});
+
+/**
+ * Lo refutado no se confunde con lo no probado.
+ *
+ * `DESCONOCIDO` e `INFERIDO` dicen «nadie lo comprobó». `REFUTADO` dice **se
+ * comprobó y no dio**, y llevan consejos opuestos: con el primero se propone el
+ * valor absoluto para aplicarlo a mano; con el segundo no se propone nada,
+ * porque el número que saldría tiene cara de medido y se sabe incorrecto.
+ *
+ * El umbral del compresor cayó con la medición 97 del 2026-09-12. El
+ * `protocol-spec` §6.3 lo marcó ese día y **esta tabla siguió diciendo
+ * INFERIDO** hasta el 2026-09-13.
+ */
+test('una conversión refutada no propone ningún valor', () => {
+  const r = aRaw('i.N.dyn.threshold', -20);
+  assert.equal(r.ok, false);
+  assert.equal(r.ok === false && r.codigo, 'REFUTADO',
+    'una fórmula que se midió y falló no es lo mismo que una sin probar');
+  assert.match(r.ok === false ? r.mensaje : '', /REFUTADA/);
+  assert.doesNotMatch(r.ok === false ? r.mensaje : '', /aplicar a mano/,
+    'no se invita a aplicar a mano un número que sale de una fórmula refutada');
+});
+
+test('el umbral del compresor sigue marcado como refutado', () => {
+  // Si alguien lo devuelve a INFERIDO sin una medición nueva que lo rehabilite,
+  // este test lo para. La 97 está en
+  // docs/spikes/SPK-P0.10b-vu2/evidence/leyes-del-compresor-2026-09-12.txt
+  assert.equal(entrada('i.N.dyn.threshold')?.estado, 'REFUTADO');
+});
+
+test('nada refutado es escribible, nunca', () => {
+  for (const e of RAW_MAP) {
+    if (e.estado !== 'REFUTADO') continue;
+    assert.ok(!rutasProbadas().includes(e.path),
+      `${e.path} está refutado y aparece como escribible`);
+  }
+});
