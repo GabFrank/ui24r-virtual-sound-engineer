@@ -4,6 +4,7 @@ import {
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
+import { verificarAtadura } from './magnitud-atada.ts';
 import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
@@ -229,6 +230,33 @@ export class SafetyEngine {
         path: c.path,
       });
       return salida;
+    }
+
+    // **La magnitud que se juzga tiene que ser la que va al cable.**
+    //
+    // Todo lo que sigue --los topes, el techo por ruta, el límite acumulado--
+    // mira `magnitudPropuesta`, y hasta hoy nada la ataba a `valorPropuesto`. Una
+    // auditoría lo demostró midiendo: **una escritura de recorrido completo,
+    // crudo 0 a 1, aprobada bajo un techo de −6 dB declarando magnitudes −31 a
+    // −30.** El motor miraba los decibeles declarados y dejaba pasar el recorrido
+    // entero del parámetro.
+    //
+    // No se podía cerrar antes porque atar necesita la ley de conversión medida,
+    // y `rutasProbadas()` devolvía la lista vacía. La medición 101 midió dos.
+    //
+    // **Y una ruta sin ley medida no se rechaza.** Rechazar bloquearía casi todo
+    // el aparato; lo que cambia es que la diferencia deja de ser silenciosa.
+    {
+      const atadura = verificarAtadura(c.path, c.valorPropuesto, c.magnitudPropuesta, c.unidad);
+      if (!atadura.atada && atadura.codigo !== 'SIN_LEY_VERIFICADA') {
+        salida.push({
+          codigo: 'MAGNITUD_NO_ATADA',
+          invariante: 'INV-004',
+          mensaje: atadura.motivo,
+          path: c.path,
+        });
+        return salida; // Sin sentido juzgar topes sobre un número que no es el que se escribe.
+      }
     }
 
     // **El silencio de canal, en todo estado menos el show.** ADR-027 lo abrió

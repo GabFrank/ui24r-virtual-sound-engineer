@@ -127,6 +127,14 @@ export interface ContextoSeguridad {
 export type CodigoRechazo =
   | 'SIN_PERFIL_DE_SALA'
   | 'RUTA_INCONSISTENTE'
+  /**
+   * La magnitud que el motor juzga no es la que el crudo produce.
+   *
+   * Sólo se puede levantar en las rutas cuya ley de conversión está **medida
+   * contra el aparato**. Ver `magnitud-atada.ts`: hasta el 2026-09-13 no había
+   * ninguna, y por eso este código no podía existir.
+   */
+  | 'MAGNITUD_NO_ATADA'
   | 'RUTA_DESCONOCIDA'
   | 'Q_DEMASIADO_ESTRECHO'
   | 'REALCE_EXCESIVO'

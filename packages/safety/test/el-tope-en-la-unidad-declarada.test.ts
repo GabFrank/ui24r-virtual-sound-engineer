@@ -146,9 +146,22 @@ test('ningun sitio de produccion pasa el crudo como si fuera la magnitud', () =>
     // exigirla, el propio `types.ts` entraba como hallazgo: alli los dos campos
     // se llaman igual --`number`-- y terminan en punto y coma. Una guarda que
     // se denuncia a si misma se apaga en una semana.
+    //
+    // **Y la coma sola no alcanza: una LISTA DE PARAMETROS tambien la tiene.**
+    // Lo delato `magnitud-atada.ts` el 2026-09-13, cuya firma recibe los dos
+    // valores --`valorPropuesto: number, magnitudPropuesta: number,`-- y entraba
+    // como sitio de construccion Y como hallazgo, cuando es justamente la
+    // funcion que COMPRUEBA que los dos coincidan. Una guarda que denuncia a su
+    // propio remedio se apaga igual de rapido.
+    //
+    // Los nombres de tipo primitivo nunca son un valor construido, asi que se
+    // excluyen. `magnitudPropuesta: number` es una anotacion; `magnitudPropuesta:
+    // crudo` es el defecto.
+    const TIPOS = new Set(['number', 'string', 'boolean', 'unknown', 'any', 'never']);
     for (const m of texto.matchAll(
       /valorPropuesto:\s*([A-Za-z_$][\w$.]*)\s*,[\s\S]{0,500}?magnitudPropuesta:\s*([A-Za-z_$][\w$.]*)\s*,/g,
     )) {
+      if (TIPOS.has(m[1]!) && TIPOS.has(m[2]!)) continue;
       vistos++;
       if (m[1] === m[2]) malos.push(`${f.slice(RAIZ.length + 1)}: ${m[1]}`);
     }
