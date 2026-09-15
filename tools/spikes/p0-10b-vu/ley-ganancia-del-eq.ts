@@ -545,6 +545,28 @@ await conRestauracion(
             + 'del nivel, que es lo que el barrido mueve cuarenta decibeles.');
         }
       }
+      // **La unica cuya perdida le cuesta algo AL USUARIO y no a la medicion.**
+      //
+      // Las tres de arriba se releen porque si se pierden, la ley sale mal. Esta
+      // se relee por otra cosa: si el `setd` no llega, el supresor del general
+      // aprende de los 900 s de tono a 1 kHz que estan por empezar y **planta una
+      // notch de -18 dB con Q 7 en el general del usuario**. Sacarla exige
+      // `clearall`, que se lleva la pila entera incluido su ring-out.
+      //
+      // No es hipotetico: el guion hermano lo dice --«ya paso dos veces; la
+      // segunda le costo tres filtros»-- y esa es la regla del 2026-09-13.
+      //
+      // La comparacion de la pila que este guion hace al final DETECTA el dano y
+      // no lo PREVIENE, y para entonces ya no se puede deshacer. Una comprobacion
+      // que llega despues del hecho es un reproche, no una guarda.
+      {
+        const afs = await leerUnaClave(maquina, 'm.afs.enabled');
+        if (afs !== 0) {
+          throw new Error('m.afs.enabled quedo en ' + afs + ': el supresor del general sigue '
+            + 'encendido y el estimulo son 900 s de tono sostenido a 1 kHz. Abortar aca cuesta '
+            + 'una corrida; seguir cuesta una notch permanente en la consola del usuario.');
+        }
+      }
     }
     console.log('');
     console.log('=== LO QUE SE NEUTRALIZA ===');
