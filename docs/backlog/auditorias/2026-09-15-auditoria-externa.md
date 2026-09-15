@@ -609,6 +609,7 @@ fase 2; los tiempos son estimaciones mías (OPINIÓN).
 | 13 | P0.1: fin del volcado | No hay marcador; la Ui16 tardó 0,2–0,55 s y una vez 12 s | El proyecto ya usa `volcadoIniciado()`; verificar el peor caso repitiendo diez conexiones | 15 min |
 | 14 | INV-004: ¿la consola recorta? | No (Ui16): guarda 1,5 y −0,2 tal cual | En un canal sin fuente, escribir `i.9.mix^1.5`, leer por HTTP, restaurar. **Nunca** en `hw.N.gain` ni con parlantes conectados | 5 min |
 | 15 | Confirmación por testigo: latencia | 41–75 ms en la Ui16 entre clientes | Ya medido en la Ui24R (11,5 ms de mediana). Sólo anotar que es otro modelo | — |
+| 16 | Un segundo instrumento para las leyes de presentación | Mixing Station soporta la Ui24 y expone por API los parámetros en unidades reales (§10.2) | Con la versión de escritorio conectada a la consola: escribir un crudo conocido y leer qué decibeles o hercios informa su API; comparar contra el `mixer.html` y contra la pantalla | 30 min, si se tiene la licencia |
 
 Las filas 1 a 6 son **lecturas de pantalla**, sin audio: no plantan filtros en
 el supresor, no necesitan bucle, y cierran la mitad «presentación» de cinco
@@ -762,9 +763,11 @@ ancladas afuera. El tiempo de consola es el recurso escaso.
 - La cantidad de repositorios (36) es la que dio la búsqueda de GitHub por
   `ui24r` y `soundcraft ui` el 2026-09-15; puede haber más con otros nombres.
 - De §10, leí el código de M32LiveConsoleTool, SoundMaster IA, FxNorm-automix,
-  automix-toolkit, Diff-MST y el tutorial; de AutoMix y Mixing Station sólo sus
-  páginas; de los papers de §10.3 sólo el catálogo, no los textos; y el PDF de
-  *Ten Years of Automatic Mixing* no pude extraerlo en este entorno.
+  automix-toolkit, Diff-MST, el tutorial y **el paquete de JavaScript de
+  AutoMix**; de Mixing Station, **su repositorio público de documentación
+  entero** (no su código, que es cerrado); de los papers de §10.3 sólo el
+  catálogo, no los textos; y el PDF de *Ten Years of Automatic Mixing* no pude
+  extraerlo en este entorno.
 
 ---
 
@@ -862,28 +865,99 @@ cientos por minuto— sino sólo los eventos de gestión, porque «un registro d
 horas de show sería inmanejable». Trae simulador propio, y la capa de dominio
 nunca toca la red.
 
-**AutoMix** (`automix.live`, comercial, beta privada). «Ingeniero de sonido en
-vivo con IA», sólo X32 por ahora, por OSC. Promete detección y eliminación de
-feedback «en el momento en que empieza», ganancia y ecualización «aprendidas de
-pistas de referencia», comandos por voz, y **monitores autoservicio: cada
-músico ajusta el suyo desde el celular** — la misma idea que este proyecto
-anotó el 2026-09-12 como pantalla por QR. Sin precio, sin empresa, sin detalles
-técnicos de cómo escucha. Sólo pude leer su portada.
+**AutoMix** (`automix.live`, comercial, «beta privada» con lista de espera).
+No tiene repositorio público, pero su sitio sirve la aplicación entera como un
+paquete de JavaScript de 1,1 MB, y se puede leer. **Corregido el 2026-09-15
+después de leerlo** —la primera versión de este párrafo decía «sólo pude leer su
+portada»—:
 
-**Mixing Station** (`mixingstation.app`, comercial, madura, soporta la serie
-Ui). Lo más parecido a producto terminado, y lo más honesto sobre sus límites:
+- *Qué promete la portada.* «Ingeniero de sonido en vivo con IA, entrenado con
+  las técnicas de ingenieros legendarios»: detección y eliminación de feedback
+  «en el momento en que empieza», ganancia y ecualización «aprendidas de pistas
+  de referencia», comandos por voz, y **monitores autoservicio: cada músico
+  mezcla el suyo desde el celular** — la misma idea que este proyecto anotó el
+  2026-09-12 como pantalla por QR.
+- *Qué hay en el código.* Una aplicación React construida con Lovable
+  (gpt-engineer), con Supabase de fondo, un puente socket.io hacia el X32 por
+  OSC (`/ch/NN/eq/B/g`, `/main/st/dyn/on`), comandos por voz con el
+  reconocimiento del navegador, roles (`sound_engineer`, `admin`), y un modo de
+  monitor personal por integrante con «stems». Sus términos dicen textualmente:
+  **«AutoMix currently supports Behringer X32 series consoles via OSC
+  protocol»**. Escucha con **un micrófono de referencia por el navegador**
+  (`getUserMedia`), igual que SoundMaster.
+- *La «IA».* Los modelos se llaman `mockGainModel`, `mockEQModel` y
+  `mockCompressionModel`: el de ganancia propone `−18 − LUFS`, acotado a ±12 dB.
+  El botón «Auto Mix» aplica a cada canal **una ganancia aleatoria de ±2 dB y un
+  ecualizador de tres bandas aleatorio** (`(Math.random()−0.5)·4`). Hay un modo
+  de «grabación de entrenamiento» que guarda el micrófono, instantáneas de la
+  consola, eventos de feedback e intervenciones manuales: es recolección de
+  datos para un modelo que todavía no existe.
+- *El detector de feedback*, que sí está escrito: pico estrecho —máximo local
+  sobre ±2 bins— por encima de −20 dB, y **crecimiento de al menos 3 dB por
+  segundo** entre tramas consecutivas para subir la severidad y la confianza.
+  Es el criterio de «crece sostenido» que el detector de este proyecto llama
+  «no cayó como debía», con umbrales igual de elegidos a ojo.
+- *Sus conversiones para el X32*, por si sirven de comparación: frecuencia
+  `20·1000^x` (la Ui24R usa `20·1102,5^V`), ganancia `(x − 0,5)·30`, Q
+  `log(q/0,3)/log(100)`, relación `(r − 1)/19`, ataque
+  `log(a/0,02)/log(6000)`, relajación `log(r/5)/log(1000)`.
 
-- *Detección de feedback.* Elegís qué fuente del analizador mirar —típicamente
-  un micrófono—; el analizador muestra **líneas amarillas en las frecuencias que
-  infiere como feedback, y la altura de la línea es la confianza**. Un botón
-  «Auto» baja las bandas del ecualizador gráfico que están acoplando. Sus
-  propios documentos avisan que **«no está diseñado para usarse como
-  destructor de feedback mientras suena música»**: es para hacer el ring-out en
-  la preparación, y el modo automático se apaga solo al salir de la vista.
-- *Auto EQ.* Micrófono de medición en un canal libre, ruido rosa, tres a cinco
-  segundos, curva objetivo (con la posibilidad de una propia), ecualizador
-  paramétrico o gráfico, y **el resultado se ajusta a mano antes de aplicarlo**.
-  Leyenda: «no está pensado para reemplazar tus oídos» y «todavía en desarrollo».
+En resumen: **una landing con lista de espera y una demo con la IA simulada**.
+Lo único que vale como referencia es la forma del producto —monitor personal por
+celular, roles, voz— y el criterio de crecimiento por segundo del detector.
+
+**Mixing Station** (`mixingstation.app`, comercial, madura). Su documentación
+es un repositorio público —`davidgiga1993/mixing-station-docs`, actualizado el
+2026-09-14— y la leí entera. **VERIFICADO** en su tabla de compatibilidad:
+**soporta la Soundcraft Ui24 con firmware 3.3 a 3.5**, o sea la consola de este
+proyecto. Es el único producto terminado que hace, sobre esta consola, parte de
+lo que este proyecto quiere hacer, y el más honesto sobre sus límites:
+
+- *Ring-out automático («Automatic ringing out»).* Elegís qué fuente del
+  analizador mirar —típicamente un micrófono— y sobre qué bus va el ecualizador
+  gráfico; el analizador muestra **líneas amarillas en las frecuencias que
+  infiere como feedback, y la altura de la línea es la confianza**; un botón
+  «Auto» baja las bandas que acoplan; provocás el acople acercando el micrófono
+  al monitor o subiendo la ganancia. Requiere que la consola tenga analizador
+  —la Ui24R lo tiene—. Sus documentos avisan que **«no está diseñado para usarse
+  como destructor de feedback mientras suena música»**, y el modo automático se
+  apaga solo al salir de la vista.
+- *Auto EQ.* Micrófono de medición en un canal libre, ruido rosa «al nivel al que
+  se va a tocar», tres a cinco segundos, una línea base que separa «demasiado
+  bajo» de «demasiado alto», curva objetivo propia opcional, ecualizador
+  paramétrico o gráfico («el paramétrico suele dar mejor resultado»), y **el
+  resultado se ajusta a mano antes de aplicarlo**, con una estimación del
+  espectro resultante a la vista. Leyenda: «no está pensado para reemplazar tus
+  oídos» y «todavía en desarrollo».
+- *Protección contra saturación («Clipping Protection»)*, con el criterio
+  escrito: se considera saturación si la señal **pasó de −1 dBFS varias veces en
+  una ventana de 500 ms, o si su promedio supera −4 dBFS**; entonces baja la
+  ganancia **de a 2 dB** hasta que deja de saturar. Hay que activarla en cada
+  conexión, a propósito.
+- ***Re-Gain*, y esto es lo que más le habla a ADR-026.** Cambiar la ganancia
+  del previo sin alterar la mezcla: los umbrales de puerta y compresor se
+  corren con la ganancia, y los envíos pre-fader y los faders se corren en
+  sentido inverso. Tres decisiones de diseño dignas de copiar: **sólo compensa
+  cambios hechos desde la aplicación** —los hechos en la consola se ignoran
+  «para que una recuperación de escena no dispare cambios inesperados»—; **hay
+  que volver a activarlo después de cada reconexión** «para evitar cambios
+  inesperados por olvidarse de que estaba activo»; y el deslizador marca con
+  líneas rojas **hasta dónde puede compensar sin alterar las relaciones**, porque
+  más allá algún envío o umbral llega a su tope. Este proyecto cierra el lazo de
+  la ganancia (ADR-026) y restringe cuándo se toca (INV-006); lo que Re-Gain
+  agrega es la pregunta de **qué más se mueve cuando se mueve la ganancia**.
+- *Monitor personal.* Un modo de conexión donde el músico sólo puede tocar su
+  propio monitor y no el general, con un protocolo «más liviano según la
+  consola» para admitir más clientes. La versión madura de la pantalla QR.
+- *Una API unificada.* En escritorio, expone REST (HTTP y websockets, con
+  suscripciones y medidores) y OSC sobre **cualquier consola que soporte**, con
+  valores en **unidades reales («−5 dB») o normalizados 0–1**. Para este
+  proyecto eso es un **instrumento de verificación independiente** de las leyes
+  de presentación: escribir un crudo en la Ui24R y leer qué decibeles informa
+  Mixing Station por su API es un segundo camino que no comparte supuestos con
+  el `mixer.html`. Requiere la versión de escritorio; no lo probé.
+- *Medidores.* Los colores son independientes de la consola y **la transición
+  verde-amarillo está en +4 dBu**; la escala usa las unidades de cada consola.
 
 **La propia consola** ya trae supresión automática de feedback (dbx AFS2), con
 los modos LIVE/FIXED/LOCK que este proyecto está terminando de mapear.
@@ -992,8 +1066,8 @@ seguridad y se mide.
 | Fuente | Qué sirve | Dónde encaja | Riesgo |
 |---|---|---|---|
 | M32LiveConsoleTool | Las siete guardas ordenadas, la política de «sólo baja», la retirada ante el humano, la tecla de pánico, la política de registro | El nivel AUTOMÁTICO CONTROLADO; INV-004 y el acumulado por sesión; `autonomy-matrix.md` | Otro protocolo; parámetros calibrados para otra consola |
-| Mixing Station | Confianza como altura de línea; «no mientras suena música»; el resultado del Auto EQ se edita antes de aplicar | La pantalla del detector de realimentación; el paso 10 del MVP | Producto cerrado: sólo se ve el comportamiento |
-| AutoMix | Monitores autoservicio por celular | La pantalla QR de la banda | Sólo portada |
+| Mixing Station | Confianza como altura de línea; «no mientras suena música»; el Auto EQ se edita antes de aplicar; el criterio de saturación escrito; **Re-Gain**: qué más se mueve al mover la ganancia; su API como segundo instrumento para las leyes de presentación | Detector de realimentación; paso 10; ADR-026 e INV-006; fase 2 | Producto cerrado: sólo se ve el comportamiento y la documentación |
+| AutoMix | La forma del producto —monitor personal por celular, roles, voz— y el criterio de crecimiento en dB por segundo del detector | La pantalla QR de la banda; el detector | La «IA» es simulada y el «Auto Mix» es aleatorio: no tomar nada de ahí como resultado |
 | Terrell y Reiss 2009 | Un método publicado para mezclar monitores automáticamente | Paso 12 del MVP, ADR-028 | Por leer |
 | De Man y Reiss 2013; Moffat 2018 | Reglas de oficio escritas, evaluadas y en formato de datos | `orden-del-soundcheck.md`, `channel-profiles.md`, `house-curves.md` | Reglas de estudio, no de sala |
 | van Waterschoot y Moonen 2011 | Los criterios estándar para decidir que un pico es feedback | Los tres umbrales «elegidos, no medidos» del detector | Por leer entero |
@@ -1048,6 +1122,7 @@ particular; un proyecto útil para otra cosa puede decir «nada».
 | `sai-soum/Diff-MST` | Transferencia de estilo de mezcla, CC BY-NC-SA | Reglas de oficio codificadas en `knowledge_engineering_mix` (§10.4) | No comercial |
 | `dl4am/tutorial` | Tutorial ISMIR 2022, QMUL + Sony | La parte 4, evaluación y tests de escucha (§10.4) | — |
 | `csteinmetz1/AutomaticMixingPapers` | Catálogo de 89 papers de mezcla automática | Los quince trabajos de §10.3 | — |
+| `davidgiga1993/mixing-station-docs` | Documentación oficial de Mixing Station, 2026 | Soporte de la Ui24 3.3–3.5; ring-out automático, Auto EQ, protección contra saturación, Re-Gain, monitor personal, API (§10.2) | Producto cerrado |
 | `amjplanejados-cyber/ui24-live-assistant` · `brunosilvafreitas/soundcraft-ui-assist` | Esqueletos de «asistente» | Vacíos | — |
 | `martinsprengel/ui-doc` | «Documentación y migración» | Sólo el README | — |
 | `electricsoldier96/ui24rtracksdocs` | Documentación de una app de pistas | Nada | — |
