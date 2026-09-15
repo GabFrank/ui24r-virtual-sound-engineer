@@ -26,7 +26,71 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const leer = (r) => readFileSync(join(RAIZ, r), 'utf8');
+
+/**
+ * Un problema que esta guarda **sabe explicar**: cuenta como fallo y se imprime
+ * como frase, sin stack.
+ *
+ * **Por qué hizo falta.** Si un documento se renombraba o se movía, `leer` tiraba
+ * el ENOENT crudo de Node y el proceso moría en el primer hecho: catorce líneas
+ * de `node:fs` en vez de «`docs/capability-matrix.md` ya no está», y ninguna de
+ * las otras veinte afirmaciones llegaba a comprobarse. Una guarda cuyo trabajo es
+ * dar mensajes legibles no puede fallar de esa manera, y `contarEjecutando`
+ * --que arranca un proceso hijo-- amplió la superficie: un módulo que no compila
+ * daba el stack del hijo.
+ *
+ * Ahora cada afirmación se intenta por separado: la que no se puede comprobar
+ * dice por qué, y las demás siguen.
+ */
+class ProblemaDeLaGuarda extends Error {}
+
+let fallos = 0;
+let comprobadas = 0;
+
+const leer = (r) => {
+  try {
+    return readFileSync(join(RAIZ, r), 'utf8');
+  } catch (e) {
+    if (e?.code === 'ENOENT') {
+      throw new ProblemaDeLaGuarda(
+        `${r} no existe, y esta guarda cuenta algo que vive ahí.\n` +
+        '  O se movió y hay que actualizar la ruta acá, o se borró y la cifra que\n' +
+        '  sostenía dejó de tener quien la compruebe. Las dos cosas hay que decidirlas.',
+      );
+    }
+    throw new ProblemaDeLaGuarda(`no se pudo leer ${r}: ${e?.message ?? e}`);
+  }
+};
+
+const listar = (r) => {
+  try {
+    return readdirSync(join(RAIZ, r));
+  } catch (e) {
+    if (e?.code === 'ENOENT') {
+      throw new ProblemaDeLaGuarda(
+        `la carpeta ${r} no existe, y esta guarda cuenta lo que hay adentro.\n` +
+        '  Si se movió, hay que actualizar la ruta acá; si se vació, la cifra que\n' +
+        '  contaba dejó de significar lo mismo.',
+      );
+    }
+    throw new ProblemaDeLaGuarda(`no se pudo listar ${r}: ${e?.message ?? e}`);
+  }
+};
+
+/**
+ * Corre `fn` y convierte un `ProblemaDeLaGuarda` en un fallo contado y legible.
+ * Cualquier otro error sigue subiendo: un defecto de esta guarda no se disfraza
+ * de cifra que no cuadra.
+ */
+const intentar = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    if (!(e instanceof ProblemaDeLaGuarda)) throw e;
+    fallos++;
+    console.error(e.message);
+  }
+};
 
 /**
  * Corre una expresión contra un módulo TypeScript del repositorio y devuelve
@@ -45,16 +109,33 @@ const leer = (r) => readFileSync(join(RAIZ, r), 'utf8');
  * Así que se ejecuta la función que el propio paquete exporta para esto.
  */
 const contarEjecutando = (modulo, expresion) => {
-  const salida = execFileSync(
-    process.execPath,
-    ['--experimental-strip-types', '--no-warnings', '--input-type=module', '-e',
-      `const m = await import(${JSON.stringify(join(RAIZ, modulo))});\n`
-      + `process.stdout.write(String(${expresion}));`],
-    { encoding: 'utf8' },
-  );
+  let salida;
+  try {
+    salida = execFileSync(
+      process.execPath,
+      ['--experimental-strip-types', '--no-warnings', '--input-type=module', '-e',
+        `const m = await import(${JSON.stringify(join(RAIZ, modulo))});\n`
+        + `process.stdout.write(String(${expresion}));`],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+  } catch (e) {
+    // Ejecutar abre una superficie que leer texto no tenía: el módulo puede no
+    // existir, no compilar, o dejar de exportar la función. Las tres daban el
+    // stack del proceso hijo, que no dice qué cifra quedó sin comprobar.
+    const detalle = String(e?.stderr ?? e?.message ?? e).trim().split('\n').slice(0, 3).join('\n    ');
+    throw new ProblemaDeLaGuarda(
+      `no se pudo contar \`${expresion}\` sobre ${modulo}.\n` +
+      `    ${detalle}\n` +
+      '  Esta cifra se cuenta ejecutando el módulo, no leyendo su texto. Si el\n' +
+      '  módulo se movió o dejó de exportar lo que se llama acá, hay que decidir\n' +
+      '  quién cuenta esa cifra ahora.',
+    );
+  }
   const n = Number(salida.trim());
   if (!Number.isInteger(n)) {
-    throw new Error(`contar ${expresion} sobre ${modulo} devolvió «${salida.trim()}», que no es un entero`);
+    throw new ProblemaDeLaGuarda(
+      `contar \`${expresion}\` sobre ${modulo} devolvió «${salida.trim()}», que no es un entero.`,
+    );
   }
   return n;
 };
@@ -77,7 +158,7 @@ const HECHOS = [
   },
   {
     que: 'primitivas de interfaz',
-    contar: () => readdirSync(join(RAIZ, 'apps/mobile/src/app/ui'))
+    contar: () => listar('apps/mobile/src/app/ui')
       .filter((f) => f.endsWith('.component.ts')).length,
     afirmaciones: [['CHANGELOG.md', /tacto; (\w+)\n  primitivas de componente/]],
   },
@@ -108,7 +189,7 @@ const HECHOS = [
   // escribirlas; y por eso mismo hay que contarlas.
   {
     que: 'charters de spike',
-    contar: () => readdirSync(join(RAIZ, 'docs/spikes'))
+    contar: () => listar('docs/spikes')
       .filter((f) => f.startsWith('SPK-') && f.endsWith('.md')).length,
     // `\d+ de` y no `0 de`: el día que cierre un spike, la guarda tiene que
     // seguir comprobando el denominador en vez de decir que el README «ya no
@@ -202,13 +283,26 @@ const DE_LA_CONSOLA = [
   },
 ];
 
-let fallos = 0;
-let comprobadas = 0;
-
-const evidenciaConsola = leer(
-  'docs/spikes/SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt',
-);
-for (const c of DE_LA_CONSOLA) {
+/**
+ * La evidencia contra la que se comparan las constantes de la consola.
+ *
+ * Se lee dentro de `intentar` porque es la única lectura de la que dependen
+ * varias afirmaciones a la vez: si el archivo no está, eso es **un** fallo con
+ * su frase, y las comprobaciones que no dependen de él siguen corriendo.
+ */
+let evidenciaConsola;
+intentar(() => {
+  evidenciaConsola = leer(
+    'docs/spikes/SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt',
+  );
+});
+if (evidenciaConsola === undefined) {
+  console.error(
+    `  Sin ella, las ${DE_LA_CONSOLA.length} constantes que se comparan contra el ` +
+    'cliente de la consola quedan sin comprobar.',
+  );
+}
+for (const c of evidenciaConsola === undefined ? [] : DE_LA_CONSOLA) intentar(() => {
   const enCodigo = leer(c.fuente).match(new RegExp(`export const ${c.nombre} = (-?[\\d.]+);`));
   const enConsola = evidenciaConsola.match(c.declaracion);
   if (enCodigo === null || enConsola === null) {
@@ -218,7 +312,7 @@ for (const c of DE_LA_CONSOLA) {
       `  ${enCodigo === null ? `${c.fuente} ya no la declara así` : 'la evidencia del mixer.html cambió de forma'}.\n` +
       '  Sin esta comparación, un error de lectura de la fuente vuelve a ser invisible.',
     );
-    continue;
+    return;
   }
   comprobadas++;
   const codigo = Number(enCodigo[1]);
@@ -230,16 +324,23 @@ for (const c of DE_LA_CONSOLA) {
       `(${enConsola[0]}).`,
     );
   }
-}
+});
 
-const especificacion = leer('docs/protocol-spec.md');
-for (const [nombre, fuente] of CONSTANTES) {
+let especificacion;
+intentar(() => { especificacion = leer('docs/protocol-spec.md'); });
+if (especificacion === undefined) {
+  console.error(
+    `  Sin ella, las ${CONSTANTES.length} constantes medidas quedan sin comparar ` +
+    'contra su tabla.',
+  );
+}
+for (const [nombre, fuente] of especificacion === undefined ? [] : CONSTANTES) intentar(() => {
   const enCodigo = leer(fuente).match(new RegExp(`export const ${nombre} = (-?[\\d.]+);`));
   const enTabla = especificacion.match(new RegExp(`\\\`${nombre}\\\` \\| ([^|]+?) \\|`));
   if (enCodigo === null) {
     fallos++;
     console.error(`${fuente} ya no define ${nombre}, o cambió de forma.`);
-    continue;
+    return;
   }
   if (enTabla === null) {
     fallos++;
@@ -247,7 +348,7 @@ for (const [nombre, fuente] of CONSTANTES) {
       `docs/protocol-spec.md ya no declara ${nombre} en su tabla de constantes medidas.\n` +
       '  Sin esa fila la constante puede volver a pudrirse sin que nadie lo note.',
     );
-    continue;
+    return;
   }
   comprobadas++;
   const codigo = Number(enCodigo[1]);
@@ -258,10 +359,10 @@ for (const [nombre, fuente] of CONSTANTES) {
       `${nombre}: el código dice ${codigo} y docs/protocol-spec.md dice ${enTabla[1].trim()}.`,
     );
   }
-}
-for (const hecho of HECHOS) {
+});
+for (const hecho of HECHOS) intentar(() => {
   const real = hecho.contar();
-  for (const [archivo, patron] of hecho.afirmaciones) {
+  for (const [archivo, patron] of hecho.afirmaciones) intentar(() => {
     const m = leer(archivo).match(patron);
     if (m === null) {
       fallos++;
@@ -270,7 +371,7 @@ for (const hecho of HECHOS) {
         '  O se quitó la frase, o cambió de forma y este comprobador dejó de verla:\n' +
         '  las dos cosas hacen que la cifra vuelva a poder pudrirse sin que nadie lo note.',
       );
-      continue;
+      return;
     }
     comprobadas++;
     const dicho = aNumero(m[1]);
@@ -280,8 +381,8 @@ for (const hecho of HECHOS) {
         `${archivo} dice ${m[1]} ${hecho.que}, y son ${real}.`,
       );
     }
-  }
-}
+  });
+});
 
 if (fallos > 0) {
   console.error(`\n${fallos} cifra(s) que no cuadran.`);
