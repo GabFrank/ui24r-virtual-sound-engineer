@@ -20,29 +20,11 @@
  * los documentos.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lectorDe, intentar as intentarGuarda } from './guarda.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-/**
- * Un problema que esta guarda **sabe explicar**: cuenta como fallo y se imprime
- * como frase, sin stack.
- *
- * **Por qué hizo falta.** Si un documento se renombraba o se movía, `leer` tiraba
- * el ENOENT crudo de Node y el proceso moría en el primer hecho: catorce líneas
- * de `node:fs` en vez de «`docs/capability-matrix.md` ya no está», y ninguna de
- * las otras veinte afirmaciones llegaba a comprobarse. Una guarda cuyo trabajo es
- * dar mensajes legibles no puede fallar de esa manera, y `contarEjecutando`
- * --que arranca un proceso hijo-- amplió la superficie: un módulo que no compila
- * daba el stack del hijo.
- *
- * Ahora cada afirmación se intenta por separado: la que no se puede comprobar
- * dice por qué, y las demás siguen.
- */
-class ProblemaDeLaGuarda extends Error {}
 
 /**
  * **Dos cuentas, no una.** «La cifra dice 22 y son 23» es un documento que miente
@@ -59,104 +41,11 @@ let fallos = 0;
 let imposibles = 0;
 let comprobadas = 0;
 
-const leer = (r) => {
-  try {
-    return readFileSync(join(RAIZ, r), 'utf8');
-  } catch (e) {
-    if (e?.code === 'ENOENT') {
-      throw new ProblemaDeLaGuarda(
-        `${r} no existe, y esta guarda cuenta algo que vive ahí.\n` +
-        '  O se movió y hay que actualizar la ruta acá, o se borró y la cifra que\n' +
-        '  sostenía dejó de tener quien la compruebe. Las dos cosas hay que decidirlas.',
-      );
-    }
-    throw new ProblemaDeLaGuarda(`no se pudo leer ${r}: ${e?.message ?? e}`);
-  }
-};
+const { leer, listar, contarEjecutando } = lectorDe(RAIZ);
 
-const listar = (r) => {
-  try {
-    return readdirSync(join(RAIZ, r));
-  } catch (e) {
-    if (e?.code === 'ENOENT') {
-      throw new ProblemaDeLaGuarda(
-        `la carpeta ${r} no existe, y esta guarda cuenta lo que hay adentro.\n` +
-        '  Si se movió, hay que actualizar la ruta acá; si se vació, la cifra que\n' +
-        '  contaba dejó de significar lo mismo.',
-      );
-    }
-    throw new ProblemaDeLaGuarda(`no se pudo listar ${r}: ${e?.message ?? e}`);
-  }
-};
-
-/**
- * Corre `fn` y convierte un `ProblemaDeLaGuarda` en un fallo contado y legible.
- * Cualquier otro error sigue subiendo: un defecto de esta guarda no se disfraza
- * de cifra que no cuadra.
- */
-const intentar = (fn) => {
-  try {
-    fn();
-  } catch (e) {
-    if (!(e instanceof ProblemaDeLaGuarda)) throw e;
-    imposibles++;
-    console.error(e.message);
-  }
-};
-
-/**
- * Corre una expresión contra un módulo TypeScript del repositorio y devuelve
- * lo que imprime.
- *
- * **Existe porque contar texto no es contar.** La primera versión de la guarda
- * de rutas medidas contaba líneas `  medido(` con una expresión regular, y una
- * auditoría mostró lo que eso deja pasar: `raw-map.ts` ya promueve entradas a
- * `PROBADO` por otro camino --`{ ...deLaConsola(...), estado: 'PROBADO' }`-- y
- * una entrada así no la veía; al revés, colapsar una llamada a una sola línea
- * disparaba una falsa alarma sin cambiar una coma de la semántica. Una guarda
- * que compara el repositorio contra su propio estilo de escritura es más débil
- * todavía que compararlo consigo mismo, que es lo que `vse-disciplina` §6 ya
- * desaconseja.
- *
- * Así que se ejecuta la función que el propio paquete exporta para esto.
- */
-const contarEjecutando = (modulo, expresion) => {
-  let salida;
-  try {
-    salida = execFileSync(
-      process.execPath,
-      ['--experimental-strip-types', '--no-warnings', '--input-type=module', '-e',
-        `const m = await import(${JSON.stringify(join(RAIZ, modulo))});\n`
-        + `process.stdout.write(String(${expresion}));`],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-  } catch (e) {
-    // Ejecutar abre una superficie que leer texto no tenía: el módulo puede no
-    // existir, no compilar, o dejar de exportar la función. Las tres daban el
-    // stack del proceso hijo, que no dice qué cifra quedó sin comprobar.
-    // **El error va, aunque no esté entre las primeras líneas.** Con `slice(0, 3)`
-    // se veían la ruta, el código y el caret, y el `TypeError` --que es lo único
-    // que dice qué pasó-- quedaba afuera por una línea.
-    const lineas = String(e?.stderr ?? e?.message ?? e).trim().split('\n').filter((l) => l.trim() !== '');
-    const iError = lineas.findIndex((l) => /^[A-Za-z]*Error\b/.test(l.trim()));
-    const detalle = (iError === -1 ? lineas.slice(0, 3) : [...lineas.slice(0, 2), lineas[iError]])
-      .join('\n    ');
-    throw new ProblemaDeLaGuarda(
-      `no se pudo contar \`${expresion}\` sobre ${modulo}.\n` +
-      `    ${detalle}\n` +
-      '  Esta cifra se cuenta ejecutando el módulo, no leyendo su texto. Si el\n' +
-      '  módulo se movió o dejó de exportar lo que se llama acá, hay que decidir\n' +
-      '  quién cuenta esa cifra ahora.',
-    );
-  }
-  const n = Number(salida.trim());
-  if (!Number.isInteger(n)) {
-    throw new ProblemaDeLaGuarda(
-      `contar \`${expresion}\` sobre ${modulo} devolvió «${salida.trim()}», que no es un entero.`,
-    );
-  }
-  return n;
-};
+/** Avisa del problema, lo cuenta, y deja que la corrida siga. */
+const anotar = (e) => { imposibles++; console.error(e.message); };
+const intentar = (fn, alFallar = anotar) => intentarGuarda(fn, alFallar);
 
 /** Las cifras que se pueden contar, con de dónde salen y quién las afirma. */
 const HECHOS = [
@@ -305,15 +194,21 @@ const DE_LA_CONSOLA = [
 ];
 
 /**
- * Cuántas afirmaciones conoce esta guarda en total.
+ * Cuántas afirmaciones tiene que comprobar una corrida sana. **Escrito a mano, y
+ * ése es el punto.**
  *
- * Se cuenta, no se escribe. Existe para que el resumen pueda decir **cuántas
- * quedaron sin comprobar** en vez de callarlo: hasta ahora, cuando algo fallaba
- * la línea de «Cifras validadas: N» no se imprimía, así que el que leía la salida
- * no tenía forma de saber si se había dejado de mirar una cifra o veinte.
+ * La primera versión de esta línea lo calculaba sumando las listas de acá abajo,
+ * y un auditor midió que eso no sirve de piso: borrar un HECHO entero encoge el
+ * cálculo junto con la corrida, así que la guarda quedaba **en verde diciendo
+ * «Cifras validadas: 20 … todas ciertas»** y nadie se enteraba de que una cifra
+ * se había quedado sin quien la mire. Es el mismo defecto que esta guarda existe
+ * para atrapar, cometido por ella misma.
+ *
+ * Un número escrito a mano no se encoge solo. Si sube porque se agregó una
+ * afirmación, hay que subirlo acá, que es parte de agregarla. Mismo trato que el
+ * centinela del inventario en `rutas-de-los-tests.test.ts`.
  */
-const AFIRMACIONES_ESPERADAS = DE_LA_CONSOLA.length + CONSTANTES.length
-  + HECHOS.reduce((n, h) => n + h.afirmaciones.length, 0);
+const AFIRMACIONES_ESPERADAS = 21;
 
 /**
  * La evidencia contra la que se comparan las constantes de la consola.
@@ -392,8 +287,20 @@ for (const [nombre, fuente] of especificacion === undefined ? [] : CONSTANTES) i
     );
   }
 });
-for (const hecho of HECHOS) intentar(() => {
-  const real = hecho.contar();
+for (const hecho of HECHOS) {
+  // **Cuántas se pierden, dicho.** Si `contar()` falla, caen con él todas las
+  // afirmaciones de ese hecho, y hasta ahora eso salía como un solo aviso: faltar
+  // `tools/visual/flujo.mjs` costaba tres comprobaciones y se informaba como una.
+  let real;
+  const seContó = intentar(() => { real = hecho.contar(); }, (e) => {
+    imposibles++;
+    console.error(
+      `${e.message}\n`
+      + `  Con eso quedan sin comprobar las ${hecho.afirmaciones.length} afirmación(es) `
+      + `sobre ${hecho.que}.`,
+    );
+  });
+  if (!seContó) continue;
   for (const [archivo, patron] of hecho.afirmaciones) intentar(() => {
     const m = leer(archivo).match(patron);
     if (m === null) {
@@ -428,7 +335,24 @@ for (const hecho of HECHOS) intentar(() => {
       );
     }
   });
-});
+}
+
+// **El piso.** Sin esto, una corrida que comprueba de menos y no falla en nada
+// se declara en verde. Se mira sólo cuando no hubo ningún otro problema: cuando
+// los hubo, la cuenta baja por un motivo que ya está dicho arriba.
+if (fallos === 0 && imposibles === 0 && comprobadas !== AFIRMACIONES_ESPERADAS) {
+  console.error(
+    comprobadas < AFIRMACIONES_ESPERADAS
+      ? `Esta guarda conoce ${AFIRMACIONES_ESPERADAS} afirmaciones y comprobó ${comprobadas}, `
+        + 'sin fallar en ninguna.\n'
+        + '  O se sacó una del alcance --y entonces esa cifra dejó de tener quien la\n'
+        + '  compruebe--, o algo dejó de contarse sin decirlo. Las dos hay que mirarlas.'
+      : `Esta guarda comprobó ${comprobadas} afirmaciones y tiene escritas `
+        + `${AFIRMACIONES_ESPERADAS}.\n`
+        + '  Se agregó una: actualizá AFIRMACIONES_ESPERADAS, que es parte de agregarla.',
+  );
+  process.exit(1);
+}
 
 if (fallos > 0 || imposibles > 0) {
   const partes = [];
