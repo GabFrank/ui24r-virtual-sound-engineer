@@ -14,14 +14,40 @@ import {
  *
  * El tramo copia el del ítem 104 a propósito —de −32,14 a +10 dB— para que un
  * caso de borde acá se parezca a uno real, pero no es evidencia de nada.
+ *
+ * **Qué rutas acepta, y por qué está invertido.** La primera versión de esta ley
+ * decidía con `/^i\.(?:[0-9]|1[0-9]|2[0-3])\.aux\.[0-9]\.value$/`, o sea
+ * **reimplementaba acá la regla de `esNivelDeEnvioAMonitor`**: los 24 canales,
+ * los 10 auxiliares y la forma canónica. Un auditor midió el precio: el día que
+ * `CANALES_DE_ENTRADA` o `AUXILIARES` cambien —otro firmware, otra consola— la
+ * copia se queda con la regla vieja **sin que nada lo diga**, y los tests de este
+ * paquete siguen en verde afirmando contra una regla que ya no existe.
+ *
+ * Y había algo peor, que la copia escondía: si alguien volviera a meter la regla
+ * de las rutas **dentro del asistente** —una expresión regular, una lista
+ * blanca— todo este archivo seguiría pasando, porque la copia decía exactamente
+ * lo mismo que diría esa regla.
+ *
+ * Así que la ley acepta una ruta que **ninguna consola tiene** y rechaza
+ * `i.3.aux.1.value`, que es real y canónica. Con el par invertido no queda nada
+ * que se pueda desincronizar, y un asistente que no le preguntara a la ley
+ * fallaría por los dos lados a la vez.
+ *
+ * Los casos de la regla de verdad —`i.24.aux.0.value`, el alias `i.03.…`, el
+ * auxiliar 10— se prueban contra la regla de verdad, donde vive:
+ * `packages/mixer-adapter/test/rutas-de-los-tests.test.ts` los declara y
+ * `packages/safety/test/engine.test.ts` comprueba que el motor los rechaza.
  */
 const TRAMO = { fisicoMin: -32.14, fisicoMax: 10, spike: 'ítem 104 (de mentira)' };
-const RUTAS_REALES = /^i\.(?:[0-9]|1[0-9]|2[0-3])\.aux\.[0-9]\.value$/;
+/** La única que esta ley acepta. No existe en ninguna consola: ése es el punto. */
+const ACEPTADA = 'inventada.para.este.test';
+/** Real, canónica, y esta ley la rechaza. El asistente tiene que obedecer eso. */
+const RECHAZADA_AUNQUE_REAL = 'i.3.aux.1.value';
 const leyDeMentira: LeyDelEnvioAMonitor = {
-  esNivelDeEnvioAMonitor: (ruta) => RUTAS_REALES.test(ruta),
-  entrada: (ruta) => (RUTAS_REALES.test(ruta) ? TRAMO : undefined),
+  esNivelDeEnvioAMonitor: (ruta) => ruta === ACEPTADA,
+  entrada: (ruta) => (ruta === ACEPTADA ? TRAMO : undefined),
   aRaw: (ruta, fisico) => {
-    if (!RUTAS_REALES.test(ruta)) return { ok: false, codigo: 'SIN_MAPEO', mensaje: `${ruta} no está en la tabla` };
+    if (ruta !== ACEPTADA) return { ok: false, codigo: 'SIN_MAPEO', mensaje: `${ruta} no está en la tabla` };
     if (fisico < TRAMO.fisicoMin || fisico > TRAMO.fisicoMax) {
       return { ok: false, codigo: 'FUERA_DE_RANGO', mensaje: `${fisico} dB queda fuera del tramo medido` };
     }
@@ -31,7 +57,7 @@ const leyDeMentira: LeyDelEnvioAMonitor = {
 };
 
 const base: EstadoParaBajarMonitor = {
-  ruta: 'i.3.aux.1.value',
+  ruta: ACEPTADA,
   nivelActualDb: 0,
   bajarDb: 2,
   sessionState: 'FULL_BAND',
@@ -77,13 +103,23 @@ test('el paro y la conexión mandan sobre todo lo demás', () => {
  * lista blanca vieja dejaba pasar. Acá lo decide la ley que se pasa; lo que se
  * prueba es que el asistente le pregunta y obedece.
  */
-test('una ruta que la ley no reconoce no se propone', () => {
-  for (const ruta of ['i.24.aux.0.value', 'i.99.aux.99.value', 'i.03.aux.1.value',
-    'i.3.aux.10.value', 'i.3.mix', 'a.4.mix']) {
+test('una ruta que la ley no reconoce no se propone, aunque sea real', () => {
+  for (const ruta of [RECHAZADA_AUNQUE_REAL, 'i.3.mix', 'a.4.mix']) {
     const v = decidir({ ruta });
     assert.equal(v.puede, false, `${ruta} no debería proponerse`);
     assert.match(motivo(v), /no es un nivel de envío/);
   }
+});
+
+/**
+ * **El par invertido, dicho como aserción y no sólo como montaje.** Si alguien
+ * volviera a meter la regla de las rutas dentro del asistente, éste caería por
+ * los dos lados a la vez: la inventada dejaría de aceptarse y la real dejaría
+ * de rechazarse.
+ */
+test('manda la ley que se le pasa, y no lo que el asistente crea saber de las rutas', () => {
+  assert.equal(decidir({ ruta: ACEPTADA }).puede, true);
+  assert.equal(decidir({ ruta: RECHAZADA_AUNQUE_REAL }).puede, false);
 });
 
 test('sólo baja: subir es del usuario', () => {
