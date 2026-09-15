@@ -14,6 +14,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { centinela, intentar } from './guarda.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -83,6 +84,26 @@ function ficheros(dir) {
 }
 
 let total = 0;
+let revisados = 0;
+/**
+ * **Cuántos archivos tiene que haber mirado una corrida sana.** Escrito a mano,
+ * y ése es el punto: se midió que con la carpeta `packages/` entera borrada esta
+ * guarda imprimía «6 reglas, ninguna violada» y salía con 0. No mentía --no
+ * encontró ninguna violación-- pero lo que el lector entiende es falso. El
+ * `catch { continue }` de abajo, puesto para que un paquete que todavía no existe
+ * no rompa nada, tapaba también que no existiera ninguno.
+ *
+ * Si el número sube porque el proyecto creció, se sube acá, que es parte de
+ * crecer. Un mínimo calculado de la misma lista que se recorre encoge con ella y
+ * no es un mínimo.
+ *
+ * **Hoy son 86 y el mínimo es 80, y el precio está dicho**: un centinela así
+ * atrapa que desaparezca una carpeta entera o un paquete grande, y **no** atrapa
+ * que se pierdan tres archivos sueltos. Es barato y cubre el caso que se midió;
+ * pretender que cubre más sería la clase de afirmación que este repositorio
+ * corrige.
+ */
+const ARCHIVOS_MINIMOS = 80;
 for (const regla of REGLAS) {
   const dir = join(RAIZ, regla.paquete);
   let lista;
@@ -91,6 +112,7 @@ for (const regla of REGLAS) {
   } catch {
     continue; // el paquete todavía no existe
   }
+  revisados += lista.length;
   for (const ruta of lista) {
     const texto = readFileSync(ruta, 'utf8');
     for (const m of texto.matchAll(/from\s+'([^']+)'/g)) {
@@ -112,4 +134,9 @@ if (total > 0) {
   console.error(`\n${total} importación(es) que cruzan un límite declarado.`);
   process.exit(1);
 }
-console.log(`Límites entre paquetes validados: ${REGLAS.length} reglas, ninguna violada.`);
+if (!intentar(() => centinela(revisados, ARCHIVOS_MINIMOS, 'archivos de los paquetes con límite'),
+  (e) => console.error(e.message))) process.exit(1);
+console.log(
+  `Límites entre paquetes validados: ${REGLAS.length} reglas sobre ${revisados} archivos, `
+  + 'ninguna violada.',
+);

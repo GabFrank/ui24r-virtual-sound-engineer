@@ -119,6 +119,34 @@ export function lectorDe(raiz) {
 }
 
 /**
+ * **El centinela: una guarda que no vio nada no está en verde, está ciega.**
+ *
+ * Se midió el 2026-09-15 y es peor que morirse con un stack. Con la carpeta
+ * `packages/` entera borrada, `validate-limites` imprimía «6 reglas, ninguna
+ * violada» y salía con 0. `validate-huella-de-evidencia` hacía lo mismo sin
+ * `docs/spikes`. Las dos decían la verdad literal --no encontraron ninguna
+ * violación-- y la conclusión que el lector saca es falsa.
+ *
+ * Es la misma forma que `validate-numeros` ya corrigió con su piso, y la misma
+ * que `rutas-de-los-tests.test.ts` tapa con `deepStrictEqual(claves.length,
+ * 6732)`: **el mínimo se escribe a mano**. Un mínimo calculado de la misma lista
+ * que se recorre encoge junto con ella y no es un mínimo.
+ *
+ * @param visto   cuántas cosas miró de verdad esta corrida
+ * @param minimo  cuántas tiene que haber mirado, escrito a mano
+ * @param que     qué son, para el mensaje: «documentos», «paquetes»…
+ */
+export function centinela(visto, minimo, que) {
+  if (visto >= minimo) return;
+  throw new ProblemaDeLaGuarda(
+    `esta guarda miró ${visto} ${que} y tendría que haber mirado al menos ${minimo}.\n` +
+    '  No encontrar problemas mirando de menos no es estar en verde: es estar\n' +
+    '  ciega. O la fuente se movió, o el mínimo quedó viejo porque el proyecto\n' +
+    '  encogió a propósito. Las dos hay que decidirlas, y ninguna es seguir.',
+  );
+}
+
+/**
  * Corre `fn`. Si tira un `ProblemaDeLaGuarda`, llama a `alFallar` con él y
  * devuelve `false`; si no, devuelve `true`.
  *
