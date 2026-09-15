@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { LIMITES } from '@vse/domain';
 import {
   puedeBajarEnvioAMonitor, type EstadoParaBajarMonitor, type LeyDelEnvioAMonitor,
 } from '../src/bajar-envio-a-monitor.ts';
@@ -137,6 +138,45 @@ test('no se mueve más de lo que el límite del dominio permite por transacción
 });
 
 /**
+ * **El borde del tope, que es donde un tope se rompe.** La suite probaba 2 --que
+ * pasa-- y 6 --que se rechaza--, y entre los dos hay lugar para que el tope se
+ * corra sin que nada caiga: un auditor sembró `> tope + 1` y no murió ningún
+ * test. El límite se lee del dominio, así que subirlo allá no deja este test
+ * mintiendo.
+ */
+test('el borde del tope: justo el tope pasa, y un decibel más no', () => {
+  const tope = LIMITES.MONITOR_AUX_SEND!.porTransaccion;
+  assert.equal(decidir({ bajarDb: tope }).puede, true);
+  const v = decidir({ bajarDb: tope + 1 });
+  assert.equal(v.puede, false);
+  assert.match(motivo(v), /por vez/);
+});
+
+/**
+ * **Cuál de las guardas manda cuando fallan varias a la vez.** Todos los demás
+ * tests ponen un defecto por vez, así que la precedencia no la observaba
+ * ninguno: un auditor cambió el orden de las siete guardas de cinco maneras y no
+ * cayó un solo test, mientras uno de ellos se llama «el paro y la conexión mandan
+ * sobre todo lo demás». El nombre prometía un contrato que la suite no
+ * comprobaba. El veredicto es `false` por cualquier camino; lo que cambia es el
+ * motivo que el usuario lee, y leer «la ruta no es un nivel de envío» cuando lo
+ * que pasa es que el paro está activo manda a arreglar lo que no está roto.
+ */
+test('con varias razones a la vez, manda la que el usuario tiene que atender primero', () => {
+  const todoMal = {
+    ruta: RECHAZADA_AUNQUE_REAL, sessionState: 'SHOW' as const, bajarDb: 99,
+    nivelActualDb: NaN, conexionPermiteEscribir: false, paroDeEmergencia: true,
+  };
+  assert.match(motivo(decidir(todoMal)), /paro/);
+  assert.match(motivo(decidir({ ...todoMal, paroDeEmergencia: false })), /conectada/);
+  assert.match(motivo(decidir({ ...todoMal, paroDeEmergencia: false, conexionPermiteEscribir: true })),
+    /no es un nivel de envío/);
+  assert.match(motivo(decidir({
+    ...todoMal, paroDeEmergencia: false, conexionPermiteEscribir: true, ruta: ACEPTADA,
+  })), /público/);
+});
+
+/**
  * **La decisión que justifica la medición.** El asistente se niega a proponer
  * un nivel cuya ley nadie midió, en vez de escribir un número que sale de
  * extrapolar. Y dice hasta dónde está medida, con el nombre de la medición.
@@ -145,8 +185,11 @@ test('no propone un nivel fuera del tramo que la ley declara medido', () => {
   const v = decidir({ nivelActualDb: TRAMO.fisicoMin + 1, bajarDb: 2 });
   assert.equal(v.puede, false);
   assert.match(motivo(v), /fuera del tramo/);
-  assert.match(motivo(v), /−32\.1|-32\.1/);
   assert.match(motivo(v), /ítem 104/);
+  // **El tramo, en el orden en que se lee.** Exigiendo sólo que aparezca el piso,
+  // intercambiar mínimo y máximo no rompía nada y el usuario leía «medida de 10.0
+  // a −32.1 dB».
+  assert.match(motivo(v), /medida de -?−?32\.1 a 10\.0 dB/);
 });
 
 test('el crudo que propone es el que la ley devuelve para los dB que declara', () => {
@@ -157,8 +200,16 @@ test('el crudo que propone es el que la ley devuelve para los dB que declara', (
   assert.ok(esperado.ok && Math.abs(v.crudo - esperado.raw) < 1e-12);
 });
 
+/**
+ * **No sólo `NaN`.** La guarda pregunta por `Number.isFinite`, y con razón: un
+ * infinito tampoco es un nivel del que se pueda bajar. Probando sólo `NaN`,
+ * cambiarla por `Number.isNaN` no hacía caer nada --el infinito seguía fallando
+ * más adelante, pero con otro motivo, que es lo que el usuario lee--.
+ */
 test('sin saber dónde está el envío, no hay desde dónde bajar', () => {
-  const v = decidir({ nivelActualDb: NaN });
-  assert.equal(v.puede, false);
-  assert.match(motivo(v), /no se sabe/);
+  for (const nivelActualDb of [NaN, Infinity, -Infinity]) {
+    const v = decidir({ nivelActualDb });
+    assert.equal(v.puede, false, `${nivelActualDb}`);
+    assert.match(motivo(v), /no se sabe/, `${nivelActualDb}`);
+  }
 });
