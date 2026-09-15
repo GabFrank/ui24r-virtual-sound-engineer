@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { puedeBajarEnvioAMonitor } from '@vse/assistants';
-import { aRaw, entrada, esNivelDeEnvioAMonitor, faderADb } from '@vse/mixer-adapter';
+import { entrada, faderADb } from '@vse/mixer-adapter';
+import { LEY_DEL_ENVIO } from '../src/app/monitor/ley-del-envio.ts';
 
 /**
  * **El asistente con la ley de verdad.** `packages/assistants` no puede
@@ -12,7 +13,14 @@ import { aRaw, entrada, esNivelDeEnvioAMonitor, faderADb } from '@vse/mixer-adap
  * fuera del tramo que el ítem 104 cubrió. Viven acá porque acá se puede
  * enchufar la ley real, igual que hace el servicio en producción.
  */
-const LEY = { aRaw, entrada, esNivelDeEnvioAMonitor };
+/**
+ * **La ley que usa producción, no una copia.** Reconstruir acá
+ * `{ aRaw, entrada, esNivelDeEnvioAMonitor }` probaría la ley y no probaría
+ * que el servicio la enchufa: una auditoría cambió las tres funciones que
+ * usa la aplicación por otras inventadas y la suite siguió en verde. Importando la
+ * constante, ese defecto falla acá.
+ */
+const LEY = LEY_DEL_ENVIO;
 const base = {
   ruta: 'i.3.aux.1.value',
   nivelActualDb: 0,

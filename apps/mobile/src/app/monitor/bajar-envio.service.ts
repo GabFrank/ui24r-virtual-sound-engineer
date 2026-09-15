@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { puedeBajarEnvioAMonitor, type LeyDelEnvioAMonitor } from '@vse/assistants';
-import { aRaw, entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
+import { puedeBajarEnvioAMonitor } from '@vse/assistants';
+import { LEY_DEL_ENVIO } from './ley-del-envio.ts';
 import type { ContextoSeguridad } from '@vse/safety';
 import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
@@ -66,17 +66,6 @@ export type ResultadoBajada =
   | { readonly estado: 'APLICADA'; readonly id: string; readonly quedoEnDb: number }
   | { readonly estado: 'NO_SE_PUEDE'; readonly motivo: string }
   | { readonly estado: 'FALLO'; readonly motivo: string };
-
-/**
- * La ley del envío, tal como la mide el adaptador, para dárselo al asistente.
- *
- * El asistente no puede importar el adaptador —regla 3, y `validate-limites`
- * la hace cumplir— así que la ley viaja por acá. Este servicio es el único
- * sitio de producción que la enchufa; que sean las tres funciones reales y no
- * copias es lo que hace que el crudo que sale quede atado a los dB por la
- * misma medición que el motor va a exigir (`MAGNITUD_NO_ATADA`).
- */
-const LEY_DEL_ENVIO: LeyDelEnvioAMonitor = { aRaw, entrada, esNivelDeEnvioAMonitor };
 
 @Injectable({ providedIn: 'root' })
 export class BajarEnvioService {

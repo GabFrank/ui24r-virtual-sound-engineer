@@ -288,6 +288,26 @@ export function idDeFicha(origen: FichaDelPlano['origen'], propio: string): stri
   return `${marca}:${propio}`;
 }
 
+/**
+ * La clase CSS del punto de una ficha, con su prefijo.
+ *
+ * **Vive acá y no en la plantilla por dos motivos, y el segundo se descubrió
+ * después.** El primero: una llamada desde una plantilla de Angular se
+ * reevalúa en cada ciclo de detección de cambios, y `validate-plantillas-llamadas`
+ * la rechaza. El segundo: calculada dentro del `computed` del componente, la
+ * cadena no la comprobaba **ningún test** —una auditoría lo midió cambiándola a
+ * `circulo ${origen}` y la suite entera quedó en verde—, y de esa cadena
+ * dependen los tres rellenos, el trazo y el resalte de la ficha elegida. Acá
+ * sí hay suite.
+ *
+ * El prefijo `punto` no es decorativo: `.punto` lleva el trazo y
+ * `.ficha.seleccionada .punto` el resalte, así que perderlo apaga las dos cosas
+ * sin que nada falle.
+ */
+export function claseDelPunto(origen: FichaDelPlano['origen']): string {
+  return `punto ${origen.toLowerCase()}`;
+}
+
 /** Lo que el plano necesita saber para dibujarse y para explicar sus huecos. */
 export interface LoQueVaEnElPlano {
   readonly fichas: readonly FichaDelPlano[];

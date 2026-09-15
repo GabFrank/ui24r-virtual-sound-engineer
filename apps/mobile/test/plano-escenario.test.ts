@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert/strict';
 import { emplazar, distanciaM, type PuntoM } from '@vse/domain';
 import {
+  claseDelPunto,
   calcularEscala, aPantalla, aMetros, precisionDelDedoM, radioIncertidumbrePx,
   elDedoEsMasGruesoQueLaDuda, puntaDeLaFlecha, aCentimetros, puntoACentimetros,
   moverArrastre, lineasDeDistancia, UMBRAL_DE_ARRASTRE_PX, BLANCO_MINIMO_PX, YEMA_PX,
@@ -792,4 +793,29 @@ test('un rango se lee en palabras, y un cuadrado se dice una sola vez', () => {
   // cuadrado, el mismo umbral que usa `metros` para decidir si un intervalo
   // colapsó: dos lados que difieren en tres milímetros no son dos datos.
   strictEqual(comoSeLeeElRango({ anchoM: 2, largoM: 2.003 }, metros), '2,00 m en cuadrado');
+});
+
+/**
+ * **La clase del punto, que hasta el 2026-09-15 no la comprobaba nada.**
+ * Estaba calculada dentro del `computed` del componente, que ningún test
+ * instancia: una auditoría la cambió a `circulo ${origen}` y la suite entera
+ * quedó en verde, con los tres rellenos, el trazo y el resalte de la ficha
+ * elegida caídos. Ahora el mapeo vive en `plano.ts` y estas tres aserciones
+ * son su red.
+ */
+test('la clase del punto lleva el prefijo y el origen en minúsculas', () => {
+  strictEqual(claseDelPunto('FUENTE'), 'punto fuente');
+  strictEqual(claseDelPunto('CAPTACION'), 'punto captacion');
+  strictEqual(claseDelPunto('EMISOR'), 'punto emisor');
+});
+
+/**
+ * El prefijo no es decorativo y por eso va aparte: `.punto` lleva el trazo y
+ * `.ficha.seleccionada .punto` el resalte. Perderlo apaga las dos cosas sin
+ * que se caiga ningún color, que es la forma de fallar más difícil de ver.
+ */
+test('sin el prefijo `punto` se caen el trazo y el resalte, así que se exige', () => {
+  for (const origen of ['FUENTE', 'CAPTACION', 'EMISOR'] as const) {
+    ok(claseDelPunto(origen).startsWith('punto '), origen);
+  }
 });
