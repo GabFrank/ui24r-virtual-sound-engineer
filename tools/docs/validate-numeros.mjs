@@ -44,7 +44,19 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
  */
 class ProblemaDeLaGuarda extends Error {}
 
+/**
+ * **Dos cuentas, no una.** «La cifra dice 22 y son 23» es un documento que miente
+ * y hay que corregirlo. «No pude leer el archivo» o «la frase cambió de forma» es
+ * una comprobación que **no se hizo**, y el que lo lee tiene que decidir otra
+ * cosa: mover la ruta, reescribir el patrón, o aceptar que esa cifra se quedó sin
+ * quien la mire. Meter las dos abajo del titular «N cifra(s) que no cuadran»
+ * --que es lo que hacía-- le pone al lector la etiqueta equivocada, y era la que
+ * esta guarda más quería evitar.
+ *
+ * Las dos hacen fallar la verificación. Sólo se cuentan por separado.
+ */
 let fallos = 0;
+let imposibles = 0;
 let comprobadas = 0;
 
 const leer = (r) => {
@@ -87,7 +99,7 @@ const intentar = (fn) => {
     fn();
   } catch (e) {
     if (!(e instanceof ProblemaDeLaGuarda)) throw e;
-    fallos++;
+    imposibles++;
     console.error(e.message);
   }
 };
@@ -122,7 +134,13 @@ const contarEjecutando = (modulo, expresion) => {
     // Ejecutar abre una superficie que leer texto no tenía: el módulo puede no
     // existir, no compilar, o dejar de exportar la función. Las tres daban el
     // stack del proceso hijo, que no dice qué cifra quedó sin comprobar.
-    const detalle = String(e?.stderr ?? e?.message ?? e).trim().split('\n').slice(0, 3).join('\n    ');
+    // **El error va, aunque no esté entre las primeras líneas.** Con `slice(0, 3)`
+    // se veían la ruta, el código y el caret, y el `TypeError` --que es lo único
+    // que dice qué pasó-- quedaba afuera por una línea.
+    const lineas = String(e?.stderr ?? e?.message ?? e).trim().split('\n').filter((l) => l.trim() !== '');
+    const iError = lineas.findIndex((l) => /^[A-Za-z]*Error\b/.test(l.trim()));
+    const detalle = (iError === -1 ? lineas.slice(0, 3) : [...lineas.slice(0, 2), lineas[iError]])
+      .join('\n    ');
     throw new ProblemaDeLaGuarda(
       `no se pudo contar \`${expresion}\` sobre ${modulo}.\n` +
       `    ${detalle}\n` +
@@ -219,6 +237,9 @@ const EN_LETRAS = {
   uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8,
   nueve: 9, diez: 10,
   once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciséis: 16,
+  // Del 17 al 19 faltaban, y el hueco no daba «no sé leer esto» sino «el
+  // documento dice diecisiete y son 17», que acusa al documento de mentir.
+  diecisiete: 17, dieciocho: 18, diecinueve: 19,
   veinte: 20, veintiún: 21, veintidós: 22, veintitrés: 23, veinticuatro: 24,
   veinticinco: 25, veintiséis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
   treinta: 30,
@@ -284,6 +305,17 @@ const DE_LA_CONSOLA = [
 ];
 
 /**
+ * Cuántas afirmaciones conoce esta guarda en total.
+ *
+ * Se cuenta, no se escribe. Existe para que el resumen pueda decir **cuántas
+ * quedaron sin comprobar** en vez de callarlo: hasta ahora, cuando algo fallaba
+ * la línea de «Cifras validadas: N» no se imprimía, así que el que leía la salida
+ * no tenía forma de saber si se había dejado de mirar una cifra o veinte.
+ */
+const AFIRMACIONES_ESPERADAS = DE_LA_CONSOLA.length + CONSTANTES.length
+  + HECHOS.reduce((n, h) => n + h.afirmaciones.length, 0);
+
+/**
  * La evidencia contra la que se comparan las constantes de la consola.
  *
  * Se lee dentro de `intentar` porque es la única lectura de la que dependen
@@ -306,7 +338,7 @@ for (const c of evidenciaConsola === undefined ? [] : DE_LA_CONSOLA) intentar(()
   const enCodigo = leer(c.fuente).match(new RegExp(`export const ${c.nombre} = (-?[\\d.]+);`));
   const enConsola = evidenciaConsola.match(c.declaracion);
   if (enCodigo === null || enConsola === null) {
-    fallos++;
+    imposibles++;
     console.error(
       `${c.nombre}: no se pudo comparar contra el cliente de la consola.\n` +
       `  ${enCodigo === null ? `${c.fuente} ya no la declara así` : 'la evidencia del mixer.html cambió de forma'}.\n` +
@@ -338,12 +370,12 @@ for (const [nombre, fuente] of especificacion === undefined ? [] : CONSTANTES) i
   const enCodigo = leer(fuente).match(new RegExp(`export const ${nombre} = (-?[\\d.]+);`));
   const enTabla = especificacion.match(new RegExp(`\\\`${nombre}\\\` \\| ([^|]+?) \\|`));
   if (enCodigo === null) {
-    fallos++;
+    imposibles++;
     console.error(`${fuente} ya no define ${nombre}, o cambió de forma.`);
     return;
   }
   if (enTabla === null) {
-    fallos++;
+    imposibles++;
     console.error(
       `docs/protocol-spec.md ya no declara ${nombre} en su tabla de constantes medidas.\n` +
       '  Sin esa fila la constante puede volver a pudrirse sin que nadie lo note.',
@@ -365,7 +397,7 @@ for (const hecho of HECHOS) intentar(() => {
   for (const [archivo, patron] of hecho.afirmaciones) intentar(() => {
     const m = leer(archivo).match(patron);
     if (m === null) {
-      fallos++;
+      imposibles++;
       console.error(
         `${archivo} ya no dice cuántos ${hecho.que} hay.\n` +
         '  O se quitó la frase, o cambió de forma y este comprobador dejó de verla:\n' +
@@ -373,8 +405,22 @@ for (const hecho of HECHOS) intentar(() => {
       );
       return;
     }
-    comprobadas++;
     const dicho = aNumero(m[1]);
+    if (dicho === undefined) {
+      // **La guarda que no sabe leer no acusa al documento.** `EN_LETRAS` no
+      // conoce todas las palabras: sin esto, un documento que escribe
+      // correctamente «diecisiete» recibía «dice diecisiete y son 17», que se
+      // lee como que el documento miente. Es un defecto de esta guarda y tiene
+      // que decirlo así.
+      imposibles++;
+      console.error(
+        `${archivo} dice «${m[1]}» ${hecho.que} y este comprobador no sabe leer esa palabra.\n` +
+        '  Falta en la tabla EN_LETRAS de este archivo. Hasta que se agregue, esa\n' +
+        '  cifra no tiene quien la compruebe.',
+      );
+      return;
+    }
+    comprobadas++;
     if (dicho !== real) {
       fallos++;
       console.error(
@@ -384,8 +430,14 @@ for (const hecho of HECHOS) intentar(() => {
   });
 });
 
-if (fallos > 0) {
-  console.error(`\n${fallos} cifra(s) que no cuadran.`);
+if (fallos > 0 || imposibles > 0) {
+  const partes = [];
+  if (fallos > 0) partes.push(`${fallos} cifra(s) que no cuadran`);
+  if (imposibles > 0) partes.push(`${imposibles} comprobación(es) que no se pudieron hacer`);
+  console.error(
+    `\n${partes.join(' y ')}. ${comprobadas} afirmaciones sí se comprobaron, de las `
+    + `${AFIRMACIONES_ESPERADAS} que esta guarda conoce.`,
+  );
   process.exit(1);
 }
 console.log(`Cifras validadas: ${comprobadas} afirmaciones contra el código, todas ciertas.`);
