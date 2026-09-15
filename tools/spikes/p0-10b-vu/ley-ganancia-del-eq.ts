@@ -881,9 +881,17 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
   const planoDe = (sentido: 'baja' | 'sube'): Punto | undefined =>
     conMedidor.find((p) => p.sentido === sentido && p.crudo === CRUDO_PLANO);
   const refM = planoDe('baja');
-  console.log(`\nL8 el medidor del canal sigue al realce: ${conMedidor.length} puntos por `
-    + 'encima del fondo de escala');
-  if (refM === undefined || conMedidor.length < PUNTOS_MINIMOS) {
+  // **Los dos sentidos, porque el bucle usa los dos.** El guarda miraba solo el
+  // plano de «baja» --era lo correcto cuando todos los puntos se comparaban contra
+  // el, antes de que la quinta ronda hiciera que cada punto use el plano de SU
+  // sentido--. Con el guarda viejo, si el plano de «sube» quedaba fuera del filtro,
+  // sus 21 puntos se salteaban en silencio, `conMedidor.length` los seguia contando
+  // y L8 decidia sobre la mitad de los datos diciendo que uso todos.
+  const conPlano = conMedidor.filter((p) => planoDe(p.sentido) !== undefined);
+  console.log(`\nL8 el medidor del canal sigue al realce: ${conPlano.length} puntos por `
+    + `encima del fondo de escala y con su plano${conPlano.length === conMedidor.length ? ''
+      : ` (${conMedidor.length - conPlano.length} quedaron sin plano de su sentido)`}`);
+  if (refM === undefined || conPlano.length < PUNTOS_MINIMOS) {
     console.log('   NO DECIDE: sin el plano o con menos de '
       + `${PUNTOS_MINIMOS} puntos utiles no hay con que comparar.`);
     problemas.push('L8 sin puntos');
@@ -921,9 +929,8 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     ] as const;
     const ajustes = modelos.map(([nombre, f]) => {
       let peor = 0;
-      for (const p of conMedidor) {
-        const r = planoDe(p.sentido);
-        if (r === undefined) continue;
+      for (const p of conPlano) {
+        const r = planoDe(p.sentido)!;
         const dif = Math.abs((p.m.canalDb - r.m.canalDb) - f(p.atenuacion));
         if (dif > peor) peor = dif;
       }
@@ -935,17 +942,38 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     }
     const mejor = ajustes.reduce((m, a) => (a.peor < m.peor ? a : m), ajustes[0]!);
     const ok = mejor.peor <= L8_DESVIO_MAXIMO_DB;
+    // **Si las DOS ajustan, no se nombra ninguna.** El veredicto es sobre la
+    // hipotesis compuesta --el medidor es una de las dos-- y eso sigue valiendo,
+    // pero decir cual seria elegir por un margen que no separa nada. Una auditoria
+    // lo midio: las dos predicciones se separan 1,5 dB recien en |g| = 13,1, asi que
+    // si el barrido pierde los crudos extremos las dos entran y el ganador se
+    // decide por centesimas. Con la ley +-15 y dos crudos anulados por lado, que es
+    // lo que le paso al item 101, pasa siempre.
+    //
+    // Y hay un tercer detector posible que nadie midio --uno que integre en una
+    // ventana comparable al cuadro-- que caeria justo ahi. Nombrarlo seria archivar
+    // una moneda como medicion.
+    const cuantasAjustan = ajustes.filter((a) => a.peor <= L8_DESVIO_MAXIMO_DB).length;
     console.log(`   tope ${L8_DESVIO_MAXIMO_DB}`);
     console.log(ok
-      ? `   PASA, y de paso: el medidor del canal se comporta como de ${mejor.nombre.toUpperCase()}. `
-        + 'Nada recorto adentro de la consola.'
-      : '   FALLA. El medidor no sigue al realce por NINGUNO de los dos modelos: hubo '
-        + 'recorte o limitacion ADENTRO, y la ley se aplanaria arriba sin que el '
-        + 'detector de recorte de la interfaz lo vea.');
-    console.log('   **L8 es un control del REALCE.** Su sensibilidad es 0,99 en +20 dB y');
-    console.log('   0,01 en -20: en el corte es ciego, y da igual, porque el recorte solo');
-    console.log('   puede ocurrir arriba. Y solo ve lo que pase AGUAS ABAJO de donde ese');
-    console.log('   medidor toma, que este proyecto no midio.');
+      ? (cuantasAjustan === 1
+        ? `   PASA, y de paso: el medidor del canal se comporta como de ${mejor.nombre.toUpperCase()}. `
+          + 'Nada recorto adentro de la consola.'
+        : '   PASA: nada recorto adentro de la consola. Pero las DOS predicciones '
+          + 'entran en el tope, asi que esta corrida NO decide si el medidor es de '
+          + 'pico o de potencia: haria falta que el barrido llegue a |g| > 13,1 dB '
+          + 'con los dos extremos vivos.')
+      : '   FALLA. El medidor no sigue al realce por NINGUNO de los dos modelos. Las '
+        + 'dos explicaciones son: hubo recorte o limitacion ADENTRO --que es lo que '
+        + 'esta expectativa busca-- o el medidor no es ninguno de los dos, que nadie '
+        + 'midio. No se puede atribuir a la primera sin descartar la segunda.');
+    console.log('   **L8 es un control del REALCE.** Su sensibilidad en +20 dB es 0,99 si el');
+    console.log('   medidor es de potencia y 0,91 si es de pico; en -20 dB, 0,01 y 0,09. En el');
+    console.log('   corte es casi ciego, y da igual, porque el recorte solo puede ocurrir');
+    console.log('   arriba. (Las dos cifras iban antes como una sola, la de potencia, de');
+    console.log('   cuando se suponia ese modelo; desde que el veredicto es sobre los dos hay');
+    console.log('   que decir los dos.) Y solo ve lo que pase AGUAS ABAJO de donde ese medidor');
+    console.log('   toma, que este proyecto no midio.');
     if (!ok) problemas.push('L8');
   }
 }
