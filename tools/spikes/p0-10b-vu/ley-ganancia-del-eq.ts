@@ -152,8 +152,48 @@ const SEGUNDOS_DE_CAPTURA = 3;
 const CRUDO_PLANO = 0.5;
 /** Un punto vale si esta este margen por encima del piso EFECTIVO. */
 const MARGEN_MINIMO_DB = 45;
-/** L4: por debajo de esto no se distingue ±15 de ±20, que es lo que hay que decidir. */
-const RECORRIDO_MINIMO_DB = 30;
+/**
+ * **L4: cuanto recorrido hace falta para que el ajuste signifique algo.**
+ *
+ * **Valia 30, y 30 es exactamente la respuesta +-15.** Una auditoria lo midio y es
+ * el peor lugar donde puede estar este numero: el item existe para decidir entre
+ * +-15 --que la tabla declara-- y +-20 --que el item 101 vio--, y el piso estaba
+ * puesto en el recorrido de la primera. Con +-15 y una corrida perfecta el
+ * recorrido da 30,00 y pasa por CERO margen, asi que cualquier ruido la tumba; y
+ * basta perder un crudo por punta --recorte, margen, un tartamudeo del
+ * reproductor-- para quedarse en 27 y no publicar nada. Con +-20 sobrevive
+ * perdiendo dos. El item 101, mismo instrumento y mismo banco, anulo 2 de 8.
+ *
+ * O sea que la corrida estaba armada para no poder contestar una de sus dos
+ * respuestas.
+ *
+ * **El razonamiento que sostenia el 30 era circular**: «por debajo de esto no se
+ * distingue +-15 de +-20». No hace falta medir 30 dB de recorrido para
+ * distinguirlas: las distingue la PENDIENTE del ajuste de L3, que con 27 dB de
+ * recorrido sale igual de determinada. El numero confundia «datos suficientes para
+ * ajustar» con «la respuesta misma».
+ *
+ * Ahora son 24: deja a +-15 sobreviviendo dos crudos perdidos por lado, lo mismo
+ * que +-20, y sigue siendo mucho mas que lo que un ajuste necesita. Quien decide
+ * entre las dos hipotesis es la pendiente, y L4 solo cuida que haya con que
+ * ajustar.
+ */
+const RECORRIDO_MINIMO_DB = 24;
+
+/**
+ * **Lo que C1 dimensiona, que NO es lo mismo y por eso es otro numero.**
+ *
+ * C1 comprueba ANTES de barrer que el centro tenga margen de sobra, y para eso usa
+ * una cota superior de cuanto va a bajar el punto mas hondo. Hasta ahora compartia
+ * constante con el piso de L4 --eran el mismo 30-- y bajar el piso habria aflojado
+ * tambien la precondicion, que es la direccion insegura: menos margen exigido
+ * significa puntos cayendose al piso a mitad del barrido.
+ *
+ * Asi que se queda en 30, con el comportamiento de hoy intacto. Es conservador
+ * para las dos hipotesis --el punto mas hondo baja 15 o 20, no 30-- y esa holgura
+ * es deliberada.
+ */
+const EXCURSION_PREVISTA_DB = 30;
 /**
  * **Por debajo de esto, ninguna expectativa decide.**
  *
@@ -179,7 +219,7 @@ const CUADROS_MINIMOS = 20;
  * contrato, y un docblock que decia «45 + 40 = 85» sobre un `RECORRIDO_MINIMO_DB`
  * que vale 30. Los dos ultimos eran del item 107, de donde se copio la formula.)
  */
-const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
+const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + EXCURSION_PREVISTA_DB;
 
 /**
  * L2: la referencia interna de la interfaz no puede derivar mas que esto.
@@ -701,6 +741,29 @@ await new Promise((r) => setTimeout(r, 1000));
 const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 const problemas: string[] = [];
 
+/**
+ * **Lo que L8 vio en el extremo de realce, con signo, para que L3 lo lea.**
+ *
+ * Una auditoria midio que los dos topes **no componen**, y es el defecto de diseno
+ * mas caro que quedaba: L8 existe para que L3 no acuse en falso a la consola, pero
+ * L8 tolera 1,5 dB y L3 tolera 0,3. Simulado sobre este mismo banco, con un
+ * aplastamiento interno de entre **0,6 y 1,5 dB** L8 PASA y L3 FALLA diciendo «la
+ * ley NO es lineal en el crudo» --que es justamente la acusacion falsa que L8 vino
+ * a evitar, ocurriendo igual--. Cada tope tenia su justificacion propia y nunca se
+ * compararon entre si.
+ *
+ * La salida no fue mover ningun tope --bajar el de L8 lo haria fallar en falso por
+ * cuantizacion-- sino **hacer que L3 lea lo que L8 vio**. Si el medidor del canal
+ * se aparto hacia ARRIBA de lo que la atenuacion medida predice, la explicacion
+ * «algo aplasto aguas abajo del medidor» esta viva, y L3 no puede atribuir su
+ * residuo a la ley.
+ *
+ * Y la comparacion es cuantitativa, no un «si vio algo»: un aplastamiento de Δ dB
+ * produce en L3 un residuo de ~0,52·Δ y en L8 un desvio de ~0,99·Δ, asi que la
+ * explicacion solo es consistente si **el desvio de L8 alcanza al residuo de L3**.
+ */
+let l8DesvioArriba: number | undefined;
+
 // **PRIMERA PASADA: quien vale.**
 //
 // **Esta pasada se perdio en una edicion y una auditoria lo encontro.** Sin ella
@@ -929,12 +992,18 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     ] as const;
     const ajustes = modelos.map(([nombre, f]) => {
       let peor = 0;
+      // **Y el desvio CON SIGNO en el extremo de realce**, que es lo que L3 necesita
+      // saber y el maximo absoluto pierde. Ver el bloque de L3.
+      let arriba = 0;
+      let atArriba = -Infinity;
       for (const p of conPlano) {
         const r = planoDe(p.sentido)!;
-        const dif = Math.abs((p.m.canalDb - r.m.canalDb) - f(p.atenuacion));
+        const crudoDesvio = (p.m.canalDb - r.m.canalDb) - f(p.atenuacion);
+        const dif = Math.abs(crudoDesvio);
         if (dif > peor) peor = dif;
+        if (p.atenuacion > atArriba) { atArriba = p.atenuacion; arriba = crudoDesvio; }
       }
-      return { nombre, peor };
+      return { nombre, peor, arriba };
     });
     for (const a of ajustes) {
       console.log(`   si el medidor fuera de ${a.nombre.padEnd(9)}: desvio maximo `
@@ -954,6 +1023,7 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     // ventana comparable al cuadro-- que caeria justo ahi. Nombrarlo seria archivar
     // una moneda como medicion.
     const cuantasAjustan = ajustes.filter((a) => a.peor <= L8_DESVIO_MAXIMO_DB).length;
+    l8DesvioArriba = mejor.arriba;
     console.log(`   tope ${L8_DESVIO_MAXIMO_DB}`);
     console.log(ok
       ? (cuantasAjustan === 1
@@ -984,8 +1054,11 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
   console.log(`\nL4 el recorrido total: ${d(recorrido)} dB sobre ${utiles.length} puntos `
     + `(minimo ${RECORRIDO_MINIMO_DB})`);
   console.log(`   maximo realce ${d(Math.max(...ats))} dB, maximo corte ${d(Math.min(...ats))} dB`);
-  console.log('   La tabla declara ±15 —30 de recorrido— y el item 101 vio +20 en el');
-  console.log('   extremo, que serian 40. Los dos no pueden ser ciertos: esto lo dice.');
+  console.log('   La tabla declara ±15 y el item 101 vio +20 en el extremo. Los dos no');
+  console.log('   pueden ser ciertos, y quien lo dice es la PENDIENTE de L3: ~30 dB por');
+  console.log('   unidad de crudo es ±15 y ~40 es ±20. Este minimo solo cuida que haya con');
+  console.log('   que ajustar, y por eso NO vale 30: 30 es una de las dos respuestas, y');
+  console.log('   ponerlo ahi dejaba a ±15 pasando por cero margen.');
   if (ats.length < PUNTOS_MINIMOS) {
     // Con dos puntos que abarquen el recorrido, `recorrido >= 30` pasaba. Era el
     // unico gate sin piso propio.
@@ -1023,8 +1096,20 @@ if (problemas.length > 0) {
         + `crudo, ordenada ${orden.toFixed(3)} dB`);
       console.log(`   residuo maximo ${d(peor.r)} dB en el crudo ${peor.crudo} `
         + `(tope ${L3_RESIDUO_MAXIMO_DB})`);
-      console.log(ok ? '   PASA. Y es una COTA, no una identidad.' : '   FALLA: la ley NO es lineal en el crudo.');
-      if (!ok) problemas.push('L3');
+      // **La otra explicacion del mismo residuo, cuando L8 la sostiene.** Ver el
+      // docblock de `l8DesvioArriba`: L8 pasa con hasta 1,5 dB de desvio y L3 falla
+      // con 0,3 de residuo, asi que entre medio L3 acusaba sola.
+      const aplastamiento = !ok && peor.r < 0 && peor.y > 0
+        && l8DesvioArriba !== undefined && l8DesvioArriba >= Math.abs(peor.r);
+      console.log(ok ? '   PASA. Y es una COTA, no una identidad.'
+        : (aplastamiento
+          ? '   FALLA, y NO se puede atribuir a la ley: L8 vio el medidor del canal '
+            + `${d(l8DesvioArriba!)} dB por encima de lo que la atenuacion medida predice, `
+            + 'que alcanza para explicar este residuo. Posible APLASTAMIENTO INTERNO aguas '
+            + 'abajo de donde ese medidor toma. La ley no se imprime, y el proximo paso es '
+            + 'repetir con el estimulo 10 dB mas bajo: si el residuo se va, era aplastamiento.'
+          : '   FALLA: la ley NO es lineal en el crudo.'));
+      if (!ok) problemas.push(aplastamiento ? 'L3 (posible aplastamiento interno)' : 'L3');
 
       // **Ordenados por crudo, no por orden de barrido.** `CRUDOS` no es monotona
       // --sube de 0,50 a 1,00 y salta a 0,45-- asi que contar rachas en el orden en
