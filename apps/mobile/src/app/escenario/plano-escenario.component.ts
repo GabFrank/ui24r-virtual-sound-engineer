@@ -4,7 +4,8 @@ import {
 } from '@angular/core';
 import type { Emplazamiento } from '@vse/domain';
 import {
-  aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia, moverArrastre,
+  aPantalla, calcularEscala, claseDelPunto, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia,
+  moverArrastre,
   escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
   PASO_DE_ZOOM, ZOOM_MINIMO, type Vista,
   rectanguloDeRango, tiradorDeRango, estirarRango, comoSeLeeElRango,
@@ -109,7 +110,7 @@ export interface FichaMovida {
             <line class="eje" [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
                   [attr.x2]="f.punta.x" [attr.y2]="f.punta.y" />
           }
-          <circle [class]="'punto ' + f.ficha.origen.toLowerCase()"
+          <circle [class]="f.clasePunto"
                   [attr.cx]="f.centro.x" [attr.cy]="f.centro.y" [attr.r]="10" />
           <!-- El blanco táctil, invisible y de 48 px: el punto dibujado es
                chico a propósito, porque agrandarlo mentiría sobre la duda. -->
@@ -342,6 +343,12 @@ export class PlanoEscenarioComponent implements OnDestroy {
         tiradorLargo: tiradorDeRango(ficha.emplazamiento, e, 'largo'),
         // A menos de metro y medio de la pared derecha, el nombre no entra.
         etiquetaALaIzquierda: centro.x > bordeDerecho - 1.5 * e.pxPorMetro,
+        // La clase del punto se arma acá y no en la plantilla: una llamada
+        // desde la plantilla se reevalúa en cada ciclo de detección, y este
+        // proyecto ya pagó tres veces esa cuenta. Cuarta vez, y la atrapó el
+        // validador, no un perfilador. El mapeo vive en `plano.ts`, donde hay
+        // tests: acá dentro no lo comprobaba nada.
+        clasePunto: claseDelPunto(ficha.origen),
       };
     });
   });

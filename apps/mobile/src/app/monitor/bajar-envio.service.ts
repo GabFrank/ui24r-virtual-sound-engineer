@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { puedeBajarEnvioAMonitor } from '@vse/assistants';
+import { LEY_DEL_ENVIO } from './ley-del-envio.ts';
 import type { ContextoSeguridad } from '@vse/safety';
 import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
@@ -110,7 +111,7 @@ export class BajarEnvioService {
       sessionState: this.sesion.estado(),
       paroDeEmergencia: this.seguridad.bloqueado(),
       conexionPermiteEscribir: permiso.permitido,
-    });
+    }, LEY_DEL_ENVIO);
     return v.puede ? { puede: true, motivo: null } : { puede: false, motivo: v.motivo };
   }
 
@@ -152,7 +153,7 @@ export class BajarEnvioService {
       sessionState: this.sesion.estado(),
       paroDeEmergencia: this.seguridad.bloqueado(),
       conexionPermiteEscribir: permiso.permitido,
-    });
+    }, LEY_DEL_ENVIO);
     if (!v.puede) return { estado: 'NO_SE_PUEDE', motivo: v.motivo };
 
     const api = this.mixer.api();

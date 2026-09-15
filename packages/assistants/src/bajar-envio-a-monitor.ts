@@ -1,6 +1,5 @@
 import type { SessionState } from '@vse/domain';
 import { LIMITES } from '@vse/domain';
-import { aRaw, entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
 
 /**
  * Si el envío de un canal a un monitor se puede bajar ahora, y hasta dónde.
@@ -42,7 +41,50 @@ import { aRaw, entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
  *
  * Es la primera vez en este proyecto que una medición cambia lo que la
  * aplicación puede hacer.
+ *
+ * ## Por qué la ley llega por parámetro y no por `import`
+ *
+ * La primera versión importaba `aRaw`, `entrada` y `esNivelDeEnvioAMonitor`
+ * de `@vse/mixer-adapter`, y `validate-limites` la rechazó con razón: la regla
+ * 3 del repositorio —«ningún asistente habla con la consola»— está declarada
+ * sobre el paquete entero, y con motivo. Que lo importado fueran funciones
+ * puras no cambia el argumento: el día que un asistente importa del adaptador,
+ * la flecha `Assistant → … → write()` tiene un atajo que nadie dibujó, y el
+ * validador que existe para verlo deja de poder distinguirlo del transporte.
+ *
+ * Así que el asistente **declara qué necesita saber de la ley** —si una ruta es
+ * un nivel de envío de esta consola, cuánto crudo vale un nivel en dB, y en qué
+ * tramo está medida— y quien lo llama se lo pasa. En producción es el servicio
+ * de Angular, que sí puede importar el adaptador; en los tests es una ley de
+ * mentira con el tramo escrito a mano, y la comprobación contra la ley real
+ * vive donde la ley real se puede importar: `apps/mobile/test`.
  */
+
+/**
+ * Lo que el asistente necesita saber de la ley del envío, sin importarla.
+ *
+ * Tiene la forma exacta de las tres funciones del adaptador que la implementan
+ * —`esNivelDeEnvioAMonitor`, `aRaw` y `entrada`— para que pasarlas sea escribir
+ * sus nombres y nada más.
+ */
+export interface LeyDelEnvioAMonitor {
+  /** Si la ruta es, en forma canónica y dentro del rango real, un `i.N.aux.M.value`. */
+  esNivelDeEnvioAMonitor(ruta: string): boolean;
+  /** De dB a crudo por la ley medida, o por qué no se puede. */
+  aRaw(ruta: string, fisico: number): ResultadoDeLaLey;
+  /** El tramo en que la ley está medida, para poder decirlo cuando se rechaza. */
+  entrada(ruta: string): TramoMedido | undefined;
+}
+
+export type ResultadoDeLaLey =
+  | { readonly ok: true; readonly raw: number }
+  | { readonly ok: false; readonly codigo: string; readonly mensaje: string };
+
+export interface TramoMedido {
+  readonly fisicoMin: number;
+  readonly fisicoMax: number;
+  readonly spike: string;
+}
 
 /** Lo que hace falta saber para decidir. */
 export interface EstadoParaBajarMonitor {
@@ -74,7 +116,10 @@ export type VeredictoDeBajada =
  * motivo casi siempre es accionable —conectá la consola, salí del show, pedí
  * menos decibeles—, así que decirlo convierte una traba en el siguiente paso.
  */
-export function puedeBajarEnvioAMonitor(e: EstadoParaBajarMonitor): VeredictoDeBajada {
+export function puedeBajarEnvioAMonitor(
+  e: EstadoParaBajarMonitor,
+  ley: LeyDelEnvioAMonitor,
+): VeredictoDeBajada {
   if (e.paroDeEmergencia) {
     return { puede: false, motivo: 'el paro de emergencia está activo' };
   }
@@ -88,7 +133,7 @@ export function puedeBajarEnvioAMonitor(e: EstadoParaBajarMonitor): VeredictoDeB
   // —un canal que esta consola no tiene— y `i.03.aux.1.value`, que es la misma
   // ruta que suena en la sala alcanzada por una clave que el techo por ruta no
   // cuenta.
-  if (!esNivelDeEnvioAMonitor(e.ruta)) {
+  if (!ley.esNivelDeEnvioAMonitor(e.ruta)) {
     return {
       puede: false,
       motivo: `${e.ruta} no es un nivel de envío a monitor de esta consola`,
@@ -130,12 +175,12 @@ export function puedeBajarEnvioAMonitor(e: EstadoParaBajarMonitor): VeredictoDeB
   }
 
   const destinoDb = e.nivelActualDb - e.bajarDb;
-  const r = aRaw(e.ruta, destinoDb);
+  const r = ley.aRaw(e.ruta, destinoDb);
   if (!r.ok) {
     // **El caso que importa y que antes no existía.** `FUERA_DE_RANGO` significa
     // que el destino cae afuera del tramo que la medición cubrió, y proponerlo
     // sería extrapolar una ley. El ítem 104 midió de −32,14 a +10 dB.
-    const e2 = entrada(e.ruta);
+    const e2 = ley.entrada(e.ruta);
     const tramo = e2 === undefined ? '' : ` La ley está medida de ${e2.fisicoMin.toFixed(1)} `
       + `a ${e2.fisicoMax.toFixed(1)} dB (${e2.spike}).`;
     return { puede: false, motivo: `${r.mensaje}.${tramo}` };

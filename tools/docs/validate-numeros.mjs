@@ -21,11 +21,43 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const leer = (r) => readFileSync(join(RAIZ, r), 'utf8');
+
+/**
+ * Corre una expresión contra un módulo TypeScript del repositorio y devuelve
+ * lo que imprime.
+ *
+ * **Existe porque contar texto no es contar.** La primera versión de la guarda
+ * de rutas medidas contaba líneas `  medido(` con una expresión regular, y una
+ * auditoría mostró lo que eso deja pasar: `raw-map.ts` ya promueve entradas a
+ * `PROBADO` por otro camino --`{ ...deLaConsola(...), estado: 'PROBADO' }`-- y
+ * una entrada así no la veía; al revés, colapsar una llamada a una sola línea
+ * disparaba una falsa alarma sin cambiar una coma de la semántica. Una guarda
+ * que compara el repositorio contra su propio estilo de escritura es más débil
+ * todavía que compararlo consigo mismo, que es lo que `vse-disciplina` §6 ya
+ * desaconseja.
+ *
+ * Así que se ejecuta la función que el propio paquete exporta para esto.
+ */
+const contarEjecutando = (modulo, expresion) => {
+  const salida = execFileSync(
+    process.execPath,
+    ['--experimental-strip-types', '--no-warnings', '--input-type=module', '-e',
+      `const m = await import(${JSON.stringify(join(RAIZ, modulo))});\n`
+      + `process.stdout.write(String(${expresion}));`],
+    { encoding: 'utf8' },
+  );
+  const n = Number(salida.trim());
+  if (!Number.isInteger(n)) {
+    throw new Error(`contar ${expresion} sobre ${modulo} devolvió «${salida.trim()}», que no es un entero`);
+  }
+  return n;
+};
 
 /** Las cifras que se pueden contar, con de dónde salen y quién las afirma. */
 const HECHOS = [
@@ -69,6 +101,26 @@ const HECHOS = [
     afirmaciones: [
       ['docs/spikes/SPK-P0.2a-capability-basica.md', /filas con estado, (\d+) verificadas/],
     ],
+  },
+  // Las dos que siguen son las del README, que estuvo tres días diciendo «0 de
+  // 22» con 23 charters y «0 rutas escribibles» con cinco medidas. Cambian con
+  // una decisión --escribir un charter, medir una ley-- y por eso vale
+  // escribirlas; y por eso mismo hay que contarlas.
+  {
+    que: 'charters de spike',
+    contar: () => readdirSync(join(RAIZ, 'docs/spikes'))
+      .filter((f) => f.startsWith('SPK-') && f.endsWith('.md')).length,
+    // `\d+ de` y no `0 de`: el día que cierre un spike, la guarda tiene que
+    // seguir comprobando el denominador en vez de decir que el README «ya no
+    // dice» cuántos hay, que apunta al problema equivocado.
+    afirmaciones: [['README.md', /\| Spikes cerrados \| \d+ de (\d+) \|/]],
+  },
+  {
+    que: 'rutas crudas con conversión medida (PROBADO en RAW_MAP)',
+    // Se ejecuta `rutasProbadas()`, que es la función que el adaptador expone
+    // como «las únicas escribibles por vía cruda», en vez de contar su texto.
+    contar: () => contarEjecutando('packages/mixer-adapter/src/raw-map.ts', 'm.rutasProbadas().length'),
+    afirmaciones: [['README.md', /\| Rutas crudas con conversión medida \| (\d+) /]],
   },
   {
     que: 'criterios del acta G-A en verde',
