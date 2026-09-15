@@ -6,7 +6,8 @@
 | [01-auditoria-integrada.md](01-auditoria-integrada.md) | Las cuatro auditorías integradas y las 18 decisiones que gobiernan el backlog |
 | [02-backlog.md](02-backlog.md) | 15 épicas, historias con criterios de aceptación y dependencias |
 | [03-orden-implementacion.md](03-orden-implementacion.md) | Los 126 ítems en orden exacto, esfuerzo, camino crítico y planes B |
-| [auditorias/](auditorias/) | Los cuatro informes completos, con sus fuentes |
+| [auditorias/](auditorias/) | Los informes completos, con sus fuentes |
+| [auditorias/2026-09-15-auditoria-externa.md](auditorias/2026-09-15-auditoria-externa.md) | Auditoría externa del 2026-09-15: estado real de la rama, doce hallazgos, catálogo de trabajo previo publicado, quince hipótesis para corroborar con la consola y un plan para esa sesión |
 
 Las invariantes de seguridad viven en [docs/safety-invariants.md](../safety-invariants.md) porque son un documento vigente, no histórico.
 
