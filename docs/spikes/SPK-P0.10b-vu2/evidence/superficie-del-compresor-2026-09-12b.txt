@@ -1,0 +1,259 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T16:10:15.998Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/superficie-del-compresor.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/superficie-del-compresor.ts sha256:c635396e7e9b1136
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 98 — LA SUPERFICIE DEL COMPRESOR: UMBRAL x RELACION ===
+canal 10 (i.9), tono de 1000 Hz a -1 dBFS
+escalon del medidor de nivel:     0.333401 dB
+escalon del medidor de reduccion: 0.666801 dB
+piso del medidor de reduccion:    0.9840 dB
+tolerancia mismo medidor:   0.6668 dB
+tolerancia cruzando medidores: 1.3336 dB
+
+=== ESTADO DEL BANCO, LEIDO DEL APARATO ===
+   6665 claves leidas por HTTP
+   hw.9.gain                0.2508445026
+   i.9.mix                  0.7647058824
+   i.9.mute                 0
+   i.9.src                  hw.9
+   i.9.dyn.threshold        0.875
+   i.9.dyn.ratio            1
+   i.9.dyn.bypass           0
+   i.9.dyn.softknee         0
+   i.9.dyn.gain             0.75
+   i.9.dyn.outgain          0.3333333333
+   i.9.dyn.hold             (ausente)
+   i.9.gate.enabled         1
+   i.9.gate.thresh          0
+   i.9.gate.depth           0
+   i.9.deesser.enabled      0
+   i.9.deesser.freq         0.773310034
+   i.9.deesser.threshold    0.46875
+   m.afs.enabled            1
+   m.mix                    0.7643020595
+   AVISO: la puerta esta HABILITADA en este canal. Su atenuacion se leeria
+   como compresion, y el testigo `pre` no la delata. Se vigila el bit 7 de +5.
+
+=== PISO DE RUIDO DEL CANAL, con el tono apagado ===
+   pre -Infinity dB, entrada -Infinity dB, byte 0, 68 cuadros
+   Sin esta cifra, un piso de instrumento es indistinguible de una
+   saturacion del compresor, que es lo que esta corrida vino a decidir.
+
+supresor del general: estaba en 1, se apaga para medir
+
+=== PRECONDICION DE MONTAJE ===
+   pre = -37.66 dB, esperado -37.66 +-0.333
+   PASA. El montaje es comparable con la 97.
+
+=== ASENTAMIENTO, en un punto profundo (u = 0,14, a = 0,05) ===
+   Los tiempos de ataque y relajacion NO se midieron nunca (C5 de la 97),
+   asi que los 6 s no tienen respaldo y hay que comprobarlos.
+     2804 ms -> entrada -61.85 dB
+     4800 ms -> entrada -62.00 dB
+     6802 ms -> entrada -62.00 dB
+    10803 ms -> entrada -62.00 dB
+   deriva entre 6 y 10 s: 0.00 dB -> ventana de asentamiento 3000 ms
+
+=== LA REJILLA ===
+umbral |   a  | sent |  entrada | caida | informada | resid | pre    | dinE   | dinS   | byte | puerta | n
+0.1400 | 0.90 | baja |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.70 |  124 | ok     |  46
+0.1400 | 0.70 | baja |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.66 |  118 | ok     |  46
+0.1400 | 0.50 | baja |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  47
+0.1400 | 0.35 | baja |   -46.66 |  9.00 |      8.99 | -0.02 | -37.66 | -37.66 | -46.66 |  100 | ok     |  45
+0.1400 | 0.25 | baja |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.40 |   92 | ok     |  47
+0.1400 | 0.15 | baja |   -53.66 | 16.00 |     15.65 | -0.35 | -37.66 | -37.66 | -53.66 |   79 | ok     |  46
+0.1400 | 0.10 | baja |   -56.66 | 19.00 |     18.99 | -0.02 | -37.66 | -37.66 | -56.68 |   70 | ok     |  45
+0.1400 | 0.05 | baja |   -61.98 | 24.32 |     24.32 | -0.00 | -37.66 | -37.66 | -62.00 |   54 | ok     |  46
+0.1400 | 0.05 | sube |   -62.00 | 24.34 |     24.32 | -0.02 | -37.66 | -37.66 | -62.00 |   54 | ok     |  45
+0.1400 | 0.10 | sube |   -56.66 | 19.00 |     18.99 | -0.02 | -37.66 | -37.66 | -57.00 |   70 | ok     |  46
+0.1400 | 0.15 | sube |   -53.66 | 16.00 |     15.65 | -0.35 | -37.66 | -37.66 | -53.66 |   79 | ok     |  46
+0.1400 | 0.25 | sube |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.66 |   92 | ok     |  46
+0.1400 | 0.35 | sube |   -46.66 |  9.00 |      8.99 | -0.02 | -37.66 | -37.66 | -46.66 |  100 | ok     |  47
+0.1400 | 0.50 | sube |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  47
+0.1400 | 0.70 | sube |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.69 |  118 | ok     |  46
+0.1400 | 0.90 | sube |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.66 |  124 | ok     |  47
+  -> referencia de u=0.14: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.2600 | 0.90 | baja |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.66 |  124 | ok     |  48
+0.2600 | 0.70 | baja |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.66 |  118 | ok     |  46
+0.2600 | 0.50 | baja |   -43.33 |  5.67 |      5.65 | -0.02 | -37.66 | -37.66 | -43.33 |  110 | ok     |  45
+0.2600 | 0.35 | baja |   -45.99 |  8.34 |      8.32 | -0.02 | -37.66 | -37.66 | -45.99 |  102 | ok     |  46
+0.2600 | 0.25 | baja |   -48.66 | 11.00 |     10.99 | -0.02 | -37.66 | -37.66 | -48.70 |   94 | ok     |  45
+0.2600 | 0.15 | baja |   -52.19 | 14.53 |     14.32 | -0.21 | -37.66 | -37.66 | -52.19 |   83 | ok     |  47
+0.2600 | 0.10 | baja |   -54.66 | 17.00 |     16.99 | -0.02 | -37.66 | -37.66 | -54.90 |   76 | ok     |  45
+0.2600 | 0.05 | baja |   -58.33 | 20.67 |     20.32 | -0.35 | -37.66 | -37.66 | -58.33 |   65 | ok     |  46
+0.2600 | 0.05 | sube |   -58.25 | 20.60 |     20.32 | -0.28 | -37.66 | -37.66 | -58.33 |   65 | ok     |  45
+0.2600 | 0.10 | sube |   -54.66 | 17.00 |     16.99 | -0.02 | -37.66 | -37.66 | -54.66 |   76 | ok     |  44
+0.2600 | 0.15 | sube |   -51.99 | 14.34 |     14.32 | -0.02 | -37.66 | -37.66 | -52.33 |   84 | ok     |  45
+0.2600 | 0.25 | sube |   -48.66 | 11.00 |     10.99 | -0.02 | -37.66 | -37.66 | -48.66 |   94 | ok     |  44
+0.2600 | 0.35 | sube |   -45.99 |  8.34 |      8.32 | -0.02 | -37.66 | -37.66 | -46.22 |  102 | ok     |  45
+0.2600 | 0.50 | sube |   -43.33 |  5.67 |      5.65 | -0.02 | -37.66 | -37.66 | -43.33 |  110 | ok     |  45
+0.2600 | 0.70 | sube |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.66 |  118 | ok     |  45
+0.2600 | 0.90 | sube |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.66 |  124 | ok     |  44
+  -> referencia de u=0.26: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.3500 | 0.90 | baja |   -38.38 |  0.72 |      0.98 |  0.27 | -37.66 | -37.66 | -38.58 |  125 | ok     |  45
+0.3500 | 0.70 | baja |   -40.33 |  2.67 |      2.32 | -0.35 | -37.66 | -37.66 | -40.48 |  119 | ok     |  42
+0.3500 | 0.50 | baja |   -42.66 |  5.00 |      4.98 | -0.02 | -37.66 | -37.66 | -42.66 |  112 | ok     |  46
+0.3500 | 0.35 | baja |   -44.99 |  7.33 |      6.99 | -0.35 | -37.66 | -37.66 | -45.22 |  105 | ok     |  45
+0.3500 | 0.25 | baja |   -46.99 |  9.34 |      8.99 | -0.35 | -37.66 | -37.66 | -46.99 |   99 | ok     |  44
+0.3500 | 0.15 | baja |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.66 |   92 | ok     |  46
+0.3500 | 0.10 | baja |   -50.99 | 13.34 |     13.65 |  0.32 | -37.66 | -37.66 | -50.99 |   87 | ok     |  46
+0.3500 | 0.05 | baja |   -52.99 | 15.34 |     15.65 |  0.32 | -37.66 | -37.66 | -53.33 |   81 | ok     |  45
+0.3500 | 0.05 | sube |   -52.99 | 15.34 |     15.65 |  0.32 | -37.66 | -37.66 | -52.99 |   81 | ok     |  44
+0.3500 | 0.10 | sube |   -51.03 | 13.37 |     13.65 |  0.28 | -37.66 | -37.66 | -51.33 |   87 | ok     |  44
+0.3500 | 0.15 | sube |   -49.33 | 11.67 |     11.65 | -0.02 | -37.66 | -37.66 | -49.59 |   92 | ok     |  45
+0.3500 | 0.25 | sube |   -46.99 |  9.34 |      8.99 | -0.35 | -37.66 | -37.66 | -46.99 |   99 | ok     |  44
+0.3500 | 0.35 | sube |   -44.99 |  7.33 |      6.99 | -0.35 | -37.66 | -37.66 | -45.01 |  105 | ok     |  44
+0.3500 | 0.50 | sube |   -42.66 |  5.00 |      4.98 | -0.02 | -37.66 | -37.66 | -42.66 |  112 | ok     |  45
+0.3500 | 0.70 | sube |   -40.33 |  2.67 |      2.32 | -0.35 | -37.66 | -37.66 | -40.56 |  119 | ok     |  45
+0.3500 | 0.90 | sube |   -38.34 |  0.68 |      0.98 |  0.30 | -37.66 | -37.66 | -38.34 |  125 | ok     |  45
+  -> referencia de u=0.35: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.4200 | 0.90 | baja |   -38.32 |  0.67 |      0.98 |  0.32 | -37.66 | -37.66 | -38.66 |  125 | ok     |  45
+0.4200 | 0.70 | baja |   -39.99 |  2.33 |      2.32 | -0.02 | -37.66 | -37.66 | -39.99 |  120 | ok     |  45
+0.4200 | 0.50 | baja |   -41.66 |  4.00 |      3.65 | -0.35 | -37.66 | -37.66 | -41.85 |  115 | ok     |  45
+0.4200 | 0.35 | baja |   -43.33 |  5.67 |      5.65 | -0.02 | -37.66 | -37.66 | -43.33 |  110 | ok     |  46
+0.4200 | 0.25 | baja |   -44.66 |  7.00 |      6.99 | -0.02 | -37.66 | -37.66 | -44.66 |  106 | ok     |  45
+0.4200 | 0.15 | baja |   -45.99 |  8.34 |      8.32 | -0.02 | -37.66 | -37.66 | -45.99 |  102 | ok     |  46
+0.4200 | 0.10 | baja |   -46.99 |  9.34 |      9.39 |  0.05 | -37.66 | -37.66 | -46.99 |   99 | ok     |  45
+0.4200 | 0.05 | baja |   -47.97 | 10.31 |     10.32 |  0.01 | -37.66 | -37.66 | -47.99 |   96 | ok     |  45
+0.4200 | 0.05 | sube |   -47.99 | 10.34 |     10.32 | -0.02 | -37.66 | -37.66 | -47.99 |   96 | ok     |  44
+0.4200 | 0.10 | sube |   -46.99 |  9.34 |      8.99 | -0.35 | -37.66 | -37.66 | -46.99 |   99 | ok     |  47
+0.4200 | 0.15 | sube |   -46.22 |  8.56 |      8.32 | -0.25 | -37.66 | -37.66 | -46.22 |  101 | ok     |  48
+0.4200 | 0.25 | sube |   -44.66 |  7.00 |      6.99 | -0.02 | -37.66 | -37.66 | -44.66 |  106 | ok     |  46
+0.4200 | 0.35 | sube |   -43.33 |  5.67 |      5.65 | -0.02 | -37.66 | -37.66 | -43.33 |  110 | ok     |  44
+0.4200 | 0.50 | sube |   -41.66 |  4.00 |      3.65 | -0.35 | -37.66 | -37.66 | -41.86 |  115 | ok     |  45
+0.4200 | 0.70 | sube |   -39.94 |  2.28 |      2.32 |  0.03 | -37.66 | -37.66 | -39.98 |  120 | ok     |  47
+0.4200 | 0.90 | sube |   -38.32 |  0.67 |      0.98 |  0.32 | -37.66 | -37.66 | -38.49 |  125 | ok     |  46
+  -> referencia de u=0.42: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.4672 | 0.90 | baja |   -38.32 |  0.67 |      0.00 | -0.67 | -37.66 | -37.66 | -38.32 |  125 | ok     |  45
+0.4672 | 0.70 | baja |   -39.33 |  1.67 |      1.65 | -0.02 | -37.66 | -37.66 | -39.33 |  122 | ok     |  45
+0.4672 | 0.50 | baja |   -40.33 |  2.67 |      2.98 |  0.32 | -37.66 | -37.66 | -40.55 |  119 | ok     |  44
+0.4672 | 0.35 | baja |   -41.33 |  3.67 |      3.65 | -0.02 | -37.66 | -37.66 | -41.61 |  116 | ok     |  45
+0.4672 | 0.25 | baja |   -42.33 |  4.67 |      4.32 | -0.35 | -37.66 | -37.66 | -42.33 |  113 | ok     |  44
+0.4672 | 0.15 | baja |   -42.99 |  5.33 |      5.65 |  0.32 | -37.66 | -37.66 | -42.99 |  111 | ok     |  46
+0.4672 | 0.10 | baja |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  46
+0.4672 | 0.05 | baja |   -43.99 |  6.33 |      6.32 | -0.02 | -37.66 | -37.66 | -43.99 |  108 | ok     |  45
+0.4672 | 0.05 | sube |   -43.99 |  6.33 |      6.32 | -0.02 | -37.66 | -37.66 | -44.33 |  108 | ok     |  45
+0.4672 | 0.10 | sube |   -43.66 |  6.00 |      5.65 | -0.35 | -37.66 | -37.66 | -43.66 |  109 | ok     |  45
+0.4672 | 0.15 | sube |   -42.99 |  5.33 |      5.65 |  0.32 | -37.66 | -37.66 | -43.32 |  111 | ok     |  45
+0.4672 | 0.25 | sube |   -42.33 |  4.67 |      4.32 | -0.35 | -37.66 | -37.66 | -42.33 |  113 | ok     |  44
+0.4672 | 0.35 | sube |   -41.33 |  3.67 |      3.65 | -0.02 | -37.66 | -37.66 | -41.66 |  116 | ok     |  46
+0.4672 | 0.50 | sube |   -40.33 |  2.67 |      2.98 |  0.32 | -37.66 | -37.66 | -40.66 |  119 | ok     |  44
+0.4672 | 0.70 | sube |   -39.33 |  1.67 |      1.65 | -0.02 | -37.66 | -37.66 | -39.33 |  122 | ok     |  46
+0.4672 | 0.90 | sube |   -38.32 |  0.67 |      0.00 | -0.67 | -37.66 | -37.66 | -38.32 |  125 | ok     |  45
+  -> referencia de u=0.4672: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.5000 | 0.90 | baja |   -37.99 |  0.33 |      0.00 | -0.33 | -37.66 | -37.66 | -37.99 |  126 | ok     |  47
+0.5000 | 0.70 | baja |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.99 |  124 | ok     |  45
+0.5000 | 0.50 | baja |   -39.65 |  1.99 |      1.65 | -0.34 | -37.66 | -37.66 | -39.65 |  121 | ok     |  44
+0.5000 | 0.35 | baja |   -39.99 |  2.33 |      2.32 | -0.02 | -37.66 | -37.66 | -40.33 |  120 | ok     |  47
+0.5000 | 0.25 | baja |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.66 |  118 | ok     |  45
+0.5000 | 0.15 | baja |   -40.99 |  3.33 |      3.65 |  0.32 | -37.66 | -37.66 | -41.09 |  117 | ok     |  46
+0.5000 | 0.10 | baja |   -41.22 |  3.57 |      3.65 |  0.09 | -37.66 | -37.66 | -41.33 |  116 | ok     |  46
+0.5000 | 0.05 | baja |   -41.66 |  4.00 |      3.65 | -0.35 | -37.66 | -37.66 | -41.66 |  115 | ok     |  47
+0.5000 | 0.05 | sube |   -41.33 |  3.67 |      3.65 | -0.02 | -37.66 | -37.66 | -41.41 |  116 | ok     |  45
+0.5000 | 0.10 | sube |   -41.33 |  3.67 |      3.65 | -0.02 | -37.66 | -37.66 | -41.33 |  116 | ok     |  47
+0.5000 | 0.15 | sube |   -40.99 |  3.33 |      2.98 | -0.35 | -37.66 | -37.66 | -41.13 |  117 | ok     |  46
+0.5000 | 0.25 | sube |   -40.66 |  3.00 |      2.98 | -0.02 | -37.66 | -37.66 | -40.66 |  118 | ok     |  47
+0.5000 | 0.35 | sube |   -39.99 |  2.33 |      2.32 | -0.02 | -37.66 | -37.66 | -40.33 |  120 | ok     |  44
+0.5000 | 0.50 | sube |   -39.57 |  1.92 |      1.65 | -0.26 | -37.66 | -37.66 | -39.66 |  121 | ok     |  47
+0.5000 | 0.70 | sube |   -38.66 |  1.00 |      0.98 | -0.02 | -37.66 | -37.66 | -38.94 |  124 | ok     |  47
+0.5000 | 0.90 | sube |   -37.99 |  0.33 |      0.00 | -0.33 | -37.66 | -37.66 | -37.99 |  126 | ok     |  46
+  -> referencia de u=0.5: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+0.5500 | 0.90 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.77 |  127 | ok     |  46
+0.5500 | 0.70 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.68 |  127 | ok     |  45
+0.5500 | 0.50 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  46
+0.5500 | 0.35 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.88 |  127 | ok     |  45
+0.5500 | 0.25 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  46
+0.5500 | 0.15 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.99 |  127 | ok     |  46
+0.5500 | 0.10 | baja |   -37.66 | -0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  44
+0.5500 | 0.05 | baja |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.99 |  127 | ok     |  45
+0.5500 | 0.05 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  45
+0.5500 | 0.10 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.99 |  127 | ok     |  45
+0.5500 | 0.15 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  45
+0.5500 | 0.25 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.80 |  127 | ok     |  47
+0.5500 | 0.35 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.73 |  127 | ok     |  45
+0.5500 | 0.50 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  46
+0.5500 | 0.70 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.86 |  127 | ok     |  47
+0.5500 | 0.90 | sube |   -37.66 |  0.00 |      0.00 |  0.00 | -37.66 | -37.66 | -37.66 |  127 | ok     |  46
+  -> referencia de u=0.55: apertura -37.66 dB, cierre -37.66 dB, deriva 0.00 dB
+
+=== VEREDICTOS, contra el contrato del item 98 ===
+   112 puntos utiles de 112; 0 anulados
+
+S1 referencias de ratio=1 entre si: 0.00 dB (0.00 escalones)
+   PASA. El umbral por si solo no mueve el nivel.
+
+S2 deriva del testigo pre: 0.00 dB (0.00 escalones)
+   PASA.
+
+S3 al bajar a, con el umbral fijo (la columna u=0.55 queda excluida):
+   umbral=0.14: retroceso maximo 0.00 dB, meseta desde a=no aparece
+   umbral=0.26: retroceso maximo 0.00 dB, meseta desde a=no aparece
+   umbral=0.35: retroceso maximo 0.00 dB, meseta desde a=no aparece
+   umbral=0.42: retroceso maximo 0.00 dB, meseta desde a=no aparece
+   umbral=0.4672: retroceso maximo 0.00 dB, meseta desde a=0.1
+   umbral=0.5: retroceso maximo 0.00 dB, meseta desde a=0.35
+
+S4 al bajar el umbral, con a fija (la columna u=0.55 queda excluida):
+   a=0.9: retroceso maximo 0.00 dB, meseta desde umbral=0.4672
+   a=0.7: retroceso maximo 0.00 dB, meseta desde umbral=0.4672
+   a=0.5: retroceso maximo 0.00 dB, meseta desde umbral=0.26
+   a=0.35: retroceso maximo 0.00 dB, meseta desde umbral=0.14
+   a=0.25: retroceso maximo 0.00 dB, meseta desde umbral=no aparece
+   a=0.15: retroceso maximo 0.00 dB, meseta desde umbral=no aparece
+   a=0.1: retroceso maximo 0.00 dB, meseta desde umbral=no aparece
+   a=0.05: retroceso maximo 0.00 dB, meseta desde umbral=no aparece
+
+COLUMNA DE CONTROL u=0.55 (0,8 dB sobre el cruce): 16 puntos, caida maxima 0.00 dB
+   PASA: la relacion por si sola no hace nada por debajo del umbral.
+
+S5a el corte de u=0,14 se reproduce (mismo metodo, mismo instrumento):
+   a=0.9   medido   1.00 contra   1.00 de la 97 -> 0.00 dB
+   a=0.7   medido   3.00 contra   3.00 de la 97 -> 0.00 dB
+   a=0.5   medido   6.00 contra   6.00 de la 97 -> 0.00 dB
+   a=0.25  medido  11.67 contra  11.67 de la 97 -> 0.00 dB
+   a=0.15  medido  16.00 contra  16.00 de la 97 -> 0.00 dB
+   a=0.1   medido  19.00 contra  19.00 de la 97 -> 0.00 dB
+   a=0.05  medido  24.32 contra  24.34 de la 97 -> 0.02 dB
+   PASA (0 fuera de tolerancia, se admite hasta 1).
+
+S5b el corte de u=0,4672: caida 2.67 dB, banda honesta [2.31 ; 4.31] (valor esperado ~3,31)
+   PASA.
+
+S6 residuos informada-caida en 92 puntos: 0 positivos sobre +0.333, 0 bajo -1.334
+   PASA: el medidor informa igual o menos que la caida, como el truncado predice.
+
+S7 -20log10(a) es el TECHO de la reduccion:
+   a=0.9   techo   0.92 | maxima medida   1.00 | exceso   0.09
+   a=0.7   techo   3.10 | maxima medida   3.00 | exceso  -0.10
+   a=0.5   techo   6.02 | maxima medida   6.00 | exceso  -0.02
+   a=0.35  techo   9.12 | maxima medida   9.00 | exceso  -0.12
+   a=0.25  techo  12.04 | maxima medida  11.67 | exceso  -0.37
+   a=0.15  techo  16.48 | maxima medida  16.00 | exceso  -0.47
+   a=0.1   techo  20.00 | maxima medida  19.00 | exceso  -1.00
+   a=0.05  techo  26.02 | maxima medida  24.34 | exceso  -1.68
+   Ninguna curva supera su techo. Es una FORMA consistente con la hipotesis,
+   no la saturacion probada: para eso hay que repetir con la fuente 10 dB mas baja.
+
+HISTERESIS entre los dos sentidos: maxima 0.33 dB en u=0.5 a=0.05
+   PASA: los puntos estan asentados.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada de la pendiente del umbral. No se publica ningun dB por unidad de
+   crudo: la 97 ya saco tres por sustitucion y quedaron retiradas.
+   Nada de los tiempos, de la rodilla blanda, del umbral de la puerta ni del
+   de-esser. Un canal, una frecuencia, un nivel de fuente.
+   Esto es AUTOCONSISTENCIA y no calibracion: dos medidores de la misma
+   consola, decodificados con constantes del mismo mixer.html. Y todos los dB
+   son de la escala del medidor, NO dBFS. Ninguna entrada de raw-map.ts sale
+   de INFERIDO por esta medicion.
+
+restaurado: threshold 0.875, ratio 1, m.afs.enabled 1, los tres leidos del aparato antes de empezar.
+Por el mismo camino que escribio, asi que la comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

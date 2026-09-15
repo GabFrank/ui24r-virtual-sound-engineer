@@ -1,0 +1,52 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T04:44:03.374Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-envio-aux.ts 10 2 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-envio-aux.ts sha256:d93e91ed7dae1674
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> auxiliar 3 (a.2)
+tono de 1000 Hz a -12 dBFS, 22 valores de envio
+
+crudo      | testigo canal  | medidor aux | dB medidos | atenuacion | segun faderADb | razon | n
+    1.0000 | -48.66 (+0.00) |        57.4 |     -60.87 |       0.00 |           0.00 |     — |  55
+    0.9500 | -48.66 (+0.00) |        50.0 |     -63.33 |      -2.46 |          -2.48 | 0.991 |  55
+    0.9000 | -48.66 (+0.00) |        43.1 |     -65.62 |      -4.75 |          -4.71 | 1.007 |  56
+    0.8500 | -48.66 (+0.00) |        37.0 |     -67.66 |      -6.80 |          -6.75 | 1.006 |  56
+    0.8000 | -48.66 (+0.00) |        31.5 |     -69.50 |      -8.63 |          -8.68 | 0.995 |  56
+    0.7647 | -48.66 (+0.00) |        27.7 |     -70.76 |      -9.90 |         -10.00 | 0.990 |  57
+    0.7200 | -48.66 (+0.00) |        22.8 |     -72.42 |     -11.55 |         -11.68 | 0.989 |  56
+    0.6800 | -48.66 (+0.00) |        18.0 |     -74.00 |     -13.13 |         -13.22 | 0.993 |  57
+    0.6400 | -48.66 (+0.00) |        13.2 |     -75.61 |     -14.75 |         -14.84 | 0.994 |  58
+    0.6000 | -48.66 (+0.00) |         8.2 |     -77.27 |     -16.40 |         -16.56 | 0.990 |  56
+    0.5600 | -48.66 (+0.00) |         2.9 |     -79.03 |     -18.16 |         -18.44 | 0.985 |  57
+    0.5200 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -20.50 | Infinity |  58
+    0.4800 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -22.79 | Infinity |  58
+    0.4400 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -25.33 | Infinity |  56
+    0.4000 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -28.18 | Infinity |  57
+    0.3600 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -31.35 | Infinity |  57
+    0.3200 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -34.91 | Infinity |  56
+    0.2800 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -38.87 | Infinity |  56
+    0.2400 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -43.29 | Infinity |  57
+    0.2000 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -48.19 | Infinity |  57
+    0.1500 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -55.07 | Infinity |  57
+    0.1000 | -48.66 (+0.00) |         0.0 |  -Infinity |  -Infinity |         -62.86 | Infinity |  57
+
+razon promedio medida/faderADb: 0.9939
+razon minima: 0.9847   maxima: 1.0072
+P1: 1,00 +- 0,05 y plana = el envio usa la ley del fader. Una razon que se mueve = no la usa.
+P4: deriva maxima del testigo: 0.00 dB (se pide < 0,5)
+techo crudo del medidor del bus visto: 0.24171547365074422
+
+=== P5: el fader del canal contra el envio pre-fader ===
+fader 0.7647 -> aux -69.50 dB   canal(pre) -48.66 dB
+fader 0.5000 -> aux -69.46 dB   canal(pre) -48.66 dB
+fader 0.3000 -> aux -69.51 dB   canal(pre) -48.66 dB
+fader 0.7647 -> aux -69.45 dB   canal(pre) -48.66 dB
+
+restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

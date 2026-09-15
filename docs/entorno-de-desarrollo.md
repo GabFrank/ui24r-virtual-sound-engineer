@@ -127,7 +127,18 @@ que la consola real no manda, y emite medidores en silencio, que la consola real
 - La consola y el teléfono **en la misma red**. Comprobarlo desde el teléfono, no desde la
   máquina de desarrollo: `adb shell ping -c 3 <ip de la consola>`.
 - La Ui24R levanta su propia red y responde en `10.10.1.1`, o toma la que le dé el router. En
-  las pruebas del 2026-09-08 estuvo en `192.168.0.49`.
+  las pruebas del 2026-09-08 estuvo en `192.168.0.49`; en las del 2026-09-10, en `192.168.0.78`.
+  **La IP cambia entre sesiones: no se asume, se busca.**
+- **La red del router de la consola es `WIFI SALA_5G`** (subred `192.168.0.x`, puerta
+  `192.168.0.1`). Averiguado el 2026-09-12: la Mac estaba en `FRANCO COCINA`, que da
+  `192.168.1.x`, y desde ahí la consola es inalcanzable por estar en otra subred —el síntoma
+  es un `ping` con 100 % de pérdida, no un error de la consola. Se cambia con
+  `networksetup -setairportnetwork en0 "WIFI SALA_5G"`; el comando puede imprimir
+  `Failed to join` y **haber entrado igual**, así que lo que vale es `ipconfig getifaddr en0`.
+- **Para saber si la consola está encendida, barrer la subred, no pinguear la IP anotada.** Un
+  `arp -an` que devuelve `incomplete` para esa IP significa que no hay nadie ahí. El
+  2026-09-12 en toda `192.168.0.x` sólo había tres hosts —router, Mac y un tercero sin puertos
+  abiertos—: la consola estaba apagada.
 - **Antes de tocar un control de la consola**: PA apagado o faders de salida abajo, y una
   instantánea guardada desde la propia consola.
 

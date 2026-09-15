@@ -85,7 +85,45 @@ export interface WriteResult {
  * único aviso de cambio externo.
  */
 export interface BulkExternalChange {
+  /**
+   * Cuántas rutas distintas se movieron. **Mirá `definitivo` antes de mostrarlo.**
+   *
+   * Cuando `definitivo` es falso, esto es «al menos esto»: el aviso sale en el
+   * instante en que se cruza el umbral, así que lo que llega después todavía no
+   * está contado.
+   */
   readonly rutasAfectadas: number;
+  /**
+   * Si la avalancha ya terminó y este número es el total de verdad.
+   *
+   * **Existe porque el aviso mostraba nuestra constante y no el tamaño real.**
+   * Medido el 2026-09-10: se escribieron 16 rutas y la pantalla dijo 10 — las
+   * diez vueltas exactas del umbral. El aviso se emitía al cruzarlo y lo que
+   * caía después entraba en la ventana de silencio sin actualizar la cuenta.
+   * El operador leía el valor de una constante nuestra creyendo que era una
+   * medición de su consola.
+   *
+   * Se arregló **sin retrasar el aviso**, porque enterarse tarde de que el
+   * estado dejó de ser válido es peor que enterarse con un número corto. Sale
+   * uno en el acto con `definitivo: false`, y otro al cerrarse la ventana.
+   * La pantalla dice «al menos N» hasta que llega el segundo.
+   *
+   * **`definitivo` quiere decir «la ventana cerró», y el total se queda corto en
+   * un recall: medido, 44 rutas difundidas contra 39 informadas.**
+   *
+   * **Por qué se queda corto NO está medido, y acá hubo una explicación falsa
+   * que conviene dejar escrita.** Se publicó que era porque «el recall tarda
+   * unos 3 segundos y la ventana dura 1». Los 3 segundos eran el `setTimeout`
+   * del propio guion de medición, no el aparato: al ponerle marca de tiempo a
+   * cada línea, **el recall difunde sus 44 rutas entre los 343 y los 344 ms**.
+   * Un milisegundo. Todas caben holgadas en la ventana.
+   *
+   * Así que la diferencia de cinco viene de otro lado —candidatos: rutas cuyo
+   * valor el almacén ya tenía y no cuenta como cambio, o el puntero que se
+   * trata aparte— y **hasta que se mida, no se explica**. Lo que sí está medido
+   * es el hecho: el número informado es menor que las rutas difundidas.
+   */
+  readonly definitivo: boolean;
   readonly ventanaMs: number;
   readonly probableCausa: 'SNAPSHOT_RECALL' | 'GRUPO_DE_CANALES' | 'DESCONOCIDA';
   readonly timestamp: string;

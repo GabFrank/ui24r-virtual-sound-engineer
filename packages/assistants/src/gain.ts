@@ -76,10 +76,31 @@ export interface AnalisisDeGanancia {
 /**
  * Umbral por encima del cual una muestra cuenta como riesgo de saturación.
  *
- * **Cuelga del techo medido del medidor, no es un número suelto.** El techo
- * está medido: el byte se clava en 239 y la lectura deja de subir, y en la
- * escala de la consola ese tope es 0 dB. Lo que se elige acá es el **margen**
- * que se le deja antes de avisar, y eso sí es una decisión nuestra.
+ * **Cuelga del cero de la escala del medidor, no de su tope, y eso cambió.**
+ * Esto decía: «el byte se clava en 239 y la lectura deja de subir, y en la
+ * escala de la consola ese tope es 0 dB». **Las dos mitades eran falsas.**
+ * `docs/spikes/SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt` lo midió dos
+ * veces por separado: el 239 era donde saturaba la **interfaz de audio**, no el
+ * medidor —se había medido con fuente externa y ganancia al máximo, o sea la
+ * cadena entera—. El tope del número que manda la consola es **255**, el byte
+ * 240 es la posición 1 (o sea 0 dB), y **los bytes 240 a 255 informan de +0,02 a
+ * +5,0 dB**. Sí hay margen arriba.
+ *
+ * El 0 dB de acá es entonces el **cero de la escala** —la posición 1 del
+ * medidor— y no su techo. Como referencia para avisar antes de recortar sigue
+ * siendo el número correcto, y el aviso se dispara igual: una muestra que el
+ * medidor informa en +3 dB está muy por encima de este umbral. Lo que hay que
+ * no creer es la frase que estaba: no es cierto que el medidor no informe nada
+ * por encima.
+ *
+ * Es el mismo error que el episodio de los 84,5 dB —medir la cadena creyendo
+ * medir el bloque— aplicado al techo en vez de a la escala, y la lección estaba
+ * escrita en el mismo documento donde el error sobrevivió. Lo que lo delató fue
+ * una auditoría razonando que con el techo en 239 los contadores de saturación
+ * no podrían incrementarse nunca: el razonamiento era correcto y la premisa no.
+ *
+ * Lo que se elige acá es el **margen** que se le deja antes de avisar, y eso sí
+ * es una decisión nuestra.
  *
  * El techo se escribe acá en vez de importarse del adaptador porque los
  * asistentes no pueden hablar con la consola —lo comprueba
@@ -89,8 +110,8 @@ export interface AnalisisDeGanancia {
  * Lo que sigue sin estar confirmado —y por eso el margen no es más fino— es
  * que la lectura de cero del medidor corresponda al fondo de escala digital.
  * Esa correspondencia la mide SPK-P0.10b con un tono de −1 dBFS por un bucle
- * físico. Mientras tanto el aviso se da antes de llegar al techo, que es el
- * lado seguro: avisar de más molesta, avisar de menos deja pasar un recorte.
+ * físico. Mientras tanto el aviso se da antes de llegar al cero, que es el lado
+ * seguro: avisar de más molesta, avisar de menos deja pasar un recorte.
  *
  * El margen es de 1 dB **para que el umbral siga siendo el mismo −1 dB de
  * antes**. Derivarlo de una medición era el punto; cambiar de paso cuándo

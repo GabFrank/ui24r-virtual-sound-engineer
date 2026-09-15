@@ -11,11 +11,16 @@ const canal = Number(process.argv[2] ?? '21');
 const t = new Ui24rTransport();
 const ent: number[] = [];
 const sal: number[] = [];
-let fader: number | null = null;
+// **Un objeto y no una variable suelta**, por el estrechamiento de tipos: una
+// `let` asignada solo dentro de una llamada de vuelta queda estrechada a `null`
+// en todo el cuerpo, y usarla despues da `never`. Con una propiedad, el
+// verificador la re-ensancha despues de cada llamada a funcion, que es lo que
+// corresponde: entre medio corrio el WebSocket.
+const medido: { faderDb: number | null } = { faderDb: null };
 t.alRecibir((l) => {
   if (l.startsWith('SETD^')) {
     const [, r, v] = l.split('^');
-    if (r === `i.${canal - 1}.mix`) fader = faderADb(Number(v));
+    if (r === `i.${canal - 1}.mix`) medido.faderDb = faderADb(Number(v));
     return;
   }
   if (!l.startsWith('VU2^')) return;
@@ -27,4 +32,5 @@ await new Promise((r) => setTimeout(r, 7000));
 await t.desconectar();
 const max = (a: number[]) => a.reduce((m, v) => Math.max(m, v), -Infinity);
 console.log(`canal ${canal}: pico entrada ${max(ent).toFixed(1)} dB, pico salida ${max(sal).toFixed(1)} dB`);
-console.log(`diferencia ${(max(ent) - max(sal)).toFixed(1)} dB · fader del canal ${fader === null ? 'sin dato' : fader.toFixed(1) + ' dB'}`);
+console.log(`diferencia ${(max(ent) - max(sal)).toFixed(1)} dB · fader del canal `
+  + `${medido.faderDb === null ? 'sin dato' : `${medido.faderDb.toFixed(1)} dB`}`);

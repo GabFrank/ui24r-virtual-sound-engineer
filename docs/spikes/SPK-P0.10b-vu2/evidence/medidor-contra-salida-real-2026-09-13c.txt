@@ -1,0 +1,213 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T03:16:37.213Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts sha256:aec9b63a142d674e
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 99b — EL MEDIDOR DE LA CONSOLA CONTRA LA SALIDA REAL ===
+canal 10 (i.9), tono de 1000 Hz a -15 dBFS
+escalon del medidor: 0.333401 dB | tolerancia 0.6668 dB
+ventana util del medidor: bytes 16..239 = -74.67 .. -0.32 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.mix                0.7647058824
+   i.9.mute               0
+   hw.9.gain              0.2508445026
+   i.9.dyn.ratio          1
+   i.9.dyn.bypass         0
+   i.9.gate.enabled       1
+   i.9.gate.thresh        0
+   i.9.eq.bypass          0
+   i.9.deesser.enabled    0
+   i.9.subgroup           -1
+   i.9.pan                0.5
+   m.mix                  0.7643020595
+   m.dyn.bypass           0
+   m.dyn.l.ratio          0.0487804878
+   m.dyn.l.threshold      0.7427250239
+   m.dyn.linked           1
+   m.gate.enabled         0
+   m.eq.bypass            0
+   m.delayL               0
+   m.delayR               0
+   m.afs.enabled          1
+   m.afs.fmode            1
+   m.afs.numfixed         6
+   m.afs.numtotal         12
+
+   La puerta y el dinamico del canal estan AGUAS ARRIBA del fader, asi que
+   su accion no cambia al moverlo y M1 los delata si actuaran. Queda dicho
+   para que se sepa que estan cubiertos y no ignorados.
+
+midiendo el piso del banco con el tono apagado...
+   piso del bin alrededor de 1000 Hz: -114.48 dBFS (promediado sobre 40 bins; pico de banda ancha -55.4)
+   Queda archivado como caracterizacion del banco. **No es el
+   denominador de la guarda**: cada punto se juzga contra el ruido de su
+   propia captura, porque un piso medido cinco minutos antes describe
+   otro momento --dos tomas del mismo silencio dieron -106,70 y -136,12.
+
+supresor del general: estaba en 1, se apaga para medir
+compresor del general: bypass estaba en 0, se puentea.
+   Es lo UNICO del camino que no es una ganancia estatica: depende del
+   nivel, y el barrido mueve el nivel cuarenta decibeles. Se puentea y no
+   se pone en 1:1 porque lo que se compara son diferencias contra el
+   arranque, y una compensacion constante se cancela.
+
+crudo escrito -> crudo que devuelve la consola:
+   1 -> 1  (0.0000 dB de diferencia)
+   0.4 -> 0.4  (0.0000 dB de diferencia)
+   0.05 -> 0.05  (0.0000 dB de diferencia)
+
+=== EL RECORRIDO, CALCULADO ANTES DE BARRER ===
+   arranque: medidor -36.66 dB = byte 130
+   interfaz: -7.99 dBFS, pico -7.95, margen en bin 104.8 dB
+   RECORRIDO DEL MEDIDOR: 38.0 dB
+   No son sesenta. Los sesenta de la primera version del contrato eran
+   del FADER, no del medidor: el medidor tiene piso y la salida real no.
+   alineacion: el maximo cae 0.00 Hz del centro (0.000 dB de perdida de ventana)
+
+crudo      | medidor | byte | real   | ref    | segun ley | med-ley | real-ley | med-real | genPre  | genPost | margen | pre    | n
+    1.0000 |  -36.66 |  130 |  -7.99 | -15.00 |      0.00 |    0.00 |     0.00 |     0.00 |  -36.66 |  -36.66 |  103.5 | -46.66 |  78
+    0.9500 |  -39.20 |  122 | -10.47 | -15.00 |      2.48 |    0.05 |    -0.00 |     0.06 |  -39.01 |  -39.22 |  101.0 | -46.66 |  78
+    0.9000 |  -41.33 |  116 | -12.70 | -15.00 |      4.71 |   -0.05 |    -0.00 |    -0.04 |  -41.33 |  -41.33 |  100.8 | -46.66 |  79
+    0.8500 |  -43.33 |  110 | -14.74 | -15.00 |      6.75 |   -0.09 |    -0.00 |    -0.09 |  -43.33 |  -43.33 |   99.2 | -46.66 |  81
+    0.8000 |  -45.21 |  104 | -16.66 | -15.00 |      8.68 |   -0.12 |    -0.00 |    -0.12 |  -45.21 |  -45.22 |   97.1 | -46.54 |  79
+    0.7647 |  -46.66 |  100 | -17.99 | -15.00 |     10.00 |    0.00 |    -0.00 |     0.00 |  -46.66 |  -46.66 |   94.9 | -46.66 |  81
+    0.7200 |  -48.33 |   95 | -19.66 | -15.00 |     11.68 |   -0.01 |    -0.00 |    -0.01 |  -48.33 |  -48.33 |   94.1 | -46.66 |  79
+    0.6800 |  -49.99 |   90 | -21.21 | -15.00 |     13.22 |    0.12 |    -0.00 |     0.12 |  -49.83 |  -49.93 |   93.3 | -46.66 |  79
+    0.6400 |  -51.66 |   85 | -22.82 | -15.00 |     14.84 |    0.17 |    -0.00 |     0.17 |  -51.33 |  -51.33 |   90.5 | -46.66 |  79
+    0.6000 |  -53.33 |   80 | -24.55 | -15.00 |     16.56 |    0.11 |    -0.00 |     0.11 |  -53.01 |  -53.06 |   87.9 | -46.66 |  79
+    0.5600 |  -54.99 |   75 | -26.43 | -15.00 |     18.44 |   -0.10 |    -0.00 |    -0.10 |  -54.99 |  -54.99 |   88.0 | -46.66 |  78
+    0.5200 |  -57.33 |   68 | -28.49 | -15.00 |     20.50 |    0.17 |    -0.00 |     0.17 |  -57.00 |  -57.00 |   85.6 | -46.66 |  78
+    0.4800 |  -59.33 |   62 | -30.78 | -15.00 |     22.79 |   -0.12 |    -0.00 |    -0.12 |  -59.27 |  -59.28 |   82.6 | -46.66 |  78
+    0.4400 |  -62.00 |   54 | -33.32 | -15.00 |     25.33 |    0.00 |    -0.00 |     0.00 |  -61.66 |  -61.66 |   78.3 | -46.66 |  82
+    0.4000 |  -65.00 |   45 | -36.16 | -15.00 |     28.18 |    0.16 |     0.00 |     0.16 |  -64.33 |  -64.34 |   77.7 | -46.66 |  79
+    0.3600 |  -68.00 |   36 | -39.34 | -15.00 |     31.35 |   -0.01 |     0.00 |    -0.02 |  -67.31 |  -67.32 |   74.8 | -46.66 |  78
+    0.3200 |  -71.66 |   25 | -42.90 | -15.00 |     34.91 |    0.10 |     0.00 |     0.10 |  -70.53 |  -70.53 |   71.4 | -46.66 |  79
+    0.2800 |  -75.67 |   13 | -46.87 | -15.00 |     38.87 |    0.14 |     0.01 |     0.13 |  -73.80 |  -73.81 |   66.3 | -46.66 |  79  [fuera de ventana]
+    0.2400 | -Infinity | -Infinity | -51.28 | -15.00 |     43.29 | Infinity |     0.00 | Infinity |  -77.21 |  -77.22 |   62.2 | -46.66 |  81  [fuera de ventana]
+    0.2000 | -Infinity | -Infinity | -56.21 | -15.00 |     48.19 | Infinity |     0.03 | Infinity |  -79.94 |  -79.94 |   58.4 | -46.66 |  78  [fuera de ventana]
+    0.1600 | -Infinity | -Infinity | -61.69 | -15.00 |     53.63 | Infinity |     0.08 | Infinity | -Infinity | -Infinity |   54.2 | -46.66 |  77  [fuera de ventana]
+    0.1200 | -Infinity | -Infinity | -67.74 | -15.00 |     59.63 | Infinity |     0.12 | Infinity | -Infinity | -Infinity |   45.8 | -46.66 |  80  [fuera de ventana]
+    0.0800 | -Infinity | -Infinity | -74.36 | -15.00 |     66.24 | Infinity |     0.13 | Infinity | -Infinity | -Infinity |   39.6 | -46.66 |  80  [fuera de ventana]   ANULADO: margen de 39.6 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.09 dB
+    0.0500 | -Infinity | -Infinity | -80.03 | -15.00 |     71.71 | Infinity |     0.34 | Infinity | -Infinity | -Infinity |   34.4 | -46.66 |  78  [fuera de ventana]   ANULADO: margen de 34.4 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.17 dB
+    0.0500 | -Infinity | -Infinity | -79.88 | -15.00 |     71.71 | Infinity |     0.18 | Infinity | -Infinity | -Infinity |   33.3 | -46.66 |  79  [fuera de ventana]   ANULADO: margen de 33.3 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.19 dB
+    0.0800 | -Infinity | -Infinity | -74.37 | -15.00 |     66.24 | Infinity |     0.14 | Infinity | -Infinity | -Infinity |   39.4 | -46.66 |  78  [fuera de ventana]   ANULADO: margen de 39.4 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.09 dB
+    0.1200 | -Infinity | -Infinity | -67.71 | -15.00 |     59.63 | Infinity |     0.09 | Infinity | -Infinity | -Infinity |   45.2 | -46.66 |  81  [fuera de ventana]
+    0.1600 | -Infinity | -Infinity | -61.69 | -15.00 |     53.63 | Infinity |     0.08 | Infinity |  -80.00 |  -80.00 |   52.1 | -46.66 |  78  [fuera de ventana]
+    0.2000 | -Infinity | -Infinity | -56.22 | -15.00 |     48.19 | Infinity |     0.04 | Infinity |  -79.96 |  -79.97 |   57.4 | -46.66 |  77  [fuera de ventana]
+    0.2400 | -Infinity | -Infinity | -51.29 | -15.00 |     43.29 | Infinity |     0.02 | Infinity |  -77.20 |  -77.23 |   61.6 | -46.66 |  79  [fuera de ventana]
+    0.2800 |  -75.67 |   13 | -46.87 | -15.00 |     38.87 |    0.14 |     0.01 |     0.13 |  -73.85 |  -73.87 |   67.2 | -46.66 |  78  [fuera de ventana]
+    0.3200 |  -71.66 |   25 | -42.90 | -15.00 |     34.91 |    0.10 |     0.01 |     0.09 |  -70.50 |  -70.52 |   70.6 | -46.66 |  78
+    0.3600 |  -68.00 |   36 | -39.34 | -15.00 |     31.35 |   -0.01 |     0.00 |    -0.02 |  -67.31 |  -67.32 |   74.8 | -46.66 |  79
+    0.4000 |  -65.00 |   45 | -36.16 | -15.00 |     28.18 |    0.16 |    -0.00 |     0.16 |  -64.33 |  -64.34 |   78.7 | -46.66 |  78
+    0.4400 |  -62.00 |   54 | -33.32 | -15.00 |     25.33 |    0.00 |     0.00 |     0.00 |  -61.66 |  -61.66 |   80.2 | -46.66 |  80
+    0.4800 |  -59.33 |   62 | -30.78 | -15.00 |     22.79 |   -0.12 |    -0.00 |    -0.12 |  -59.28 |  -59.29 |   84.2 | -46.66 |  77
+    0.5200 |  -57.33 |   68 | -28.49 | -15.00 |     20.50 |    0.17 |     0.00 |     0.17 |  -57.00 |  -57.00 |   86.7 | -46.66 |  81
+    0.5600 |  -54.99 |   75 | -26.43 | -15.00 |     18.44 |   -0.10 |    -0.00 |    -0.10 |  -54.99 |  -54.99 |   87.6 | -46.66 |  81
+    0.6000 |  -53.33 |   80 | -24.55 | -15.00 |     16.56 |    0.11 |    -0.00 |     0.11 |  -53.00 |  -53.06 |   88.7 | -46.66 |  77
+    0.6400 |  -51.66 |   85 | -22.82 | -15.00 |     14.84 |    0.17 |    -0.00 |     0.17 |  -51.33 |  -51.33 |   91.8 | -46.66 |  79
+    0.6800 |  -49.99 |   90 | -21.21 | -15.00 |     13.22 |    0.12 |    -0.00 |     0.12 |  -49.79 |  -49.93 |   93.7 | -46.66 |  81
+    0.7200 |  -48.33 |   95 | -19.66 | -15.00 |     11.68 |   -0.01 |    -0.00 |    -0.01 |  -48.33 |  -48.33 |   93.2 | -46.66 |  79
+    0.7647 |  -46.66 |  100 | -17.99 | -15.00 |     10.00 |    0.00 |    -0.00 |     0.00 |  -46.66 |  -46.66 |   96.0 | -46.66 |  78
+    0.8000 |  -45.33 |  104 | -16.66 | -15.00 |      8.68 |   -0.01 |    -0.00 |    -0.01 |  -45.33 |  -45.33 |   95.8 | -46.66 |  77
+    0.8500 |  -43.33 |  110 | -14.74 | -15.00 |      6.75 |   -0.09 |    -0.00 |    -0.09 |  -43.33 |  -43.33 |   98.0 | -46.66 |  80
+    0.9000 |  -41.33 |  116 | -12.70 | -15.00 |      4.71 |   -0.05 |    -0.00 |    -0.04 |  -41.33 |  -41.33 |   99.4 | -46.66 |  79
+    0.9500 |  -39.20 |  122 | -10.47 | -15.00 |      2.48 |    0.06 |    -0.00 |     0.06 |  -39.04 |  -39.25 |  102.3 | -46.66 |  81
+    1.0000 |  -36.66 |  130 |  -7.99 | -15.00 |      0.00 |    0.00 |    -0.00 |     0.00 |  -36.66 |  -36.66 |  104.2 | -46.66 |  78
+
+=== VEREDICTOS, contra el contrato del item 99b ===
+   44 puntos utiles de 48
+   34 dentro de la ventana del medidor (bytes 16..239)
+     crudo 0.08 baja: margen de 39.6 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.09 dB
+     crudo 0.05 baja: margen de 34.4 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.17 dB
+     crudo 0.05 sube: margen de 33.3 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.19 dB
+     crudo 0.08 sube: margen de 39.4 dB sobre el ruido de su propia captura: el instrumento externo erraria 0.09 dB
+
+M1 pre mediano -46.66 dB | rango de pre 0.12 dB | de entrada 0.12 dB
+   0 puntos de 48 con la fuente fuera de tolerancia
+   PASA. El fader esta aguas abajo de los dos, como el proyecto cree, y el
+   camino ANALOGICO de reproduccion tampoco se movio: es el testigo fuerte.
+
+M2 deriva de la referencia interna: 0.00 dB
+   PASA. La computadora siguio emitiendo el mismo nivel digital, Y NADA MAS:
+   es un retorno interno de la interfaz. El camino analogico de reproduccion
+   lo vigila M1. El de CAPTURA --salida de la consola, cable, perilla de
+   entrada, conversor-- no lo vigila nadie, y su unico control es la vuelta.
+
+camino de captura: el arranque repetido al cierre difiere 0.00 dB
+   PASA. La ganancia analogica de captura no se movio durante la corrida.
+alineacion: apertura 0.00 Hz (0.000 dB), cierre 0.00 Hz (0.000 dB)
+   Con el mismo aparato en las dos puntas el desvio de reloj se cancela
+   exactamente. Esto vigila que el tono no haya salido por otro.
+
+M3 salida real contra faderADb: desvio maximo 0.12 dB en el crudo 0.12
+   sobre 22 puntos, ninguno de los cuales pasa por el medidor
+   PASA, Y ES UNA COTA, NO UNA IDENTIDAD. Dice que si `faderADb` se aparta
+   del fader real, se aparta menos que 0,5 dB EN LOS PUNTOS MEDIDOS. NO dice
+   que sea la ley del fader: la 94 declaro exactamente eso indecidible, y
+   esta corrida tiene mejor instrumento pero la misma logica.
+
+M4 medidor contra salida real: desvio maximo 0.17 dB en el crudo 0.64
+   17 puntos sobre un tramo de 35.0 dB
+   signo de las diferencias: 2 positivas, 0 negativas, 15 dentro de medio escalon
+   PASA. **El medidor predice la salida real** en la ventana medida.
+   Calculado o medido, sirve para lo que la aplicacion lo usa. Esto NO
+   distingue «medido» de «calculado y correcto»: ninguna comparacion
+   estacionaria puede, y el control de balistica tampoco (ver abajo).
+   localizacion: salida del canal -> pre del general difiere hasta 1.14 dB; pre -> post del general, 0.21 dB.
+   El general es una ganancia estatica: MEDIDO, no supuesto.
+   reduccion del general en toda la corrida: 0.00 dB (puenteado; si no es cero, el puenteo no hizo lo que dice)
+
+M5 escalon del medidor, contra el instrumento externo: 0.333017 dB por byte
+   declarado 0.333401 | error 0.11 % | 17 puntos sobre 34.9 dB
+   RANGO IMPLICADO: 79.91 dB (declarado 80; la hipotesis que este proyecto retiro era 84,5)
+   PASA. `MEDIDOR_RANGO_DB` y `VU_ESCALA` quedan contrastadas AFUERA.
+   SUBORDINADA: con 34.9 dB de tramo (mas de 33,4), M5 no puede
+   fallar si M4 paso. Es un resumen de M4 en una cifra y sirve para nombrar
+   el rango, no como prueba independiente. Queda declarado, y se declaro
+   antes de mirar los datos.
+
+M6 histeresis en la salida real: 0.00 dB en el crudo 1
+   PASA.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada en dBu ni dBFS absolutos de la consola: entre su salida y la
+   interfaz hay una ganancia que nadie midio. Son DIFERENCIAS por un
+   camino que no se toca. Y nada sobre un error de escala CONSTANTE:
+   es invisible por construccion en una medicion relativa al arranque.
+   No distingue «medido» de «calculado y correcto». Y el control de
+   balistica TAMPOCO, en las dos direcciones: `protocol-spec` §4.3 ya
+   midio la caida de este medidor en 37 ms contra una cadencia de cuadro
+   de 44 ms, o sea que «cae de un cuadro al siguiente» es el resultado
+   esperado midiendo o calculando. Por eso el control se saco de esta
+   corrida en vez de informarse: estaba garantizado a dar el resultado
+   que se iba a leer como «es un calculo».
+
+   **ESTO NO RESCATA A LA 94 NI A LA 96b, y la asimetria es real.** Si el
+   medidor difiere, las dos quedan tocadas. Si COINCIDE, no quedan
+   salvadas: esta corrida mide el byte +2 de la seccion de ENTRADAS, y la
+   94 leyo el bloque de AUXILIAR y la 96b el de EFECTOS, que estan en la
+   cola de la trama, tienen otro paso, y cuya escala en dB el
+   `protocol-spec` §4.4 declara NO MEDIDA sobre esos bloques. Cerrar esa
+   mitad es otra corrida: el mismo metodo con el general recibiendo de un
+   auxiliar.
+
+   Un canal, una frecuencia, UN SOLO NIVEL DE FUENTE, un fader. Si el
+   acuerdo aparece es una forma consistente, no una escala probada: para
+   eso hay que repetir con la fuente 10 dB mas abajo, donde las
+   atenuaciones en dB tienen que dar iguales y las absolutas no.
+   Nada sobre el fader del general ni el de un bus: lo que se barre es
+   i.9.mix, y el general se atraviesa como ganancia estatica --que se
+   comprueba con sus medidores, no se supone.
+   Nada sobre la ley inversa: la 94 la escribio y la tuvo que retirar.
+
+restaurado: i.9.mix 0.7647058824, m.afs.enabled 1, m.dyn.bypass 0, los tres leidos del aparato antes de empezar.
+Por el mismo camino que escribio, asi que la comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

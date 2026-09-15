@@ -20,12 +20,12 @@
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt`; la corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt` | ✅ |
+| 1 | Cambios externos etiquetados correctamente | bloqueante | 100 de 100 | **100 de 100, contra la consola el 2026-09-10, con los cambios espaciados 400 ms.** El espaciado era de 120 ms y **se subió a propósito**: al cerrar el criterio 5 la agrupación quedó en 250 ms y esta prueba pasó de 100 a **1 de 100** en la misma corrida. Ver la nota de abajo: los dos criterios están en tensión y elegir es parte del spike. `evidence/agrupacion-arrastre-2026-09-10.txt` —transcripción—, **remedida el 2026-09-11 con un guion nuevo que barre el espaciado**: `evidence/agrupacion-arrastre-2026-09-11.txt`. La corrida anterior, con el criterio 5 todavía sin cerrar, quedó en `evidence/concurrencia-2026-09-10.txt`, y se **remidió con la herramienta el 2026-09-11**: `evidence/concurrencia-2026-09-11.txt`, los tres criterios reproducen | ✅ |
 | 2 | Sobrescrituras de cambios ajenos | bloqueante | 0 | **0, contra la consola el 2026-09-10.** El otro operador cambió la ruta y la aplicación intentó escribir con el valor esperado viejo: devolvió `CONFLICT` con «se esperaba 0.256 y hay 0.3, cambiado desde otro cliente» y **no escribió**. La ruta quedó con el valor ajeno | ✅ |
-| 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt` | ✅ |
+| 3 | Escrituras propias etiquetadas como propias | bloqueante | 98 % o más | **100 de 100 el 2026-09-10, todas por testigo.** Por correlación de mensajes entrantes era imposible —la consola no devuelve eco— así que se cumple por la vía que el charter recomendaba: todo lo que entra por la principal es ajeno **sin excepción**, y lo propio se marca al verificarse, sin deducir. Que no haya que deducir es lo que da el 100 %: no hay ventana que ajustar ni carrera que perder. `evidence/escrituras-propias-2026-09-10.txt`, remedido con la herramienta en `evidence/escrituras-propias-2026-09-11.txt`: 100 de 100 otra vez | ✅ |
 | 4 | Recuperación de instantánea detectada como avalancha | bloqueante | 10 de 10, con más de 10 rutas en menos de 1 s | **Detectada 10 de 10 con causa `SNAPSHOT_RECALL` las diez veces** (`evidence/recall-diez-veces-2026-09-10.txt`). **Pero el umbral escrito pide dos cosas más y ninguna se cumple, y esto lo destapó una auditoría, no la corrida.** (a) «Más de 10 rutas»: el aviso informa **1**, porque el puntero llega primero y dispara solo — la ráfaga de escrituras sí supera diez, pero ésa da causa `DESCONOCIDA` y no es un recall. **Ninguna corrida sola satisface el enunciado.** (b) «En menos de 1 s»: **no se midió nunca.** La columna `ms` de la corrida de ráfaga es `Date.now() - t0` tomado después de un `setTimeout` fijo de 1400 ms, y por eso da 1400-1403 las diez veces (`evidence/avalancha-real-2026-09-10.txt`): **es la espera del guion publicada como si fuera una medición.** | 🟡 |
-| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` | ✅ |
-| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Elegido y verificado el 2026-09-10: se infiere del tráfico ajeno.** La consola no publica presencia —cero líneas al entrar o salir un cliente, ninguna clave movida— así que lo único que cuenta es quién **toca** algo. Prueba de dos clientes contra el aparato: con el volcado de ~6700 claves adentro **no inventa** un operador; con una escritura propia `APPLIED` **no se ve a sí misma**; con otro cliente escribiendo lo detecta a los 1467 ms. El límite está dicho en la API y no en la letra chica: **no ve al que solo mira**. `evidence/presencia-dos-clientes-2026-09-10b.txt` | ✅ |
+| 5 | Arrastre de fader agrupado como un único cambio externo | bloqueante | sí | **Sí, desde el 2026-09-10: de 40 escrituras, un solo aviso.** Antes eran 19 o 20 y **una sola pasada de fader ajena borraba el historial reciente** de la aplicación. Dos arreglos: la causa `FADER_DRAG` pasó a llamarse `GRUPO_DE_CANALES` —siempre detectó varios canales moviendo el mismo parámetro, no un arrastre— y los cambios sobre una misma ruta se agrupan en 250 ms, ventana que tiene que ser mayor que el tic de 34 ms de la consola. `evidence/agrupacion-arrastre-2026-09-10.txt` —transcripción—, remedida en `evidence/agrupacion-arrastre-2026-09-11.txt`, donde se ve la curva entera | ✅ |
+| 6 | Mecanismo de presencia elegido y verificado | bloqueante | uno de los dos, con prueba de dos clientes | **Elegido y verificado el 2026-09-10: se infiere del tráfico ajeno.** La consola no publica presencia —cero líneas al entrar o salir un cliente, ninguna clave movida— así que lo único que cuenta es quién **toca** algo. Prueba de dos clientes contra el aparato: con el volcado de ~6700 claves adentro **no inventa** un operador; con una escritura propia `APPLIED` **no se ve a sí misma**; con otro cliente escribiendo lo detecta a los 1467 ms. El límite está dicho en la API y no en la letra chica: **no ve al que solo mira**. Y el verde es del mecanismo: **`otroOperador()` no lo llama nadie todavía**, así que está verificado y sin conectar al producto. `evidence/presencia-dos-clientes-2026-09-10b.txt` | ✅ |
 
 ## Los criterios 1 y 5 están en tensión, y se eligió — 2026-09-10
 
@@ -277,3 +277,82 @@ resultado de un `setTimeout(1400)` del propio guion. Publicar una constante
 nuestra en una columna llamada `ms`, al lado de un criterio cuyo umbral es un
 tiempo, es exactamente la clase de número que este proyecto persigue: **parece
 medido y no lo es.**
+
+## Las evidencias que no pasaron por `medir.mjs`
+
+Lo encontró una auditoría el 2026-09-10, y duele por dónde: `medir.mjs` había
+entrado ese mismo día, justo para que no se pueda mirar una corrida y archivar
+otra, y estas se archivaron **a mano**. Son **transcripciones**, que es la forma
+exacta del error que la herramienta vino a impedir.
+
+**Remedidas con la herramienta el 2026-09-11**, sobre el mismo canal 17 (`i.16`)
+—silenciado, fader al fondo, sin envíos abiertos a auxiliares ni a efectos,
+comprobado por HTTP antes de escribir— y con la restauración verificada después
+por HTTP, que es un camino distinto del que escribió:
+
+- `evidence/escrituras-propias-2026-09-11.txt` — criterio 3: **100 de 100**.
+- `evidence/concurrencia-2026-09-11.txt` — criterios 1, 2 y 5, los tres reproducen.
+- `evidence/cadencia-difusion-2026-09-11.txt` — el tic de ~34 ms reproduce exacto.
+
+**El del tic, remedido el 2026-09-11 con un guion nuevo y con control.** La
+primera corrida —`evidence/testigo-en-el-tic-2026-09-11.txt`— dio lo mismo que la
+transcripción: pegadas, el testigo ve la segunda escritura **10 de 10** veces y
+la primera **0 de 10**.
+
+**Y ese resultado, solo, no valía.** Es un nulo, y un nulo sin control no
+distingue «la consola no la difunde» de «el instrumento no sabe verla»: podrían
+estorbarse las dos esperas, fallar el emparejamiento de valores, redondearse el
+crudo. La segunda corrida lo cierra —`evidence/testigo-en-el-tic-2026-09-11b.txt`—
+repitiendo las mismas escrituras **separadas por más que el tic**: ahí el testigo
+ve **las dos, 10 de 10**. El instrumento puede ver la primera; el cero es de la
+consola.
+
+**Y la tercera corrida trajo la columna que faltaba**, que la transcripción vieja
+tenía y la primera remedición había perdido:
+`evidence/testigo-en-el-tic-2026-09-11d.txt` cuenta **cuántas líneas difunde la
+consola** por vuelta. Una sola, las diez veces, con el valor de la segunda: eso
+es **colapso** y no descarte.
+
+> **Lo que sigue sin medirse.** Que la consola *aplique* la primera antes de
+> sobrescribirla. Una sola línea difundida es compatible con las dos historias, y
+> se llegó a afirmar que «aplica las dos» sin medirlo. Separarlas exige leer el
+> estado entre las dos escrituras, y esa lectura mete una espera que rompe el
+> mismo tic que se quiere medir.
+
+> **De paso, un error del instrumento que el propio instrumento delató**, y
+> queda archivado en `evidence/testigo-en-el-tic-2026-09-11c.txt`. La primera
+> versión de esa columna contaba en el socket de la conexión principal y dio
+> «(ninguna)» las diez vueltas — correcto, porque **la consola no le devuelve
+> la escritura a quien la hizo**, cosa medida desde el 2026-09-08. El veredicto
+> no dijo «confirmado»: dijo *«OJO: no todas las vueltas dieron una sola
+> línea»*. Un guion que sólo sabe celebrar habría publicado una conclusión sobre
+> una columna vacía.
+
+**La agrupación del arrastre, remedida el 2026-09-11 barriendo el espaciado.**
+`evidence/agrupacion-arrastre-2026-09-11.txt`. Doce escrituras sobre una ruta,
+desde un segundo cliente, a seis espaciados distintos:
+
+| espaciado | avisos de la aplicación | qué criterio cumple |
+|---|---|---|
+| 15 ms | 1 | el 5 |
+| 60 ms | 1 | el 5 |
+| 120 ms | 1 | el 5 |
+| **250 ms** | **7** | **ninguno** |
+| 400 ms | 12 | el 1 |
+| 600 ms | 12 | el 1 |
+
+**La tensión entre los criterios 1 y 5 no es una nota al pie: es esta tabla.**
+Sobre la misma ruta, los dos no se pueden cumplir a la vez — o se agrupa o no—,
+y **lo que decide cuál gana es el espaciado frente a la ventana de agrupación**,
+que vale 250 ms. Por eso el criterio 1 se midió primero a 120 ms, dio 1 de 100, y
+**se subió el espaciado a 400 a propósito**. Ese 400 no es una propiedad de la
+consola: es una elección de cómo medir, y un «100 de 100» sin decirlo no informa
+nada.
+
+**Y la fila de 250 es la que más enseña**: justo en la ventana no da ni 1 ni 12,
+da **7**. El límite no es nítido, así que medir exactamente ahí produce un número
+que depende del temblor de la red y del reloj, no del diseño.
+
+Los espaciados de 400 y 600 ms son además **el control positivo de la corrida**:
+sin ellos, «doce escrituras dan un aviso» no distingue agrupar de no avisar
+nada.

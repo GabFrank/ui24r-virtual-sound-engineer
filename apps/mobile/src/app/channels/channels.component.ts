@@ -120,7 +120,7 @@ interface FilaDeCanal {
                     <select class="quien" [ngModel]="f.integranteId"
                             [attr.aria-label]="'quién toca en el canal ' + f.indice"
                             (ngModelChange)="cambiarIntegrante(f.indice, $event)">
-                      <option value="">Sin integrante</option>
+                      <option value="">Nadie</option>
                       @for (m of integrantesElegibles(); track m.id) {
                         <option [value]="m.id">{{ m.nombre }}</option>
                       }
@@ -188,7 +188,7 @@ interface FilaDeCanal {
                   <select [ngModel]="f.integranteId"
                           [attr.aria-label]="'quién toca en el canal ' + f.indice"
                           (ngModelChange)="cambiarIntegrante(f.indice, $event)">
-                    <option value="">Sin integrante</option>
+                    <option value="">Nadie</option>
                     @for (m of integrantesElegibles(); track m.id) {
                       <option [value]="m.id">{{ m.nombre }}</option>
                     }
@@ -263,7 +263,16 @@ interface FilaDeCanal {
     }
     /* Los nombres de persona son cortos y son tres desplegables en la misma
        fila: sin esto, la tabla obliga a desplazarse de lado en una tablet
-       entera solo para llegar a «En vivo». */
+       entera solo para llegar a «En vivo».
+
+       ESTE ANCHO LE PONE UN LIMITE AL TEXTO DE LA OPCION FIJA, y hay que
+       decirlo acá porque el que edite la plantilla no va a venir a leer el CSS.
+       De los 130 px, el recuadro del texto se queda con unos 84: doce de relleno
+       a cada lado, uno de borde a cada lado, y la flecha del desplegable. A 15
+       px eso son unas once letras. Decía «Sin integrante», que son catorce, y en
+       la tablet se leía «Sin integrant» — el usuario ve que nadie miró, justo
+       antes de que la aplicación le pida confiar en números que él no puede
+       comprobar. Hay un test que fija el límite en ocho. */
     select.quien { min-width: 130px; }
 
     input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--signal); }

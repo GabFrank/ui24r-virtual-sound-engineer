@@ -394,3 +394,70 @@ medible ahí a esta distancia, o que algo del camino la quite. **Separarlas
 necesita una fuente de banda ancha con graves conocidos**, que es justo lo que
 daría el ruido rosa desde el reproductor de la consola. No se resuelve con lo
 que hay hoy y no se va a suponer.
+
+
+---
+
+## La primera realimentación de verdad — 2026-09-11
+
+Los tres umbrales del detector estaban marcados como **«elegidos, no medidos»** y
+**«sin validar contra una realimentación real»** desde el primer día. Ahora hay
+una, provocada a propósito con el usuario en la sala y la mano en el monitor.
+
+### El montaje, y por qué los dos intentos anteriores no llegaron
+
+Condensador B2 en el puerto 9, Rokit 8 como general a 1,7 m, uno frente al otro.
+Dos intentos previos subieron el **fader** del canal y no pasó nada: 24 dB de
+recorrido con el espectro quieto. El fader no puede crear señal que no llegó —
+el previo estaba en 0,25 y el micrófono entregaba demasiado poco. **La variable
+era la ganancia del previo.**
+
+Y algo más importante: las dos corridas anteriores se hicieron con un **receptor
+Bluetooth enchufado a las entradas RCA, abiertas a 0 dB**, metiendo un tono en el
+general de forma continua. Lo encontró el oído del usuario. Ésta es la primera
+medición de espectro del proyecto con el fondo limpio: **0,00 dB en las 122
+bandas**, con control positivo que confirma que el analizador ve.
+
+### Lo medido
+
+| Previo | Banda más alta | Nivel | Exceso sobre vecinas |
+|---|---|---|---|
+| 25,9 dB | 43 (~250 Hz) | 1,9 | 1,9 |
+| 28,9 dB | 40 (~210 Hz) | 5,3 | 5,2 |
+| 31,9 dB | 56 (~530 Hz) | 12,8 | **8,2** ← último estable |
+| 33,9 dB | 105 (~**8980 Hz**) | **55,9** | **19,4** ← arrancó |
+
+**Dos decibeles de ganancia produjeron 43 de nivel.** Eso no es un aumento: es
+una fuga. Y arrancó en **~9 kHz**, no en los graves. El usuario lo escuchó y lo
+confirmó: *«sonó exactamente así»*. Evidencia: `evidence/lazo-por-el-previo-2026-09-11.txt`
+
+### Qué le dice a cada umbral
+
+**`MARGEN_SOBRE_VECINAS_DB = 9` cae entre los dos valores, y eso lo salva — pero
+por poco.** El último paso estable ya daba **8,2 dB**; la fuga, 19,4. El umbral
+está a **0,8 dB** de dispararse sobre una sala que no tiene nada. Una sala un
+poco más resonante lo cruza sin que pase nada, y ahí vuelve el cartel que no se
+apaga.
+
+**`PISO_UTIL_DB = 12` deja afuera el arranque.** El último paso estable estaba en
+12,8 dB de nivel: apenas por encima del piso. O sea que el detector recién
+empieza a mirar cuando el fenómeno ya está encima, y el margen para avisar antes
+es de un solo paso de ganancia.
+
+**Lo que sí separa limpio es el crecimiento**, que es lo que la regla «no cayó
+como debía» ya intenta capturar: entre estable y fuga hay **43 dB de salto con
+2 dB de causa**. Ninguna resonancia hace eso.
+
+### Lo que esta medición NO autoriza a decir
+
+Es **una sala, un micrófono, una posición y una corrida**. No es una ley: es el
+primer punto de una curva que no existe. Una sala con más absorción, o un
+micrófono con otra directividad, va a realimentar en otra frecuencia y con otros
+márgenes.
+
+Y **el supresor de la consola estaba encendido** durante toda la corrida, así
+que pudo haber puesto filtros mientras el lazo crecía. No se comparó `var.afsdata`
+antes y después: fallo de método de esta corrida, anotado.
+
+Para mover los umbrales con fundamento hacen falta más salas. Lo que esta corrida
+sí cambia es que **ya no hay que elegirlos a ciegas**.

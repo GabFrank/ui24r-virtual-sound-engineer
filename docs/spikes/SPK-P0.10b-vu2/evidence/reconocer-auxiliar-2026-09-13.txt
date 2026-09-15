@@ -1,0 +1,46 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T04:56:54.902Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/reconocer-auxiliar.ts 10 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/reconocer-auxiliar.ts sha256:a6bfa0d07f8eef4f
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== RECONOCIMIENTO DEL CAMINO DEL AUXILIAR ===
+canal 10 (i.9) -> auxiliar 5 (a.4) -> entrada 2 de la interfaz
+hwoutaux.4.src = a.4
+
+   i.9.aux.4.value          0
+   i.9.aux.4.post           0
+   i.9.aux.4.postproc       1
+   a.4.mix                  0
+   a.4.mute                 0
+   a.4.gate.enabled         1
+   a.4.gate.thresh          0
+   a.4.dyn.bypass           0
+   a.4.dyn.ratio            1
+   a.4.eq.bypass            0
+   a.4.afs.enabled          0
+   i.9.mix                  0.7647058824
+   hw.9.gain                0.2508445026
+
+=== CON EL ENVIO EN 0,75 Y EL FADER DEL AUXILIAR EN UNIDAD ===
+   tramas de la consola en la ventana: 101
+   medidor del auxiliar: pre -47.33 dB | post -47.33 dB
+   reduccion del auxiliar: max 0.00 dB | puerta abierta en 101 de 101 tramas
+   medidor del canal (salida): -46.66 dB
+
+   LA INTERFAZ, los cuatro canales:
+     1 general      tono   -28.63 dBFS | pico  -26.74 | margen en bin   38.3 dB
+     2 AUXILIAR     tono    -8.55 dBFS | pico   -8.53 | margen en bin  107.3 dB
+     3 referencia   tono   -15.00 dBFS | pico  -15.00 | margen en bin  139.5 dB
+     4 referencia   tono   -15.00 dBFS | pico  -15.00 | margen en bin  139.5 dB
+
+   El cable lleva señal. Ganancia de cadena hasta la interfaz: 38.8 dB
+   Eso es lo que la 102 necesita para elegir sus niveles sin recortar.
+
+restaurado: i.9.aux.4.value=0 a.4.mix=0 a.4.gate.enabled=1 a.4.dyn.bypass=0
+
+
+# salida del proceso: 0

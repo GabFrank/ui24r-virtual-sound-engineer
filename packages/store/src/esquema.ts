@@ -195,6 +195,128 @@ export const MIGRACIONES: readonly Migracion[] = [
        WHERE json_valid(datos);`,
     ],
   },
+  {
+    version: 5,
+    descripcion: 'los componentes de amplificación ganan clase, modelo y lugar; el local gana escenario',
+    sentencias: [
+      // Tres campos nuevos en cada componente del sistema y uno en cada local.
+      // El documento entero vive en `datos`, así que las columnas no cambian:
+      // lo que cambia es la forma, y los perfiles guardados quedarían sin las
+      // claves que el dominio ahora declara obligatorias.
+      //
+      // **Esta migración no interpreta nada.** No adivina que un componente
+      // que sale por un auxiliar es un monitor --puede ser un envío a un
+      // procesador externo, o a una grabadora-- ni inventa dónde está puesto.
+      // Pone `OTRO`, `NULL` y `NULL`, que es exactamente lo que se sabe hoy de
+      // un perfil cargado antes de que existiera la pregunta. Clasificar de
+      // más acá sería fabricar la entrada de una inferencia geométrica, que es
+      // el error que este modelo entero está tratando de no cometer.
+      //
+      // **`c.type = 'object'` o la base no vuelve a abrir nunca más.** Un
+      // elemento de `componentes` que no sea objeto --texto, número, `null`--
+      // es JSON perfectamente válido, así que `json_valid(datos)` no lo filtra,
+      // y `json_set` sobre él falla con «malformed JSON». Como la aplicación
+      // manda cada migración en **un solo lote junto con el
+      // `PRAGMA user_version`**, ese error revierte todo: no migra ninguna
+      // fila, la versión queda en 4, y en el arranque siguiente se reintenta y
+      // vuelve a fallar. Una sola fila con esa forma deja la base atascada
+      // para siempre — exactamente el desenlace que esta migración dice estar
+      // evitando. La versión 4 previó el caso con `i.type = 'text'`; esta no lo
+      // había copiado, y lo encontraron dos auditorías por separado. Los
+      // elementos que no son objeto se dejan pasar tal cual: no se los puede
+      // arreglar desde SQL y romper la base es peor que dejar una fila rara.
+      //
+      // **`json_set` y no `json_patch`.** `json_patch` es la fusión de la RFC
+      // 7386, donde un `null` **borra la clave** en vez de escribirla: pedirle
+      // que ponga `modelo: null` deja el componente exactamente igual que
+      // antes, sin la clave, y la migración parece correr sin hacer nada. Es
+      // justo el modo de fallar más caro --silencioso y con la versión del
+      // esquema ya subida, así que no vuelve a intentarse--. `json_set` sí
+      // escribe el nulo.
+      //
+      // Idempotente porque cada campo se reescribe con lo que ya tenía:
+      // `json_extract` de una clave ausente y de una clave en `null` dan lo
+      // mismo, y volver a poner `null` sobre `null` no cambia nada. `clase` es
+      // el único que podría pisarse, y por eso se conserva **sólo si es texto no
+      // vacío**: con `coalesce` a secas, una `clase` en `false` se guardaba
+      // como `0` y una en cadena vacía sobrevivía como clase inválida, que es
+      // interpretar al revés de lo que este bloque promete.
+      //
+      // El emplazamiento es un objeto y sobrevive el viaje **sin** envolverlo
+      // en `json()`: `json_extract` le deja el subtipo JSON al valor y
+      // `json_set` lo vuelve a insertar como objeto. Llegué a poner el `json()`
+      // por las dudas y lo saqué al comprobar que el test pasaba igual con y
+      // sin él: un arreglo sin consecuencia observable es ruido que después
+      // alguien imita donde sí importa. Lo que sí se escaparía como cadena es
+      // un texto literal --`json_set(..., '{\"x\":1}')` da `\"{\\\"x\\\":1}\"`--,
+      // y por eso ninguna de estas tres ramas construye JSON a mano.
+      //
+      // `json_valid(datos)` deja fuera cualquier fila ilegible en vez de hacer
+      // fallar la migración entera, por lo mismo que la versión 4: una base
+      // que no abre cancela un show.
+      `UPDATE pa_profile SET datos = json_replace(datos, '$.componentes', json((
+         SELECT json_group_array(CASE WHEN c.type = 'object' THEN
+           json_set(json_set(json_set(c.value,
+             '$.clase', CASE WHEN json_type(c.value, '$.clase') = 'text'
+                              AND json_extract(c.value, '$.clase') <> ''
+                        THEN json_extract(c.value, '$.clase') ELSE 'OTRO' END),
+             '$.modelo', json_extract(c.value, '$.modelo')),
+             '$.emplazamiento', json_extract(c.value, '$.emplazamiento'))
+           ELSE c.value END)
+         FROM json_each(pa_profile.datos, '$.componentes') c)))
+       WHERE json_valid(datos) AND json_type(datos, '$.componentes') = 'array';`,
+      `UPDATE venue_profile SET datos = json_set(datos, '$.escenario', NULL)
+       WHERE json_valid(datos) AND json_type(datos, '$.escenario') IS NULL;`,
+    ],
+  },
+  {
+    version: 6,
+    descripcion: 'los componentes ganan identidad propia y el lugar se muda del equipo al local',
+    sentencias: [
+      // **Dónde está puesto un monitor es un dato de la sala, no del equipo.**
+      // La versión 5 lo guardó dentro del componente, y una auditoría encontró
+      // lo que eso significaba: dos locales que comparten el mismo sistema
+      // --que la aplicación permite, y tiene un selector para eso-- se pisaban
+      // las posiciones entre sí, en silencio. Ubicar las cuñas en un galpón
+      // movía las del bar.
+      //
+      // Así que el emplazamiento se muda a `escenario.emisores` del local, y
+      // para poder referenciar un componente desde afuera, el componente
+      // necesita **identidad propia**: el nombre no alcanza --el propio modelo
+      // nombra el caso de dos componentes homónimos, los dos lados de un
+      // general estéreo-- y la posición en la lista se rompe en cuanto alguien
+      // borra uno del medio.
+      //
+      // No se edita la 5, que ya está publicada: se agrega ésta.
+      //
+      // **El identificador se arma del `rowid` y la posición**, no al azar:
+      // SQLite no tiene generador de identificadores y `random()` haría que
+      // esta migración diera resultados distintos en cada corrida, o sea que
+      // dejaría de ser reproducible. `comp_<rowid>_<indice>` es único dentro de
+      // la base y estable.
+      `UPDATE pa_profile SET datos = json_replace(datos, '$.componentes', json((
+         SELECT json_group_array(CASE WHEN c.type = 'object' THEN
+           json_remove(
+             json_set(c.value, '$.id',
+               coalesce(json_extract(c.value, '$.id'),
+                        'comp_' || pa_profile.rowid || '_' || c.key)),
+             '$.emplazamiento')
+           ELSE c.value END)
+         FROM json_each(pa_profile.datos, '$.componentes') c)))
+       WHERE json_valid(datos) AND json_type(datos, '$.componentes') = 'array';`,
+      // La lista de emisores del escenario. Arranca vacía: **no se hereda nada
+      // del equipo**, porque un emplazamiento guardado en el perfil compartido
+      // no dice a cuál de los locales pertenecía. Perder una posición que el
+      // usuario puso a mano sería feo; adjudicársela al local equivocado es
+      // peor, porque después contradice al analizador y nadie sabe por qué.
+      // Al 2026-09-11 no hay ninguna cargada: la versión 5 es de hoy y el
+      // editor todavía no se publicó.
+      `UPDATE venue_profile SET datos = json_set(datos, '$.escenario.emisores', json('[]'))
+       WHERE json_valid(datos)
+         AND json_type(datos, '$.escenario') = 'object'
+         AND json_type(datos, '$.escenario.emisores') IS NULL;`,
+    ],
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1]!.version;

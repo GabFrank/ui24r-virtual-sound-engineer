@@ -63,12 +63,36 @@ interface Pendiente {
 /** Igual que la del almacén: los valores del protocolo viajan como texto. */
 const TOLERANCIA = 1e-9;
 
+
+/**
+ * Una espera de confirmación por testigo, con su forma de abandonarla.
+ *
+ * Es un objeto y no una promesa suelta **porque hay un camino que arma la
+ * espera y después no escribe**: cuando el envío falla. Dejarla armada no es
+ * una fuga de memoria —vence sola— sino una fuga de **estado**, y la de peor
+ * signo: roba la confirmación de la escritura siguiente.
+ */
+export interface EsperaDeEscritura {
+  readonly visto: Promise<boolean>;
+  cancelar(): void;
+}
+
 export class TestigoDeEscrituras {
   private readonly transporte: Transport;
   private readonly quietudVolcadoMs: number;
   private readonly topeVolcadoMs: number;
 
   private pendientes: Pendiente[] = [];
+
+  /**
+   * Cuántas confirmaciones está esperando ahora mismo.
+   *
+   * Se expone para poder **comprobar que no quedan huérfanas**. Un pendiente
+   * abandonado no rompe nada visible: vence solo a los 500 ms, y mientras tanto
+   * intercepta la difusión del siguiente. Sin este número, la única forma de
+   * verlo es montar la carrera entera y esperar a que salga mal.
+   */
+  get enEspera(): number { return this.pendientes.length; }
   private desuscribir: (() => void)[] = [];
 
   /**
@@ -115,17 +139,36 @@ export class TestigoDeEscrituras {
    * Promete si el testigo ve difundir `path` con `valor` antes del plazo.
    *
    * Se llama **antes** de enviar la escritura: a 27 ms de latencia medida, una
-   * suscripción posterior al envío es una carrera perdida.
+   * suscripción posterior al envío es una carrera perdida. Y por eso hay que
+   * poder **cancelarla**: si la escritura no llega a salir, la espera ya está
+   * armada.
+   *
+   * **Sin el cancelador, un pendiente huérfano se come la confirmación de la
+   * escritura siguiente.** Lo midió una auditoría el 2026-09-11: `recibir()`
+   * resuelve el **primer** pendiente que coincide, así que uno abandonado
+   * intercepta la difusión destinada al reintento. El escenario es el que más
+   * pasa: parpadea la wifi, la escritura sale rechazada, el operador repite el
+   * mismo movimiento, **la consola sí lo aplica y lo difunde**, el testigo sí lo
+   * ve — y el adaptador contesta «pudo aplicarse o no», que es justo el modo de
+   * fallo que se estaba tratando de eliminar.
    */
-  esperar(path: string, valor: number, timeoutMs: number): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
+  esperar(path: string, valor: number, timeoutMs: number): EsperaDeEscritura {
+    let cancelar = (): void => {};
+    const visto = new Promise<boolean>((resolve) => {
       const temporizador = setTimeout(() => {
         this.pendientes = this.pendientes.filter((p) => p !== pendiente);
         resolve(false);
       }, timeoutMs);
       const pendiente: Pendiente = { path, valor, resolver: resolve, temporizador };
       this.pendientes.push(pendiente);
+      cancelar = () => {
+        if (!this.pendientes.includes(pendiente)) return;
+        this.pendientes = this.pendientes.filter((p) => p !== pendiente);
+        clearTimeout(temporizador);
+        resolve(false);
+      };
     });
+    return { visto, cancelar: () => cancelar() };
   }
 
   async cerrar(): Promise<void> {

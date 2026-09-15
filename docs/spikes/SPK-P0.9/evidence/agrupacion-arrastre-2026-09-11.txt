@@ -1,0 +1,40 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T11:56:49.094Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/agrupacion-arrastre.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+
+canales enumerados por HTTP antes de escribir (exigencia: callado):
+  i.16 mute=1 fader=0.0000 src=hw.16    nombre="" -> SIRVE: silenciado, fader al fondo y sin envios abiertos
+
+punto de retorno: VSE_AUTO_1789127821285
+
+canal 17 (i.16) · ruta i.16.mix · 12 escrituras por vuelta
+ventana de agrupacion de la aplicacion: 250 ms
+
+espaciado | escrituras | avisos de la app | que criterio cumple
+----------+------------+------------------+--------------------
+    15 ms |         12 |                1 | el 5 (arrastre agrupado)
+    60 ms |         12 |                1 | el 5 (arrastre agrupado)
+   120 ms |         12 |                1 | el 5 (arrastre agrupado)
+   250 ms |         12 |                7 | ninguno de los dos, limpio
+   400 ms |         12 |               12 | el 1 (cada cambio contado)
+   600 ms |         12 |               12 | el 1 (cada cambio contado)
+
+espaciados donde 12 escrituras dan UN aviso: 15, 60, 120 ms
+espaciados donde dan 12 avisos: 400, 600 ms
+
+CONFIRMADO, y con control: por debajo de la ventana la aplicacion agrupa el
+arrastre en un solo aviso, y por encima cuenta cada cambio. El instrumento
+sabe hacer las dos cosas, asi que el uno de arriba es agrupacion y no silencio.
+
+Y LO QUE HAY QUE LEER DE ACA: los criterios 1 y 5 piden cosas opuestas sobre
+la misma ruta, y el espaciado elegido decide cual se cumple. Un «100 de 100»
+sin decir a que espaciado se midio no informa nada.
+
+comprobacion por HTTP, contra el estado previo (6732 claves leidas):
+  claves que cambiaron: ninguna
+
+
+# salida del proceso: 0

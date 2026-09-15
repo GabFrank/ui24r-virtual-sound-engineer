@@ -21,6 +21,7 @@
  */
 import { Ui24rTransport, Ui24rMixerAdapter, codificarSetd, decodificar,
          decodificarVuCanales, dbDeMedidor } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const N = 8;               // canal 9
@@ -45,9 +46,25 @@ const punto = await app.guardarInstantanea();
 console.log(`punto de retorno: ${punto ?? 'NO SE PUDO'}`);
 if (punto === null) { await app.desconectar(); process.exit(1); }
 
-const generalAntes = crudo.get('m.mix') ?? 0;
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const generalAntes = exigirClave(crudo, 'm.mix');
 const muteAntes = crudo.get(`i.${N}.mute`) ?? 0;
-console.log(`general antes: ${generalAntes} · i.${N}.mute antes: ${muteAntes}`);
+// **Y la fantasma se LEE antes de encenderla**, aunque se deje encendida a
+// proposito. No es para restaurarla: es porque sin esa lectura el registro no
+// puede decir como estaba, y eso cambia lo que significa la conclusion. Si ya
+// estaba encendida, «sin señal» no dice que el capsulo no cargo: dice que el
+// microfono estaba mudo desde antes, que es otra cosa.
+const fantasmaAntes = exigirClave(crudo, `hw.${N}.phantom`);
+console.log(`general antes: ${generalAntes} · i.${N}.mute antes: ${muteAntes} `
+  + `· hw.${N}.phantom antes: ${fantasmaAntes}`);
+if (Number(fantasmaAntes) !== 0) {
+  console.log('');
+  console.log(`AVISO: la fantasma del canal ${N + 1} YA ESTABA ENCENDIDA.`);
+  console.log('   Lo que siga no mide si el capsulo carga: mide otra cosa.');
+}
 
 console.log('');
 console.log('1. general abajo y canal 9 en silencio (hay un lazo armado en la sala)');
@@ -67,7 +84,8 @@ console.log('');
 console.log(`nivel de entrada del canal 9: ${nivel === -Infinity ? 'SIN SENAL — el microfono sigue mudo' : nivel.toFixed(1) + ' dB'}`);
 
 console.log('');
-console.log('4. el general vuelve donde estaba; el canal 9 queda EN SILENCIO a proposito');
+console.log(`4. el general vuelve donde estaba; el canal ${N + 1} queda EN SILENCIO a`);
+console.log(`   proposito, y la fantasma ENCENDIDA --estaba en ${fantasmaAntes}--`);
 t.enviar(codificarSetd('m.mix', generalAntes));
 await new Promise((r) => setTimeout(r, 1200));
 console.log('   el silencio del canal se levanta cuando se decida provocar el lazo, no antes');

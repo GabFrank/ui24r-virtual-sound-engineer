@@ -1,0 +1,43 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T13:28:56.143Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/calibrar-medidor-de-reduccion.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/calibrar-medidor-de-reduccion.ts sha256:0108ca9441e9cfa7
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9), tono de 1000 Hz a -1 dBFS, umbral en crudo 0.14
+escalon del medidor de reduccion: 0.6668 dB
+supresor: estaba en 1, se apaga
+
+referencia en ratio = 1 (sin comprimir): entrada = -37.66 dB, reduccion informada = 0.00 dB, pre = -37.66
+
+razon |  entrada  | caida REAL | reduccion INFORMADA | diferencia | pre (testigo) | n
+ 1.00 |    -37.66 |       0.00 |                0.00 |       0.00 |        -37.66 |  44
+ 0.90 |    -38.66 |       1.00 |                0.98 |      -0.02 |        -37.66 |  44
+ 0.80 |    -39.66 |       2.00 |                1.65 |      -0.35 |        -37.66 |  45
+ 0.70 |    -40.66 |       3.00 |                2.98 |      -0.02 |        -37.66 |  47
+ 0.60 |    -41.99 |       4.33 |                4.32 |      -0.02 |        -37.66 |  47
+ 0.50 |    -43.66 |       6.00 |                5.65 |      -0.35 |        -37.66 |  45
+ 0.40 |    -45.66 |       8.00 |                7.65 |      -0.35 |        -37.66 |  44
+ 0.30 |    -47.99 |      10.34 |               10.32 |      -0.02 |        -37.66 |  45
+ 0.25 |    -49.33 |      11.67 |               11.65 |      -0.02 |        -37.66 |  44
+ 0.20 |    -51.33 |      13.67 |               13.65 |      -0.02 |        -37.66 |  44
+ 0.15 |    -53.66 |      16.00 |               15.65 |      -0.35 |        -37.66 |  44
+ 0.10 |    -56.66 |      19.00 |               18.99 |      -0.02 |        -37.66 |  45
+ 0.05 |    -62.00 |      24.34 |               24.32 |      -0.02 |        -37.66 |  45
+
+=== EL MEDIDOR DE REDUCCION, POR TRAMOS ===
+  hasta 11 dB (donde YA estaba verificado): 7 puntos, desvio maximo 0.35 dB = 0.52 escalones
+  arriba de 11 dB (donde no): 5 puntos, desvio maximo 0.35 dB = 0.52 escalones
+
+Si el desvio de arriba es chico en los dos tramos, el medidor esta bien
+y el problema del item 97 esta en la ley. Si crece arriba de 11, el
+medidor es el culpable y la hipotesis queda confirmada.
+
+deriva maxima del testigo: 0.00 dB
+restaurado, supresor incluido. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

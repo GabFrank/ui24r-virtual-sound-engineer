@@ -87,7 +87,8 @@ const EN_LETRAS = {
   nueve: 9, diez: 10,
   once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciséis: 16,
   veinte: 20, veintiún: 21, veintidós: 22, veintitrés: 23, veinticuatro: 24,
-  veinticinco: 25, treinta: 30,
+  veinticinco: 25, veintiséis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+  treinta: 30,
 };
 const aNumero = (t) => (/^\d+$/.test(t) ? Number(t) : EN_LETRAS[t.toLowerCase()]);
 

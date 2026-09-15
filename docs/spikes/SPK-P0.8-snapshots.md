@@ -6,7 +6,20 @@
 >
 > `SNAPSHOTLIST` contesta en **6 ms de mediana** sobre 84 pedidos en tres corridas —mínimo 5, máximo 13, más un único caso de 277 ms que no se repitió en sesenta intentos seguidos—, o sea **más rápido que el testigo**. La política de confirmación afirmaba «del orden de un segundo» sin haberlo medido nunca, y ese número inventado tapaba un defecto real: `pedirLista()` tomaba prestados los 500 ms del plazo de confirmación de escritura y, al vencer, devolvía lista vacía **en silencio** —indistinguible de un show sin instantáneas—. Ahora tiene plazo propio y devuelve `null` cuando no hubo respuesta.
 >
-> Y la retención **nunca había borrado nada desde el adaptador**: todas las corridas anteriores tenían menos de veinte automáticas, o sea por debajo del máximo. Se llenó el show a propósito para comprobarlo. Ver `evidence/retencion-y-lista-2026-09-10.txt`.
+> Y la retención **nunca había borrado nada desde el adaptador**: todas las corridas anteriores tenían menos de veinte automáticas, o sea por debajo del máximo. Se llenó el show a propósito para comprobarlo. Ver `evidence/retencion-y-lista-2026-09-10.txt` —transcripción—, **remedida el
+2026-09-11 con un guion nuevo**: `evidence/retencion-y-borrado-2026-09-11.txt`.
+
+**Y la remedición trajo su propio control, por accidente y vale la pena
+contarlo.** La primera corrida arrancó con las veinte del tope: la lista se clavó
+en veinte y borró la más vieja en tres de las cuatro guardadas. Pero medir un
+tope lo gasta —cada automática de más se lleva puesta una vieja— así que terminó
+con cuatro menos, y el guion lo dijo en vez de taparlo.
+
+La segunda, `evidence/retencion-y-borrado-2026-09-11b.txt`, arrancó con dieciséis
+**por debajo del tope** y la lista creció 17, 18, 19, 20 **sin borrar nada**. Ése
+es exactamente el control que faltaba: es la situación de todas las corridas
+anteriores, y por eso la retención «nunca había borrado nada» — no porque
+fallara, sino porque nunca le tocó.
 **Depende de:** SPK-P0.2a · **Bloquea a:** S-02.13
 **Montaje:** Ui24R con un show de trabajo, router, laptop.
 
@@ -33,7 +46,7 @@ Lo segundo importa porque el retroceso por instantánea es la última red de seg
 | 2 | Instantáneas manuales intactas | bloqueante | hash idéntico antes y después de 50 ciclos | | ⬜ |
 | 3 | Alcance de la recuperación documentado: ¿incluye ganancia, alimentación fantasma, supresión de realimentación, patcheo, retardos, reproductor? | bloqueante | campo por campo | **Contestado el 2026-09-10, con dos asteriscos que puso una auditoría.** De 45 campos movidos vuelven 44; el que no es `m.afs.enabled`, la supresión de realimentación. Vuelven ganancia, patcheo, retardos de canal, reproductor, ecualizador, puerta, dinámica, nombres, silencios, panoramas y envíos auxiliares. **(a) La alimentación fantasma sale de la lista**: se midió cruzando INV-007, que no correspondía, y el guion ya no la toca — o sea que esa familia vuelve a estar **sin medir**. **(b) Los retardos medidos son `i.N.delay`, los de canal**; los de salida —`m.delayL`, `m.delayR`, `a.B.delay`— no están cubiertos. Y el «cero efectos colaterales sobre 6.700 claves» es más fuerte de lo que el método sostiene: la comparación final no puede ver una clave que el recall escribió **devolviéndola a su valor de base**. Lo que sí lo sostiene es que la consola difundió exactamente 45 rutas | 🟡 |
 | 4 | Comportamiento al guardar sobre un nombre existente | bloqueante | documentado | | ⬜ |
-| 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`. **Renombrar: sin clave conocida y sin probar** | ✅ |
+| 5 | Existencia de borrado o renombrado por protocolo | informativo | sí o no | **Borrado: SÍ, y probado desde el adaptador.** `DELETESNAPSHOT^show^nombre` funciona: se llenó el show hasta el máximo y al guardar la 21 la retención borró la más vieja, dejando 20. `evidence/borrado-instantanea-2026-09-10.txt` y `evidence/retencion-y-lista-2026-09-10.txt`, las dos transcripciones, **remedidas en** `evidence/retencion-y-borrado-2026-09-11.txt` y `evidence/retencion-y-borrado-2026-09-11b.txt`: el borrado funciona en las dos corridas y la retención se clava en veinte. **Renombrar: sin clave conocida y sin probar** | ✅ |
 | 6 | Corte audible al guardar con audio pasando | informativo | sí o no | | ⬜ |
 
 ## Evidencia a entregar
@@ -80,12 +93,67 @@ clave que el recall hubiera escrito devolviéndola a su valor de base saldría
 idéntica y sería invisible ahí — porque la base *es* el contenido de la
 instantánea.
 
-**Y hay una clave sin rendir cuentas.** La corrida informa «claves que de verdad
-cambiaron: 46» contra 45 campos movidos. Una de ellas es `var.currentSnapshot`,
-que movió el guardado del paso 1. Queda **una** sin identificar, reproducible en
-la corrida gemela. El candidato obvio es un compañero de par estéreo arrastrado
-por `stereoIndex`, pero no está comprobado, y «44 de 45» es justamente el
-inventario de lo que el punto de retorno de INV-001 promete devolver.
+**La clave sin rendir cuentas: contada el 2026-09-10, identificada el 2026-09-11.**
+Aquella corrida informó «claves que de verdad cambiaron: 46» contra 45 campos
+movidos, y dejó **una** sin nombre. El error de método está a la vista: el guion
+**contaba** las claves y no las **nombraba**, y contar no es identificar. Ahora
+las nombra, y la cuenta cierra exacta: **45 cambiadas = 44 escritas + una que se
+movió sola, y esa una es `var.currentSnapshot`**, el puntero que mueve el propio
+guardado del paso 1. No queda ninguna sin identificar.
+
+> **Acá se escribió «ninguna se movió sola», y era una cita fabricada.** Los
+> archivos dicen, con todas las letras, `se movieron SOLAS: var.currentSnapshot`.
+> Se entrecomilló como texto archivado la rama del guion que **no se ejecutó**.
+> Lo marcó una auditoría. La conclusión —que no queda ninguna sin identificar—
+> es la misma; la cita no existía.
+Evidencia: `evidence/alcance-recall-clave-de-mas-2026-09-11.txt`.
+
+**La hipótesis que estaba escrita acá no se sostiene**, y eso también se midió:
+decía que el candidato obvio era un compañero de par estéreo arrastrado por
+`stereoIndex`. Leídos los 24 canales, **los 24 valen −1**: no hay ni un par
+enlazado. Los únicos enlazados son `l.0` y `l.1`, las entradas de línea.
+
+Lo que queda sin cerrar es la corrida vieja: se hizo sobre los canales 14 a 17,
+y dos de ellos no estaban muertos: **`i.14` tiene dos envíos abiertos a efectos**
+—`fx.0` y `fx.2`— y **`i.15` uno abierto a auxiliares**, `aux.2`. Acá decía «los
+dos tienen envíos a efectos **y** a auxiliares», y era falso por canal: ninguno
+de los dos tiene las dos cosas. La conclusión aguanta; la frase no. Reproducirla tal cual sería escribir sobre canales que pueden sonar.
+
+**Y el aviso de avalancha se queda corto en un recall: 44 difundidas contra 39
+informadas.** El hecho está medido. **La explicación que se publicó era falsa**,
+y vale dejarla escrita porque es la trampa de siempre: se dijo que el recall
+«tarda ~3 s y la ventana dura 1 s», y esos 3 segundos eran el `setTimeout` del
+guion de medición. Al ponerle marca de tiempo a cada línea, **el recall difunde
+sus 44 rutas entre los 343 y los 344 ms**: un milisegundo, todas dentro de la
+ventana. De dónde salen los cinco que faltan **no está medido**.
+
+Lo mismo con «la invalidación no se queda corta porque es por línea»: **también
+es falso**, y el código dice otra cosa. Ver el charter de concurrencia.
+
+**Las cuatro corridas de esa madrugada, y qué agrega cada una.** Se dejan las
+cuatro porque el instrumento fue cambiando entre ellas y borrar las de antes
+haría ilegible por qué las de después dicen otra cosa:
+
+- `evidence/alcance-recall-2026-09-11.txt` — sobre los canales 21 a 24, los que
+  el guion usa por omisión. Reproduce «44 de 45 vuelven» y `m.afs.enabled` como
+  la única excepción. Todavía informaba el aviso leyendo sólo la apertura.
+- `evidence/alcance-recall-clave-de-mas-2026-09-11.txt` — el guion ya **nombra**
+  las claves que se movieron solas. Es la que contesta la pregunta.
+- `evidence/alcance-recall-aviso-completo-2026-09-11.txt` — el guion ya lee el
+  aviso de cierre además del de apertura. Es donde aparece el 39 contra 44.
+- `evidence/alcance-recall-avisos-2026-09-11.txt` — lista **todos** los avisos,
+  para poder afirmar que un recall produce dos y no más: `1 (apertura), 39
+  (cierre)`.
+- `evidence/alcance-recall-con-guarda-2026-09-11.txt` — la primera con la guarda
+  puesta: la enumeración de los cuatro canales queda **dentro del archivo**, con
+  el reproductor y el bus de salida al que se le cambia el patcheo. Todavía
+  sobre canales con entrada física.
+- `evidence/alcance-recall-sin-fuente-2026-09-11.txt` — **la buena**, y la que
+  corrige el error de las tres anteriores. Sobre los canales 21 a 24, los únicos
+  con `src=none`, que es lo que este guion necesita porque **desilencia y sube
+  ganancia**. Y con marca de tiempo real: el recall difunde sus 44 rutas **entre
+  los 343 y los 344 ms**, no en los 3 segundos que el guion decía antes — ese
+  número era su propia espera fija.
 
 **`m.afs.enabled` es la única excepción, y no es una cualquiera.** El supresor
 de realimentación ya nos había arruinado una ronda entera de mediciones: toma
@@ -147,7 +215,7 @@ solo dice el resultado bueno deja al que venga sin saber qué trampas hay.
   «nunca lo aceptó»
 - `evidence/alcance-recall-booleanos-2026-09-10.txt` — **la buena.** Booleanos
   con 0↔1, las seis familias, 44 de 45 campos vuelven y `m.afs.enabled` no
-- `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática
+- `evidence/borrado-instantanea-2026-09-10.txt` — el borrado de una automática (transcripción, remedida en `evidence/retencion-y-borrado-2026-09-11.txt`)
   nuestra, ejecutado contra el aparato
 
 

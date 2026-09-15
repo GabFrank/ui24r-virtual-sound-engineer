@@ -21,6 +21,7 @@ import {
   instantaneasDeLaLista, SHOW_DE_LA_APLICACION,
 } from '@vse/mixer-adapter';
 import type { BulkExternalChange } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const VUELTAS = Number(process.argv[3] ?? '10');
@@ -115,7 +116,11 @@ for (const n of creadas) {
   const c = comandoBorrar(n);
   if (c !== null) { actor.enviar(c); await new Promise((r) => setTimeout(r, 700)); }
 }
-actor.enviar(codificarSets('var.currentSnapshot', base.get('var.currentSnapshot') ?? ''));
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+actor.enviar(codificarSets('var.currentSnapshot', exigirClave(base, 'var.currentSnapshot')));
 await new Promise((r) => setTimeout(r, 1000));
 listas.length = 0;
 actor.enviar(comandoListar());

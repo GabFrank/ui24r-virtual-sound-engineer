@@ -23,6 +23,11 @@ export const RUTAS: Routes = [
     loadComponent: () => import('./sesion/sesion.component').then((m) => m.SesionComponent),
   },
   {
+    path: 'sesion/recorrido',
+    title: 'Recorrido',
+    loadComponent: () => import('./recorrido/recorrido.component').then((m) => m.RecorridoComponent),
+  },
+  {
     path: 'sesion/canales',
     title: 'Canales',
     loadComponent: () => import('./channels/channels.component').then((m) => m.ChannelsComponent),
@@ -59,6 +64,12 @@ export const RUTAS: Routes = [
     path: 'perfiles/locales/:id',
     title: 'Local',
     loadComponent: () => import('./perfiles/local-edit.component').then((m) => m.LocalEditComponent),
+    canDeactivate: [guardaDeSalida],
+  },
+  {
+    path: 'perfiles/locales/:id/escenario',
+    title: 'Escenario',
+    loadComponent: () => import('./escenario/escenario-edit.component').then((m) => m.EscenarioEditComponent),
     canDeactivate: [guardaDeSalida],
   },
   {

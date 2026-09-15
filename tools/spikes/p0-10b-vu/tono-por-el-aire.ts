@@ -30,6 +30,8 @@ import {
   Ui24rTransport, Ui24rMixerAdapter, codificarSetd, decodificar,
   frecuenciaDeBanda, bandaDeFrecuencia, decodificarVuCanales, dbDeMedidor,
 } from '@vse/mixer-adapter';
+import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
+import { restaurarClaves } from '../restaurar.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const HZ = (process.argv[3] ?? '1000,500,250,125,63,40').split(',').map(Number);
@@ -86,12 +88,49 @@ console.log(`canal ${CANAL_MIC} en silencio: no hay lazo posible`);
  * sino que se apaga el supresor entero, que ademas es reversible y no le cuesta
  * a nadie el trabajo de afinacion.
  */
-const afsAntes = crudo.get('m.afs.enabled') ?? 1;
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const afsAntes = exigirClave(crudo, 'm.afs.enabled');
+const gananciaAntes = exigirClave(crudo, `hw.${CANAL_TONO - 1}.gain`);
+
+/**
+ * **Arreglado a medias el 2026-09-13, y hay que decir cuál mitad.**
+ *
+ * Lo que SÍ: la restauración pasa por `restaurarClaves()` —que reconecta— y se
+ * **verifica releyendo por HTTP**, un camino distinto del que escribió. Y la pila
+ * del supresor se compara antes contra después en vez de afirmar una limpieza que
+ * no ocurre (ver abajo).
+ *
+ * Lo que NO: **sigue sin `conRestauracion`**, así que un Ctrl-C o una señal dejan
+ * la ganancia del previo en `GANANCIA_TONO` y el supresor del usuario **apagado**.
+ * El cuerpo son ochenta líneas de código secuencial de nivel superior con
+ * declaraciones en el medio, y envolverlo a máquina es donde se introducen errores
+ * que no se pueden probar sin la consola. Queda en el trinquete
+ * `restauracion-garantizada`, que es donde corresponde, y se convierte entero
+ * cuando alguien lo vaya a correr.
+ */
+const PREVIO: readonly (readonly [string, number])[] = [
+  [`hw.${CANAL_TONO - 1}.gain`, gananciaAntes],
+  ['m.afs.enabled', afsAntes],
+];
+/** Lo que dice una ranura vacia del supresor: mil hercios, Q 116, ganancia cero. */
+const RANURA_VACIA = '1000.0000000000,116';
+const filtrosDelSupresor = (e: Map<string, string>): string[] => {
+  const xs: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const f = String(exigirClave(e, `m.afs.eq.${i}`));
+    if (!f.startsWith(RANURA_VACIA)) xs.push(`eq.${i}: ${f}`);
+  }
+  return xs;
+};
+const FILTROS_AL_EMPEZAR = filtrosDelSupresor(crudo as unknown as Map<string, string>);
+
 t.enviar(codificarSetd('m.afs.enabled', 0));
 await new Promise((r) => setTimeout(r, 1500));
 console.log(`supresor de realimentacion: ${afsAntes} -> 0 mientras dura la medicion`);
 
-const gananciaAntes = crudo.get(`hw.${CANAL_TONO - 1}.gain`) ?? 0;
 t.enviar(codificarSetd(`hw.${CANAL_TONO - 1}.gain`, GANANCIA_TONO));
 await new Promise((r) => setTimeout(r, 1000));
 console.log(`ganancia del canal ${CANAL_TONO}: ${gananciaAntes.toFixed(4)} -> ${GANANCIA_TONO} (para que el monitor suene)`);
@@ -157,15 +196,50 @@ for (const hz of HZ) {
 
 quitar();
 app.devolverAnalizador();
-t.enviar(codificarSetd(`hw.${CANAL_TONO - 1}.gain`, gananciaAntes));
-// El supresor vuelve, y se limpian los automaticos que hubiera colocado igual.
-t.enviar(codificarSetd('m.afs.clearlive', 1));
-await new Promise((r) => setTimeout(r, 1200));
-t.enviar(codificarSetd('m.afs.clearlive', 0));
-t.enviar(codificarSetd('m.afs.enabled', afsAntes));
-await new Promise((r) => setTimeout(r, 1200));
-console.log(`supresor devuelto a ${afsAntes}, automaticos limpiados`);
+await restaurarClaves(t, maquina, PREVIO);
 console.log('');
 console.log(`ganancia del canal ${CANAL_TONO} devuelta a ${gananciaAntes.toFixed(4)}`);
+console.log(`supresor devuelto a ${afsAntes}`);
 console.log(`analizador devuelto a: ${app.fuenteOriginalDelAnalizador() ?? '(ninguna)'}`);
+
+console.log('');
+console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
+{
+  const fin = await estadoPorHttpExigido(maquina);
+  let bien = true;
+  for (const [k, v] of PREVIO) {
+    const leido = Number(exigirClave(fin, k));
+    const ok = Math.abs(leido - v) < 1e-9;
+    if (!ok) bien = false;
+    console.log(`   ${k.padEnd(20)} esperado ${String(v).padEnd(14)} leido ${leido}`
+      + (ok ? '' : '   <-- NO COINCIDE'));
+  }
+  console.log(bien ? '   Comprobado por un camino distinto del que escribio.'
+    : '   HAY CLAVES SIN RESTAURAR. Revisar la consola antes de seguir.');
+  if (!bien) process.exitCode = 1;
+
+  // **La pila del supresor se COMPARA, no se «limpia».**
+  //
+  // Esta linea decia «automaticos limpiados» despues de disparar `clearlive`, y el
+  // 2026-09-13 se midio que `clearlive` **no borra nada**: sobre el filtro que
+  // planto la 104, `clearlive` borro 0, `clearfixed` borro 0 y solo `clearall` lo
+  // saco --y `clearall` se lleva la pila entera, incluido el ring-out del usuario--.
+  // Asi que el guion afirmaba una limpieza que no ocurria.
+  //
+  // Lo honesto es comparar y decirlo: si el supresor planto algo, que el usuario se
+  // entere, porque sacarlo le cuesta sus filtros.
+  const antes = FILTROS_AL_EMPEZAR;
+  const despues = filtrosDelSupresor(fin);
+  console.log('');
+  console.log(`   filtros del supresor: ${antes.length} antes, ${despues.length} despues`);
+  for (const f of despues) console.log(`      ${f}`);
+  if (despues.length !== antes.length || despues.some((f, i) => f !== antes[i])) {
+    console.log('   LA PILA CAMBIO: el supresor planto algo pese a estar apagado durante');
+    console.log('   la medicion. Borrarlo exige `clearall`, que se lleva la pila entera:');
+    console.log('   ver docs/backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md');
+    process.exitCode = 1;
+  } else {
+    console.log('   Sin cambios: el supresor no planto nada.');
+  }
+}
 await app.desconectar();

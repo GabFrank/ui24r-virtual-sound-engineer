@@ -192,3 +192,23 @@ nombres son los que usa.
 | Fecha | Revisado por | Cambios |
 |---|---|---|
 | _pendiente_ | | |
+
+
+## Dos instrumentos que nacieron el 2026-09-13
+
+**`tools/spikes/leer-una-clave.ts`** — lee **una** clave de `/raw` cortando en
+cuanto aparece, en vez de esperar el volcado entero. `estadoPorHttp` paga su tope
+de 8000 ms en **cada** llamada porque `/raw` no termina nunca, y adentro del bucle
+de un barrido eso es la diferencia entre una corrida posible y una imposible: con
+el volcado completo por punto, un barrido de 42 puntos costaba 567 s contra un
+tono de 300 y el reproductor se moría a mitad. Medido: 88 a 213 ms por clave.
+**Sólo lee claves `SETD`**; las de texto viajan como `SETS` y no las encuentra.
+
+**`tools/spikes/restos-de-edicion.mjs`** — busca la firma de un arreglo aplicado
+a medias: un docblock de una línea pegado encima de otro, un rótulo de secuencia
+sin el que lo precede, una constante declarada y nunca usada, el mismo `const` dos
+veces en el nivel superior. Salió del defecto que más veces apareció en doce
+rondas de auditoría, y encontró uno real en su primera corrida. **Su silencio no
+es un certificado**: no mira los `import`, no ve un comentario varado ni un `if`
+que dejó de poder disparar. Detalle en
+[`auditorias/106-107-108-lo-que-encontraron-doce-rondas.md`](backlog/auditorias/106-107-108-lo-que-encontraron-doce-rondas.md).

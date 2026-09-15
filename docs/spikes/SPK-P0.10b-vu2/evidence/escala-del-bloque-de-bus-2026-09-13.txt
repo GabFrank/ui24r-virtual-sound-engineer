@@ -1,0 +1,195 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T05:17:02.747Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/escala-del-bloque-de-bus.ts 10 5 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/escala-del-bloque-de-bus.ts sha256:008e7398421fb915
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 102 — LA ESCALA EN dB DEL BLOQUE DE BUS ===
+canal 10 (i.9) -> auxiliar 5 (a.4) -> entrada 2 de la interfaz
+escalon declarado: 0.333401 dB | tolerancia 0.6668 dB
+ventana util: bytes 16..239 = -74.67 .. -0.32 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.aux.4.value          0
+   i.9.aux.4.post           0
+   i.9.aux.4.postproc       1
+   a.4.mix                  0
+   a.4.mute                 0
+   a.4.gate.enabled         1
+   a.4.gate.thresh          0
+   a.4.dyn.bypass           0
+   a.4.dyn.ratio            1
+   a.4.eq.bypass            0
+   a.4.afs.enabled          0
+   i.9.mix                  0.7647058824
+   hw.9.gain                0.2508445026
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   i.9.deesser.enabled      0
+   hwoutaux.4.src           a.4
+
+=== QUIEN MAS ALIMENTA EL AUXILIAR 5 ===
+   0 tiras con el envio abierto ademas del canal 10
+   supresor del auxiliar: apagado (a.4.afs.enabled = 0), comprobado
+
+   El envio es PRE-FADER (i.9.aux.4.post = 0),
+   asi que el fader del canal no lo toca y el medidor del canal sirve de
+   testigo: tiene que quedarse quieto durante todo el barrido.
+
+=== LO QUE SE NEUTRALIZA ===
+   puerta del auxiliar: estaba en 1, se apaga
+   compresor del auxiliar: bypass estaba en 0, se puentea
+   compresor, puerta y de-esser del canal: puenteados
+   fader del auxiliar puesto en 0.45 como ATENUADOR FIJO:
+   baja lo que llega a la interfaz sin tocar `pre`, que esta antes de el.
+   Es una ganancia estatica y se cancela; B3 lo comprueba.
+
+=== EL PISO DEL MEDIDOR, MEDIDO Y NO HEREDADO ===
+   con el envio en 0: pre -Infinity dB = byte -Infinity | la interfaz ve -84.53 dBFS
+
+=== EL RECORRIDO, CALCULADO ANTES DE BARRER ===
+   arranque: pre -36.66 dB = byte 130
+   interfaz: -12.68 dBFS, pico -12.64, margen 104.2 dB
+   hueco del medidor hasta el piso de la ventana: 38.0 dB
+   el crudo mas bajo (0.1) deja pre en -Infinity dB = byte -Infinity
+   RECORRIDO QUE LOS CRUDOS CUBREN: 38.0 dB  <-- el que decide
+
+crudo  | pre    | byte | post   | real   | ref    | at.pre | at.real | pre-real | canal  | margen | n
+  1.00 | -36.66 |  130 | -51.33 | -12.68 | -15.00 |   0.00 |    0.00 |     0.00 | -46.66 |    102 |  80
+  0.95 | -39.24 |  122 | -53.96 | -15.16 | -15.00 |   2.58 |    2.48 |     0.10 | -46.66 |    101 |  80
+  0.90 | -41.33 |  116 | -56.00 | -17.39 | -15.00 |   4.67 |    4.71 |    -0.04 | -46.66 |     99 |  78
+  0.85 | -43.33 |  110 | -58.00 | -19.43 | -15.00 |   6.67 |    6.75 |    -0.09 | -46.66 |     97 |  78
+  0.80 | -45.33 |  104 | -60.00 | -21.35 | -15.00 |   8.67 |    8.68 |    -0.01 | -46.66 |     95 |  79
+  0.75 | -47.33 |   98 | -62.00 | -23.22 | -15.00 |  10.67 |   10.55 |     0.12 | -46.66 |     93 |  81
+  0.70 | -48.99 |   93 | -63.66 | -25.11 | -15.00 |  12.34 |   12.44 |    -0.10 | -46.66 |     91 |  78
+  0.65 | -50.99 |   87 | -65.66 | -27.10 | -15.00 |  14.34 |   14.42 |    -0.08 | -46.66 |     90 |  79
+  0.60 | -53.33 |   80 | -68.00 | -29.24 | -15.00 |  16.67 |   16.56 |     0.11 | -46.66 |     88 |  82
+  0.55 | -55.66 |   73 | -70.33 | -31.61 | -15.00 |  19.00 |   18.94 |     0.07 | -46.66 |     85 |  79
+  0.50 | -58.33 |   65 | -73.00 | -34.29 | -15.00 |  21.67 |   21.61 |     0.06 | -46.66 |     83 |  81
+  0.45 | -61.33 |   56 | -76.00 | -37.34 | -15.00 |  24.67 |   24.67 |     0.00 | -46.66 |     80 |  81
+  0.40 | -65.00 |   45 | -79.67 | -40.85 | -15.00 |  28.34 |   28.17 |     0.17 | -46.66 |     76 |  79
+  0.35 | -69.00 |   33 | -Infinity | -44.87 | -15.00 |  32.34 |   32.20 |     0.14 | -46.66 |     73 |  79
+  0.30 | -73.66 |   19 | -Infinity | -49.50 | -15.00 |  37.00 |   36.82 |     0.18 | -46.66 |     67 |  80
+  0.29 | -74.67 |   16 | -Infinity | -50.50 | -15.00 |  38.01 |   37.83 |     0.18 | -46.66 |     67 |  80
+  0.28 | -75.67 |   13 | -Infinity | -51.52 | -15.00 |  39.01 |   38.85 |     0.16 | -46.66 |     67 |  78  [fuera]
+  0.27 | -76.67 |   10 | -Infinity | -52.58 | -15.00 |  40.01 |   39.91 |     0.10 | -46.66 |     66 |  79  [fuera]
+  0.26 | -77.67 |    7 | -Infinity | -53.68 | -15.00 |  41.01 |   41.01 |     0.00 | -46.66 |     64 |  81  [fuera]
+  0.25 | -78.67 |    4 | -Infinity | -54.79 | -15.00 |  42.01 |   42.11 |    -0.11 | -46.66 |     62 |  79  [fuera]
+  0.20 | -Infinity | -Infinity | -Infinity | -60.80 | -15.00 | Infinity |   48.13 | Infinity | -46.66 |     57 |  78  [fuera]
+  0.15 | -Infinity | -Infinity | -Infinity | -67.54 | -15.00 | Infinity |   54.87 | Infinity | -46.66 |     51 |  83  [fuera]
+  0.10 | -Infinity | -Infinity | -Infinity | -74.53 | -15.00 | Infinity |   61.85 | Infinity | -46.66 |     43 |  79  [fuera]   ANULADO: margen de 42.8 dB: el instrumento erraria 0.06 dB
+  0.10 | -Infinity | -Infinity | -Infinity | -74.62 | -15.00 | Infinity |   61.94 | Infinity | -46.66 |     41 |  82  [fuera]   ANULADO: margen de 41.1 dB: el instrumento erraria 0.08 dB
+  0.15 | -Infinity | -Infinity | -Infinity | -67.52 | -15.00 | Infinity |   54.85 | Infinity | -46.66 |     50 |  78  [fuera]
+  0.20 | -Infinity | -Infinity | -Infinity | -60.78 | -15.00 | Infinity |   48.11 | Infinity | -46.66 |     56 |  81  [fuera]
+  0.25 | -78.67 |    4 | -Infinity | -54.78 | -15.00 |  42.01 |   42.11 |    -0.10 | -46.66 |     62 |  78  [fuera]
+  0.26 | -77.67 |    7 | -Infinity | -53.67 | -15.00 |  41.01 |   40.99 |     0.01 | -46.66 |     63 |  81  [fuera]
+  0.27 | -76.67 |   10 | -Infinity | -52.58 | -15.00 |  40.01 |   39.91 |     0.10 | -46.66 |     66 |  79  [fuera]
+  0.28 | -75.67 |   13 | -Infinity | -51.53 | -15.00 |  39.01 |   38.86 |     0.15 | -46.66 |     65 |  79  [fuera]
+  0.29 | -74.67 |   16 | -Infinity | -50.50 | -15.00 |  38.01 |   37.82 |     0.18 | -46.66 |     69 |  78
+  0.30 | -73.67 |   19 | -Infinity | -49.50 | -15.00 |  37.01 |   36.82 |     0.19 | -46.66 |     67 |  80
+  0.35 | -69.00 |   33 | -Infinity | -44.87 | -15.00 |  32.34 |   32.20 |     0.14 | -46.66 |     71 |  78
+  0.40 | -65.00 |   45 | -79.67 | -40.85 | -15.00 |  28.34 |   28.17 |     0.17 | -46.66 |     76 |  78
+  0.45 | -61.33 |   56 | -76.00 | -37.34 | -15.00 |  24.67 |   24.67 |     0.01 | -46.66 |     80 |  79
+  0.50 | -58.33 |   65 | -73.00 | -34.29 | -15.00 |  21.67 |   21.61 |     0.06 | -46.66 |     84 |  79
+  0.55 | -55.66 |   73 | -70.33 | -31.61 | -15.00 |  19.00 |   18.94 |     0.07 | -46.66 |     85 |  78
+  0.60 | -53.33 |   80 | -68.00 | -29.24 | -15.00 |  16.67 |   16.56 |     0.11 | -46.66 |     88 |  81
+  0.65 | -50.99 |   87 | -65.66 | -27.10 | -15.00 |  14.34 |   14.42 |    -0.08 | -46.66 |     90 |  81
+  0.70 | -48.99 |   93 | -63.66 | -25.11 | -15.00 |  12.34 |   12.44 |    -0.10 | -46.66 |     91 |  79
+  0.75 | -47.33 |   98 | -62.00 | -23.22 | -15.00 |  10.67 |   10.55 |     0.12 | -46.66 |     95 |  80
+  0.80 | -45.33 |  104 | -60.00 | -21.35 | -15.00 |   8.67 |    8.68 |    -0.01 | -46.66 |     97 |  80
+  0.85 | -43.33 |  110 | -58.00 | -19.43 | -15.00 |   6.67 |    6.75 |    -0.08 | -46.66 |     98 |  83
+  0.90 | -41.33 |  116 | -56.00 | -17.39 | -15.00 |   4.67 |    4.71 |    -0.04 | -46.66 |     99 |  83
+  0.95 | -39.23 |  122 | -53.94 | -15.16 | -15.00 |   2.58 |    2.48 |     0.09 | -46.66 |    101 |  85
+  1.00 | -36.66 |  130 | -51.33 | -12.67 | -15.00 |   0.00 |   -0.00 |     0.00 | -46.66 |    101 |  81
+
+=== VEREDICTOS, contra el contrato del item 102 ===
+   44 puntos utiles de 46 | 32 en la ventana
+     crudo 0.1 baja: margen de 42.8 dB: el instrumento erraria 0.06 dB
+     crudo 0.1 sube: margen de 41.1 dB: el instrumento erraria 0.08 dB
+
+B1 deriva del medidor del canal: 0.00 dB
+   PASA. El envio es pre-fader y no toca el canal, como el aparato declara.
+
+B2 deriva de la referencia interna: 0.00 dB
+   PASA.
+
+B3 post sigue a pre: el rango de (pre - post) es 0.05 dB
+   22 puntos de 32, sobre 21.7 dB de los 38.0 que cubre la ventana de pre
+   PASA. Entre pre y post solo hay ganancia estatica, MEDIDO.
+   **Y B3 no puede hablar de todo el barrido.** `post` esta unos 14,7 dB
+   por debajo de `pre` --es el atenuador fijo-- asi que toca su piso 14,7 dB
+   antes. La parte de abajo de la ventana queda sin control de `post`, y eso
+   es una limitacion del banco y no un resultado: bajar mas el fader recorta
+   menos pero ciega mas a B3, y subirlo recorta.
+
+B4 el byte pre contra la salida real: desvio maximo 0.18 dB en el crudo 0.3
+   16 puntos sobre un tramo de 38.0 dB
+   signo: 3 positivas, 0 negativas, 13 dentro de medio escalon
+   PASA. **El paso del bloque de AUXILIAR es el mismo que el del canal**, y
+   las cifras en dB de la medicion 94 quedan en pie.
+
+B5 paso del bloque de auxiliar: 0.331617 dB por byte
+   declarado 0.333401 | error 0.53 % | 16 puntos sobre 37.8 dB
+   RANGO IMPLICADO: 79.57 dB (declarado 80; la 99b midio 79,91 sobre el bloque de CANAL)
+   PASA.
+   B5 es INDEPENDIENTE de B4: con B4 pasando, la pendiente todavia puede
+   errar 4.86 % y B5 exige 1 %.
+   Su modo de falla propio es el residuo CORRELACIONADO con el byte, que es
+   justo el que la 94 midio: catorce residuos del mismo signo creciendo hacia
+   el piso. Si B4 pasa y B5 falla, hay un residuo estructurado y eso es un
+   hallazgo, no una contradiccion.
+
+B6 histeresis en la salida real: 0.00 dB en el crudo 0.29
+   PASA.
+
+B7 el auxiliar 3 --el que la 94 leyo-- contra el 5: diferencia maxima 22.67 dB, rango 0.36 dB
+   sobre 10 puntos, con el MISMO crudo de envio a los dos
+   PASA. Los dos buses dan el mismo byte para el mismo envio, asi que la
+   escala anclada en el auxiliar 5 vale tambien para el 3 **por transitividad**,
+   y ahi si las cifras en dB de la 94 quedan en pie.
+
+B8 ganancia analogica de captura: el arranque repetido difiere 0.00 dB | y el MEDIDOR, 0.00 dB
+   PASA.
+
+=== DEBAJO DE LA VENTANA: lo que la 94 no pudo decidir ===
+   La 94 vio ahi un residuo unilateral y creciente y no pudo decir si era
+   el piso del medidor o una diferencia de ley. Con la interfaz mirando, el
+   byte se aplasta y la salida real sigue: **si el residuo es el piso, tiene**
+   **que crecer exactamente lo que el byte deja de bajar.** Se informa sin
+   umbral porque no estaba declarado antes de medir.
+   crudo  | pre    | byte | real   | at.pre | at.real | pre-real
+     0.28 | -75.67 |   13 | -51.52 |  39.01 |   38.85 |     0.16
+     0.27 | -76.67 |   10 | -52.58 |  40.01 |   39.91 |     0.10
+     0.26 | -77.67 |    7 | -53.68 |  41.01 |   41.01 |     0.00
+     0.25 | -78.67 |    4 | -54.79 |  42.01 |   42.11 |    -0.11
+     0.20 | -Infinity | -Infinity | -60.80 | Infinity |   48.13 | Infinity
+     0.15 | -Infinity | -Infinity | -67.54 | Infinity |   54.87 | Infinity
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   **Nada del bloque de EFECTOS.** El de auxiliar es mono de 5 bytes y el de
+   efectos estereo de 7: son formatos distintos y medir uno no da el otro.
+   **La 96b sigue tocada** aunque esto pase.
+   Nada sobre la LEY del envio: esto mide a cuantos dB equivale un escalon
+   del medidor, no que dB corresponden a cada crudo. La 94 contesto eso otro.
+   Nada en dBu ni dBFS absolutos: son diferencias por un camino que no se toca.
+   Nada sobre un error de escala constante, invisible en una medicion relativa.
+   Un auxiliar, un canal, una frecuencia, un nivel de fuente.
+   Y un acuerdo dentro del umbral es una COTA, no una identidad.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.aux.4.value          esperado 0              leido 0
+   a.4.mix                  esperado 0              leido 0
+   a.4.gate.enabled         esperado 1              leido 1
+   a.4.dyn.bypass           esperado 0              leido 0
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   i.9.aux.2.value          esperado 0              leido 0
+   Todo restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

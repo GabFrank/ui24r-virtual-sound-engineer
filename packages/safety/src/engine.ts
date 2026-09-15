@@ -2,8 +2,10 @@ import {
   ownership, esEscribible, verificarLimite,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
-import { clasificarRuta } from '@vse/mixer-adapter';
-import type { ParameterKind } from '@vse/domain';
+import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
+import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
+import { verificarAtadura } from './magnitud-atada.ts';
+import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
 /**
@@ -145,6 +147,26 @@ export class SafetyEngine {
       });
     }
 
+    // **Un solo silencio de canal por transacción.** ADR-027 lo abrió para el
+    // diagnóstico de realimentación, y la cuenta importa: silenciar dos canales
+    // a la vez rompe el experimento —si la banda sostenida se cae, no se sabe
+    // cuál de los dos la sostenía— además de dejar a dos músicos sin su canal.
+    //
+    // **Va acá y no en la tabla de límites.** El límite por transacción acota la
+    // MAGNITUD de un cambio, y un silencio no tiene magnitud: es binario. La
+    // primera versión declaró `porTransaccion: 1` creyendo que eso lo hacía
+    // cumplir, y el propio test lo desmintió: dos silencios pasaban, porque cada
+    // uno cumplía el tope por separado y la cuenta la miraba otra regla.
+    const silencios = cambios.filter((c) => clasificarRuta(c.path) === 'CHANNEL_MUTE').length;
+    if (silencios > 1) {
+      rechazos.push({
+        codigo: 'DEMASIADOS_PARAMETROS',
+        invariante: 'INV-005',
+        mensaje: `${silencios} silencios de canal en una transacción: se silencia de a uno, o el experimento no dice cuál era`,
+        path: null,
+      });
+    }
+
     for (const c of cambios) rechazos.push(...this.evaluarCambio(c, ctx));
 
     return rechazos.length === 0 ? { permitido: true } : { permitido: false, rechazos };
@@ -189,7 +211,11 @@ export class SafetyEngine {
     if (duenio.owner === 'USER_ONLY') {
       salida.push({
         codigo: 'PARAMETRO_DEL_USUARIO',
-        invariante: 'INV-008',
+        // La específica si la hay; si no, la de propiedad. Estaba fija en
+        // INV-008 y un arreglo del 2026-09-10 afirmó en cuatro lugares --commit,
+        // comentario del código, comentario del test y CHANGELOG-- que la
+        // alimentación fantasma ya se rechazaba citando INV-007. No era cierto.
+        invariante: duenio.invariante ?? 'INV-008',
         mensaje: `${c.kind} pertenece al usuario y la aplicación nunca lo escribe. ${duenio.nota}`,
         path: c.path,
       });
@@ -204,6 +230,181 @@ export class SafetyEngine {
         path: c.path,
       });
       return salida;
+    }
+
+    // **La magnitud que se juzga tiene que ser la que va al cable.**
+    //
+    // Todo lo que sigue --los topes, el techo por ruta, el límite acumulado--
+    // mira `magnitudPropuesta`, y hasta hoy nada la ataba a `valorPropuesto`. Una
+    // auditoría lo demostró midiendo: **una escritura de recorrido completo,
+    // crudo 0 a 1, aprobada bajo un techo de −6 dB declarando magnitudes −31 a
+    // −30.** El motor miraba los decibeles declarados y dejaba pasar el recorrido
+    // entero del parámetro.
+    //
+    // No se podía cerrar antes porque atar necesita la ley de conversión medida,
+    // y `rutasProbadas()` devolvía la lista vacía. La medición 101 midió dos.
+    //
+    // **Y una ruta sin ley medida no se rechaza.** Rechazar bloquearía casi todo
+    // el aparato; lo que cambia es que la diferencia deja de ser silenciosa.
+    {
+      const atadura = verificarAtadura(c.path, c.valorPropuesto, c.magnitudPropuesta, c.unidad);
+      if (!atadura.atada && atadura.codigo !== 'SIN_LEY_VERIFICADA') {
+        salida.push({
+          codigo: 'MAGNITUD_NO_ATADA',
+          invariante: 'INV-004',
+          mensaje: atadura.motivo,
+          path: c.path,
+        });
+        return salida; // Sin sentido juzgar topes sobre un número que no es el que se escribe.
+      }
+    }
+
+    // **El silencio de canal, en todo estado menos el show.** ADR-027 lo abrió
+    // para el diagnóstico de realimentación: silenciar un candidato y ver si la
+    // banda sostenida se cae es la única forma de pasar de indicios a un
+    // experimento.
+    //
+    // **La primera versión de esta guarda cerraba también `FULL_BAND` y
+    // `RINGOUT`, y estaba mal.** Los dos son etapas del soundcheck —prueba de
+    // banda completa y caza de realimentación—, no del modo live, y el usuario
+    // autorizó el soundcheck entero. Peor: `RINGOUT` es literalmente el estado
+    // de cazar acoples, así que el diagnóstico que ADR-027 existe para habilitar
+    // quedaba rechazado justo donde más aplica. Lo encontró una auditoría de
+    // fidelidad, comparando la regla contra lo que el usuario había dicho.
+    //
+    // **Y el comentario citaba al usuario con una frase que el usuario nunca
+    // dijo.** Era una paráfrasis mía entre comillas, en el comentario que
+    // justifica una guarda de seguridad. Lo que dijo está en
+    // `docs/pedidos/00-lo-que-dijo-el-usuario.md`, y lo que dijo es que el
+    // bloqueo sólo existía pensando en el modo live.
+    if (c.kind === 'CHANNEL_MUTE' && ctx.sessionState === 'SHOW') {
+      salida.push({
+        codigo: 'ESTADO_DE_SESION',
+        invariante: 'INV-006',
+        mensaje: `el silencio de canal no se escribe durante el show, y la sesión está en ${ctx.sessionState}`,
+        path: c.path,
+      });
+    }
+
+    // **El envío a monitor, con el techo que puso el usuario.** ADR-028.
+    //
+    // Eligiendo entre opciones, el usuario fijó hasta dónde volver a subir un
+    // envío que se bajó para cazar un acople: «*Hasta donde estaba antes de que
+    // yo lo bajara, y ni un paso más*». Eso no es un tope de magnitud --de eso
+    // se ocupa INV-004-- sino un **techo absoluto por ruta**.
+    //
+    // **El techo sólo existe si la aplicación bajó ese envío.** Si nadie bajó
+    // nada, la ruta no figura en `techoPorRuta` y se sube libremente hasta los
+    // topes de magnitud. La primera versión lo anotaba en la primera escritura
+    // fuera cual fuera, y con todos los auxiliares abajo al empezar el
+    // soundcheck la aplicación no podía levantar ninguno: el techo quedaba
+    // clavado en el piso. Lo encontró el usuario preguntando exactamente eso.
+    //
+    // Ver `techoPorRuta` en `ContextoSeguridad` para qué queda sin cubrir.
+    //
+    // **Que no haya tope al bajar también es decisión del agente.** Al usuario
+    // se le preguntó una sola cosa, «techo al subir»; nunca se le ofreció un
+    // piso y no dijo nada al respecto. El razonamiento --bajar de más molesta al
+    // músico, subir de más le puede arruinar el oído o disparar el acople que se
+    // estaba cazando-- es mío. La primera versión de este comentario lo firmaba
+    // como «deliberada y del usuario», y lo encontró una auditoría de fidelidad.
+    //
+    // Una ruta sin entrada en `techoPorRuta` no tiene techo propio: es la
+    // primera vez que se la toca y todavía no hay «donde estaba».
+    if (c.kind === 'MONITOR_AUX_SEND') {
+      // **Sólo el nivel, y esto casi se abre de más.** `clasificar-ruta` mete
+      // cinco hojas bajo este `kind` --`value`, `mute`, `pan`, `post` y
+      // `postproc`-- porque INV-010 razona sobre el conjunto de rutas de
+      // monitor, y ahí las cinco cuentan. Pero abrir el `kind` las abriría las
+      // cinco, y **el usuario autorizó el nivel**: «Sí, y también para el ajuste
+      // normal de monitores».
+      //
+      // `post` y `postproc` no son nivel: deciden si el envío se deriva antes o
+      // después del fader y del procesamiento. La medición 95 del 2026-09-12
+      // mostró qué significa eso en el audio --con `postproc = 1` el monitor
+      // sigue al ecualizador dB por dB-- así que escribirlas es recablear el
+      // monitor del músico, no ajustarlo. `mute` lo deja sin nada y `pan` lo
+      // mueve de lado.
+      //
+      // Lo encontró el test que cuenta las rutas escribibles, que existe
+      // exactamente para esto: el salto habría sido de +1200 en vez de +240.
+      // **Lista blanca, no lista negra.** La primera versión comprobaba
+      // `/\.value$/`, o sea protegía por lo que la ruta **no** es. Bajo este
+      // `kind` cae también `a.N.mix` --el fader del auxiliar entero, el volumen
+      // de esa cuña-- y quedaba rechazado sólo por no terminar en `.value`, que
+      // es un accidente del nombre y no una regla. Se nombra lo que se abre.
+      //
+      // **Y la lista blanca es una función, no una expresión regular.** Lo era,
+      // y una auditoría midió lo que dejaba pasar: `i.24.aux.0.value` --un canal
+      // que esta consola no tiene--, `i.99.aux.99.value` y
+      // `i.0003.aux.0000000001.value`. El `\d+` sin cota es correcto para
+      // *clasificar* por familia y no sirve para *permitir*.
+      //
+      // Lo grave era el alias: `techoPorRuta`, `acumuladoPorRuta` y
+      // `rutasYaTocadas` se indexan por la **cadena cruda**, así que con un
+      // techo puesto en `i.3.aux.1.value` pedir `i.03.aux.1.value` pasaba --la
+      // misma ruta que suena en la sala, alcanzada por una clave que el estado
+      // no reconoce--. `esNivelDeEnvioAMonitor` exige la forma canónica y los
+      // rangos reales, que es la única forma con la que el estado por ruta
+      // puede contar.
+      if (!esNivelDeEnvioAMonitor(c.path)) {
+        salida.push({
+          codigo: 'PARAMETRO_NO_ESCRIBIBLE',
+          invariante: 'INV-010',
+          mensaje: 'del envío a monitor sólo se escribe el nivel del canal '
+            + `(\`i.N.aux.M.value\`): \`mute\`, \`pan\`, \`post\`, \`postproc\` y el `
+            + `fader del bus son del usuario (${c.path})`,
+          path: c.path,
+        });
+      }
+      // **Sin `?.` esto estalla con un llamador sin tipos.** Falla cerrado --el
+      // `evaluar` no devuelve permiso-- pero el registro que alguien lee después
+      // de un show dice `TypeError` en vez de decir qué se rechazó y por qué.
+      // Lo marcó una auditoría de seguridad, y el caso real ya ocurrió:
+      // `tools/inventario/permisos.ts` estalló así durante cuatro días.
+      const techo = ctx.techoPorRuta?.get(c.path);
+      if (techo !== undefined && c.magnitudPropuesta > techo) {
+        salida.push({
+          codigo: 'DELTA_EXCEDIDO',
+          invariante: 'INV-010',
+          mensaje: `el envío a monitor no sube más allá de donde estaba: `
+            + `${c.magnitudPropuesta} ${c.unidad} pedidos contra un techo de ${techo}`,
+          path: c.path,
+        });
+      }
+      // Y no durante el show, por el mismo motivo que ADR-027: el usuario
+      // autorizó el soundcheck, y el modo live es una función que no existe.
+      //
+      // **Sólo `SHOW`, y no `ESTADOS_EN_VIVO`.** El dominio define
+      // `ESTADOS_EN_VIVO = ['FULL_BAND', 'RINGOUT', 'SHOW']` y ninguna regla de
+      // seguridad lo consulta; una auditoría lo marcó preguntando si para el
+      // envío a monitor se había heredado el criterio sin razonarlo. Se razonó
+      // ahora, y la respuesta es que para **este** parámetro corresponde `SHOW`
+      // solo:
+      //
+      // - `FULL_BAND` es el soundcheck con la banda entera tocando, que es
+      //   **exactamente cuándo se ajusta un monitor**. Cerrarlo dejaría la
+      //   categoría abierta sólo cuando no hay nadie toando, o sea inútil para
+      //   lo que el usuario pidió.
+      // - `RINGOUT` es la caza de acoples, que es el otro momento en que el
+      //   usuario baja un monitor a propósito.
+      // - `SHOW` es el público en la sala. Ahí el operador no está mirando la
+      //   pantalla de la aplicación y un cambio sorpresa en la cuña de un
+      //   músico no tiene quien lo atrape.
+      //
+      // Lo que separa a los dos primeros del tercero no es «en vivo» sino
+      // **quién está mirando**. `ESTADOS_EN_VIVO` sirve para otras cosas --avisar
+      // de una escritura, exigir confirmación-- y usarlo acá cerraría el caso
+      // principal. Si alguna vez hace falta un criterio más fino, es una
+      // decisión de producto y va con su ADR.
+      if (ctx.sessionState === 'SHOW') {
+        salida.push({
+          codigo: 'ESTADO_DE_SESION',
+          invariante: 'INV-010',
+          mensaje: `el envío a monitor no se escribe durante el show, y la sesión está en ${ctx.sessionState}`,
+          path: c.path,
+        });
+      }
     }
 
     // La ganancia de entrada solo se toca durante la configuración de canales,
@@ -234,7 +435,33 @@ export class SafetyEngine {
     // del sistema de amplificación declara. Escribir en otro bus podría estar
     // tocando un monitor.
     if (c.kind === 'OUTPUT_EQ') {
-      if (!ctx.busesDeSalidaPermitidos.has(c.path)) {
+      // **Se compara el BUS, no la ruta completa, y el cambio no es cosmético.**
+      // Antes era `busesDeSalidaPermitidos.has(c.path)`: igualdad exacta contra
+      // un conjunto que el único test del proyecto llenaba con
+      // `m.eq.b1.gain` --una ruta que **no existe en la consola**--. El
+      // ecualizador de un bus de salida no es paramétrico: el general es un
+      // gráfico de 31 bandas por lado (`m.eq.peak.l.0`…`.30`), setenta claves en
+      // total. Enumerarlas en una lista blanca no era viable, y por eso la lista
+      // terminó con una ruta inventada que nadie ejercitó contra el aparato.
+      //
+      // El perfil del sistema de amplificación declara **buses**, que es lo que
+      // un técnico sabe decir; `prefijosPermitidos` traduce, y esa traducción
+      // está contrastada contra las 6732 claves del inventario.
+      if (ctx.busesDeSalidaPermitidos.size === 0) {
+        // **«No hay perfil» y «el bus está mal» no son lo mismo, y decían lo
+        // mismo.** Hoy la aplicación construye este conjunto vacío siempre --el
+        // puente desde `PAProfile.outputBuses` no existe-- así que toda
+        // ecualización de sala se rechaza. Eso es correcto, pero el mensaje
+        // mandaba a revisar el bus cuando lo que falta es el perfil entero.
+        salida.push({
+          codigo: 'SIN_PERFIL_DE_SALA',
+          invariante: 'INV-008',
+          mensaje:
+            'no hay ningún bus de salida declarado: sin perfil del sistema de '
+            + 'amplificación no se ecualiza la sala',
+          path: c.path,
+        });
+      } else if (!ecualizacionPermitida(c.path, ctx.busesDeSalidaPermitidos)) {
         salida.push({
           codigo: 'BUS_NO_PERMITIDO',
           invariante: 'INV-008',
@@ -246,7 +473,16 @@ export class SafetyEngine {
       // Un filtro estrecho de realce en un bus de salida es el camino corto al
       // acople. Las dos constantes existían en el dominio desde el principio y
       // ninguna regla las consultaba.
-      if (c.q !== undefined && c.q < Q_MINIMO_SALIDA) {
+      // **Sobre esta consola esta regla no se dispara nunca, y hay que decirlo.**
+      // El ecualizador de salida es gráfico: no tiene factor de calidad, así que
+      // `c.q` es `undefined` siempre. La cláusula sigue teniendo sentido para un
+      // paramétrico de salida, que la Ui24R no tiene, y por eso se conserva.
+      //
+      // El peligro que INV-004 quiere evitar --un realce estrecho sobre el
+      // sistema-- en un gráfico de 31 bandas lo acota el realce máximo de abajo,
+      // que sí se consulta. `admiteFactorDeCalidad` deja el dato al lado del
+      // código en vez de en una nota al pie.
+      if (c.q !== undefined && admiteFactorDeCalidad(c.path) && c.q < Q_MINIMO_SALIDA) {
         salida.push({
           codigo: 'Q_DEMASIADO_ESTRECHO',
           invariante: 'INV-004',
@@ -256,7 +492,10 @@ export class SafetyEngine {
           path: c.path,
         });
       }
-      const realce = c.valorPropuesto - c.valorEsperado;
+      // **En decibeles, no en crudo.** `REALCE_MAXIMO_SALA_DB` vale 2 y el
+      // crudo de una banda del gráfico no llega a 2 nunca, así que sobre el
+      // crudo esta comprobación tampoco se disparaba.
+      const realce = c.magnitudPropuesta - c.magnitudEsperada;
       if (realce > REALCE_MAXIMO_SALA_DB) {
         salida.push({
           codigo: 'REALCE_EXCESIVO',
@@ -269,23 +508,47 @@ export class SafetyEngine {
       }
     }
 
-    const delta = c.valorPropuesto - c.valorEsperado;
+    // **El delta va en la unidad que LIMITES declara, no en crudo.** Ver
+    // `CambioPropuesto.magnitudPropuesta`: durante meses esto restaba crudos y
+    // los comparaba contra decibeles, así que el tope de INV-004 dejaba pasar
+    // el recorrido entero del previo.
+    const delta = c.magnitudPropuesta - c.magnitudEsperada;
     const limite = verificarLimite({
       kind: c.kind,
       deltaSolicitado: delta,
       acumuladoEnSesion: ctx.acumuladoPorRuta.get(c.path) ?? 0,
       hayMedicionPosterior: ctx.rutasConMedicionPosterior.has(c.path),
       esPrimerCambioDelParametro: !ctx.rutasYaTocadas.has(c.path),
+      // La unidad que declara quien propone, para que `verificarLimite` pueda
+      // comparar especies antes de comparar numeros.
+      unidad: c.unidad,
     });
 
     if (!limite.permitido) {
-      const mapa: Record<string, { codigo: Rechazo['codigo']; inv: string }> = {
+      // **El tipo del mapa es exhaustivo, y antes era `Record<string, …>`.**
+      // Con `string` como clave, agregar un codigo de rechazo en `limits.ts` no
+      // rompia nada al compilar: el `mapa[limite.codigo]!` devolvia `undefined`
+      // y el `!` lo tapaba, asi que el motor estallaba con un `TypeError` en
+      // ejecucion. Paso el 2026-09-12 al agregar `UNIDAD_NO_DECLARADA`, y **la
+      // suite quedo verde**: ningun test proponia un cambio con la unidad mal
+      // declarada POR EL MOTOR --el del dominio llama a `verificarLimite`
+      // directo--. Lo encontro `tools/inventario/permisos.ts` al correrlo.
+      //
+      // Con la clave derivada del tipo, un codigo nuevo sin traduccion es un
+      // error de compilacion. Es la diferencia entre un mapa y una tabla de
+      // traduccion obligatoria.
+      type CodigoDeLimite = Extract<ResultadoLimite, { permitido: false }>['codigo'];
+      const mapa: Record<CodigoDeLimite, { codigo: Rechazo['codigo']; inv: string }> = {
         DELTA_CAP: { codigo: 'DELTA_EXCEDIDO', inv: 'INV-004' },
         CUMULATIVE_CAP: { codigo: 'ACUMULADO_EXCEDIDO', inv: 'INV-004' },
         SIN_MEDICION_INTERMEDIA: { codigo: 'SIN_MEDICION_INTERMEDIA', inv: 'INV-004' },
         SIN_LIMITE_DECLARADO: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
+        // Declarar una unidad distinta de la del tope es proponer un cambio que
+        // el motor no puede juzgar, asi que se rechaza por la misma invariante
+        // que exige que el tope exista.
+        UNIDAD_NO_DECLARADA: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
       };
-      const m = mapa[limite.codigo]!;
+      const m = mapa[limite.codigo];
       salida.push({
         codigo: m.codigo,
         invariante: m.inv,

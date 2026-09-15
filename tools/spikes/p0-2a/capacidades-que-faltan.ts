@@ -29,6 +29,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { Ui24rTransport, codificarSetd } from '@vse/mixer-adapter';
+import { exigirClave } from '../canal-muerto.ts';
 
 const maquina = process.argv[2] ?? '192.168.0.78';
 const canal = Number(process.argv[3] ?? '10');
@@ -161,7 +162,11 @@ console.log('');
 console.log('  Y el ajuste GLOBAL, que es el criterio 4 del charter:');
 console.log(`    settings.auxsendpoint = ${antes.get('settings.auxsendpoint')}`);
 console.log(`    settings.mtxsendpoint = ${antes.get('settings.mtxsendpoint')}`);
-const global = Number(antes.get('settings.auxsendpoint') ?? '0');
+// **Se exige la clave en vez de suponerla.** Un `?? valor` antes de una
+// escritura no es un valor por omision: es una suposicion disfrazada de
+// lectura, y con una lectura HTTP fallida --que devuelve un mapa vacio--
+// restauraba la consola a un numero inventado. Auditoria del 2026-09-12.
+const global = Number(exigirClave(antes, 'settings.auxsendpoint'));
 if (global === 0 || global === 1) {
   // La pregunta del criterio 4 no es si se puede escribir, sino QUE le hace a
   // las rutas por envio. Se anota que rutas difunde la consola al cambiarlo.

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { rawParaGananciaMasCercana, gananciaAlcanzable } from '@vse/mixer-adapter';
+import { rawParaGananciaMasCercana, gananciaAlcanzable, gananciaADb } from '@vse/mixer-adapter';
 import { puedeAplicarGanancia } from '@vse/assistants';
 import type { Confidence } from '@vse/domain';
 import type { ContextoSeguridad } from '@vse/safety';
@@ -116,7 +116,25 @@ export class AplicarGananciaService {
       acumuladoPorRuta: new Map(),
       rutasConMedicionPosterior: new Set(),
       rutasYaTocadas: new Set(),
+      // **Vacío, y por el mismo motivo que los tres de arriba.** El techo de
+      // «hasta donde estaba antes de que yo lo bajara» (ADR-028) se llena con el
+      // valor que la ruta tenía la primera vez que el asistente la tocó, y eso
+      // también sale del historial de la sesión, que todavía no existe. Este
+      // servicio además sólo aplica ganancia, que no tiene techo propio.
+      techoPorRuta: new Map(),
       hayTakeDeSoundcheckActivo: false,
+      // **Vacío, y hay que decir por qué en vez de dejarlo pasar por obvio.**
+      // La traducción de `PAProfile.outputBuses` a prefijos existe
+      // (`prefijosPermitidos`, con sus tests) y **el puente hasta acá no**: la
+      // sesión guarda su estado, no la entidad, así que este servicio no tiene
+      // de dónde sacar el perfil del lugar. Un commit del 2026-09-11 dijo que
+      // el perfil «ahora declara buses» como si estuviera hecho; no lo estaba.
+      //
+      // Mientras esté vacío, el motor rechaza toda ecualización de sala con
+      // `SIN_PERFIL_DE_SALA`, que es la verdad. Hoy no se pierde nada porque
+      // este servicio solo escribe la ganancia del previo. Cuando alguien
+      // escriba ecualización de salida, **esto es lo primero que hay que
+      // cablear**, y el rechazo lo va a decir con todas las letras.
       busesDeSalidaPermitidos: new Set(),
       confianza: confianza === 'HIGH' ? 'HIGH' : confianza === 'MEDIUM' ? 'MEDIUM'
         : confianza === 'LOW' ? 'LOW' : 'INSUFFICIENT_DATA',
@@ -172,8 +190,20 @@ export class AplicarGananciaService {
         kind: 'PREAMP_GAIN',
         path: p.rutaGanancia,
         unidad: 'dB',
+        // Al cable va el crudo: es lo que la consola entiende.
         valorPropuesto: crudo,
         valorEsperado: p.crudoActual,
+        // **Y al control de INV-004 van los decibeles.** Hasta el 2026-09-11
+        // este sitio mandaba el crudo con la etiqueta «dB» y el motor comparaba
+        // ese crudo contra un tope de 3 dB. El crudo del previo va de 0 a 1, así
+        // que el tope **no se disparaba nunca**: medido, dejaba pasar 61,9 dB,
+        // el recorrido entero del previo, de −6,0 a +55,9.
+        //
+        // Se manda `quedoEnDb` y no `p.gainPropuestoDb`: la ganancia no es
+        // continua y lo que se va a aplicar es el escalón alcanzable. Controlar
+        // el valor pedido en vez del que va a quedar sería controlar otra cosa.
+        magnitudPropuesta: quedoEnDb,
+        magnitudEsperada: gananciaADb(p.crudoActual),
       }],
       this.contexto(p.confianza),
       {

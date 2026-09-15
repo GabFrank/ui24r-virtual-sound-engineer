@@ -1,4 +1,4 @@
-import { AlmacenEnMemoria, type Coleccion, type Documento } from '@vse/store';
+import { AlmacenEnMemoria, VERSION_ESQUEMA, type Coleccion, type Documento } from '@vse/store';
 
 /**
  * Almacén del navegador: la semántica de memoria, más persistencia.
@@ -14,6 +14,24 @@ import { AlmacenEnMemoria, type Coleccion, type Documento } from '@vse/store';
  * acá son de perfiles y sesiones, no de mediciones — las mediciones necesitan
  * hardware, y para entonces el camino es el nativo. Si algún día esto guarda
  * espectros, hay que cambiarlo.
+ *
+ * **Acá no corren las migraciones, y eso tenía una consecuencia.** Las
+ * migraciones del esquema son SQL: no hay forma de aplicarlas sobre
+ * `localStorage` sin reimplementarlas en otro lenguaje, y dos versiones de la
+ * misma conversión son dos verdades que se separan. Así que no corren.
+ *
+ * Lo que eso dejaba abierto lo encontró una auditoría: un perfil guardado acá
+ * antes de una migración se lee después con el código nuevo, que espera la
+ * forma nueva. Un perfil de amplificación de antes de la migración 6 no tiene
+ * identificador en sus componentes, y el escenario los referencia por ahí — o
+ * sea que el plano queda mudo sin que nada falle.
+ *
+ * **La salida es descartar, no migrar.** Este almacén se declara desechable
+ * desde la primera línea de este docblock: al abrir se compara la versión
+ * guardada con la del esquema y, si no coinciden, se borra todo y se avisa
+ * fuerte. Se pierden datos de prueba del navegador, que es exactamente lo que
+ * el documento dice que son; lo que no se pierde es la coherencia entre lo
+ * guardado y el código que lo lee.
  */
 export class AlmacenEnNavegador extends AlmacenEnMemoria {
   private readonly prefijo = 'vse.almacen.';
@@ -30,6 +48,44 @@ export class AlmacenEnNavegador extends AlmacenEnMemoria {
       localStorage.removeItem(prueba);
     } catch {
       throw new Error('El navegador no deja guardar datos. ¿Ventana privada?');
+    }
+    this.descartarSiEsDeOtraVersion();
+  }
+
+  /** Dónde se guarda la versión del esquema con que se escribieron los datos. */
+  private get claveDeVersion(): string { return `${this.prefijo}__version`; }
+
+  /**
+   * Descarta todo si lo guardado es de otra versión del esquema.
+   *
+   * **Se avisa por consola y no en silencio.** Perder datos de prueba del
+   * navegador no tiene consecuencias; perderlos sin enterarse convierte un
+   * «desapareció mi banda» en media hora de búsqueda.
+   *
+   * Sin marca de versión también se descarta: son los datos de antes de que
+   * esto existiera, y de ésos no se sabe con qué forma se escribieron.
+   */
+  private descartarSiEsDeOtraVersion(): void {
+    const guardada = localStorage.getItem(this.claveDeVersion);
+    const actual = String(VERSION_ESQUEMA);
+    if (guardada === actual) return;
+
+    const claves: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (k !== null && k.startsWith(this.prefijo)) claves.push(k);
+    }
+    for (const k of claves) localStorage.removeItem(k);
+    this.datos.clear();
+    localStorage.setItem(this.claveDeVersion, actual);
+
+    if (claves.length > 0) {
+      console.warn(
+        `[almacén del navegador] Los datos guardados eran del esquema `
+        + `${guardada ?? 'sin marcar'} y el código espera el ${actual}. Acá no corren las `
+        + `migraciones --son SQL--, así que se descartaron ${claves.length} claves. `
+        + `En la tablet no pasa: ahí manda SQLite y las migraciones sí corren.`,
+      );
     }
   }
 

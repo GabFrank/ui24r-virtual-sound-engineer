@@ -1,0 +1,76 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T13:18:31.047Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/umbral-por-sustitucion.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/umbral-por-sustitucion.ts sha256:61ad91fa74961528
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9), tono de 1000 Hz a -1 dBFS
+escalon del medidor de reduccion: 0.6668 dB
+supresor: estaba en 1, se apaga
+
+--- relacion 2:1 (crudo 0.5), exceso = reduccion x 2.000 ---
+umbral crudo | reduccion | exceso despejado | pre (testigo) | n
+       0.500 |      1.65 |             3.30 |        -37.66 |  39
+       0.460 |      2.98 |             5.97 |        -37.66 |  41
+       0.420 |      3.65 |             7.30 |        -37.66 |  41
+       0.380 |      4.32 |             8.64 |        -37.66 |  42
+       0.340 |      4.98 |             9.97 |        -37.66 |  41
+       0.300 |      5.65 |            11.30 |        -37.66 |  42
+       0.260 |      5.65 |            11.30 |        -37.66 |  40
+       0.220 |      5.65 |            11.30 |        -37.66 |  41
+       0.180 |      5.65 |            11.30 |        -37.66 |  43
+       0.140 |      5.65 |            11.30 |        -37.66 |  40
+
+--- relacion 4:1 (crudo 0.25), exceso = reduccion x 1.333 ---
+umbral crudo | reduccion | exceso despejado | pre (testigo) | n
+       0.500 |      2.98 |             3.98 |        -37.66 |  41
+       0.460 |      4.98 |             6.65 |        -37.66 |  42
+       0.420 |      6.99 |             9.31 |        -37.66 |  43
+       0.380 |      8.32 |            11.09 |        -37.66 |  40
+       0.340 |      9.65 |            12.87 |        -37.66 |  40
+       0.300 |     10.32 |            13.76 |        -37.66 |  42
+       0.260 |     10.99 |            14.65 |        -37.66 |  41
+       0.220 |     10.99 |            14.65 |        -37.66 |  42
+       0.180 |     11.65 |            15.54 |        -37.66 |  42
+       0.140 |     11.65 |            15.54 |        -37.48 |  40
+
+--- relacion 10:1 (crudo 0.1), exceso = reduccion x 1.111 ---
+umbral crudo | reduccion | exceso despejado | pre (testigo) | n
+       0.500 |      3.65 |             4.06 |        -37.66 |  41
+       0.460 |      6.32 |             7.02 |        -37.66 |  40
+       0.420 |      9.19 |            10.21 |        -37.66 |  40
+       0.380 |     11.65 |            12.95 |        -37.66 |  40
+       0.340 |     13.65 |            15.17 |        -37.66 |  42
+       0.300 |     15.65 |            17.39 |        -37.66 |  40
+       0.260 |     16.99 |            18.87 |        -37.66 |  42
+       0.220 |     17.65 |            19.62 |        -37.66 |  40
+       0.180 |     18.32 |            20.36 |        -37.66 |  40
+       0.140 |     18.99 |            21.10 |        -37.66 |  42
+
+=== LA PENDIENTE, de cada curva por separado ===
+  2:1: 10 puntos, pendiente 22.2 dB por unidad
+  4:1: 10 puntos, pendiente 32.1 dB por unidad
+  10:1: 10 puntos, pendiente 47.3 dB por unidad
+
+=== LAS TRES CURVAS TIENEN QUE COINCIDIR ===
+Si coinciden, VtoRATIO = 1/a es correcta y la pendiente es la del umbral.
+Si no coinciden, el que esta mal es VtoRATIO y no el umbral.
+umbral |      2:1 |      4:1 |     10:1
+  0.50 |    3.30 |    3.98 |    4.06
+  0.46 |    5.97 |    6.65 |    7.02
+  0.42 |    7.30 |    9.31 |   10.21
+  0.38 |    8.64 |   11.09 |   12.95
+  0.34 |    9.97 |   12.87 |   15.17
+  0.30 |   11.30 |   13.76 |   17.39
+  0.26 |   11.30 |   14.65 |   18.87
+  0.22 |   11.30 |   14.65 |   19.62
+  0.18 |   11.30 |   15.54 |   20.36
+  0.14 |   11.30 |   15.54 |   21.10
+
+restaurado, supresor incluido. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

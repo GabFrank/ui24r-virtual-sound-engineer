@@ -1,6 +1,9 @@
 import type { MixerDomainAPI, ReadResult, WriteResult, ConnectionState,
   DeviceInfo, BulkExternalChange, PresenciaAjena } from '@vse/mixer-adapter';
-import type { ContextoSeguridad } from '../src/types.ts';
+import type { ContextoSeguridad, CambioPropuesto } from '../src/types.ts';
+import { LIMITES } from '@vse/domain';
+import { entrada, dbAFader } from '@vse/mixer-adapter';
+import type { ParameterKind } from '@vse/domain';
 
 /**
  * Mezcladora falsa con memoria, para ejercitar el Safety Engine y el ejecutor
@@ -165,10 +168,99 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
     acumuladoPorRuta: new Map(),
     rutasConMedicionPosterior: new Set(),
     rutasYaTocadas: new Set(),
+    techoPorRuta: new Map(),
     hayTakeDeSoundcheckActivo: false,
-    busesDeSalidaPermitidos: new Set(['m.eq.b1.gain']),
+    // **Un PREFIJO de bus, y con la forma que el aparato tiene.** Acá decía
+    // `new Set(['m.eq.b1.gain'])` -- una ruta completa, y encima inventada: el
+    // ecualizador del general es un grafico de 31 bandas por lado
+    // (`m.eq.peak.l.0`…`.30`), sin `.b1` y sin `.gain`. Era el UNICO elemento
+    // del conjunto y el unico camino por el que el motor aprueba una escritura
+    // de sala, asi que el diseño de la lista blanca de INV-008 nunca se probo
+    // contra la forma real. Lo encontro una auditoria.
+    busesDeSalidaPermitidos: new Set(['m']),
     confianza: 'HIGH',
     aprobacionExplicita: true,
     ...parcial,
   };
 }
+
+/**
+ * El cambio con que se recorre el inventario de claves de la consola.
+ *
+ * **Existe para que el test y la herramienta midan la misma puerta.** Estaban
+ * los dos construyendo el cambio a mano, y se separaron dos veces:
+ *
+ * 1. La copia de `tools/inventario/permisos.ts` se quedó sin `techoPorRuta`
+ *    cuando ADR-028 lo agregó al contexto, y la herramienta estalló con un
+ *    `TypeError` desde ese commit sin que nadie se enterara --`tools/` no era
+ *    espacio de trabajo, así que `lint` no lo miraba--.
+ * 2. Las dos declaraban `unidad: 'dB'` para las 6732 claves. Cuando
+ *    `verificarLimite` empezó a comparar la unidad contra la del tope, el test
+ *    se arregló y la herramienta se quedó contando **858 en vez de 930**: el
+ *    pasa-altos declara octavas y el silencio de canal, canales.
+ *
+ * Dos definiciones de la misma cosa pueden separarse en silencio, y las dos
+ * veces se separaron. Ésta es una.
+ *
+ * **La unidad se lee de `LIMITES`, no se escribe acá**, por el mismo motivo: si
+ * alguien cambia la unidad de un tope, esto sigue midiendo la puerta que corre.
+ */
+export function cambioDeInventario(kind: ParameterKind, path: string): CambioPropuesto {
+  // **Si la ruta tiene ley medida, el par va COHERENTE.** Y esto no es un
+  // relajamiento del recorrido: es lo que lo mantiene midiendo lo que dice.
+  //
+  // Hasta el 2026-09-13 el crudo y la magnitud iban con el mismo número —«crudo 1
+  // declarado como 1 dB»—, absurdo a propósito, porque lo que se mide acá es la
+  // **puerta de permiso** y no la conversión. Eso funcionaba mientras nada atara
+  // las dos cosas. Ese mismo día se arregló `entrada()`, que no resolvía ninguna
+  // ruta concreta, y con eso `verificarAtadura` empezó a disparar de verdad: las
+  // 96 rutas del ecualizador con ley medida —24 canales por 4 leyes— pasaron a
+  // rechazarse con `MAGNITUD_NO_ATADA` y la cuenta cayó de 930 a 834.
+  //
+  // **El rechazo era correcto**: en `i.N.eq.b1.freq` el crudo 1 son 22 050 Hz y el
+  // cambio declaraba 1. Lo que dejó de ser cierto es la premisa del arnés —que los
+  // números no importan—, así que se arregla el arnés y no el número esperado.
+  // Cambiar el 930 habría escondido que la guarda empezó a funcionar.
+  const e = entrada(path);
+  if (e !== undefined && e.estado === 'PROBADO') {
+    // Un crudo del tramo medido, y la magnitud que ESE crudo produce.
+    const raw = (e.rawMin + e.rawMax) / 2;
+    return {
+      kind, path, unidad: e.unidad,
+      valorPropuesto: raw, valorEsperado: raw,
+      magnitudPropuesta: e.fromRaw(raw), magnitudEsperada: e.fromRaw(raw),
+    } as CambioPropuesto;
+  }
+  return {
+    kind,
+    path,
+    unidad: LIMITES[kind]?.unidad ?? 'dB',
+    // Sin ley medida no hay con qué atar, así que el par sigue siendo el de antes
+    // y el motor sigue juzgando lo declarado. Que sea absurdo está dicho acá para
+    // que nadie lo lea como una afirmación sobre unidades.
+    valorPropuesto: 1,
+    valorEsperado: 0,
+    magnitudPropuesta: 1,
+    magnitudEsperada: 0,
+  } as CambioPropuesto;
+}
+
+
+/**
+ * El crudo que le corresponde a un nivel de envío a monitor en dB.
+ *
+ * **Por qué hace falta desde el 2026-09-13.** Estos tests ponían el número en dB
+ * directamente en `valorPropuesto` —`valorPropuesto: -6`—, y el crudo de un envío
+ * va de 0 a 1: −6 no es un crudo posible. O sea que codificaban exactamente la
+ * confusión que `verificarAtadura` existe para cazar, y pasaban porque esa guarda
+ * no podía disparar: `entrada()` no resolvía ninguna ruta concreta.
+ *
+ * Al arreglar eso y agregar la ley del envío medida por la 104, la guarda empezó
+ * a mirar los dos números y los encontró incompatibles. **Los tests estaban mal,
+ * no el motor.**
+ *
+ * Usar esto en vez de un literal es lo que mantiene los tests midiendo la puerta
+ * de permiso: el par va atado, así que lo único que puede rechazar es la regla
+ * que cada test quiere probar.
+ */
+export const crudoDeEnvio = (db: number): number => dbAFader(db);

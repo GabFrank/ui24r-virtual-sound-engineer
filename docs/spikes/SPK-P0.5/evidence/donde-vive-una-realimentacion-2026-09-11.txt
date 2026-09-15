@@ -1,0 +1,37 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T03:09:56.887Z
+# comando: node --experimental-strip-types tools/spikes/p0-5/donde-vive-una-realimentacion.ts 192.168.0.78 9
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, canal 9 (el del condensador)
+estado inicial: mute=1 fader=0.5022 general=0.7643 afs=1
+
+El supresor de la consola queda ENCENDIDO: es una red mas.
+Va a intentar filtrar lo que encontremos, y eso tambien es un dato.
+
+punto de retorno: VSE_AUTO_1789096210680, verificado
+
+=== Subiendo el lazo de a pasos. CORTO al primer indicio. ===
+fader  |  banda mas alta         | exceso vecinas | nivel
+0.300  |  28 (~  105 Hz) |           12.8 |  14.3
+0.320  |  28 (~  105 Hz) |           15.6 |  17.6
+
+>>> CORTADO: fader 0.320, banda 28 (~105 Hz), exceso 15.6 dB, nivel 17.6 dB
+
+=== Restauracion, comprobada por HTTP ===
+  i.8.mute       era 1, quedo 1  ok
+  i.8.mix        era 0.5021742138, quedo 0.5021742138  ok
+  m.afs.enabled  era 1, quedo 1  ok
+  var.rta        era "-1", quedo "-1"
+
+=== Lo que se aprende del arranque ===
+la banda que desperto: 28 (~105 Hz)
+exceso sobre vecinas en el paso anterior: 12.8 dB
+exceso sobre vecinas al cortar:           15.6 dB
+o sea que crecio 2.8 dB con 0.02 de fader
+
+Compararlo con MARGEN_SOBRE_VECINAS_DB = 9, que esta elegido y no medido.
+
+
+# salida del proceso: 0

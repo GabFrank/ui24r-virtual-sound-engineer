@@ -1,0 +1,46 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T10:01:04.688Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/barrido-testigo.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789120870933
+
+el canal i.16, enumerado por HTTP antes de escribir:
+  silenciado: si · fader: 0.0000 · nombre: ""
+  envios abiertos: 0 a auxiliares, 0 a efectos
+
+canal 17 (i.16) · ventana del testigo: 500 ms · 18 rutas
+
+ruta                          | antes    | escrito  | testigo | ms   | restaurada
+------------------------------+----------+----------+---------+------+-----------
+i.16.mix                      | 0.0000   | 0.0200   | SI      | 1    | si
+i.16.pan                      | 0.5000   | 0.5500   | SI      | 0    | si
+i.16.mute                     | 1.0000   | 0.0000   | SI      | 0    | si
+i.16.invert                   | 0.0000   | 1.0000   | SI      | 0    | si
+i.16.delay                    | 0.0000   | 0.0200   | SI      | 0    | si
+i.16.aux.0.value              | 0.0000   | 0.0200   | SI      | 0    | si
+i.16.aux.0.mute               | 0.0000   | 1.0000   | SI      | 0    | si
+i.16.aux.0.post               | 0.0000   | 1.0000   | SI      | 0    | si
+i.16.eq.b1.gain               | 0.5000   | 0.5300   | SI      | 0    | si
+i.16.eq.b1.freq               | 0.3287   | 0.3487   | SI      | 1    | si
+i.16.eq.hpf.freq              | 0.0000   | 0.0200   | SI      | 0    | si
+i.16.dyn.threshold            | 0.8750   | 0.9050   | SI      | 0    | si
+i.16.gate.thresh              | 0.0000   | 0.0300   | SI      | 0    | si
+i.16.deesser.threshold        | 0.4688   | 0.4988   | SI      | 0    | si
+hw.16.gain                    | 0.0952   | 0.1152   | SI      | 1    | si
+hw.16.hiz                     | 0.0000   | 1.0000   | SI      | 0    | si
+i.16.safe                     | 0.0000   | 1.0000   | SI      | 1    | si
+i.16.mtkrec                   | 0.0000   | 1.0000   | SI      | 0    | si
+
+rutas con valor: 18 de 18
+difundidas y vistas por el testigo: 18 de 18
+latencia del testigo: mediana 0 ms, minimo 0, maximo 1
+sin restaurar, segun la relectura del arnes: ninguna
+
+comprobacion por HTTP, contra el estado previo (6732 claves leidas):
+  rutas tocadas que NO volvieron a su valor: ninguna
+  otras claves que cambiaron: ninguna
+
+
+# salida del proceso: 0

@@ -22,6 +22,7 @@
  * Uso:
  *   node --experimental-strip-types tools/spikes/p0-10b-vu/barrido-testigo.ts
  */
+import { estadoPorHttp, exigirCanalesMuertos } from '../canal-muerto.ts';
 import {
   Ui24rTransport, Ui24rMixerAdapter, TestigoDeEscrituras, codificarSetd, decodificar,
 } from '@vse/mixer-adapter';
@@ -107,6 +108,28 @@ if (!testigo.listoParaAtestiguar) {
   process.exit(1);
 }
 
+const antesHttp = await estadoPorHttp(maquina);
+if (antesHttp.size === 0) {
+  console.log('no se pudo leer /raw: sin punto de comparacion independiente, no se escribe');
+  await testigo.cerrar();
+  await a.desconectar();
+  process.exit(1);
+}
+
+// **El canal se elige enumerando, no confiando en el silencio.** Un canal
+// silenciado con envios abiertos a auxiliares o a efectos PUEDE estar sonando en
+// los monitores mientras el general no lo muestra. La enumeracion vive en
+// `canal-muerto.ts` para que haya UNA sola implementacion de la regla, y se
+// imprime pasen o no: una medicion que dice «se eligio un canal muerto» sin
+// mostrar en que estado estaba es una afirmacion sin respaldo.
+console.log('');
+if (!exigirCanalesMuertos(antesHttp, [N])) {
+  console.log('ESTE CANAL NO ESTA MUERTO. No se escribe nada.');
+  await testigo.cerrar();
+  await a.desconectar();
+  process.exit(1);
+}
+
 console.log('');
 // Los parametros de la medicion van EN la medicion. Un archivo de evidencia que
 // no dice con que ventana se midio obliga a buscarla en el codigo del dia, y esa
@@ -134,9 +157,20 @@ for (const { path, delta } of RUTAS) {
   }
 
   const t0 = Date.now();
-  const promesa = testigo.esperar(path, nuevo, VENTANA_MS);
+  const espera = testigo.esperar(path, nuevo, VENTANA_MS);
   principal.enviar(codificarSetd(path, nuevo));
-  const visto = await promesa;
+  // **`esperar()` devuelve un OBJETO, no una promesa**, y esto decia
+  // `await promesa`. Esperar un objeto que no es promesa devuelve el objeto, que
+  // es siempre verdadero: **este guion informaba «SI» en todas las filas**, haya
+  // llegado la confirmacion o no. Un instrumento que solo puede confirmar.
+  //
+  // Lo encontro el chequeo de tipos al agregar `tools/tsconfig.json` --TS2322,
+  // «EsperaDeEscritura no es asignable a boolean»--. `node --check` no lo veia
+  // porque solo mira sintaxis, y `tools/` no era espacio de trabajo, asi que
+  // `npm run lint` no lo miraba. Es la misma raiz por la que
+  // `tools/inventario/permisos.ts` estuvo roto desde ADR-028 sin que nadie se
+  // enterara.
+  const visto = await espera.visto;
   const ms = Date.now() - t0;
 
   // Restaurar SIEMPRE, haya visto o no: lo que importa es dejar la consola
@@ -164,7 +198,29 @@ console.log(`difundidas y vistas por el testigo: ${vistas.length} de ${utiles.le
 if (tiempos.length > 0) {
   console.log(`latencia del testigo: mediana ${tiempos[Math.floor(tiempos.length / 2)]} ms, minimo ${tiempos[0]}, maximo ${tiempos[tiempos.length - 1]}`);
 }
-console.log(`sin restaurar: ${sinRestaurar.length === 0 ? 'ninguna' : sinRestaurar.map((f) => f.path).join(', ')}`);
+console.log(`sin restaurar, segun la relectura del arnes: ${sinRestaurar.length === 0 ? 'ninguna' : sinRestaurar.map((f) => f.path).join(', ')}`);
+
+// **La comprobacion independiente, y va al archivo.** El arnes relee por el
+// mismo socket que escribio; esto lee por HTTP, que es otro camino. Y no mira
+// solo las rutas tocadas: compara la consola ENTERA contra como estaba, porque
+// una medicion que solo revisa lo que sabe que toco no puede ver lo que toco
+// sin saber.
+console.log('');
+const despuesHttp = await estadoPorHttp(maquina);
+if (despuesHttp.size === 0) {
+  console.log('COMPROBACION POR HTTP: no se pudo releer. La restauracion queda sin verificar por fuera.');
+} else {
+  const tocadas = new Set(filas.filter((f) => f.antes !== null).map((f) => f.path));
+  const distintas: string[] = [];
+  for (const k of new Set([...antesHttp.keys(), ...despuesHttp.keys()])) {
+    if (antesHttp.get(k) !== despuesHttp.get(k)) distintas.push(k);
+  }
+  const deLasTocadas = distintas.filter((k) => tocadas.has(k));
+  const otras = distintas.filter((k) => !tocadas.has(k));
+  console.log(`comprobacion por HTTP, contra el estado previo (${antesHttp.size} claves leidas):`);
+  console.log(`  rutas tocadas que NO volvieron a su valor: ${deLasTocadas.length === 0 ? 'ninguna' : deLasTocadas.join(', ')}`);
+  console.log(`  otras claves que cambiaron: ${otras.length === 0 ? 'ninguna' : otras.join(', ')}`);
+}
 
 await testigo.cerrar();
 await a.desconectar();

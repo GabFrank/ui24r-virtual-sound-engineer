@@ -145,6 +145,25 @@ const CURVAS: readonly { id: HouseCurvePreset; etiqueta: string; detalle: string
             <p class="nota">{{ detalleDeCurva() }}</p>
           </ui-card>
 
+          <ui-card titulo="Escenario" [subtitulo]="subtituloDelEscenario()">
+            <div class="pila">
+              <p class="nota">
+                Dónde está cada instrumento, cada micrófono y cada monitor, y hacia dónde
+                apunta. Con eso la aplicación puede decir qué monitor está acoplando con qué
+                micrófono, en vez de decir sólo que algo suena a nueve kilohercios.
+              </p>
+              <ui-button variante="secundario" icono="adelante"
+                         [deshabilitado]="!hayDimensiones()" (pulsado)="irAlEscenario()">
+                Abrir el plano
+              </ui-button>
+              @if (!hayDimensiones()) {
+                <p class="nota">
+                  Hace falta el tamaño del local: sin él no hay plano sobre el que poner nada.
+                </p>
+              }
+            </div>
+          </ui-card>
+
           <ui-card titulo="Notas">
             <ui-field rotulo="Lo que convenga recordar" idControl="loc-notas" [opcional]="true">
               <textarea id="loc-notas" [(ngModel)]="notas"
@@ -386,4 +405,31 @@ export class LocalEditComponent implements PuedeSalir, OnDestroy {
   }
 
   volver(): Promise<boolean> { return this.router.navigate(['/perfiles']); }
+
+  /** Las dimensiones que están escritas ahora, no las guardadas. */
+  readonly hayDimensiones = computed(() => this.dimensiones() !== null);
+
+  readonly subtituloDelEscenario = computed(() => {
+    const n = this.local()?.escenario?.elementos.length ?? 0;
+    if (!this.hayDimensiones()) return 'Necesita el tamaño del local';
+    return n === 0 ? 'Todavía sin cargar' : `${n} ${n === 1 ? 'elemento' : 'elementos'}`;
+  });
+
+  /**
+   * **Se guarda antes de ir**, porque el plano lee lo guardado.
+   *
+   * Ir al escenario con dimensiones escritas y sin guardar dibujaría un plano
+   * del tamaño anterior, o ninguno, y el usuario no tendría cómo saber por qué.
+   */
+  async irAlEscenario(): Promise<void> {
+    const l = this.local();
+    if (l === null || !this.hayDimensiones()) return;
+    if (this.hayCambios()) {
+      const ok = await intentarGuardar(
+        () => this.repos.guardarLocal(this.aGuardar(l)), (m) => this.avisos.error(m), 'guardar el local');
+      if (!ok) return;
+      this.local.set(this.aGuardar(l));
+    }
+    await this.router.navigate(['/perfiles/locales', this.id(), 'escenario']);
+  }
 }

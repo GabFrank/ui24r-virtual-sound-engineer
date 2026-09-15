@@ -23,10 +23,10 @@ Todo el asistente de ganancia del primer entregable se apoya en estos medidores.
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
 | 1 | Lectura del medidor para −20, −6 y −1 dBFS | bloqueante | tres valores registrados | Sigue en blanco, y es lo que impide cerrar el spike. Exige el bucle calibrado del paso 1: sin conocer la ganancia analógica del camino, ningún byte se puede rotular con un dBFS | ⬜ |
-| 2 | Valor de referencia de saturación, definido como la lectura a −1 dBFS | bloqueante | registrado | **El techo del medidor sí está medido** —el byte se clava en 239 y la lectura deja de subir en −0,7 dB, que es el valor 1,0 donde la consola enciende su clip—, pero eso es el tope de la escala, no «la lectura a −1 dBFS». Rotularlo en dBFS depende del criterio 1 | ⬜ |
+| 2 | Valor de referencia de saturación, definido como la lectura a −1 dBFS | bloqueante | registrado | **El techo del medidor está medido y NO es 239**: el byte 239 era donde saturaba la **interfaz de audio**, no el medidor: se había medido con fuente externa y ganancia al máximo, o sea la cadena entera. El tope del número que manda la consola es **255**; el byte 240 es la posición 1 (0 dB) y **los bytes 240 a 255 informan de +0,02 a +5,0 dB**. Sí hay margen arriba. Medido dos veces por separado subiendo el **fader** —ganancia digital, sin nada analógico en el medio— en `docs/spikes/SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt`. Lo que está medido es dónde enciende el clip (posición 1), que no es «la lectura a −1 dBFS». Rotularlo en dBFS depende del criterio 1 | ⬜ |
 | 3 | Balística: tipo, tiempo de subida y de caída | bloqueante | documentados con ráfaga | **Cinco ráfagas de 1 200 ms a −15 dBFS.** Subida: **0 ms**, no se resuelve —la lectura llega a la meseta dentro de una sola trama—. Caída de 20 dB: **mediana 37 ms**, mínimo 33, máximo 66. Nada por debajo de la cadencia de ~44 ms se puede afirmar. **La consola manda nivel instantáneo y la balística la dibuja su cliente** | ✅ |
 | 4 | Tasa de tramas de medidores | bloqueante | tramas por segundo, registrado | **~44 ms entre tramas con señal**, medido en las condiciones de este spike y coincidente con los 44 ms de media que SPK-P0.1 midió desde la tablet. En silencio no hay tasa que medir: la consola suprime `VU2`, y ahí la media se va a 1 231 ms con p95 de 4 730 | ✅ |
-| 5 | Tabla de conversión si la lectura no es lineal en decibeles a fondo de escala | bloqueante | tabla o constancia de que no hace falta | **No hace falta tabla: la lectura es lineal en decibeles y su recorrido es de 80 dB**, y las dos cosas están medidas contra el aparato. La medición que las fija es la del fader —ganancia digital, sin cadena analógica— y cierra en **0,06 dB sobre 38**. El escalón del byte son **0,333 dB**. Que esa escala sean dBFS sigue siendo otra afirmación y sigue sin medirse | ✅ |
+| 5 | Tabla de conversión si la lectura no es lineal en decibeles a fondo de escala | bloqueante | tabla o constancia de que no hace falta | **No hace falta tabla: la lectura es lineal en decibeles y su recorrido es de 80 dB**, y las dos cosas están medidas contra el aparato. La medición que las fija es la del fader —ganancia digital, sin cadena analógica— y cierra en **0,05 dB sobre 38**. *(El archivo de evidencia imprime «38,25» y «0,06 dB sobre 38», y son sus propios redondeos: recalculado, 114,7 × 80 × `VU_ESCALA` = **38,2411**, o sea 38,24 y un desvío de 0,051. Da lo mismo con la constante exacta y con el 80/239,95 truncado que usó el guion. Un auditor de procedencia lo leyó al revés —dijo que el 0,05 del spec era un redondeo en la dirección favorable— y otro de aritmética lo recalculó; el segundo tenía razón. La evidencia **no se reescribe**: queda anotado acá, que es donde alguien compara las dos cifras.)* El escalón del byte son **0,333 dB**. Que esa escala sean dBFS sigue siendo otra afirmación y sigue sin medirse | ✅ |
 
 ## La escala: 80 dB, y cómo se llegó ahí dos veces
 
@@ -128,7 +128,11 @@ Mismo nivel de fuente a tres frecuencias:
 
 ### Techo del medidor: `MEDIDOR_SATURACION = 1`, comprobado
 
-Con la ganancia del canal al máximo —**57 dB**— y la fuente subiendo, **el byte se clava en 239 y la lectura deja de subir en −0,7 dB**. Coincide con el valor 1,0 —byte ~240— donde la consola enciende su indicador de clip.
+**Esto decía que el byte se clava en 239 y que no hay margen escondido arriba, y estaba mal.** El byte 239 era donde saturaba la **interfaz de audio**, no el medidor: se había medido con fuente externa y ganancia al máximo, o sea la cadena entera. El tope del número que manda la consola es **255**; el byte 240 es la posición 1 (0 dB) y **los bytes 240 a 255 informan de +0,02 a +5,0 dB**. Sí hay margen arriba. Medido dos veces por separado subiendo el **fader** —ganancia digital, sin nada analógico en el medio— en `docs/spikes/SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt`.
+
+Lo que sobrevive de la medición original: el indicador de clip de la consola se enciende en la posición 1, o sea el byte 240. Eso es el **cero de la escala**, no su techo.
+
+El error es el del episodio de los 84,5 dB —medir la cadena creyendo medir el bloque— aplicado al techo en vez de a la escala, y la lección estaba escrita en este mismo documento. Lo que lo delató fue una auditoría razonando que con el techo en 239 los contadores de saturación no podrían incrementarse nunca: el razonamiento era correcto y la premisa no. Y sobrevivió aquí ciento veinte líneas **después** de que la lista de evidencia de este mismo archivo dijera «el techo real del medidor: 255, no 239».
 
 Hasta hoy `MEDIDOR_SATURACION = 1` era una lectura de `setVU` en el `mixer.html`. Ahora está **comprobado contra el aparato**: el medidor no informa nada por encima de esa posición, así que no hay margen escondido arriba ni conviene elegir un umbral propio más bajo. El indicador de la consola y el tope de su escala son el mismo punto.
 
@@ -176,7 +180,7 @@ Contestarlo exige un **bucle calibrado**: la ruta del paso 1, tonos de −20, �
 
 Y si alguien mueve la perilla de la interfaz en medio de una corrida, la corrida entera se descarta: no hay forma de notarlo en los números.
 
-**Qué evidencia falta archivar.** `evidence/barridos-2026-09-08.txt` cubre los barridos, la medición del fader y la balística. **La respuesta en frecuencia, el techo y la repetibilidad están medidos y anotados acá, pero su salida cruda no está archivada**, así que no cumplen el segundo punto de la definición de terminado de un spike. Ninguno de los tres es bloqueante, pero mientras no estén archivados valen como lo que son: números escritos a mano en un documento.
+**Qué evidencia falta archivar.** `../SPK-P0.10b/evidence/barridos-2026-09-08.txt` cubre los barridos, la medición del fader y la balística, y **el techo sí está archivado** en `../SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt` —esta línea decía que faltaba, contradiciendo a la lista de evidencia de este mismo documento—. **La respuesta en frecuencia y la repetibilidad están medidas y anotadas acá, pero su salida cruda no está archivada**, así que no cumplen el segundo punto de la definición de terminado de un spike. Ninguno de los tres es bloqueante, pero mientras no estén archivados valen como lo que son: números escritos a mano en un documento.
 
 ## Herramientas ya escritas
 
@@ -201,7 +205,7 @@ Y si alguien mueve la perilla de la interfaz en medio de una corrida, la corrida
 
 ## Evidencia a entregar
 
-- `evidence/barridos-2026-09-08.txt` — **entregada.** Barridos, la medición del fader que fija la escala, y la balística.
+- `../SPK-P0.10b/evidence/barridos-2026-09-08.txt` — **entregada.** Barridos, la medición del fader que fija la escala, y la balística. *(Vive en la carpeta del spike hermano, y este documento la citaba como `evidence/…` relativa a la suya, donde no está. Es la única fuente archivada de la escala de 80 dB, la balística, el testigo de −20,76 dB y los tres puntos de contraste del medidor de reducción que usa la 97.)*
 - `evidence/vu-calibration.csv` — pendiente: es la del bucle calibrado, criterios 1 y 2.
 - La salida cruda de la respuesta en frecuencia, el techo y la repetibilidad — pendiente de archivar.
 
@@ -216,5 +220,86 @@ Si el medidor resulta demasiado lento para detectar picos cortos, la probabilida
 Todo lo que esta carpeta guarda, con qué es cada cosa. Un archivo que nadie
 cita es una medición que nadie va a encontrar cuando la necesite.
 
-- `evidence/constantes-mixer-html-2026-09-09.txt` — captura archivada
-- `evidence/techo-medidor-2026-09-09.txt` — el techo real del medidor: 255, no 239
+- `../SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt` — captura archivada (también en la carpeta del spike hermano)
+- `evidence/superficie-del-compresor-2026-09-12b.txt` — **la superficie del
+  compresor, umbral × relación.** 112 puntos útiles de 112, las siete
+  expectativas del ítem 98 cumplidas. Resuelve el enigma que la 97 dejó
+  abierto: la discrepancia entre sus dos cortes era **la saturación**, no una
+  ley distinta. `−20·log₁₀(a)` es el **techo** de la reducción, confirmado
+  dentro de 0,10 dB en las tres relaciones que llegaron a aplanarse, y
+  `E·(1−a)` queda como **aproximación de rodilla**: el exceso implicado es
+  constante dentro de un factor 1,21 cerca del cruce y se rompe hasta 1,92 al
+  bajar el umbral. De paso cierra qué son los bytes `+3` y `+4`.
+- `evidence/superficie-del-compresor-2026-09-12.txt` — **la misma medición,
+  invalidada por el agente a mitad de camino** al escribir a la consola creyendo
+  que la corrida había terminado. Archivada porque sus diez filas reproducen el
+  corte de la 97 y porque el error vale la pena estar escrito.
+- `../SPK-P0.10b/evidence/techo-medidor-2026-09-09.txt` — el techo real del medidor: 255, no 239. **Y este documento afirmaba el 239 dos veces, ciento veinte líneas antes de esta línea.** Corregido el 2026-09-12
+- `evidence/ley-envio-aux-2026-09-12.txt` — **la ley del envío a un auxiliar**, del
+  canal 10 al auxiliar 3, con tono de 1 kHz a −12 dBFS. 22 valores. El testigo del
+  canal no derivó 0,00 dB, y el fader del canal no movió el auxiliar: `post = 0`
+  manda de verdad. Rango útil: 18 dB, y ahí está su límite — ver abajo.
+- `evidence/ley-envio-aux-caliente-2026-09-12.txt` — **corrida fallida, archivada
+  a propósito.** Se pasó `""` como lista de valores para saltear ese argumento y
+  llegar al siguiente; `??` no cae al valor por defecto con una cadena vacía, así
+  que barrió un solo punto. Queda porque el guion **la archivó igual, sin
+  quejarse**: ése era el defecto real, y se corrigió agregando una guarda que
+  aborta con menos de cinco puntos.
+- `evidence/bytes-del-bus-de-efecto-2026-09-12.txt` — **corrida fallida, archivada
+  a propósito.** Rehizo a mano el desplazamiento en la trama y se salteó la
+  sección del reproductor: leía otro bloque. Salió consistente y parecía «el bus
+  no responde a nada»; lo delató que el byte valía 247, el centinela de «sin
+  reducción».
+- `evidence/bytes-del-bus-de-efecto-2026-09-12b.txt` — **qué mide cada byte del
+  bloque de un bus de EFECTO**, que `protocol-spec.md` §4.4 listaba como
+  pendiente. `+0/+1` previo y `+2/+3` posterior al fader del bus, verificado. Y
+  el medidor toma **después** del procesador: cola de 1170 ms, izquierda y
+  derecha descorrelacionadas con fuente mono, y 7,7 dB de dispersión entre 100 Hz
+  y 10 kHz.
+- `evidence/leyes-del-compresor-2026-09-12.txt`,
+  `evidence/ley-de-la-razon-2026-09-12.txt` y
+  `evidence/umbral-por-sustitucion-2026-09-12.txt` — **las leyes del compresor, y
+  el resultado es que las del código no describen el aparato.** La rodilla dio
+  una pendiente de umbral de 95,6 ± 6,3 dB por unidad; la sustitución dio 22,2,
+  32,1 y 47,3 según la relación, y una ley del umbral no puede depender de la
+  relación. La ley de la razón encaja a 6 dB de exceso —0,38 escalones de
+  desvío— y falla a 18. El sospechoso, como hipótesis, es la escala del medidor
+  de reducción por encima de 11 dB, que es donde deja de estar verificada.
+- `evidence/calibrar-medidor-reduccion-2026-09-12.txt` — **el medidor de reducción
+  contra la caída real de nivel, hasta 24,34 dB.** Extiende la verificación que
+  antes llegaba a 10,80. Desvío máximo 0,35 dB = 0,52 escalones, **igual en el
+  tramo que ya estaba verificado y en el que no**. Refuta la hipótesis de que el
+  medidor fuera el culpable de las contradicciones del ítem 97: el error está en
+  la ley. Y con datos confiables, `E·(1−a)` queda refutado — el exceso despejado
+  va de 10,0 a 25,6 con fuente y umbral fijos.
+- `evidence/controles-tras-96a-2026-09-12.txt` — la restauración tras el ítem 96a,
+  releída por HTTP.
+- `evidence/ley-envio-fx-2026-09-12.txt` y
+  `evidence/ley-envio-fx-2026-09-12b.txt` — **la ley del envío a
+  efectos**, dos corridas completas de cuatro series cada una: dos niveles de
+  fader por ida y vuelta, con 6 s de asentamiento por punto: unas cinco veces
+  los 1170 ms que tarda la cola en llegar a cero, porque el medidor toma después
+  del reverb. El envío no se desvía de `faderADb`
+  más de 0,25 dB en ninguno de los dieciséis puntos. **La prueba de linealidad
+  no pudo decidir**: una corrida la falló y la otra cayó justo en el límite.
+- `evidence/post-y-postproc-2026-09-12.txt` — **qué hacen `post` y `postproc` en
+  el audio**: las cuatro combinaciones, cada una con el ecualizador plano,
+  realzado y con el fader bajado. Las banderas son independientes y hacen lo que
+  su nombre dice. **Es consistente con la ley del fader y no la confirma**: con el fader en
+  0,50 el auxiliar bajó 11,55 y 11,51 dB contra los 11,62 que predice `faderADb`, o sea
+  dentro de un escalón en **un solo punto**. Acá decía «confirma de paso la ley del fader por
+  un camino distinto», que es lo contrario de lo que dicen los dos documentos que este índice
+  indexa: la 94 dice «no se puede decidir» y la 96b dice «lo que NO se puede decir es que el
+  envío usa la ley del fader». Y el índice es lo que alguien lee primero. Auditoría de
+  sobre-afirmación.
+- `evidence/controles-tras-postproc-2026-09-12.txt` — la restauración de esa
+  medición, incluidas las cinco bandas del ecualizador.
+- `evidence/controles-del-bus-2026-09-12.txt` — **los controles de esa medición**:
+  la restauración releída por HTTP, el censo de quién más alimenta el auxiliar,
+  el estado del supresor al terminar, el enlace estéreo y la dinámica del canal.
+  Existe porque la primera versión los corrió desde un borrador y citó cifras
+  que no estaban archivadas en ningún lado.
+- `evidence/ley-envio-aux-caliente-2026-09-12b.txt` — la misma medición con el
+  tono más caliente —a −1 dBFS en vez de −12—, para estirar el rango útil y ver
+  si el desvío contra `faderADb` crece por encima de la resolución del medidor.
+  El testigo del canal lo confirma: pasó de −48,66 a −37,66 dB.

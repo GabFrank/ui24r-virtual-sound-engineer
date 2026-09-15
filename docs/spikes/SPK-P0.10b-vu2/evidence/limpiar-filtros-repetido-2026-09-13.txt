@@ -1,0 +1,17 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T06:52:33.475Z
+# comando: node --experimental-strip-types tools/spikes/.limpiar2.ts
+# guion: tools/spikes/.limpiar2.ts sha256:163e017e4bca1cdd
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+al empezar: (ninguno)
+intento 1: 0 filtro(s) -> (ninguno)
+intento 2: 0 filtro(s) -> (ninguno)
+intento 3: 0 filtro(s) -> (ninguno)
+intento 4: 0 filtro(s) -> (ninguno)
+
+
+# salida del proceso: 0

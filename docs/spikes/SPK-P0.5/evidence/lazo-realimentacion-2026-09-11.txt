@@ -1,0 +1,49 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T03:16:14.319Z
+# comando: node --experimental-strip-types tools/spikes/p0-5/donde-vive-una-realimentacion.ts 192.168.0.78 9 0.70
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78, canal 9
+estado inicial: mute=1 fader=0.5022 var.rta=""
+filtros del supresor ANTES: 352 caracteres de var.afsdata
+
+punto de retorno: VSE_AUTO_1789096588200, verificado
+
+=== Paso 0: ¿el canal llega al general? ===
+  general con el canal silenciado:    1.96 dB de media
+  general con el canal abierto a 0.3: 2.74 dB de media
+  diferencia: 0.78 dB
+  >>> El canal SI llega al general. Se puede medir el lazo.
+
+=== Subiendo. Escucha el ambiente de la sala por el monitor. ===
+fader |   dB | banda alta        | nivel | subio | fader subio | RAZON
+0.300 | -26.8 |  28 (~  105 Hz) |  16.1 |     — |           — | —
+0.330 | -24.0 |  28 (~  105 Hz) |  17.3 |  1.13 |        2.85 | 0.39
+0.360 | -21.4 |  28 (~  105 Hz) |  15.4 | -1.88 |        2.63 | -0.71
+0.390 | -18.9 |  31 (~  125 Hz) |  16.9 | -7.13 |        2.42 | -2.95
+0.420 | -16.7 | 105 (~ 8980 Hz) |  12.0 | -13.13 |        2.22 | -5.91
+0.450 | -14.7 | 104 (~ 8476 Hz) |   7.9 | -4.13 |        2.04 | -2.02
+0.480 | -12.8 |  28 (~  105 Hz) |  15.0 | -4.13 |        1.88 | -2.19
+0.510 | -11.1 |  28 (~  105 Hz) |  17.3 |  2.25 |        1.74 | 1.30
+0.540 |  -9.4 |  28 (~  105 Hz) |  18.0 |  0.75 |        1.61 | 0.47
+0.570 |  -8.0 |  28 (~  105 Hz) |  15.8 | -2.25 |        1.49 | -1.51
+0.600 |  -6.6 | 105 (~ 8980 Hz) |  12.4 | -11.63 |        1.39 | -8.35
+0.630 |  -5.3 |  28 (~  105 Hz) |   9.0 | -7.50 |        1.31 | -5.73
+0.660 |  -4.0 | 104 (~ 8476 Hz) |  13.1 |  1.88 |        1.24 | 1.51
+0.690 |  -2.8 |  28 (~  105 Hz) |  16.5 |  1.50 |        1.19 | 1.26
+
+Se llego al tope (0.7) sin que la razon se disparara.
+
+=== Restauracion, por HTTP ===
+  i.8.mute     era "1", quedo "1"  ok
+  i.8.mix      era "0.5021742138", quedo "0.5021742138"  ok
+  var.rta      era "", quedo ""  ok
+  var.afsdata: 352 caracteres antes, 352 despues (igual)
+
+razon: media -1.88, minimo -8.35, maximo 1.51
+Cerca de 1,00 en todo el recorrido = el canal solo pasa por el fader, NO hay lazo.
+Creciendo paso a paso = hay ganancia de lazo y se acerca al umbral.
+
+
+# salida del proceso: 0

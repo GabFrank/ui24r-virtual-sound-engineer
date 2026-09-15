@@ -26,17 +26,84 @@ hace que la consola les ponga un notch de −18 dB a cada uno, y las mediciones
 siguientes salen por esos notches. Cualquier medición acústica por este general
 necesita `m.afs.enabled = 0` mientras dura.
 
-**`m.afs.clearlive` borra la pila de automáticos; los fijos no se pudieron borrar
-por protocolo.** Se probó `clearfixed` y `clearall`, con el supresor encendido y
-apagado, poniéndolos en 1 y volviéndolos a 0: **la cuenta de filtros no se movió
-nunca**. `clearlive` en cambio funcionó a la primera y de forma comprobable.
+**Los tonos sostenidos de medición hacen que el supresor aprenda, y lo que
+aprende se borra.** Comprobado el 2026-09-12: seis corridas con tonos continuos
+de 100 Hz, 1 kHz y 10 kHz dejaron **seis filtros de −18 dB con Q=7** en el
+general, en esas mismas frecuencias, y desplazaron a los tres que el operador
+tenía de sus fechas. **`clearlive` los borró los seis de una**, comprobado
+releyendo por HTTP, sin tocar `m.afs.enabled`. Evidencia:
+`spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt`.
 
-Que un «borrar todo» no borre todo es de las cosas que hay que medir en vez de
-creer. Lo más plausible es que los fijos se borren desde la pantalla de la
-consola, probablemente con una confirmación de por medio —que es razonable: un
-fijo lo colocó alguien afinando la sala—. Los tres disparadores quedan en 1
-después de usarse y hay que devolverlos a 0 a mano.
-Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt`.
+Dos consecuencias prácticas: **medir con el supresor encendido le modifica el
+sonido al operador**, y por eso desde esa fecha se apaga antes de medir y se
+deja como estaba; y **un filtro de −18 dB con Q=7 en la frecuencia de un tono de
+prueba es firma de medición, no de una fecha real** — una nota anterior atribuía
+uno de esos a «fechas viejas» y probablemente era de otra corrida.
+
+**El segundo campo de un filtro es el Q y el tercero la ganancia.** El orden es
+`freq, Q, gain, tipo`. Lo dice el volcado crudo, que es el árbitro:
+`docs/spikes/SPK-P0.1/evidence/prueba-A-pasivo.txt` tiene
+`m.afs.eq.1^376.4693603516,7.0,-6.0,2` —un notch de −6 dB con Q 7, porque un Q
+de −6 no existe— y una ranura vacía dice `1000, 116, 0, 0`: mil hercios,
+**Q 116**, ganancia cero, o sea un filtro tan estrecho que no hace nada.
+
+**Este párrafo decía lo contrario, y se refutaba a sí mismo en el mismo
+renglón**: afirmaba que el orden era `freq, gain, Q` y a continuación que el 116
+de una ranura vacía era el Q, que es el segundo campo. Las dos cosas no pueden
+ser ciertas a la vez. Nadie lo notó porque estaba escrito con seguridad, y el
+guion que imprimía la evidencia obedeció a la frase equivocada: imprimió
+«7,0 dB Q=−18,0» para filtros que son de −18 dB con Q 7. Lo encontró una
+auditoría de instrumentos el 2026-09-12 mirando el volcado crudo.
+
+**La única defensa fue que el 116 es un número con significado**: no hay
+ganancia de 116 dB. Un campo que no puede ser lo que se dice que es, es la clase
+de pista que este proyecto ya aprendió a mirar —fue la misma que delató el byte
+247 leído como nivel cuando era el centinela de «sin reducción»—.
+
+Consecuencia sobre evidencia ya archivada:
+`docs/spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt` tiene las
+etiquetas invertidas. **Los filtros que muestra son los correctos y las dos
+columnas están cambiadas de nombre**: donde dice `7.0 dB  Q=-18` hay que leer
+−18 dB con Q 7. El archivo no se reescribe —es evidencia archivada— y queda
+anotado acá, que es donde alguien lo va a buscar.
+
+**Los tres disparadores funcionan, y cuál sirve depende de en qué pila cayó el
+filtro.** Medido en tres ocasiones, con resultados distintos que sólo cierran
+juntos:
+
+| Fecha | Situación | `clearlive` | `clearfixed` | `clearall` |
+|---|---|---|---|---|
+| 2026-09-10 | 3 filtros del usuario, supresor encendido y apagado | no movió la cuenta | no movió | no movió |
+| 2026-09-12 | 6 filtros que aprendió durante una medición | **borró los 6** | — | — |
+| 2026-09-12 | 1 filtro aprendido con el supresor **encendido** y un tono sonando | no borró | no borró | **borró el 1** |
+
+**Este párrafo decía «los fijos no se pudieron borrar por protocolo», y es
+falso.** Lo decía porque la primera medición probó los tres sobre filtros que el
+usuario había colocado y ninguno los movió, y de ahí se concluyó que el
+protocolo no podía. La conclusión correcta de esa corrida era más chica: *esos*
+filtros no se borraron con *esos* disparadores.
+
+Lo que las tres juntas dicen:
+
+- **`clearlive` borra lo que el supresor aprendió con el supresor apagado** —o
+  al menos lo que aprendió en la corrida del 12 de setiembre, seis notches de
+  −18 dB en las frecuencias de los tonos de medición—.
+- **`clearall` borra lo que `clearlive` no**, y eso está medido: el único filtro
+  del tercer caso resistió `clearlive` y `clearfixed` y cayó con `clearall`.
+- **Los tres fallan sobre los filtros que colocó el usuario.** Sigue siendo lo
+  más plausible que ésos se borren desde la pantalla de la consola, con una
+  confirmación de por medio, que es razonable: un fijo lo colocó alguien
+  afinando la sala.
+
+Queda sin medir **por qué** un filtro va a una pila o a la otra. La hipótesis que
+los tres casos admiten es que el estado de `m.afs.enabled` en el momento de
+aprender decide la pila: el tercer filtro se aprendió con el supresor
+**encendido** y fue el que necesitó `clearall`. No está probado, y hace falta
+provocarlo a propósito en las dos condiciones.
+
+Los tres disparadores quedan en 1 después de usarse y hay que devolverlos a 0 a
+mano.
+Evidencia: `spikes/SPK-P0.5/evidence/limpiar-afs-2026-09-10.txt` (primer caso), `spikes/SPK-P0.5/evidence/limpiar-supresor-general-2026-09-12.txt` (segundo). El tercero salió de una limpieza no archivada, y queda como lo que es: una observación con fecha, hasta que se provoque a propósito.
 
 ## La consola difunde en un tic de ~34 ms
 
@@ -65,8 +132,10 @@ producen una sola línea con el segundo valor: la primera se aplica y **nadie la
 ve difundir**. Cualquier mecanismo que confirme una escritura mirando lo que la
 consola difunde —el nuestro, ver [ack-policy](ack-policy.md)— la da por no
 confirmada aunque haya funcionado. Evidencia:
-`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` y
-`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt` —remedido en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`, donde el tic reproduce exacto— y
+`spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción— **remedido el 2026-09-11** con la herramienta y un guion nuevo: `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt`, y **con control positivo y la cuenta de líneas difundidas** en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11d.txt`. Pegadas, el testigo vio la segunda **10 de 10** y la primera **0 de 10**, y la consola difundió **una sola línea las diez veces, con el valor de la segunda**; separadas por más que el tic, vio **las dos 10 de 10**. O sea **colapso, no descarte**.
+
+**Lo que esto NO mide, y conviene que esté escrito acá:** si la consola *aplicó* la primera antes de sobrescribirla. Una sola línea difundida es compatible con las dos historias. Se afirmó que «la consola aplica las dos» y esa parte **no está medida**: para separarlas haría falta leer el estado entre las dos escrituras, y eso mete una espera que rompe el mismo tic que se quiere medir.
 
 ## 1. Transporte
 
@@ -373,7 +442,13 @@ Dos trampas de escala que costaron una corrida cada una, y que conviene tener es
 
 **La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
 
-**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera de esta sesión se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+**Conversiones del dinámico**, leídas del `mixer.html`: `VtoRATIO(a) = 1/a` —el crudo **1 es 1:1, o sea sin compresión**, no el máximo— y `VtoTHRESH(a) = −90 + 96·a`. La primera induce al error con facilidad: una corrida entera se hizo con el compresor puesto en «no comprimir» y concluyó que la reducción no se veía.
+
+> **REFUTADAS contra el aparato el 2026-09-12.** No son «leídas y sin verificar»: se verificaron y no describen este compresor. Con `VtoTHRESH(a) = −90 + 96a`, `VtoRATIO(a) = 1/a` y una rodilla dura, el exceso despejado va de **10,0 a 25,6 dB en la misma corrida, con fuente y umbral quietos** — tiene que ser constante y no lo es. Las pendientes por sustitución dependen de la relación (22,2 / 32,1 / 47,3 dB por unidad) y los cocientes dan 1,58 a 2,42 donde el modelo pide 3,00. **Y no es culpa del instrumento**: el medidor de reducción se calibró contra la caída real de nivel y sigue hasta 24,34 dB con 0,35 dB de desvío, igual en el tramo que ya estaba verificado y en el que no.
+>
+> Lo que sí sigue valiendo de este párrafo es el **sentido** de `VtoRATIO`: el crudo 1 no comprime. Eso está medido aparte —con `a = 1` y el umbral en 0,14 la reducción informada es 0,00 y `entrada = pre`— así que la advertencia se sostiene por una medición y no por la fórmula.
+>
+> Aparece otra relación que encaja en un corte, `−20·log₁₀(a)`, dentro de 0,48 dB hasta a = 0,15. **No se declara ley**: con otro umbral predice 6,02 donde se midieron 2,98. Lo que falta es el barrido de **umbral × relación**, que da la superficie en vez de dos cortes. Detalle en `docs/compromisos/97-leyes-del-compresor.md`.
 
 **Saturación:** `setVU` hace `1 <= b ? this.clip.clip() : ...`, y `setVUPre` lo mismo con el pre. Satura cuando la barra llega a la punta, o sea a 0 dB. No hace falta —ni conviene— elegir un umbral propio.
 
@@ -406,7 +481,7 @@ La correspondencia entre lo que muestra el medidor y un **nivel digital real** n
 
 Todo lo demás de 4.3 son **diferencias** —forma, recorrido, balística, respuesta en frecuencia, repetibilidad, techo— y las diferencias no dependen de la ganancia analógica del camino. Por eso quedaron contestadas sin el bucle y el nivel absoluto no.
 
-De la cola de `VU2` está ubicada cada sección (§4.3) y falta el papel de cada byte dentro de los bloques de subgrupo y efecto.
+De la cola de `VU2` está ubicada cada sección (§4.2) y el papel de cada byte **ya está medido en los dos bloques**: el subgrupo el 2026-09-09 y el efecto el 2026-09-12 por la medición 96a (`+0/+1` no siguen al fader del bus, `+2/+3` sí, y el medidor toma después del procesador). **Lo que sigue abierto es la otra mitad**: a cuántos dB equivale un escalón de esos bytes. La 96b los convierte con la escala del medidor de **canal**, que no está medida sobre este bloque, así que todas sus cifras en dB heredan esa suposición.
 
 ---
 
@@ -465,7 +540,7 @@ Quien suavice el espectro del lado de la aplicación estaría **apilando dos bal
 
 **El general devuelve las mismas 122 bandas y con la misma ley**, medido el 2026-09-09: 125 Hz → banda 31, 500 → 55, 1000 → 67, 8000 → 103, idéntico a una entrada. Una nota anterior decía «el general devuelve 78 bandas y no 122»; era una lectura equivocada de la evidencia, que dice **«78 bandas con valor»** —o sea distintas de cero, porque el general no tenía energía en el resto—. Importa porque si fueran 78 bandas la ley tendría que ser otra, y no lo es: el mismo `frecuenciaDeBanda` sirve para las dos fuentes. Mientras esté vacía no llega espectro, solo la trama de vida.
 
-Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos y no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía.
+Que sea global tiene una consecuencia de producto que no es del protocolo: **elegir la fuente del analizador le cambia la pantalla al operador**, en vivo y sin avisar. Está anotado como R-28 en el registro de riesgos. **Acá decía «no se escribe `var.rta` desde la aplicación en ningún nivel de autonomía», y era falso desde hacía días**: ADR-025 —la decisión del usuario, del 2026-09-09— autoriza tomarlo prestado con permiso una vez por sesión, y `analizador.service.ts` lo hace. Dos reglas contradictorias sobre la misma clave, y la que estaba muerta era ésta. Lo marcó una auditoría. Lo que rige: **se escribe sólo con permiso explícito, y se devuelve la fuente al valor leído del volcado**, nunca a una cadena vacía.
 
 ### 4.5.1 `i.N.stereoIndex`: qué canales van enlazados
 
@@ -622,14 +697,21 @@ Ida y vuelta sobre los escalones: **exacta**, error 0 dB sobre un rango de 63 dB
 
 ### 6.3 Otros rangos
 
-Obtenidos ejecutando las funciones extraídas. **Ninguno probado contra el aparato**: salen del código de la consola.
+Obtenidos ejecutando las funciones extraídas del código de la consola.
 
-| Parámetro | Rango | Función |
-|---|---|---|
-| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` |
-| Q | 0,05 … 15 | `0,05·300^V` |
-| Umbral de compresor | −90 … +6 dB | lineal |
-| Relación de compresor | — | `1/V` |
+**«No probado» y «refutado» no son lo mismo, y este encabezado los confundía.**
+Decía «ninguno probado contra el aparato», que después del 2026-09-12 es falso
+para dos filas: las dos del compresor se probaron **y no pasaron**. Un lector
+que ve «no probado» supone que la fórmula es lo mejor que hay; con «refutado»
+sabe que usarla es peor que no tener nada. Lo encontró una auditoría de
+coherencia.
+
+| Parámetro | Rango | Función | Estado |
+|---|---|---|---|
+| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | sin probar |
+| Q | 0,05 … 15 | `0,05·300^V` | sin probar |
+| Umbral de compresor | −90 … +6 dB | lineal | **REFUTADA** por la medición 97 (2026-09-12). El rango de esta fila *es* la fórmula refutada evaluada en 0 y en 1, así que tampoco es un rango medido |
+| Relación de compresor | — | `1/V` | **REFUTADA** en su forma. El **sentido** sí está medido: el crudo 1 no comprime |
 
 ---
 
@@ -651,6 +733,6 @@ Cada línea es un criterio bloqueante sin medir. Se listan para que la ausencia 
 - **La calibración absoluta de los medidores** (SPK-P0.10b, criterios 1 y 2). La forma de la escala, su recorrido, su balística, su respuesta en frecuencia y su techo ya están medidos; la correspondencia con dBFS necesita un bucle calibrado, sin ganancia analógica desconocida en el medio.
 - **La reconexión con cortes de red reales en los otros dos modos**: apagar el router y cambiar la IP de la tablet. El corte de red inalámbrica sí está medido, 20 de 20 ciclos.
 - **La transición de señal a silencio en `VU2`.**
-- **El papel de cada byte dentro de un bloque de subgrupo o de efecto.** Las secciones ya están ubicadas; lo que falta es cuál es el nivel y si hay pre y post.
+- **A cuántos dB equivale un escalón de los bytes de un bloque de subgrupo o de efecto.** Qué byte es el nivel y si hay previo y posterior **ya está medido** —el subgrupo el 2026-09-09, el efecto el 2026-09-12 por la 96a—, y este punto pedía las dos cosas. Falta la escala: la 96b convierte esos bytes con la del medidor de canal, que no está medida sobre este bloque.
 - **El mapeo `canal → entrada física` con el enrutamiento cambiado.** Medido el 2026-09-09: `src` vale `hw.0`…`hw.19` en los canales 1 a 20 y **`none` en el 21 al 24**, o sea que la segunda mitad de la frase vieja —«`i.N` y `hw.N` coinciden»— es falsa para esos cuatro. Con el enrutamiento por defecto coinciden en los veinte primeros y por eso es fácil no notar la diferencia; el código sigue armando `hw.${canal-1}` (R-24).
 - **Todo lo de SPK-P0.2b y P0.2c:** ecualizador, compresor, puerta, deesser, salidas, retardos, matriz, instantáneas, reproductor, grabación.

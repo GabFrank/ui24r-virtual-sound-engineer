@@ -1,0 +1,547 @@
+import {
+  ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output,
+  signal, viewChild, type OnDestroy,
+} from '@angular/core';
+import type { Emplazamiento } from '@vse/domain';
+import {
+  aPantalla, calcularEscala, elDedoEsMasGruesoQueLaDuda, lineasDeDistancia, moverArrastre,
+  escalaConVista, vistaInicial, zoomUtilMaximo, acercarSobre, encuadreCompleto,
+  PASO_DE_ZOOM, ZOOM_MINIMO, type Vista,
+  rectanguloDeRango, tiradorDeRango, estirarRango, comoSeLeeElRango,
+  type EjeDeEstiramiento,
+  precisionDelDedoM, puntaDeLaFlecha, radioIncertidumbrePx,
+  BLANCO_MINIMO_PX, type Arrastre, type DimensionesDelLocal, type FichaDelPlano, type PuntoPx,
+} from './plano';
+import { metros } from './lo-que-dice-la-geometria';
+import { distanciaM } from '@vse/domain';
+
+/** Lo que el componente avisa cuando alguien suelta una ficha. */
+export interface FichaMovida {
+  readonly id: string;
+  readonly emplazamiento: Emplazamiento;
+}
+
+/**
+ * El plano del local, con las fichas arrastrables.
+ *
+ * **Por qué eventos de puntero y no de toque.** `pointerdown` / `pointermove` /
+ * `pointerup` con `setPointerCapture` sirven igual para el dedo, el lápiz y el
+ * ratón, y la captura es lo que hace que un arrastre no se pierda cuando el
+ * dedo se sale del blanco —que con un blanco de 48 px y una sala entera en
+ * pantalla pasa todo el tiempo—.
+ *
+ * **Lo que este componente no hace: no guarda.** Avisa que algo se movió y
+ * quien lo contiene decide. Un plano que escribe en el almacén en cada
+ * `pointermove` deja el disco caliente y, peor, hace imposible el «salir sin
+ * guardar» que el resto de la aplicación ofrece.
+ *
+ * **Y dibuja siempre el círculo de duda.** Una ficha sin su círculo invita a
+ * creer que la posición es exacta, y la mitad de este modelo consiste en no
+ * creer eso. Cuando el dedo es más grueso que la duda ya cargada, la ficha se
+ * marca: arrastrarla ahí **empeora** el dato, y hay que escribir los números.
+ */
+@Component({
+  selector: 'app-plano-escenario',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <!-- **Los controles de zoom, arriba y no flotando sobre el plano.** Un
+         botón encima del lienzo tapa justo el pedazo de sala que uno quiere
+         mirar, y con el gesto de desplazar desactivado no hay forma de
+         correrlo. -->
+    <div class="mandos">
+      <button type="button" class="zoom" (click)="alejar()"
+              [disabled]="!sePuedeAlejar()" aria-label="Alejar el plano">&minus;</button>
+      <button type="button" class="zoom" (click)="acercar()"
+              [disabled]="!sePuedeAcercar()" aria-label="Acercar el plano">+</button>
+      <button type="button" class="todo" (click)="verTodo()"
+              [disabled]="!sePuedeAlejar()">Ver todo</button>
+      <!-- **La cifra que impide que la pantalla mienta.** Se muestra siempre,
+           también a zoom 1, porque es cuando más hace falta: en una sala de
+           12 por 8 en una tablet el dedo vale un metro justo. -->
+      <span class="dedo" [class.grueso]="precisionM() > 0.05">
+        dedo &asymp; {{ dedoEnCm() }} cm
+      </span>
+    </div>
+
+    <svg #lienzo
+         [attr.viewBox]="'0 0 ' + anchoPx() + ' ' + altoPx()"
+         [attr.aria-label]="resumenParaLector()"
+         role="group"
+         (pointerdown)="alApoyar($event)"
+         (pointermove)="alMover($event)"
+         (pointerup)="alSoltar($event)"
+         (pointercancel)="alCancelar($event)">
+
+      <!-- El recinto. El escenario arriba, el público abajo. -->
+      <rect class="sala" [attr.x]="escala().origenX" [attr.y]="escala().origenY"
+            [attr.width]="escala().anchoPx" [attr.height]="escala().altoPx" />
+      <line class="borde-escenario"
+            [attr.x1]="escala().origenX" [attr.y1]="escala().origenY"
+            [attr.x2]="escala().origenX + escala().anchoPx" [attr.y2]="escala().origenY" />
+      <text class="rotulo" [attr.x]="escala().origenX + 6" [attr.y]="escala().origenY - 8">escenario</text>
+      <text class="rotulo" [attr.x]="escala().origenX + 6"
+            [attr.y]="escala().origenY + escala().altoPx + 16">público</text>
+
+      <!-- **Las distancias, debajo de las fichas.** Se dibujan sólo desde la
+           ficha elegida: todas contra todas serían n² líneas ilegibles. -->
+      @for (d of distancias(); track d.id) {
+        <g class="distancia">
+          <line [attr.x1]="d.desde.x" [attr.y1]="d.desde.y"
+                [attr.x2]="d.hasta.x" [attr.y2]="d.hasta.y" />
+          <text [attr.x]="d.medio.x" [attr.y]="d.medio.y - 4">{{ d.texto }}</text>
+        </g>
+      }
+
+      @for (f of dibujables(); track f.ficha.id) {
+        <g class="ficha" [class.seleccionada]="f.ficha.id === seleccionada()"
+           [class.dedo-grueso]="f.dedoGrueso" [attr.data-ficha]="f.ficha.id">
+          <!-- **El rango de movimiento, lo más abajo de todo.** Es la región
+               más grande del dibujo y taparía la duda y la flecha. Va con
+               trazo discontinuo para que no se lea como una pared. -->
+          @if (f.rango !== null) {
+            <rect class="rango" [attr.x]="f.rango.x" [attr.y]="f.rango.y"
+                  [attr.width]="f.rango.ancho" [attr.height]="f.rango.alto" />
+          }
+          <!-- La duda, después, para que quede debajo de la ficha. -->
+          <circle class="duda" [attr.cx]="f.centro.x" [attr.cy]="f.centro.y" [attr.r]="f.radioDuda" />
+          @if (f.punta !== null) {
+            <line class="eje" [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
+                  [attr.x2]="f.punta.x" [attr.y2]="f.punta.y" />
+          }
+          <circle [class]="'punto ' + f.ficha.origen.toLowerCase()"
+                  [attr.cx]="f.centro.x" [attr.cy]="f.centro.y" [attr.r]="10" />
+          <!-- El blanco táctil, invisible y de 48 px: el punto dibujado es
+               chico a propósito, porque agrandarlo mentiría sobre la duda. -->
+          <circle class="blanco" [attr.cx]="f.centro.x" [attr.cy]="f.centro.y"
+                  [attr.r]="blancoPx / 2" [attr.data-ficha]="f.ficha.id" />
+          <!-- **Los tiradores, sólo en la ficha elegida.** Con todas a la
+               vez el plano se llena de blancos de 48 px que se pisan entre
+               fichas, y es el mismo motivo por el que las distancias se
+               dibujan sólo desde la elegida. -->
+          @if (f.ficha.id === seleccionada() && f.tiradorAncho !== null) {
+            <g class="tirador">
+              <line [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
+                    [attr.x2]="f.tiradorAncho.x" [attr.y2]="f.tiradorAncho.y" />
+              <circle [attr.cx]="f.tiradorAncho.x" [attr.cy]="f.tiradorAncho.y" [attr.r]="7" />
+              <circle class="blanco" [attr.cx]="f.tiradorAncho.x" [attr.cy]="f.tiradorAncho.y"
+                      [attr.r]="blancoPx / 2"
+                      [attr.data-ficha]="f.ficha.id" data-tirador="ancho" />
+            </g>
+          }
+          @if (f.ficha.id === seleccionada() && f.tiradorLargo !== null) {
+            <g class="tirador">
+              <line [attr.x1]="f.centro.x" [attr.y1]="f.centro.y"
+                    [attr.x2]="f.tiradorLargo.x" [attr.y2]="f.tiradorLargo.y" />
+              <circle [attr.cx]="f.tiradorLargo.x" [attr.cy]="f.tiradorLargo.y" [attr.r]="7" />
+              <circle class="blanco" [attr.cx]="f.tiradorLargo.x" [attr.cy]="f.tiradorLargo.y"
+                      [attr.r]="blancoPx / 2"
+                      [attr.data-ficha]="f.ficha.id" data-tirador="largo" />
+            </g>
+          }
+          <!-- La etiqueta se da vuelta cerca de la pared derecha: el SVG
+               recorta, y un nombre que se sale queda invisible. -->
+          <text [class]="'etiqueta ' + (f.etiquetaALaIzquierda ? 'izq' : 'der')"
+                [attr.x]="f.centro.x + (f.etiquetaALaIzquierda ? -14 : 14)"
+                [attr.y]="f.centro.y + 4">{{ f.ficha.etiqueta }}</text>
+        </g>
+      }
+    </svg>
+  `,
+  styles: [`
+    :host { display: block; touch-action: none; }
+    .mandos { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+    /* 48 px de lado: el mismo blanco mínimo que las fichas del plano. Está
+       escrito acá en CSS y en BLANCO_MINIMO_PX en aritmética, y esa
+       repetición tiene su test -- dos números que dicen lo mismo y pueden
+       separarse son un defecto esperando. */
+    .mandos button { min-width: 48px; min-height: 48px; border: 1px solid var(--line);
+                     border-radius: 8px; background: var(--surface-2);
+                     color: inherit; font-size: 1.1rem; }
+    .mandos button:disabled { opacity: .4; }
+    .mandos .todo { min-width: auto; padding: 0 .75rem; font-size: .9rem; }
+    .mandos .dedo { margin-left: auto; font-size: .8rem; opacity: .7;
+                    font-variant-numeric: tabular-nums; }
+    .mandos .dedo.grueso { opacity: 1; color: var(--warn); }
+    svg { display: block; width: 100%; height: auto; }
+    .sala { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+    .borde-escenario { stroke: var(--signal); stroke-width: 3; }
+    .rotulo { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .duda { fill: var(--signal-tenue); stroke: none; }
+    /* **Discontinuo y sin relleno**: un rectángulo lleno se lee como una
+       superficie del local --una tarima, una alfombra-- y esto es una región
+       de duda. El trazo discontinuo es la misma convención que las líneas de
+       distancia. */
+    .rango { fill: none; stroke: var(--signal); stroke-width: 1.5;
+             stroke-dasharray: 6 4; opacity: .55; }
+    .tirador line { stroke: var(--signal); stroke-width: 1; stroke-dasharray: 2 3; }
+    .tirador circle { fill: var(--signal); stroke: var(--bg); stroke-width: 2; }
+    .eje { stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+    .punto { stroke: var(--surface); stroke-width: 2; }
+    .punto.fuente { fill: #d98b3a; }
+    .punto.captacion { fill: #4fa87a; }
+    .punto.emisor { fill: var(--signal); }
+    .blanco { fill: transparent; cursor: grab; }
+    /* La línea es tenue y el número legible: lo que se lee es el número. */
+    .distancia line { stroke: var(--signal); stroke-width: 1; stroke-dasharray: 4 3; opacity: .55; }
+    .distancia text {
+      fill: var(--signal); font-size: 11px; text-anchor: middle;
+      paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px;
+      pointer-events: none;
+    }
+    .etiqueta { fill: var(--ink); font-size: 12px; pointer-events: none; }
+    .etiqueta.izq { text-anchor: end; }
+    .ficha.seleccionada .punto { stroke: var(--ink); stroke-width: 3; }
+    .ficha.dedo-grueso .duda { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 3 3; }
+  `],
+})
+export class PlanoEscenarioComponent implements OnDestroy {
+  readonly fichas = input.required<readonly FichaDelPlano[]>();
+  readonly dimensiones = input.required<DimensionesDelLocal>();
+  readonly seleccionada = input<string | null>(null);
+
+  readonly movida = output<FichaMovida>();
+  readonly elegida = output<string>();
+
+  readonly blancoPx = BLANCO_MINIMO_PX;
+  private readonly lienzo = viewChild.required<ElementRef<SVGSVGElement>>('lienzo');
+  private readonly anfitrion = inject(ElementRef<HTMLElement>);
+
+  /**
+   * El ancho con que el lienzo se está mostrando, medido, no supuesto.
+   *
+   * **Es la diferencia entre decir la verdad sobre la precisión y no decirla.**
+   * Antes había un ancho fijo de 720 que nadie ligaba, y como el SVG se estira
+   * al hueco disponible, una unidad de dibujo no era un píxel de pantalla: en
+   * una tablet de 400 px, el blanco táctil declarado de 48 medía 26,7 —por
+   * debajo del mínimo que el sistema de diseño exige— y la ambigüedad del dedo
+   * se informaba casi a la mitad de lo que era. Lo encontraron las dos
+   * auditorías, cada una por su lado.
+   *
+   * Midiéndolo, el `viewBox` coincide con los píxeles CSS y las dos cifras que
+   * esta pantalla promete no falsear dejan de estar falseadas.
+   */
+  private readonly medido = signal(720);
+  private readonly observador: ResizeObserver | null = typeof ResizeObserver === 'undefined'
+    ? null
+    : new ResizeObserver((entradas) => {
+      const ancho = entradas[0]?.contentRect.width ?? 0;
+      if (ancho > 0) this.medido.set(Math.round(ancho));
+    });
+
+  constructor() {
+    this.observador?.observe(this.anfitrion.nativeElement);
+  }
+
+  ngOnDestroy(): void { this.observador?.disconnect(); }
+
+  readonly anchoPx = computed(() => this.medido());
+
+  /**
+   * Alto proporcional al local, con tope.
+   *
+   * Proporcional porque deformar el plano rompería los ángulos, que es lo único
+   * que este editor existe para poder mirar. Con tope porque una sala de 6 por
+   * 30 daría un lienzo de tres mil y pico de píxeles de alto, y como el
+   * anfitrión desactiva el gesto de desplazar para poder arrastrar, quedaría
+   * sin forma de bajar. Cuando el tope actúa, el local no llena el ancho y
+   * queda centrado: la escala se encarga.
+   */
+  readonly altoPx = computed(() => {
+    const d = this.dimensiones();
+    const proporcional = Math.round(this.medido() * (d.largo / d.ancho));
+    return Math.max(240, Math.min(proporcional, Math.round(this.medido() * 1.6)));
+  });
+
+  /**
+   * El margen del plano, en un solo lugar.
+   *
+   * Estaba escrito cuatro veces como literal `28` en llamadas a la escala.
+   * Ahora que el zoom llama a `escalaConVista` y a `zoomUtilMaximo`, un margen
+   * distinto entre las dos haría que el tope de zoom no fuera el tope de la
+   * escala que se dibuja -- y sería invisible.
+   */
+  private readonly MARGEN_PX = 28;
+
+  /**
+   * Qué pedazo del local se está mirando.
+   *
+   * `null` es "el local entero": no se guarda el encuadre completo calculado,
+   * porque las dimensiones son una entrada y pueden cambiar --si el usuario
+   * corrige el ancho de la sala, el encuadre tiene que seguirla en vez de
+   * quedar centrado en un punto que ya no existe.
+   */
+  private readonly vista = signal<Vista | null>(null);
+
+  /** La vista efectiva: la elegida, o el local entero. */
+  readonly vistaActual = computed(() => this.vista() ?? vistaInicial(this.dimensiones()));
+
+  readonly escala = computed(() => escalaConVista(
+    this.dimensiones(), this.anchoPx(), this.altoPx(), this.vistaActual(), this.MARGEN_PX));
+
+  /** Hasta dónde se puede acercar acá. Derivado del lienzo medido. */
+  readonly topeDeZoom = computed(() => zoomUtilMaximo(
+    this.dimensiones(), this.anchoPx(), this.altoPx(), this.MARGEN_PX));
+
+  readonly sePuedeAcercar = computed(() => this.vistaActual().zoom < this.topeDeZoom() - 1e-9);
+  readonly sePuedeAlejar = computed(() => this.vistaActual().zoom > ZOOM_MINIMO + 1e-9);
+
+  /**
+   * Dónde centrar al acercar.
+   *
+   * Sobre la ficha elegida si hay una: acercarse *sobre* lo que se está
+   * mirando es lo que hace que el zoom no desoriente. Si no hay nada elegido,
+   * sobre el centro actual, que a zoom 1 es el medio de la sala.
+   */
+  private puntoParaAcercar(): { x: number; y: number } {
+    const id = this.seleccionada();
+    const f = id === null || id === '' ? undefined
+      : this.fichas().find((x) => x.id === id);
+    if (f !== undefined) return { x: f.emplazamiento.posicion.x, y: f.emplazamiento.posicion.y };
+    return this.vistaActual().centroM;
+  }
+
+  acercar(): void {
+    this.vista.set(acercarSobre(this.vistaActual(), this.puntoParaAcercar()));
+  }
+
+  /**
+   * Aleja alrededor del mismo punto.
+   *
+   * El recorte al mínimo lo hace `escalaConVista`, no esto: tener el límite en
+   * dos lados es tenerlo en ninguno. Lo que sí hace acá es no guardar un zoom
+   * por debajo de 1, para que `sePuedeAlejar` no quede encendido para siempre
+   * con un zoom de 0,3 que la escala está ignorando.
+   */
+  alejar(): void {
+    const v = this.vistaActual();
+    const zoom = Math.max(ZOOM_MINIMO, v.zoom / PASO_DE_ZOOM);
+    if (zoom === ZOOM_MINIMO) { this.verTodo(); return; }
+    this.vista.set({ zoom, centroM: this.puntoParaAcercar() });
+  }
+
+  /** Vuelve al local entero. La salida cuando uno se perdió con el zoom. */
+  verTodo(): void { this.vista.set(null); }
+
+  readonly dibujables = computed(() => {
+    const e = this.escala();
+    const bordeDerecho = e.origenX + e.anchoPx;
+    return this.fichas().map((ficha) => {
+      const centro = aPantalla(ficha.emplazamiento.posicion, e);
+      return {
+        ficha,
+        centro,
+        radioDuda: radioIncertidumbrePx(ficha.emplazamiento, e),
+        punta: puntaDeLaFlecha(ficha.emplazamiento, e, 26),
+        dedoGrueso: elDedoEsMasGruesoQueLaDuda(ficha.emplazamiento, e),
+        // **El rango de movimiento, y sus dos tiradores.** `null` cuando el
+        // elemento no declaró rango: dibujar un rectángulo de tamaño cero
+        // pondría un artefacto que invita a estirarlo sin que nadie lo pida.
+        rango: rectanguloDeRango(ficha.emplazamiento, e),
+        tiradorAncho: tiradorDeRango(ficha.emplazamiento, e, 'ancho'),
+        tiradorLargo: tiradorDeRango(ficha.emplazamiento, e, 'largo'),
+        // A menos de metro y medio de la pared derecha, el nombre no entra.
+        etiquetaALaIzquierda: centro.x > bordeDerecho - 1.5 * e.pxPorMetro,
+      };
+    });
+  });
+
+  /**
+   * Las distancias de la ficha elegida contra las demás.
+   *
+   * **Se actualizan solas mientras se arrastra**, sin nada especial: el arrastre
+   * emite la posición nueva, el padre la guarda y vuelve por `fichas`, así que
+   * este `computed` se recalcula con la posición en vuelo. Era la condición para
+   * que el plano sirva de mesa de trabajo y no de instrumento de medición.
+   *
+   * Vacío cuando no hay nada elegido: n² líneas no se leen.
+   */
+  readonly distancias = computed(() => {
+    const elegida = this.seleccionada();
+    // `null` y cadena vacía significan lo mismo acá: nada elegido. El
+    // componente emite `''` al tocar el fondo y el padre puede pasar `null`.
+    if (elegida === null || elegida === '') return [];
+    return lineasDeDistancia(elegida, this.fichas(), this.escala(), metros, distanciaM);
+  });
+
+  /** Cuántos metros vale el dedo acá, para que la pantalla lo pueda decir. */
+  readonly precisionM = computed(() => precisionDelDedoM(this.escala()));
+
+  /**
+   * El dedo en centímetros enteros.
+   *
+   * Enteros porque un decimal en una cifra que ya es una estimación del grosor
+   * de una yema sería precisión inventada sobre una aproximación.
+   */
+  readonly dedoEnCm = computed(() => Math.round(this.precisionM() * 100));
+
+  /**
+   * El plano leído en voz alta.
+   *
+   * Un dibujo sin texto alternativo deja fuera a quien use lector de pantalla,
+   * y además es lo único que se puede afirmar en un test sin montar un
+   * navegador.
+   */
+  readonly resumenParaLector = computed(() => {
+    const n = this.fichas().length;
+    const d = this.dimensiones();
+    // **Y cuántos declaran rango de movimiento.** Un rectángulo dibujado que no
+    // se nombra deja fuera a quien use lector de pantalla, y es la única cifra
+    // de esta pantalla que se puede afirmar en un test sin montar un navegador.
+    const conRango = this.fichas().filter((f) => f.emplazamiento.rangoDeMovimiento !== null);
+    const rangos = conRango.length === 0 ? '' : ` ${conRango.length} `
+      + `${conRango.length === 1 ? 'declara rango de movimiento' : 'declaran rango de movimiento'}: `
+      + conRango.map((f) => `${f.etiqueta}, `
+        + comoSeLeeElRango(f.emplazamiento.rangoDeMovimiento!, metros)).join('; ')
+      + '.';
+    return `Plano del local, ${d.ancho} por ${d.largo} metros, con ${n} `
+      + `${n === 1 ? 'elemento ubicado' : 'elementos ubicados'}. `
+      + 'El escenario está arriba y el público abajo.'
+      + rangos;
+  });
+
+  private readonly arrastre = signal<Arrastre | null>(null);
+
+  /**
+   * Por qué eje se está estirando el rango, si se está estirando uno.
+   *
+   * **Va aparte de `arrastre` y no como un campo suyo**, porque son dos gestos
+   * distintos que comparten el mismo puntero: arrastrar mueve la marca y
+   * estirar cambia el rango. Meterlos en un solo estado obligaría a preguntar
+   * «¿es un arrastre de qué?» en cada sitio, y el sitio que se olvidara de
+   * preguntar movería la marca cuando el usuario quiso estirar.
+   */
+  private readonly estirando = signal<EjeDeEstiramiento | null>(null);
+
+  private idDesde(ev: PointerEvent): string | null {
+    const t = ev.target as Element | null;
+    return t?.getAttribute('data-ficha') ?? null;
+  }
+
+  /** Si el dedo cayó sobre un tirador, cuál. */
+  private ejeDesde(ev: PointerEvent): EjeDeEstiramiento | null {
+    const v = (ev.target as Element | null)?.getAttribute('data-tirador');
+    return v === 'ancho' || v === 'largo' ? v : null;
+  }
+
+  /** Del evento al sistema de coordenadas del dibujo, que no es el de la página. */
+  private aLienzo(ev: PointerEvent): PuntoPx {
+    const svg = this.lienzo().nativeElement;
+    const caja = svg.getBoundingClientRect();
+    // `viewBox` y tamaño en pantalla no coinciden --el SVG se estira al ancho
+    // disponible-- así que hay que reescalar. Usar las coordenadas de la página
+    // directamente pondría las fichas cada vez más lejos del dedo cuanto más
+    // chica fuera la tablet.
+    const fx = caja.width === 0 ? 1 : this.anchoPx() / caja.width;
+    const fy = caja.height === 0 ? 1 : this.altoPx() / caja.height;
+    return { x: (ev.clientX - caja.left) * fx, y: (ev.clientY - caja.top) * fy };
+  }
+
+  /**
+   * Apoyar el dedo **elige**; no mueve.
+   *
+   * Se guarda dónde cayó el dedo y dónde estaba el elemento, y a partir de ahí
+   * se mueve el desplazamiento. Antes se mandaba el elemento a la posición
+   * absoluta del dedo, así que tocar una ficha para leer sus números la corría
+   * hasta el radio del blanco —una auditoría lo midió en 34 cm— y dejaba la
+   * pantalla en «sin guardar».
+   */
+  alApoyar(ev: PointerEvent): void {
+    const id = this.idDesde(ev);
+    if (id === null) {
+      // Tocar el fondo deselecciona, en vez de dejar elegido algo que ya no se
+      // está mirando.
+      if (this.arrastre() === null) this.elegida.emit('');
+      return;
+    }
+    const ficha = this.fichas().find((f) => f.id === id);
+    if (ficha === undefined) return;
+    this.arrastre.set({
+      id, pointerId: ev.pointerId,
+      agarrePx: this.aLienzo(ev),
+      origenM: ficha.emplazamiento.posicion,
+    });
+    // **Y si cayó sobre un tirador, el gesto es estirar y no mover.** El
+    // tirador lleva también `data-ficha`, así que la selección y la captura del
+    // puntero funcionan igual; lo único que cambia es qué se emite al mover.
+    this.estirando.set(this.ejeDesde(ev));
+    this.elegida.emit(id);
+    (ev.target as Element).setPointerCapture?.(ev.pointerId);
+    ev.preventDefault();
+  }
+
+  alMover(ev: PointerEvent): void {
+    if (!this.esElDedoQueArrastra(ev)) return;
+    this.emitir(ev);
+    ev.preventDefault();
+  }
+
+  alSoltar(ev: PointerEvent): void {
+    if (!this.esElDedoQueArrastra(ev)) return;
+    this.emitir(ev);
+    this.arrastre.set(null);
+    this.estirando.set(null);
+  }
+
+  /**
+   * Un `pointercancel` **no confirma** la posición: la descarta.
+   *
+   * Lo cancela el sistema —una llamada entrante, un gesto del borde—, no el
+   * usuario, y en ese momento el dedo puede estar en cualquier lado. Tratarlo
+   * como un soltar dejaba el elemento donde el sistema interrumpió.
+   */
+  alCancelar(ev: PointerEvent): void {
+    if (!this.esElDedoQueArrastra(ev)) return;
+    const a = this.arrastre()!;
+    const eje = this.estirando();
+    this.arrastre.set(null);
+    this.estirando.set(null);
+    const ficha = this.fichas().find((f) => f.id === a.id);
+    if (ficha === undefined) return;
+    // **Un estiramiento cancelado no se devuelve a nada**, y es a propósito: a
+    // diferencia de la posición, el rango no se guarda al apoyar el dedo --no
+    // hace falta, porque se recalcula desde el rectángulo actual en cada
+    // movida--. Así que lo último emitido ya es el estado bueno y volver a
+    // emitir lo mismo dejaría la pantalla en «sin guardar» sin motivo.
+    if (eje !== null) return;
+    this.movida.emit({ id: a.id, emplazamiento: { ...ficha.emplazamiento, posicion: a.origenM } });
+  }
+
+  /**
+   * Un segundo dedo no secuestra el arrastre en curso.
+   *
+   * Sin comparar el puntero, apoyar otro dedo sobre otra ficha cambiaba el
+   * objetivo y los movimientos del **primer** dedo pasaban a arrastrar la
+   * segunda. Es el gesto más natural en una tablet.
+   */
+  private esElDedoQueArrastra(ev: PointerEvent): boolean {
+    const a = this.arrastre();
+    return a !== null && a.pointerId === ev.pointerId;
+  }
+
+  private emitir(ev: PointerEvent): void {
+    const a = this.arrastre();
+    if (a === null) return;
+    const ficha = this.fichas().find((f) => f.id === a.id);
+    if (ficha === undefined) return;
+
+    const eje = this.estirando();
+    if (eje !== null) {
+      // **Estirar no tiene umbral de arrastre.** El de la ficha existe para que
+      // tocarla no la corra; acá el tirador no tiene otro significado que
+      // estirar, así que un movimiento chico es un ajuste fino y no un toque
+      // accidental.
+      const rangoDeMovimiento = estirarRango(
+        ficha.emplazamiento, this.escala(), this.dimensiones(), eje, this.aLienzo(ev));
+      this.movida.emit({
+        id: a.id,
+        emplazamiento: { ...ficha.emplazamiento, rangoDeMovimiento },
+      });
+      return;
+    }
+
+    const posicion = moverArrastre(a, this.aLienzo(ev), this.escala(), this.dimensiones());
+    if (posicion === null) return;
+    this.movida.emit({ id: a.id, emplazamiento: { ...ficha.emplazamiento, posicion } });
+  }
+}

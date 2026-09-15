@@ -203,3 +203,55 @@ test('VU2: el byte +1 no es ninguno de los dos indicadores de saturacion', () =>
   // saturacion que la consola no muestra en ningun lado.
   assert.ok(soloEntrada.entrada >= MEDIDOR_SATURACION);
 });
+
+/**
+ * **Los seis bytes del canal, cada uno en su lugar.**
+ *
+ * Hasta el 2026-09-11 `codificarVu` ponia el MISMO valor en `entrada` y en
+ * `salida`, y cero en los dos dinamicos. Con eso, un lector que confundiera
+ * esos campos entre si seguia en verde: dos bytes iguales no distinguen a
+ * nadie, y un byte que siempre vale cero tampoco.
+ *
+ * Es el mismo defecto que tenia el doble de transporte, y la misma leccion: un
+ * fabricante que se aparta del real en un borde crea puntos ciegos con forma de
+ * test en verde. Lo encontro una auditoria, no un test.
+ *
+ * Aca los seis van distintos y separados por mas que el redondeo de un byte
+ * --0,333 dB cada escalon-- asi que cualquier permutacion se nota.
+ */
+test('cada uno de los seis bytes del canal aterriza donde corresponde', () => {
+  const pre = 0.20, entrada = 0.40, salida = 0.60, dinEnt = 0.75, dinSal = 0.90;
+  const trama = codificarVu([entrada], [6], [pre], {
+    posicionesSalida: [salida],
+    posicionesDinamicoEntrada: [dinEnt],
+    posicionesDinamicoSalida: [dinSal],
+  });
+  const c = decodificarVuCanales(trama)[0]!;
+
+  // Un escalon del byte es VU_ESCALA; se admite eso y nada mas.
+  const cerca = (a: number, b: number): boolean => Math.abs(a - b) <= VU_ESCALA;
+  assert.ok(cerca(c.pre, pre), `pre: ${c.pre}`);
+  assert.ok(cerca(c.entrada, entrada), `entrada: ${c.entrada}`);
+  assert.ok(cerca(c.salida, salida), `salida: ${c.salida}`);
+  assert.ok(cerca(c.dinamicoEntrada, dinEnt), `dinamicoEntrada: ${c.dinamicoEntrada}`);
+  assert.ok(cerca(c.dinamicoSalida, dinSal), `dinamicoSalida: ${c.dinamicoSalida}`);
+  assert.ok(Math.abs(c.reduccionDb - 6) < 0.4, `reduccion: ${c.reduccionDb}`);
+
+  // Y los cinco niveles son distintos entre si: si alguno se copiara de otro,
+  // esta linea lo dice aunque las de arriba se escribieran mal.
+  const vistos = new Set([c.pre, c.entrada, c.salida, c.dinamicoEntrada, c.dinamicoSalida]);
+  assert.equal(vistos.size, 5, 'cinco campos, cinco valores distintos');
+});
+
+/**
+ * **Control positivo.** El test de arriba afirma que los campos NO se pisan, y
+ * una asercion asi pasa sola si el fabricante los pone todos iguales -- que es
+ * exactamente lo que hacia antes. Aca se comprueba que sin los campos nuevos,
+ * `entrada` y `salida` son indistinguibles.
+ */
+test('control positivo: sin los campos nuevos, entrada y salida son iguales', () => {
+  const c = decodificarVuCanales(codificarVu([0.4]))[0]!;
+  assert.equal(c.entrada, c.salida, 'era el defecto: dos campos con el mismo valor');
+  assert.equal(c.dinamicoEntrada, 0, 'y los dinamicos en cero, que no delatan a nadie');
+  assert.equal(c.dinamicoSalida, 0);
+});

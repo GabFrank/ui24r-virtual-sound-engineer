@@ -1,6 +1,11 @@
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { test } from 'node:test';
-import { clasificarRuta, esEnvioDeMonitor } from '../src/clasificar-ruta.ts';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  clasificarRuta, esEnvioDeMonitor, esNivelDeEnvioAMonitor,
+  CANALES_DE_ENTRADA, AUXILIARES,
+} from '../src/clasificar-ruta.ts';
 import { OWNERSHIP, esEscribible, ownership } from '@vse/domain';
 
 test('INV-010: un envio a auxiliar de monitor se clasifica como tal', () => {
@@ -29,19 +34,53 @@ test('clasifica la cadena de canal', () => {
   strictEqual(clasificarRuta('i.1.gate.thresh'), 'GATE');
   strictEqual(clasificarRuta('i.1.pan'), 'CHANNEL_PAN');
   strictEqual(clasificarRuta('i.1.mute'), 'CHANNEL_MUTE');
-  // `hw.N.phantom` es la ruta que la matriz da como CONFIRMADA. La otra estaba
-  // inventada, y una ruta inventada hace que se cite la invariante equivocada.
+  // **Las dos rutas de fantasma existen, y acá se afirmaba que una estaba
+  // inventada.** La que manda es `hw.N.phantom` --con el condensador alimentado
+  // vale 1 mientras `i.N.phantom` vale 0 en el mismo instante, medido el
+  // 2026-09-10-- pero la del canal tambien existe y esta en la especificacion.
+  // Clasificarla deja que un intento de escribirla se rechace por la invariante
+  // verdadera, INV-007, y no por «ruta desconocida».
   strictEqual(clasificarRuta('hw.1.phantom'), 'PHANTOM');
-  strictEqual(clasificarRuta('i.1.phantom'), null);
+  strictEqual(clasificarRuta('i.1.phantom'), 'PHANTOM');
 });
 
 test('clasifica el general y los buses de salida', () => {
+  // **Todas estas son formas que el aparato manda de verdad**, contrastadas
+  // contra el volcado. Antes habia cuatro inventadas --`m.mute`, `m.polarity`,
+  // `m.eq.b1.gain`, `m.dyn.threshold`-- que pasaban porque el clasificador las
+  // agarraba por prefijo: probaban el patron, no el protocolo.
   strictEqual(clasificarRuta('m.mix'), 'MASTER_FADER');
-  strictEqual(clasificarRuta('m.mute'), 'MASTER_MUTE');
-  strictEqual(clasificarRuta('m.eq.b1.gain'), 'OUTPUT_EQ');
-  strictEqual(clasificarRuta('m.dyn.threshold'), 'OUTPUT_LIMITER');
-  strictEqual(clasificarRuta('a.5.eq.b1.gain'), 'OUTPUT_EQ');
+  // El general no tiene silencio: tiene `m.dim`.
+  strictEqual(clasificarRuta('m.dim'), 'MASTER_MUTE');
+  // El ecualizador de salida es un grafico de 31 bandas, un escalar por banda.
+  strictEqual(clasificarRuta('m.eq.peak.l.0'), 'OUTPUT_EQ');
+  strictEqual(clasificarRuta('m.eq.hpf.r'), 'OUTPUT_EQ');
+  // El limitador del general es dual mono.
+  strictEqual(clasificarRuta('m.dyn.l.threshold'), 'OUTPUT_LIMITER');
+  // La polaridad se invierte por lado y se llama `invert`, no `polarity`.
+  strictEqual(clasificarRuta('m.l.invert'), 'OUTPUT_POLARITY');
+  strictEqual(clasificarRuta('a.5.invert'), 'OUTPUT_POLARITY');
+  strictEqual(clasificarRuta('a.5.eq.peak.0'), 'OUTPUT_EQ');
   strictEqual(clasificarRuta('a.5.mute'), 'PA_BUS_MUTE');
+  strictEqual(clasificarRuta('a.5.delay'), 'OUTPUT_DELAY');
+});
+
+test('clasifica los subgrupos, que no tenian patron ninguno', () => {
+  // `SUBGROUP` estaba en el registro de propiedad y el clasificador no podia
+  // producirlo jamas. La consola publica 612 claves `s.N.*`.
+  strictEqual(clasificarRuta('s.0.mix'), 'SUBGROUP');
+  strictEqual(clasificarRuta('s.3.mute'), 'SUBGROUP');
+});
+
+test('clasifica las cinco familias del supresor de realimentacion', () => {
+  // Tres se agregaron el 2026-09-10 buscando «afs» en la documentacion; las dos
+  // sueltas solo aparecen mirando los volcados, que es la fuente que ese mismo
+  // arreglo decia estar usando.
+  strictEqual(clasificarRuta('m.afs.enabled'), 'AFS2');
+  strictEqual(clasificarRuta('a.1.afs.sensitivity'), 'AFS2');
+  strictEqual(clasificarRuta('var.afsdata'), 'AFS2');
+  strictEqual(clasificarRuta('afs.enabled'), 'AFS2');
+  strictEqual(clasificarRuta('settings.afsonboot'), 'AFS2');
 });
 
 test('clasifica el reproductor', () => {
@@ -60,30 +99,55 @@ test('una ruta desconocida devuelve null, no una suposicion', () => {
 });
 
 test('no confunde rutas parecidas', () => {
-  strictEqual(clasificarRuta('i.3.mixer'), null);
-  strictEqual(clasificarRuta('m.mixdown'), null);
+  // **Estas dos son inventadas a proposito**: prueban que un nombre que empieza
+  // igual que uno real no se cuela por prefijo. El sufijo `-inventada` lo dice,
+  // para que la guarda de rutas fabricadas no las cuente como un descuido.
+  strictEqual(clasificarRuta('i.3.mixer-inventada'), null);
+  strictEqual(clasificarRuta('m.mixdown-inventada'), null);
+  // Y el caso de verdad: `m.mix` SI existe y es el fader del general.
+  strictEqual(clasificarRuta('m.mix'), 'MASTER_FADER');
 });
 
-test('INV-010: ninguna ruta de auxiliar de monitor es escribible', () => {
-  // El test estatico que la invariante promete desde el principio.
-  const rutas = ['i.1.aux.1.value', 'i.24.aux.6.value', 'a.1.mix'];
-  for (const r of rutas) {
+test('INV-010 tras ADR-028: el nivel del envio se escribe, el bus de monitor no', () => {
+  // **Este test decia que NINGUNA ruta de auxiliar de monitor es escribible, y
+  // ADR-028 abrio el nivel.** Lo que sigue cerrado es el bus: `a.N.mix` es el
+  // fader del auxiliar entero, o sea el volumen general de esa cuna, y eso el
+  // usuario no lo autorizo.
+  for (const r of ['i.1.aux.1.value', 'i.23.aux.6.value']) {
     const kind = clasificarRuta(r);
-    strictEqual(kind !== null, true, r);
-    strictEqual(esEscribible(kind!), false, r);
-    strictEqual(ownership(kind!).owner, 'USER_ONLY', r);
+    strictEqual(kind, 'MONITOR_AUX_SEND', r);
+    strictEqual(esEscribible(kind!), true, r);
+    strictEqual(ownership(kind!).owner, 'CHANNEL_ASSISTANT', r);
   }
+  // **El fader del bus cae bajo el MISMO `kind`, y ahí está el filo.**
+  // `a.N.mix` es el volumen entero de esa cuña y clasifica como
+  // `MONITOR_AUX_SEND`, así que a nivel de propiedad figura escribible: la
+  // protección real es la lista blanca del motor, que sólo deja pasar
+  // `i.N.aux.M.value`. Este test fija esa asimetría para que nadie lea
+  // «escribible» y saque la conclusión de que el bus se puede tocar.
+  strictEqual(clasificarRuta('a.1.mix'), 'MONITOR_AUX_SEND');
+  strictEqual(
+    esEscribible('MONITOR_AUX_SEND'), true,
+    'la propiedad es por clase y no distingue: quien decide es el motor',
+  );
 });
 
 test('toda clase que el clasificador produce existe en el registro de propiedad', () => {
   const conocidas = new Set(OWNERSHIP.map((e) => e.kind));
   const muestras = [
     'hw.1.gain', 'i.1.eq.hpf.freq', 'i.1.eq.b1.gain', 'i.1.dyn.ratio',
-    'i.1.gate.thresh', 'i.1.deesser.amount', 'i.1.mix', 'i.1.pan', 'i.1.mute',
+    'i.1.gate.thresh', 'i.1.mix', 'i.1.pan', 'i.1.mute',
     'hw.1.phantom', 'i.1.aux.1.value', 'p.0.mute', 'p.0.mix', 'p.0.aux.1.value',
-    'm.eq.b1.gain', 'm.delay.time', 'm.polarity', 'm.dyn.threshold', 'm.mix',
-    'm.mute', 'a.1.eq.b1.gain', 'a.1.delay.time', 'a.1.polarity', 'a.1.mute',
-    'a.1.mix', 'v.1.mix', 'f.1.type', 'var.currentSnapshot', 'afs2.enable',
+    // **Tres de estas rutas estaban inventadas y nadie lo noto**, porque el
+    // clasificador las agarraba por prefijo. Los retardos son `m.delayL`,
+    // `m.delayR` y `a.B.delay` --no `.delay.time`-- y el supresor es `m.afs.*`,
+    // `a.B.afs.*` y `var.afsdata`, no `afs2.*`. Una lista de muestras con rutas
+    // que el aparato no manda prueba el patron, no el protocolo.
+    'm.eq.peak.l.0', 'm.delayL', 'm.delayR', 'm.l.invert', 'm.dyn.l.threshold',
+    'm.mix', 'm.dim', 'a.1.eq.peak.0', 'a.1.delay', 'a.1.invert', 'a.1.mute',
+    'a.1.mix', 'v.1.mix', 'f.1.fxtype', 'var.currentSnapshot', 's.0.mix',
+    'i.1.phantom', 'm.afs.enabled', 'a.1.afs.enabled', 'var.afsdata',
+    'afs.enabled', 'settings.afsonboot', 'i.1.deesser.threshold',
   ];
   const sinClasificar = muestras.filter((m) => clasificarRuta(m) === null);
   deepStrictEqual(sinClasificar, []);
@@ -109,4 +173,175 @@ test('el espacio de soundcheck no es un envio de bus', () => {
   // mientras SPK-P0.7a no lo verifique.
   strictEqual(clasificarRuta('var.mtk.soundcheck'), null);
   strictEqual(clasificarRuta('i.1.mtkrec'), null);
+});
+
+test('toda clase del registro de propiedad la puede producir el clasificador', () => {
+  // **La direccion que faltaba, y es la que dejo cuatro clases muertas.**
+  //
+  // El test de arriba comprueba que toda clase producida existe en el registro.
+  // Nadie comprobaba lo contrario: que toda clase declarada sea alcanzable. Con
+  // eso, `AFS2` vivio meses con un patron --`afs2.*`-- que la consola no manda
+  // nunca, y `SUBGROUP` no tenia patron ninguno. `OUTPUT_POLARITY` y
+  // `MASTER_MUTE` estaban en el mismo estado: `m.polarity` y `m.mute` no
+  // existen; son `m.l.invert` y `m.dim`.
+  //
+  // Las cuatro se rechazaban igual --el lado seguro-- pero citando que la ruta
+  // no se conoce, cuando si se conoce. El registro es lo que se lee despues de
+  // un show.
+  //
+  // Las muestras son **formas reales**, contrastadas contra el volcado de la
+  // consola. Una muestra inventada haria que este test tapara justo lo que vino
+  // a destapar.
+  const muestraPorClase: Record<string, string> = {
+    PREAMP_GAIN: 'hw.1.gain',
+    PHANTOM: 'hw.1.phantom',
+    HPF: 'i.1.eq.hpf.freq',
+    CHANNEL_EQ: 'i.1.eq.b1.gain',
+    COMPRESSOR: 'i.1.dyn.ratio',
+    GATE: 'i.1.gate.thresh',
+    DEESSER: 'i.1.deesser.threshold',
+    CHANNEL_FADER: 'i.1.mix',
+    CHANNEL_PAN: 'i.1.pan',
+    CHANNEL_MUTE: 'i.1.mute',
+    MONITOR_AUX_SEND: 'a.1.mix',
+    PLAYER_MUTE: 'p.0.mute',
+    PLAYER_FADER: 'p.0.mix',
+    PLAYER_SEND: 'p.0.aux.1.value',
+    OUTPUT_EQ: 'm.eq.peak.l.0',
+    OUTPUT_DELAY: 'm.delayL',
+    OUTPUT_POLARITY: 'm.l.invert',
+    OUTPUT_LIMITER: 'm.dyn.l.threshold',
+    MASTER_FADER: 'm.mix',
+    MASTER_MUTE: 'm.dim',
+    PA_BUS_MUTE: 'a.1.mute',
+    VCA: 'v.1.mix',
+    SUBGROUP: 's.0.mix',
+    FX: 'f.1.fxtype',
+    SNAPSHOT: 'var.currentSnapshot',
+    AFS2: 'm.afs.enabled',
+    MATRIX_SEND: 'a.0.mtx.1.value',
+    LINE_INPUT: 'l.0.mix',
+    SAFE: 'i.0.safe',
+  };
+
+  // **`ANALYSIS_BUS_SEND` va aparte a proposito.** Es la unica clase que no
+  // depende solo de la ruta: INV-008 admite un unico routing escribible --los
+  // envios hacia el bus de analisis-- y cual es lo tiene que decir SPK-P0.5.
+  // Sin ese dato, todo `i.N.aux.M.value` es un envio de monitor y no se escribe
+  // nunca. Que sea inalcanzable SIN opciones es correcto; lo que hay que
+  // comprobar es que sea alcanzable CON ellas.
+  strictEqual(clasificarRuta('i.1.aux.3.value', { busDeAnalisis: 3 }), 'ANALYSIS_BUS_SEND');
+  const aparte = new Set(['ANALYSIS_BUS_SEND']);
+
+  const sinMuestra = OWNERSHIP.map((e) => e.kind)
+    .filter((k) => !aparte.has(k) && !(k in muestraPorClase));
+  deepStrictEqual(sinMuestra, [], 'toda clase declarada necesita una ruta real que la produzca');
+
+  const inalcanzables = Object.entries(muestraPorClase)
+    .filter(([kind, ruta]) => clasificarRuta(ruta) !== kind)
+    .map(([kind, ruta]) => `${kind} (${ruta} -> ${clasificarRuta(ruta)})`);
+  deepStrictEqual(inalcanzables, [], 'clases declaradas que el clasificador no produce');
+});
+
+test('las entradas de linea tienen tipo propio: nombrarlas no es autorizarlas', () => {
+  // **Se clasificaron como canales y eso las ABRIO.** Una auditoria midio que 44
+  // rutas de `l.*` pasaron a estar permitidas por el motor, incluida `l.0.mix`
+  // -- el fader exacto que estuvo a 0 dB metiendo un tono del Bluetooth en el
+  // general durante dos dias. El commit que arreglaba «la aplicacion no sabe que
+  // entra al general» habilito a la aplicacion a moverlo.
+  //
+  // Clasificar no es autorizar. Con tipo propio el registro dice «entrada de
+  // linea» en vez de «ruta desconocida», que es lo que se buscaba, y no se
+  // concede ningun permiso.
+  strictEqual(clasificarRuta('l.0.mix'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.1.mute'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.eq.b1.gain'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.eq.hpf.freq'), 'LINE_INPUT');
+  strictEqual(clasificarRuta('l.0.aux.1.value'), 'LINE_INPUT');
+  // Y la de canal sigue siendo de canal.
+  strictEqual(clasificarRuta('i.0.mix'), 'CHANNEL_FADER');
+});
+
+
+
+test('un envio a monitor es mas que su nivel', () => {
+  // Sólo `.value` estaba clasificado; las otras cuatro --960 claves-- caían en
+  // «ruta desconocida». `.post` y `.postproc` son los dos puntos de derivación
+  // que cerró el criterio 1 de SPK-P0.2a, medidos contra el aparato.
+  for (const sufijo of ['value', 'mute', 'pan', 'post', 'postproc']) {
+    strictEqual(clasificarRuta(`i.3.aux.2.${sufijo}`), 'MONITOR_AUX_SEND', sufijo);
+  }
+});
+
+test('el bus de analisis sigue siendo la excepcion de SOLO .value', () => {
+  // INV-008 admite un único routing escribible: el envío hacia el bus de
+  // análisis. Ampliar el envío a monitor no puede haber ampliado esa excepción.
+  const con = { busDeAnalisis: 2 };
+  strictEqual(clasificarRuta('i.3.aux.2.value', con), 'ANALYSIS_BUS_SEND');
+  strictEqual(clasificarRuta('i.3.aux.2.mute', con), 'MONITOR_AUX_SEND', 'el silencio NO');
+  strictEqual(clasificarRuta('i.3.aux.2.post', con), 'MONITOR_AUX_SEND', 'la derivacion NO');
+});
+
+test('los envios a efectos y a la matriz dejan de ser desconocidos', () => {
+  strictEqual(clasificarRuta('i.3.fx.1.value'), 'FX');
+  strictEqual(clasificarRuta('i.3.fx.1.mute'), 'FX');
+  strictEqual(clasificarRuta('a.0.mtx.1.value'), 'MATRIX_SEND');
+  strictEqual(clasificarRuta('m.mtx.3.mute'), 'MATRIX_SEND');
+  strictEqual(clasificarRuta('s.2.mtx.0.pan'), 'MATRIX_SEND');
+  // El jack fisico sigue sin clasificar A PROPOSITO: mover eso manda señal a un
+  // conector que uno no ve.
+  strictEqual(clasificarRuta('hwoutaux.6.src'), null);
+});
+
+test('los grupos de silencio NO son un safe', () => {
+  // El patron era `/^var\.unsaved\./`, un prefijo, y agarraba tambien
+  // `var.unsaved.mutegroups` -- que no es un safe: son los grupos de silencio,
+  // que `loQueNoSeVe()` declara como un hueco que el codigo NO mira. Dos commits
+  // de la misma noche se contradecian sobre la misma clave.
+  strictEqual(clasificarRuta('var.unsaved.chsafes'), 'SAFE');
+  strictEqual(clasificarRuta('var.unsaved.mutegroups'), null, 'es un hueco declarado, no un safe');
+});
+
+test('las cantidades de canales y auxiliares salen del inventario, no de la memoria', () => {
+  // **La lista blanca de ADR-028 depende de estos dos números**, así que no
+  // pueden ser recuerdos. Se comparan contra el inventario de claves observadas
+  // del firmware: si la consola cambia, esto falla antes de que alguien se
+  // entere por el sonido.
+  const inventario = join(
+    import.meta.dirname, '..', '..', '..',
+    'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 'keys-observed.txt',
+  );
+  const claves = readFileSync(inventario, 'utf8').split('\n');
+
+  const canales = new Set<number>();
+  const auxes = new Set<number>();
+  for (const k of claves) {
+    const m = /^i\.(\d+)\.aux\.(\d+)\.value$/.exec(k.trim());
+    if (m === null) continue;
+    canales.add(Number(m[1]));
+    auxes.add(Number(m[2]));
+  }
+
+  strictEqual(canales.size, CANALES_DE_ENTRADA,
+    `el inventario tiene ${canales.size} canales con envío y la constante dice ${CANALES_DE_ENTRADA}`);
+  strictEqual(auxes.size, AUXILIARES,
+    `el inventario tiene ${auxes.size} auxiliares y la constante dice ${AUXILIARES}`);
+  // Y que sean 0..N-1 sin huecos: el rango de la guarda supone eso.
+  strictEqual(Math.max(...canales), CANALES_DE_ENTRADA - 1);
+  strictEqual(Math.max(...auxes), AUXILIARES - 1);
+});
+
+test('esNivelDeEnvioAMonitor acepta exactamente las rutas del inventario', () => {
+  const inventario = join(
+    import.meta.dirname, '..', '..', '..',
+    'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 'keys-observed.txt',
+  );
+  const claves = readFileSync(inventario, 'utf8').split('\n').map((l) => l.trim());
+
+  // Del inventario entero, las que la función acepta tienen que ser exactamente
+  // las 240 hojas `.value` del envío a monitor. Ni una más.
+  const aceptadas = claves.filter((k) => k !== '' && esNivelDeEnvioAMonitor(k));
+  const esperadas = claves.filter((k) => /^i\.\d+\.aux\.\d+\.value$/.test(k));
+  deepStrictEqual(aceptadas.sort(), esperadas.sort());
+  strictEqual(aceptadas.length, 240);
 });

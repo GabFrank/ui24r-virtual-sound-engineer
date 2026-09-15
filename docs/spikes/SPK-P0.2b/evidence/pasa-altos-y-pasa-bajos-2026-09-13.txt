@@ -1,0 +1,118 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T06:39:06.300Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/pasa-altos-y-pasa-bajos.ts 10 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/pasa-altos-y-pasa-bajos.ts sha256:34029858388c24da
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 103 — EL PASA-ALTOS Y EL PASA-BAJOS, MEDIDOS CONTRA EL FILTRO ===
+canal 10 (i.9), multitono de 104 tonos de 40.0 a 15343 Hz
+
+=== ESTADO, LEIDO DEL APARATO ===
+   i.9.eq.hpf.freq        0
+   i.9.eq.hpf.slope       0
+   i.9.eq.lpf.freq        1
+   i.9.eq.lpf.slope       0
+   i.9.eq.bypass          0
+   i.9.eq.easy            0
+   i.9.eq.prmod           0
+   i.9.eq.b1.gain         0.5
+   i.9.eq.b2.gain         0.5
+   i.9.eq.b3.gain         0.5
+   i.9.eq.b4.gain         0.5
+   i.9.eq.b5.gain         0.5
+   i.9.mix                0.7647058824
+   hw.9.gain              0.2508445026
+   i.9.gate.thresh        0
+   m.mix                  0.7643020595
+   m.gate.enabled         0
+   m.dyn.bypass           0
+   m.eq.bypass            0
+   m.eq.hpf.l             0
+   m.eq.lpf.l             1
+   m.delayL               0
+   m.afs.enabled          1
+   m.afs.fmode            1
+   las cinco bandas del ecualizador estan en 0,5 (neutro), comprobado
+
+neutralizado lo dependiente del nivel: compresor, puerta y de-esser del
+canal, compresor del general, y el supresor --que con un tono sostenido
+planta filtros, que es su comportamiento declarado en modo FIXED.
+estimulo: pico -15 dBFS, -46.2 dBFS por tono, dura 600 s
+
+linea base con los dos filtros en su extremo: se aparta 0.83 dB de su media | pico -17.8 dBFS
+   Que esos extremos sean «fuera del camino» es lo que esto comprueba.
+
+control positivo: con el pasa-altos en su extremo, el tono de 40 Hz cae 54.6 dB
+
+=== EL PASA-ALTOS ===
+ crudo |    codo    | las tres leyes en disputa          | banda de paso
+  0.25 |    1461 Hz | recta   115 | exp400    42 | exp1000    53 | banda  -0.01 dB (disp 0.022, margen 61) | margen del codo    8
+  0.40 |    1462 Hz | recta   172 | exp400    66 | exp1000    96 | banda  -0.02 dB (disp 0.023, margen 60) | margen del codo    7
+  0.55 |    1525 Hz | recta   229 | exp400   104 | exp1000   172 | banda  -0.02 dB (disp 0.024, margen 61) | margen del codo    3
+  0.70 |    1545 Hz | recta   286 | exp400   163 | exp1000   309 | banda  -0.01 dB (disp 0.025, margen 61) | margen del codo   -0
+  0.85 |    1544 Hz | recta   343 | exp400   255 | exp1000   556 | banda  -0.02 dB (disp 0.027, margen 60) | margen del codo    3
+  1.00 |    1544 Hz | recta   400 | exp400   400 | exp1000  1000 | banda  -0.02 dB (disp 0.025, margen 60) | margen del codo    2
+
+=== EL PASA-BAJOS ===
+   crudo 0: ANULADO, la banda de paso tiene 8.2 dB de margen: el nivel del cruce cuelga de una mediana hundida en el ruido
+  0.00 |  sin cruce | banda  -0.02 dB (disp 0.013, margen 8) | margen del codo    7
+   crudo 0.15: ANULADO, la banda de paso tiene 8.2 dB de margen: el nivel del cruce cuelga de una mediana hundida en el ruido
+  0.15 |  sin cruce | banda  -0.01 dB (disp 0.017, margen 8) | margen del codo    8
+   crudo 0.3: ANULADO, la banda de paso tiene 8.2 dB de margen: el nivel del cruce cuelga de una mediana hundida en el ruido
+  0.30 |  sin cruce | banda  -0.01 dB (disp 0.017, margen 8) | margen del codo    7
+   crudo 0.45: ANULADO, la banda de paso tiene 8.2 dB de margen: el nivel del cruce cuelga de una mediana hundida en el ruido
+  0.45 |  sin cruce | banda  -0.01 dB (disp 0.015, margen 8) | margen del codo    7
+   crudo 0.6: ANULADO, la banda de paso tiene 8.2 dB de margen: el nivel del cruce cuelga de una mediana hundida en el ruido
+  0.60 |  sin cruce | banda  -0.01 dB (disp 0.013, margen 8) | margen del codo    8
+
+=== LA VUELTA AL PRIMER PUNTO ===
+  0.25 |    1462 Hz | recta   115 | exp400    42 | exp1000    53 | banda  -0.01 dB (disp 0.024, margen 61) | margen del codo    8
+la linea base al cerrar: 47.50 dB (max), 7.010 dB (rms punto a punto)
+
+=== VEREDICTOS, contra el contrato del item 103 ===
+
+H1 planitud de la linea base: 0.83 dB
+   PASA. Los extremos de los dos filtros son «fuera del camino», MEDIDO.
+
+H2 el pasa-altos atenua: 54.6 dB en el tono mas grave
+   PASA. La escritura llego al filtro.
+
+H3 el codo en el crudo 1,0: 1544 Hz
+   contra los 400 del codigo: factor 3.86
+   contra los 1000 del manual: factor 1.54
+   NO DECIDE: el codo esta a un factor 1.54 de la fuente mas cercana. **No es ninguna de las dos**, y eso tambien es un resultado.
+
+H4 cual ley describe el codo, sobre 6 crudos utiles:
+   recta 20..400 (el codigo)        error maximo 1170.9 %
+   exponencial a 400                error maximo 3355.6 %
+   exponencial a 1000 (el manual)   error maximo 2648.1 %
+   FALLA: ninguna de las tres describe el codo dentro del 10 %. La ley no
+   es ninguna de las tres, y eso tambien es un resultado.
+
+H5 NO SE PUEDE DECIDIR: 0 cruces utiles en el pasa-bajos.
+
+H6 la vuelta: el codo difiere 0.04 % | la base 7.010 dB rms
+   FALLA: algo se movio, o la dispersion deja sin respaldo la resolucion.
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada de las pendientes, que el manual declara seleccionables: se midio una.
+   Nada de los codos que caigan fuera de la ventana del estimulo.
+   Nada del pasa-altos ni del pasa-bajos de los buses, que son otras claves.
+   Y un acuerdo dentro del umbral es una COTA, no una identidad.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.eq.hpf.freq        esperado 0              leido 0
+   i.9.eq.lpf.freq        esperado 1              leido 1
+   i.9.dyn.bypass         esperado 0              leido 0
+   i.9.gate.enabled       esperado 1              leido 1
+   i.9.deesser.enabled    esperado 0              leido 0
+   m.dyn.bypass           esperado 0              leido 0
+   m.afs.enabled          esperado 1              leido 1
+   m.gate.enabled         esperado 0              leido 0
+   Todo restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

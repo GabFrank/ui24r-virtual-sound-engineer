@@ -98,7 +98,7 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 
 ## 7. Cuándo preguntar y cuándo decidir
 
-**Preguntá de forma interactiva** cuando la respuesta cambia el trabajo y es del usuario: niveles de autonomía, umbrales que mueven el equilibrio entre avisar de más y de menos, cualquier cosa que toque su equipo de una forma nueva.
+**Preguntá de forma interactiva. Siempre**, que es la palabra que usó el usuario: «preguntas siempre interactivas». No es una condición con lista de ejemplos —una versión anterior de esta línea la convirtió en eso y perdió el «siempre»—: es la forma por defecto de preguntar cualquier cosa. Los casos donde además **hay** que preguntar son los de siempre: niveles de autonomía, umbrales que mueven el equilibrio entre avisar de más y de menos, cualquier cosa que toque su equipo de una forma nueva.
 
 **Decidí vos** lo que es cuestión de oficio: cómo estructurar un módulo, qué probar, cómo nombrar. Preguntar todo es trasladar el trabajo.
 
@@ -141,7 +141,10 @@ que no dependa de que me acuerde».
 ## Una tarea, un commit, y recién entonces la siguiente
 
 Una tarea **no está terminada** hasta que está documentada, commiteada y
-empujada. Nada de acumular dos o tres y cerrarlas juntas.
+empujada. Nada de acumular dos o tres y cerrarlas juntas. El usuario lo dijo
+así: «cada tarea se finaliza documentandola y haciendo commit y push **solo asi
+iniciar la otra**». La última cláusula es la que se pierde primero: no alcanza
+con documentar y commitear, hay que hacerlo *antes* de empezar la próxima.
 
 El orden es siempre el mismo:
 

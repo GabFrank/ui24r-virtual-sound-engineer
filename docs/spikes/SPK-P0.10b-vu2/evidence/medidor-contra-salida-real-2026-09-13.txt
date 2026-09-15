@@ -1,0 +1,81 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T03:05:59.685Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts sha256:a87ee03e5534c8ad
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 99b — EL MEDIDOR DE LA CONSOLA CONTRA LA SALIDA REAL ===
+canal 10 (i.9), tono de 1000 Hz a -4 dBFS
+escalon del medidor: 0.333401 dB | tolerancia 0.6668 dB
+ventana util del medidor: bytes 16..239 = -74.67 .. -0.32 dB
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.mix                0.7647058824
+   i.9.mute               0
+   hw.9.gain              0.2508445026
+   i.9.dyn.ratio          1
+   i.9.dyn.bypass         0
+   i.9.gate.enabled       1
+   i.9.gate.thresh        0
+   i.9.eq.bypass          0
+   i.9.deesser.enabled    0
+   i.9.subgroup           -1
+   i.9.pan                0.5
+   m.mix                  0.7643020595
+   m.dyn.bypass           0
+   m.dyn.l.ratio          0.0487804878
+   m.dyn.l.threshold      0.7427250239
+   m.dyn.linked           1
+   m.gate.enabled         0
+   m.eq.bypass            0
+   m.delayL               0
+   m.delayR               0
+   m.afs.enabled          1
+   m.afs.fmode            1
+   m.afs.numfixed         6
+   m.afs.numtotal         12
+
+   La puerta y el dinamico del canal estan AGUAS ARRIBA del fader, asi que
+   su accion no cambia al moverlo y M1 los delata si actuaran. Queda dicho
+   para que se sepa que estan cubiertos y no ignorados.
+
+midiendo el piso del bin con el tono apagado...
+   piso del bin a 1000 Hz: -106.70 dBFS (banda ancha -56.2 de pico, 88 cuadros)
+
+supresor del general: estaba en 1, se apaga para medir
+compresor del general: bypass estaba en 0, se puentea.
+   Es lo UNICO del camino que no es una ganancia estatica: depende del
+   nivel, y el barrido mueve el nivel cuarenta decibeles. Se puentea y no
+   se pone en 1:1 porque lo que se compara son diferencias contra el
+   arranque, y una compensacion constante se cancela.
+
+crudo escrito -> crudo que devuelve la consola:
+   1 -> 1  (0.0000 dB de diferencia)
+   0.4 -> 0.4  (0.0000 dB de diferencia)
+   0.05 -> 0.05  (0.0000 dB de diferencia)
+
+=== EL RECORRIDO, CALCULADO ANTES DE BARRER ===
+   arranque: medidor -25.66 dB = byte 163
+   interfaz: 1.27 dBFS, pico 0.00, margen en bin 113.3 dB
+   RECORRIDO DEL MEDIDOR: 49.0 dB
+   No son sesenta. Los sesenta de la primera version del contrato eran
+   del FADER, no del medidor: el medidor tiene piso y la salida real no.
+   ABORTA: la interfaz recorta en el arranque (pico 0.00 dBFS).
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts:413
+      throw new Error('interfaz recortando');
+            ^
+
+Error: interfaz recortando
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts:413:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:88:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/medidor-contra-salida-real.ts:336:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

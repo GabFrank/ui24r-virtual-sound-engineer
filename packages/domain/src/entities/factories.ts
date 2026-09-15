@@ -1,4 +1,4 @@
-import { makeId, type BandMemberId, type BandProfileId, type PAProfileId,
+import { makeId, type BandMemberId, type BandProfileId, type PAComponentId, type PAProfileId,
   type SessionId, type VenueProfileId } from '../ids.ts';
 import type { BandMember, BandProfile } from './musical.ts';
 import { normalizarInstrumentos } from './integrantes.ts';
@@ -38,6 +38,10 @@ export function crearBanda(nombre: string, integrantes: readonly BandMember[] = 
     // Vacío, no un objeto con ceros: la firma de mezcla se aprende midiendo, y
     // un objeto lleno de ceros se leería como «ya aprendida, y todo plano».
     mixSignature: null,
+    // Sin orden propio: manda la propuesta, y la sigue acompañando si el
+    // catálogo mejora. Y sin nada fuera del recorrido.
+    ordenDelRecorrido: null,
+    fueraDelRecorrido: [],
   };
 }
 
@@ -72,7 +76,15 @@ export function crearPa(nombre: string, cajasPrincipales: string): PAProfile {
     crossoverHz: null,
     // Un general estéreo con un solo silencio: no se puede medir por
     // componente hasta que el usuario describa buses separados (INV-028).
-    componentes: [{ nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false }],
+    //
+    // Sin lugar, porque el lugar no vive acá: este perfil dice QUÉ equipo es y
+    // el escenario de cada local dice dónde está puesto. El mismo sistema en
+    // dos salas está en dos lugares distintos.
+    componentes: [{
+      id: makeId<'PAComponentId'>('comp') as PAComponentId,
+      nombre: 'General', bus: { tipo: 'MASTER' }, silenciable: false,
+      clase: 'PRINCIPAL', modelo: null,
+    }],
     outputBuses: [{ tipo: 'MASTER' }],
     generatorFaderDb: FADER_GENERADOR_INICIAL_DB,
     procesadorExterno: null,
@@ -99,6 +111,9 @@ export function crearLocal(
     // oscilaría sobre el ruido de su propia medición (INV-023). Arranca nulo
     // a propósito: se gana midiendo, no declarando.
     sigmaRoomScore: null,
+    // Un local nuevo no tiene plano. Se carga con el editor, y hasta entonces
+    // el análisis geométrico simplemente no está disponible para este local.
+    escenario: null,
     notas: null,
   };
 }

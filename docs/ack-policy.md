@@ -46,11 +46,40 @@ de 500 ms, y restaurar. **18 de 18 difundidas en las tres corridas**, con
 medianas de 17, 18 y 17 ms; mínimo 12 y máximo 29 entre las tres. Las 18
 quedaron restauradas según la relectura del arnés, y **once de ellas** además
 comprobadas desde fuera con un volcado HTTP nuevo.
-`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` y
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` —remedida en
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`— y
 `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10b.txt`; la primera de
 las tres está transcrita al pie de la primera, porque antes solo vivía en la
 terminal de quien la corrió.
-`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`.
+
+**Remedido con `medir.mjs` el 2026-09-11**, porque aquella primera era una
+transcripción: `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`.
+**18 de 18** otra vez.
+
+**Aquí se afirmó algo sin archivo, y hubo que arreglarlo.** Se dijo que las
+dieciocho habían quedado comprobadas desde fuera «con cero claves más movidas en
+toda la consola», y esa comparación vivía en la terminal de quien la corrió —
+exactamente lo que este documento llama transcripción, en el párrafo de al lado.
+Lo marcó una auditoría. Ahora **la comprobación la hace la propia medición y
+queda en su archivo**: `evidence/barrido-testigo-2026-09-11b.txt` lee las **6732
+claves** por HTTP antes y después, y dice *«rutas tocadas que NO volvieron a su
+valor: ninguna; otras claves que cambiaron: ninguna»*. En ese mismo archivo queda
+la enumeración del canal antes de escribir: silenciado, fader en 0,0000, sin
+nombre, **cero envíos abiertos a auxiliares y cero a efectos**.
+
+**Y la latencia no reprodujo.** Aquellas tres corridas dieron medianas de 17, 18
+y 17 ms; las dos del 2026-09-11 dieron **mediana 0, con máximo 1**. La conclusión
+que sostiene el criterio —el testigo ve todo lo que la consola difunde— aguanta.
+El número no, y **la explicación que se publicó tampoco**: se dijo que era «la
+red de esa noche», y una auditoría señaló que el guion no cambió, el canal es el
+mismo y las rutas son las mismas, y que una mediana de cero milisegundos para
+escribir por la red y que otro socket vea la difusión no describe una red rápida.
+**Por qué cambió no está medido**, y dejarlo dicho así es más honesto que la
+explicación cómoda.
+
+Aquella primera corrida, la transcrita:
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt`, remedida en
+`spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`.
 
 El barrido usó el canal 17 —sin nombre, silenciado, fader abajo— con un punto de
 retorno guardado antes de escribir nada, como manda INV-001.
@@ -202,7 +231,8 @@ caso medido; si se agota, lo que pasó no es que el testigo llegara tarde.
    único que se ejercitaba era la segunda guarda. Con 3 dB, un fader quieto queda
    a 3 dB y la primera lo rechaza sola. La afirmación anterior era cierta y medía
    menos de lo que parecía; lo marcó una auditoría.
-   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt` y
+   `spikes/SPK-ACK-POLICY/evidence/respaldo-fader-3db-2026-09-10.txt`. `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-2026-09-10.txt`
+   --**transcripción sin archivar**, no pasó por `medir.mjs`-- y
    `spikes/SPK-ACK-POLICY/evidence/respaldo-medidor-fader-2026-09-10.txt`.
 
    **Un límite que se deduce de la regla, y que NO está medido.** Si bajar un
@@ -254,14 +284,24 @@ Escribiendo 40 veces cada 15 ms llegan 20; cada 5 ms llegan 5; cada 40 ms o más
 llegan las 40, y ahí los intervalos quedan cuantizados en múltiplos del tic —67
 para escrituras cada 60 ms, 100 para cada 100—. Es el mismo ~33 ms de la
 cadencia de `RTA`: hay un solo reloj de difusión.
-`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt`.
+`spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-10.txt`, remedido con la herramienta en `spikes/SPK-P0.9/evidence/cadencia-difusion-2026-09-11.txt`: el tic de ~34 ms reproduce exacto.
 
 **La consecuencia sobre INV-011, medida y no deducida.** Dos escrituras a la
-misma ruta dentro de un tic producen **una sola línea, con el segundo valor**:
-la primera se aplica y su confirmación no llega nunca. Con las dos pegadas, 0 de
+misma ruta dentro de un tic producen **una sola línea, con el segundo valor**, y
+la confirmación de la primera no llega nunca. Acá decía «la primera **se
+aplica**», y eso **no está medido**: una sola línea difundida es compatible con
+que se haya aplicado y con que no. Lo que la política necesita es lo otro, que sí
+está medido — que **no se puede confirmar**. Con las dos pegadas, 0 de
 5 confirmaciones para la primera; entre 5 y 25 ms sale a suertes según dónde
 caiga el borde del tic —2, 1 y 3 de 5—; **a partir de un tic completo, 5 de 5
-siempre**. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt`.
+siempre**.
+
+> **Esas cifras siguen sin remedir, y además el archivo se contradice a sí
+> mismo.** La corrida del 2026-09-11 midió dos separaciones —pegadas y 150 ms—,
+> no las seis de la transcripción, así que «2, 1 y 3 de 5» no lo respalda nada
+> nuevo. Y en el archivo viejo esa frase está en la **prosa**: su propia tabla
+> dice **0, 2 y 2**. Hasta que alguien barra las seis separaciones, esta línea se
+> lee como lo que es — una transcripción que no coincide con su tabla. `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-10.txt` —transcripción—, **remedido en** `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11.txt` y, con control positivo y la cuenta de líneas difundidas, en `spikes/SPK-P0.9/evidence/testigo-en-el-tic-2026-09-11d.txt`: pegadas, la segunda vista 10 de 10, la primera 0 de 10, y **una sola línea difundida las diez veces con el valor de la segunda**; separadas por más que el tic, las dos 10 de 10. Es **colapso**. Si la consola *aplicó* la primera **no está medido**.
 
 **Qué protege hoy a la aplicación.** INV-005 pauta las escrituras secuenciales
 cada **≥ 100 ms**, casi tres tics. Las escrituras normales quedan fuera del

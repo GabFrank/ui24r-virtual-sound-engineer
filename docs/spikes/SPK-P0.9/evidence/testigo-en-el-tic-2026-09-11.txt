@@ -1,0 +1,39 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T11:25:37.374Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/testigo-en-el-tic.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+
+canales enumerados por HTTP antes de escribir (exigencia: callado):
+  i.16 mute=1 fader=0.0000 src=hw.16    nombre="" -> SIRVE: silenciado, fader al fondo y sin envios abiertos
+
+punto de retorno: VSE_AUTO_1789125949526
+
+canal 17 (i.16) · ruta i.16.mix · ventana del testigo: 500 ms
+valor de partida: 0
+
+vuelta | A      | B      | testigo vio A | testigo vio B
+-------+--------+--------+---------------+--------------
+     1 | 0.1000 | 0.3000 | no            | SI
+     2 | 0.1100 | 0.3100 | no            | SI
+     3 | 0.1200 | 0.3200 | no            | SI
+     4 | 0.1300 | 0.3300 | no            | SI
+     5 | 0.1400 | 0.3400 | no            | SI
+     6 | 0.1500 | 0.3500 | no            | SI
+     7 | 0.1600 | 0.3600 | no            | SI
+     8 | 0.1700 | 0.3700 | no            | SI
+     9 | 0.1800 | 0.3800 | no            | SI
+    10 | 0.1900 | 0.3900 | no            | SI
+
+el testigo vio A: 0 de 10
+el testigo vio B: 10 de 10
+
+CONFIRMADO: de dos escrituras en el mismo tic, el testigo solo ve la segunda.
+Una escritura aplicada puede salir SIN VERIFICAR, y no es un fallo del testigo.
+
+comprobacion por HTTP, contra el estado previo (6732 claves leidas):
+  claves que cambiaron: ninguna
+
+
+# salida del proceso: 0

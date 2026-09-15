@@ -61,6 +61,17 @@ export const TRANSICIONES: Readonly<Record<SessionState, readonly SessionState[]
   CLOSED: [],
 };
 
+/**
+ * Los estados en que hay gente escuchando y no se puede interrumpir.
+ *
+ * **Vivía sólo en la capa de pantalla**, y desde que el motor de seguridad la
+ * necesita —ADR-027 restringe el silencio de canal a los estados que no están en
+ * vivo— tiene que estar donde los dos la lean. Dos listas de lo mismo en dos
+ * capas distintas se separan, y la que se separaría acá decide si la aplicación
+ * puede dejar un canal mudo durante un show.
+ */
+export const ESTADOS_EN_VIVO: readonly SessionState[] = ['FULL_BAND', 'RINGOUT', 'SHOW'];
+
 export interface TransicionRechazada {
   readonly permitida: false;
   readonly razon: string;

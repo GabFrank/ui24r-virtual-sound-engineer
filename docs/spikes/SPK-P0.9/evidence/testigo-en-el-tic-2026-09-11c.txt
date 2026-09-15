@@ -1,0 +1,71 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T12:03:41.302Z
+# comando: node --experimental-strip-types tools/spikes/p0-9/testigo-en-el-tic.ts 192.168.0.78 16
+# guion: tools/spikes/p0-9/testigo-en-el-tic.ts sha256:ac3d0d795da9d44e
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+canales enumerados por HTTP antes de escribir (exigencia: callado):
+  i.16 mute=1 fader=0.0000 src=hw.16    nombre="" -> SIRVE: silenciado, fader al fondo y sin envios abiertos
+
+punto de retorno: VSE_AUTO_1789128233460
+
+canal 17 (i.16) · ruta i.16.mix · ventana del testigo: 500 ms
+valor de partida: 0
+
+vuelta | A      | B      | vio A | vio B | lineas | valores difundidos
+-------+--------+--------+-------+-------+--------+-------------------
+     1 | 0.1000 | 0.3000 | no    | SI    |      0 | (ninguna)
+     2 | 0.1100 | 0.3100 | no    | SI    |      0 | (ninguna)
+     3 | 0.1200 | 0.3200 | no    | SI    |      0 | (ninguna)
+     4 | 0.1300 | 0.3300 | no    | SI    |      0 | (ninguna)
+     5 | 0.1400 | 0.3400 | no    | SI    |      0 | (ninguna)
+     6 | 0.1500 | 0.3500 | no    | SI    |      0 | (ninguna)
+     7 | 0.1600 | 0.3600 | no    | SI    |      0 | (ninguna)
+     8 | 0.1700 | 0.3700 | no    | SI    |      0 | (ninguna)
+     9 | 0.1800 | 0.3800 | no    | SI    |      0 | (ninguna)
+    10 | 0.1900 | 0.3900 | no    | SI    |      0 | (ninguna)
+
+el testigo vio A: 0 de 10
+el testigo vio B: 10 de 10
+vueltas donde la consola difundio UNA sola linea: 0 de 10
+
+== Control positivo: las mismas escrituras, separadas por mas que el tic ==
+Si aca A se ve, el instrumento PUEDE verla y el cero de arriba es del aparato.
+
+vuelta | A      | B      | testigo vio A | testigo vio B
+-------+--------+--------+---------------+--------------
+     1 | 0.1000 | 0.3000 | SI            | SI
+     2 | 0.1100 | 0.3100 | SI            | SI
+     3 | 0.1200 | 0.3200 | SI            | SI
+     4 | 0.1300 | 0.3300 | SI            | SI
+     5 | 0.1400 | 0.3400 | SI            | SI
+     6 | 0.1500 | 0.3500 | SI            | SI
+     7 | 0.1600 | 0.3600 | SI            | SI
+     8 | 0.1700 | 0.3700 | SI            | SI
+     9 | 0.1800 | 0.3800 | SI            | SI
+    10 | 0.1900 | 0.3900 | SI            | SI
+
+con pausa de 150 ms -- el testigo vio A: 10 de 10
+con pausa de 150 ms -- el testigo vio B: 10 de 10
+
+CONFIRMADO, y con control: pegadas, el testigo solo ve la segunda; separadas
+por mas que el tic, ve las dos. O sea que el cero NO es del arnes.
+
+OJO: no todas las vueltas dieron una sola linea. Mirar la columna antes de
+decir «colapso»: con dos lineas no hubo colapso y el testigo fallo por otra cosa.
+
+LO QUE ESTO NO MIDE, y hay que decirlo: si la consola APLICO A antes de
+sobrescribirlo. Difundir una sola linea es compatible con las dos historias.
+Para separarlas hace falta leer el estado entre las dos escrituras, y eso
+no se puede hacer sin meter una espera que rompa el mismo tic que se mide.
+
+comprobacion por HTTP, contra el estado previo (6732 claves leidas):
+  claves que cambiaron: ninguna
+  punto de retorno borrado: VSE_AUTO_1789128233460
+
+
+# salida del proceso: 0

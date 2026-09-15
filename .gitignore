@@ -26,3 +26,6 @@ tools/visual/out/
 # repositorio público, no se pueden quitar del historial.
 vse-*.apk
 vse-*.apk.sha256
+
+# El grabador se compila desde `tools/audio/grabar.swift`; el binario no va al repo.
+tools/audio/bin/

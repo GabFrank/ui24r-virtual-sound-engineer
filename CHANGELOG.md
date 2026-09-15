@@ -6,6 +6,1388 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El escenario: dónde está cada cosa en la sala, y con cuánta duda.** La
+  aplicación razonaba sobre señales —niveles, espectro, medidores— y ahora puede
+  razonar también sobre el espacio. Lo que eso agrega no es una pantalla: es un
+  **segundo camino independiente hacia la misma conclusión**. Si la geometría
+  dice que una cuña apunta casi directo a un micrófono y el analizador encuentra
+  un lazo, se confirman; si la geometría señala otra pareja, **una de las dos
+  está mal** y hoy no hay forma de darse cuenta.
+
+  La regla que gobierna el modelo entero: **ninguna inferencia geométrica se
+  presenta más precisa que sus entradas**. Cada emplazamiento lleva su
+  incertidumbre —fijo, en un pie, o en la mano de quien canta— y **toda función
+  que deriva un número devuelve un rango**, no un escalar. El tipo `Rango` no
+  tiene campo para el valor central, y es deliberado: en cuanto exista el número
+  lindo, alguien lo va a mostrar solo.
+
+  Cuando dos elementos están más cerca que su propia duda, el ángulo fuera de
+  eje se informa como `0..180`, que es contestar «no se sabe» sin dejar de
+  contestar.
+
+  **Lo que se acopla es el micrófono, no el instrumento**: un amplificador de
+  guitarra es una fuente, y lo que el monitor realimenta es el micrófono que
+  tiene delante. Para una voz están casi en el mismo sitio; para una batería,
+  no.
+
+  El escenario cuelga del **local** y no de la banda, porque los monitores se
+  mueven de sala en sala mientras la formación no cambia. **Y los monitores no
+  se modelan aparte**: un monitor *es* un componente del sistema de
+  amplificación alimentado por un auxiliar, así que lo que se hizo fue darle
+  clase, modelo y emplazamiento a los componentes que ya existían. Una lista de
+  monitores al lado de la lista de componentes serían dos verdades que se
+  contradicen en cuanto alguien cambia un cable de bus.
+
+  El micrófono necesita **patrón polar**, que es dato de catálogo y viene
+  impreso en la caja. No reabre el registro de micrófonos con curvas de
+  corrección, que es otra cosa y sigue diferido.
+
+  Todavía **no calcula acoplamiento ni diagnostica nada**: esto es el modelo y
+  la geometría. El diagnóstico es la tarea siguiente, y va a diagnosticar sin
+  proponer ni escribir.
+
+- **Se puede silenciar un canal para diagnosticar, en soundcheck** (ADR-027). El
+  analizador dice a qué frecuencia y la geometría dice qué pareja está más
+  expuesta; las dos son **indicios**. La única forma de pasar de indicios a un
+  experimento es silenciar un candidato y ver si la banda sostenida se cae — y el
+  motor no permitía ni una sola ruta de silencio de canal.
+
+  **El argumento fue del usuario**: el bloqueo existía pensando en un modo de
+  show que hoy no existe y puede no existir nunca, y en un soundcheck silenciar
+  un canal para probar algo es lo más normal del oficio.
+
+  Con condiciones: sólo fuera de los estados en vivo, **de a un canal por vez**
+  —silenciar dos rompe el experimento, porque si la banda cae no se sabe cuál de
+  los dos la sostenía—, y con punto de retorno y restauración comprobada por otro
+  camino. El diagnóstico **nunca desilencia**, y no por una regla sino porque un
+  canal en silencio no puede estar cerrando el lazo.
+
+- **El techo de rutas escribibles pasó de 666 a 690**, que son exactamente los
+  veinticuatro silencios de canal. Hay un test que vigila ese número y **acusó el
+  cambio**, como tenía que hacer; ahora hay un segundo que mira **qué** entró, no
+  cuánto: si una autorización trajera otra familia de contrabando y quitara la
+  misma cantidad de otra, el total cuadraría igual.
+
+- **El límite declarado no hacía lo que su comentario decía.** Al abrir el
+  silencio hubo que darle un tope, porque INV-004 rechaza todo parámetro sin uno;
+  se declaró «uno por transacción» creyendo que con eso se silenciaba de a uno.
+  **El propio test lo desmintió: dos silencios pasaban.** El tope acota la
+  magnitud, y la de un silencio es siempre 1, así que cada uno cumplía por
+  separado. La regla de cuántos entran en una transacción vive en el motor, que
+  sí cuenta.
+
+- **La lista de estados en vivo vivía sólo en la capa de pantalla** y ahora la
+  necesita el motor de seguridad. Se movió al dominio: dos listas de lo mismo en
+  dos capas se separan, y la que se separaría acá decide si la aplicación puede
+  dejar un canal mudo durante un show.
+
+- **El almacén del navegador descarta lo que es de otra versión del esquema.** Ahí
+  **no corren las migraciones** —son SQL, y reimplementarlas en otro lenguaje
+  serían dos verdades que se separan—, así que un perfil guardado antes de una
+  migración se leía después con el código nuevo, que espera otra forma. Un perfil
+  de amplificación anterior a la migración 6 no tiene identificador en sus
+  componentes, y el escenario los referencia por ahí: el plano quedaba mudo sin
+  que nada fallara.
+
+  La salida es descartar, no migrar: ese almacén se declara desechable desde su
+  primera línea, y es el camino de desarrollo, no el del producto. **Se avisa
+  fuerte y no en silencio** — perder datos de prueba no tiene consecuencias,
+  perderlos sin enterarse convierte un «desapareció mi banda» en media hora de
+  búsqueda. Y un almacén vacío no avisa: sería ruido en cada arranque limpio.
+
+- **Los blancos táctiles se miden, en cada paso y en los dos anchos.** El sistema
+  de diseño promete 48 píxeles como mínimo en dos lugares y **nada lo
+  comprobaba**: el recorrido visual medía un único rectángulo, el del paro, y el
+  resto de la promesa vivía en la palabra de quien escribió cada pantalla. Ya
+  había fallado en silencio — un blanco declarado de 48 que medía 26,7 porque el
+  dibujo se estiraba.
+
+  **La primera corrida dio cinco avisos y ninguno era un blanco chico**: los
+  cinco eran el mismo error de la comprobación, que medía la caja del elemento y
+  no el área que recibe el toque. Hay dos mecanismos legítimos que las separan
+  —un enlace con un pseudoelemento estirado sobre toda su fila, y una casilla
+  dentro de la etiqueta que la alterna— y **tratarlos como excepciones habría
+  vaciado la comprobación**. No son elementos que incumplen y se perdonan: son
+  elementos cuyo blanco real es otro.
+
+  Con el área efectiva medida: **27 pasos, dos anchos, cero incumplimientos**. Y
+  con control positivo, porque una comprobación que no falla nunca no comprueba
+  nada: achicando a propósito la etiqueta de una casilla, el área efectiva cae a
+  44 píxeles y la comprobación la acusa en los dos anchos.
+
+- **El recorrido guiado entró en el camino de usuario verificado.** Era la
+  obligación que quedó sin cumplir del contrato de esa pantalla, y un auditor la
+  había predicho antes de que se escribiera: el recorrido visual no visitaba ni
+  canales ni recorrido, así que la pantalla nueva no se capturaba en ningún ancho.
+  Se capturan el bloqueo por estado y el estado vacío; la lista con filas necesita
+  canales asignados, y asignar canales necesita la consola. Queda declarado.
+
+- **La tabla de números en letras del validador llegaba hasta veinticinco.** Al
+  pasar el recorrido de 25 a 27 pasos, el validador contó bien y no supo leer la
+  palabra. Ahora llega a veintinueve.
+
+- **La pantalla del recorrido, y el primer ciclo completo del protocolo de
+  verificación.** Se llega desde la sesión y sólo en configuración de canales,
+  porque el recorrido toca ganancia e INV-006 la confina ahí. Se arrastra desde
+  un asidero —la fila entera queda libre para desplazar la lista, que es lo que
+  permite llegar a la fila 20 de 24—, se guarda al soltar, se pueden sacar y
+  traer canales, y «volver al orden propuesto» **olvida** el orden guardado en
+  vez de congelarlo, para que la propuesta siga acompañando si el catálogo
+  mejora. Las cuatro son decisiones del usuario, registradas en
+  `docs/pedidos/2026-09-11-recorrido.md`.
+
+  **Lo nuevo no es la pantalla: es que el criterio de corrección se fijó antes
+  que la solución.** Un auditor registró sus expectativas y diez casos
+  reservados sin ver ninguna implementación, y después contrastó. De las cinco
+  trampas que había nombrado —arrastre que no funciona con el dedo, persistir
+  números de canal, la pantalla reordenando por su cuenta, una migración
+  innecesaria, y etapas con la cadena escrita— **no cayó ninguna**, y el caso
+  que reservó para delatar la tercera ya es un test del repositorio.
+
+- **Un canal sin clasificar salía primero de la lista, con las 983 pruebas en
+  verde.** La guarda que lo manda al final tiene dos mitades y **los tests
+  cubrían la que la pantalla no puede alcanzar**: el clasificador nunca devuelve
+  un instrumento ausente, devuelve uno con la fuente en nulo. Borrar esa mitad no
+  rompía nada. Lo delató un barrido de mutaciones, y es lo contrario exacto de lo
+  que ese archivo promete.
+
+- **Un canal sacado del recorrido volvía solo.** Quitar la asignación de un canal
+  y reasignarla acuña un identificador nuevo, así que la exclusión que el usuario
+  había hecho se revertía sin aviso — y los dos arreglos crecían sin techo dentro
+  del documento de la banda. Ahora se podan al guardar, no al leer: leer no
+  escribe.
+
+- **La etapa de ganancia no llevaba a ningún lado.** La función de navegación
+  existía y **no la llamaba nadie**: las etapas eran texto inerte dentro de un
+  contenedor oculto para lectores de pantalla. Era el compromiso más visible del
+  contrato y quedó como código muerto hasta que el contraste lo buscó.
+
+- **Dos de los seis distintivos de etapa renderizaban el mismo texto.** Recortar
+  a dos letras daba `A ` tanto para «A efectos» como para «A monitores». Lo
+  encontró contar, no leer.
+
+- **Un segundo dedo reemplazaba el arrastre en curso.** Tres de los cuatro
+  manejadores filtraban por puntero y el de apoyar no, así que el primer dedo
+  quedaba huérfano y su gesto se perdía en silencio — mientras el mensaje del
+  commit afirmaba lo contrario. El precedente del que se copió la lección tiene
+  la misma ausencia: viajó con su agujero adentro.
+
+- **El botón de sacar seguía activo durante un arrastre**, y como el índice se
+  captura al apoyar y no se revalida, movía la fila equivocada.
+
+- **«Un solo camino de escritura» era falso: hay tres.** El defecto que el
+  compromiso nombraba estaba cerrado, y el mismo defecto en la dirección inversa
+  estaba abierto: editar la banda en perfiles durante una sesión dejaba la caché
+  vieja, y el primer arrastre habría reescrito el perfil entero desde ella,
+  pisando el nombre y los integrantes. El compromiso escrito así lo habría dado
+  por cubierto.
+
+- **Y un umbral duplicado con un docblock que afirmaba que era compartido.** Era
+  cierto ese día y nada lo ataba.
+
+- **Hice un documento para no inventar el orden, y después inventé el acuerdo
+  entre las fuentes.** Es el hallazgo más caro de esta tanda y no fue un detalle
+  de cita: el documento existe justamente para eso. Una auditoría bajó las tres
+  páginas y las leyó enteras.
+
+  - La fuente que sostiene la tabla **no da ningún motivo**. Dice que la mayoría
+    ordena más o menos así y que se puede usar el orden que uno quiera. Yo le
+    atribuí a las tres un argumento sobre armar primero el cimiento de graves
+    que no está en ninguna con esa forma — y que ni siquiera explica la tabla:
+    con ese criterio el bajo no iría en el puesto 5, detrás de los platos.
+  - Una de las tres **es sólo de batería** y su orden dentro del kit
+    **contradice** al de la tabla en toms y aéreos. Justo la parte que la nota al
+    pie le atribuía.
+  - La tercera coincide en la lista de entradas pero su secuencia de soundcheck
+    es otra.
+  - **Seis de los trece puestos los decidí yo** —la percusión afrolatina y la
+    línea— y el comentario decía que salían de la tabla. Y afirmaba que el
+    catálogo no tiene vientos cuando sí los tiene.
+
+  Todo eso está corregido y separado en el documento: qué publica la fuente, qué
+  dicen las otras dos incluida la contradicción, y qué decidí yo. Hay un test que
+  impide que la frase del acuerdo vuelva.
+
+- **El orden de las etapas dentro del canal estaba al revés que su fuente.** La
+  misma página publica ganancia, puerta, ecualizador, compresor y envíos; yo
+  tenía el compresor antes del ecualizador, justificado con un razonamiento
+  propio. Y los envíos van al final **porque lo dice la fuente**, no porque se
+  sepa dónde derivan: eso depende de si el envío se toma antes o después del
+  procesamiento, y no está medido.
+
+- **Una batería acústica completa sale mal ordenada, y ahora está declarado.**
+  Redoblante, toms y aéreos son las filas 2, 3 y 4 —el cimiento del kit— y el
+  catálogo no los tiene, así que caen en «no clasificado» y van detrás de las
+  voces. El test que decía atar el documento al código **nombraba esas tres filas
+  y no las comprobaba**: afirmaba que la tabla tiene ocho y verificaba las cinco
+  en las que el código coincide.
+
+- **Ocho de las trece constantes del orden no las fijaba ningún test**, y eran
+  justo las de percusión afrolatina, línea y palabra: el repertorio que el propio
+  catálogo declara como el del usuario. Se podía poner el djembe después de la
+  voz y la suite quedaba verde.
+
+- **Un identificador repetido en el orden guardado movía el canal al final.**
+  `new Map` con duplicados se queda con el último índice, así que la voz guardada
+  en el puesto 0 salía en el 2.
+
+- **Una rama por defecto inalcanzable, con un comentario que la justificaba.** La
+  tabla de puestos es total sobre las familias del catálogo, así que el
+  `?? PUESTO_DESCONOCIDO` no podía ejecutarse nunca.
+
+- **El recorrido guiado: en qué orden se ajusta la banda.** Primero el cimiento
+  de graves y las voces al final. **El orden propuesto no sale de la intuición de
+  quien programa**: está en [orden-del-soundcheck.md](docs/orden-del-soundcheck.md),
+  que separa qué publica la fuente de qué se decidió acá, y un test comprueba
+  esa separación para que no puedan confundirse otra vez.
+
+  Y es una propuesta, no una imposición: la fuente describe una banda de rock, y
+  un trío de cuerdas o un grupo de candombe no encajan. El usuario
+  reordena y lo que elija queda guardado. **Un canal agregado después no
+  desaparece del recorrido** —sumar un micrófono a mitad del soundcheck es lo
+  normal— y lo que el catálogo no supo clasificar va al final y no al principio:
+  lo que no se sabe no puede meterse en el medio del cimiento.
+
+- **Cada etapa declara si su ley está medida, en un solo lugar.** Hoy lo está
+  sólo la ganancia. El día que se mida otra alcanza con cambiar esa tabla; si el
+  dato estuviera repartido por las pantallas, alguna seguiría diciendo «sin
+  medir» después de la medición, o peor, al revés.
+
+- **El segundo camino: qué pareja monitor↔micrófono está más expuesta.** El
+  analizador dice que algo se sostiene a nueve kilohercios pero no dice de dónde
+  sale; la geometría dice qué pareja está más expuesta pero no dice a qué
+  frecuencia. Cuando los dos señalan el mismo canal, se confirman. **Cuando no,
+  un dato registrado está mal** —el monitor no está donde se dijo, está en otro
+  auxiliar del registrado, o el micrófono se movió— y hasta ahora no había
+  ninguna forma de enterarse. Un desacuerdo no es un fallo del método: es el
+  método funcionando.
+
+- **No devuelve decibeles, y no es que falten unidades: faltan las leyes.** La
+  ganancia de lazo necesita el envío al auxiliar, el preamplificador y la
+  sensibilidad del micrófono, y las leyes del envío y del ecualizador de canal
+  **no están medidas contra la consola**. Lo que sale es un orden, sin unidad, y
+  el tipo lleva la advertencia en el nombre: la razón entre dos de esos valores
+  no significa nada.
+
+- **Y no ordena lo que no se puede ordenar.** Cada pareja trae un rango, porque
+  las posiciones traen su incertidumbre; dos parejas cuyos rangos se solapan van
+  en el mismo escalón, informado como empate, en vez de inventar un desempate.
+  Un plano cargado a ojo produce un escalón único con todo adentro —que no es un
+  defecto del método, es la respuesta correcta cuando las entradas no alcanzan
+  para separar nada—, y la pantalla dice que medir mejor las posiciones las
+  separa.
+
+- **El filtro más fuerte no es geométrico.** Un micrófono que no se envía a ese
+  monitor no cierra lazo por ahí, por más cerca que esté, y se va de la lista en
+  vez de bajar de puesto. Pero **no saber si llega no es lo mismo que saber que
+  no llega**: cuando el estado de la consola no está, la pareja se informa igual
+  y con la reserva escrita.
+
+- **El patrón polar entra en la cuenta, con los patrones ideales de libro.** Un
+  cardioide anula atrás, un bidireccional capta atrás **igual que adelante** —o
+  sea que 180° es su peor caso y no el mejor—, y un patrón sin cargar se trata
+  como el caso más expuesto, porque errar por exceso pone la pareja más arriba
+  en la lista mientras que errar por defecto la esconde.
+
+- **Dónde está puesto un monitor pasó a ser un dato de la sala, no del equipo.**
+  El perfil de amplificación describe **qué** equipo es —qué caja, por qué bus
+  sale, si se puede silenciar sola— y el escenario de cada local dice **dónde**
+  está puesto, refiriéndose al componente por su identificador. La primera
+  versión guardaba el lugar dentro del componente, y una auditoría encontró lo
+  que eso significaba: dos locales que comparten el mismo sistema —que la
+  aplicación permite, y tiene un selector para eso— **se pisaban las posiciones
+  entre sí, sin aviso**. Ubicar las cuñas en un galpón movía las del bar.
+
+  Para eso los componentes ganaron **identidad propia**, que no tenían. El
+  nombre no alcanza —el propio modelo nombra el caso de dos homónimos, los dos
+  lados de un general estéreo— y la posición en la lista se rompe en cuanto
+  alguien borra uno del medio. El editor llegó a usar las dos cosas antes de
+  esto, y las dos fallaban.
+
+  De yapa, guardar dejó de ser dos escrituras encadenadas en un intento que no
+  es transaccional: ahora es una sola, al local.
+
+- **El editor del escenario: arrastrar cada cosa a su lugar en el plano del
+  local.** Se llega desde la ficha del local, dibuja la sala vista desde arriba
+  —el escenario arriba, el público abajo— y deja poner instrumentos, micrófonos
+  y monitores con el dedo. Los monitores y las cajas no se cargan dos veces:
+  salen del sistema de amplificación y lo único que se les agrega acá es dónde
+  están.
+
+- **Sin el tamaño del local no hay plano, y no se inventa uno.** Es la única
+  puerta cerrada de la pantalla, y manda a cargarlo. Dibujar una sala de medidas
+  supuestas y dejar arrastrar cosas adentro produciría un escenario entero de
+  datos falsos, que después van a contradecir al analizador sin que nadie sepa
+  por qué.
+
+- **La precisión del arrastre se dice, no se finge.** Sobre un plano de una sala
+  de 12 por 8 metros en un lienzo de 700 px la escala da 51,4 px por metro, así
+  que una yema de 44 px son **86 cm** de ambigüedad. Cuando el elemento ya tiene
+  cargada menos duda que eso —un micrófono en un pie está a ±5 cm— la pantalla
+  lo marca y ofrece escribir los números: arrastrarlo ahí **empeora** el dato.
+  El círculo de duda se dibuja siempre, aunque quede diminuto, porque un punto
+  pelado invita a creer que la posición es exacta.
+
+- **Un micrófono nace sin patrón declarado.** Poner el cardioide —que es el más
+  común— ahorraría un toque y metería un dato inventado en la entrada de una
+  inferencia geométrica. La pantalla dice qué falta, en vez de dejar el elemento
+  apagado sin explicación.
+
+- **El patrón polar dejó de ser un campo inerte.** Se exigía al cargar un
+  micrófono y no lo leía ninguna cuenta: cardioide, hipercardioide y
+  bidireccional daban resultados idénticos. Ahora cada patrón declara **dónde
+  está su nulo**, que es dato de catálogo y de primer orden —no un micrófono
+  medido—. Sin eso, quien ordenara por ángulo iba a leer 180° como el mejor
+  caso, y para un bidireccional 180° es **el peor**: el lóbulo trasero capta
+  igual que el delantero.
+
+- **El omnidireccional ya no se informa igual que una caja directa.** La
+  pregunta por el ángulo devolvía `null` para tres cosas distintas: una caja
+  directa que no capta aire, un micrófono direccional al que le falta la
+  orientación, y un omnidireccional perfectamente válido. El tercero es el caso
+  caro — el omni es el micrófono más propenso a realimentar de cualquier
+  escenario, y salía del análisis con el mismo silencio que algo que no capta.
+
+- **Los intraurales tienen su propia clase, y no van a la lista de «falta
+  ubicarlo».** Cargados con su emplazamiento —en la cabeza de quien canta—
+  salían como un emisor a cero metros y en el eje del micrófono de voz: el par
+  más riesgoso de todo el escenario, y el único que **no puede realimentar
+  nunca**. La alternativa era dejarlos sin lugar, y entonces se informaban como
+  no analizados, que tampoco es cierto.
+
+- **Los seis números de incertidumbre por fijeza están declarados como
+  suposiciones, no como mediciones.** Viven en una sola constante para que se
+  los pueda discutir, cambiar o reemplazar por mediciones sin tocar el modelo, y
+  cualquier emplazamiento puede sobreescribirlos: quien midió su sala con cinta
+  métrica sabe más que la tabla.
+
+### Corregido
+
+- **El índice mezclaba dos leyes distintas, y eso cambiaba el orden.** La
+  respuesta polar de un micrófono es una sensibilidad de **presión**, y dividir
+  por la distancia al cuadrado es la ley de la **intensidad**. El producto no
+  era ni una cosa ni la otra: a 1,00 m y 75° fuera de eje contra 1,55 m en el
+  eje, el índice mezclado hacía ganar a la de costado y las dos leyes coherentes
+  hacen ganar a la de eje. Y un comentario **defendía la mezcla** diciendo que
+  para ordenar daba lo mismo porque las dos son monótonas — cierto a ángulo
+  fijo, falso en cuanto el factor polar entra en el producto. Queda todo en
+  presión.
+
+- **Una sola pareja ancha destruía el orden de todas las demás.** El
+  agrupamiento en escalones era por encadenamiento: si A se solapa con B y B con
+  C, los tres iban al mismo grupo aunque A y C no se tocaran. En un escenario
+  real —un cantante con el micrófono de mano encima de su cuña, más guitarra,
+  coro y bombo— esa única pareja se tragaba a las otras seis, que entre sí eran
+  perfectamente separables, y la pantalla pasaba a decir que la geometría no
+  podía separar ocho parejas cuando siete estaban separadas. Ahora cada pareja
+  dice de cuáles no se la puede distinguir, de a pares y no en cadena: es más
+  información y no menos.
+
+- **«Medir mejor las posiciones las separa» es falso en los dos casos que más
+  aparecen.** Cuando el nulo del patrón cae dentro del rango de ángulos, el piso
+  es cero por física y no baja por más que se mida — medido con dudas de ±10 cm
+  y ±1 mm, el resultado es el mismo. Y cuando la duda viene de que alguien se
+  mueve con el micrófono en la mano, no es imprecisión sino movimiento. La frase
+  mandaba a hacer algo que no arregla lo que el usuario está mirando; ahora
+  distingue el caso y dice que moverlo un poco sí lo resuelve.
+
+- **La reserva del ángulo indeterminado comparaba con igualdad exacta.** Sólo
+  atrapaba el centinela `0..180` que fabrica el dominio, así que un `0..173` —el
+  mismo caso físico, apenas recortado— se escapaba sin advertencia. El dominio
+  ya tenía una función para esto y no se la llamaba.
+
+- **Una caja de sala se presentaba como la pareja más limpia del informe.** Como
+  no sale por un auxiliar, no había envío que consultar y no llevaba ninguna
+  reserva, mientras la cuña —de la que sí se sabe algo— llevaba la suya escrita.
+  La falta de dato se mostraba al revés.
+
+- **Once mutaciones sobrevivían en verde**, entre ellas no propagar la
+  incertidumbre de la distancia —que dejaba el rango colapsado a un punto—,
+  ordenar por el piso en vez del techo, mover el piso de distancia nueve veces,
+  y una comprobación que reemplazó a una guarda muerta y era ella misma inerte.
+  Todas mueren ahora.
+
+- **El piso del rango de exposición se calculaba sólo en las esquinas, y el
+  mínimo puede caer adentro.** La respuesta polar no es monótona: baja hasta
+  anularse en el nulo del patrón y **vuelve a subir** por el lóbulo trasero. Un
+  bidireccional con el ángulo entre 80° y 100° —que contiene su nulo en 90°—
+  salía con el rango **colapsado a un punto**, o sea inventando exactamente la
+  precisión que ese módulo existe para no inventar. Y el error iba para el lado
+  inseguro: un piso inflado no se solapa con nadie, así que producía escalones
+  separados donde la geometría no separa nada.
+
+- **La tarjeta del diagnóstico se contradecía consigo misma.** Con doce parejas
+  empatadas y un tope de ocho líneas, mostraba al mismo tiempo «la geometría no
+  puede separar estas doce» y «y cuatro más, menos expuestas». Las cuatro que
+  faltaban no eran menos expuestas: eran las que el encabezado acababa de
+  declarar inseparables. Ahora la frase distingue si el corte cayó entre
+  escalones o dentro de uno.
+
+- **Enuncié mal una ley de física y la llamé geometría.** Un comentario decía
+  que la presión cae con el cuadrado de la distancia; lo que cae con el cuadrado
+  es la intensidad —la presión cae con la distancia a secas, seis decibeles al
+  doblarla—. Para ordenar da lo mismo, porque las dos son monótonas; escribir
+  mal una ley no da lo mismo.
+
+- **El nulo de catálogo y el nulo exacto no son el mismo número, y el cálculo
+  usaba el equivocado.** La tabla del dominio lleva la cifra impresa en el
+  micrófono —110° para un hipercardioide— y el nulo exacto del patrón ideal está
+  en 109,47°. Para mostrar alcanza; para calcular el piso de un rango no, porque
+  evaluar en 110 no da cero. Ahora el cálculo deriva el nulo de los mismos
+  coeficientes que la respuesta, y un test compara las dos cifras para que no
+  puedan separarse de verdad.
+
+- **Una guarda defensiva que no protegía de nada.** Una cláusula evitaba
+  calcular el nulo de un patrón de lóbulo ancho, que daría `NaN` — y ningún
+  patrón de la tabla es así, de modo que borrarla pasaba todos los tests. Se
+  saca y en su lugar queda una comprobación que **sí** muerde: agregar un
+  subcardioide a la tabla ahora hace fallar cuatro tests en vez de devolver
+  `NaN` en silencio. Una guarda inerte no protege y da la sensación de que sí.
+
+- **Dos docblocks que decían otra cosa que su código.** El de `EMPATE` hablaba
+  de más de una pareja cuando lo que se compara son canales; y el del ángulo
+  decía que `null` significa «omnidireccional o sin orientación» cuando
+  significa sólo lo segundo. Ese segundo se espejaba en la pantalla, que de un
+  cardioide sin orientación imprimía «capta desde cualquier dirección» — que es
+  afirmar justo lo que no se sabe.
+
+- **Tocar una ficha para leer sus números la corría 34 centímetros.** El
+  arrastre mandaba el elemento a la posición absoluta del dedo en vez de moverlo
+  lo que el dedo se movió, así que apoyar en el borde de un blanco de 48 px y
+  levantar sin desplazarse reubicaba el elemento y dejaba la pantalla en «sin
+  guardar». Una auditoría lo midió. Ahora el arrastre guarda el agarre, hay un
+  umbral que separa tocar de arrastrar, y un `pointercancel` —que lo dispara el
+  sistema, no el usuario— **descarta** el movimiento en vez de confirmarlo.
+
+- **Un segundo dedo secuestraba el arrastre en curso.** Sin comparar el puntero,
+  apoyar otro dedo sobre otra ficha cambiaba el objetivo y los movimientos del
+  primer dedo pasaban a arrastrar la segunda. Es el gesto más natural en una
+  tablet.
+
+- **El blanco táctil de 48 px medía 26,7 en una tablet chica.** El lienzo tenía
+  un ancho fijo de 720 que nadie ligaba, y como el dibujo se estira al hueco
+  disponible, una unidad de dibujo no era un píxel de pantalla. Eso ponía el
+  blanco por debajo del mínimo del sistema de diseño **y** hacía que la
+  ambigüedad del dedo se informara casi a la mitad de lo que era — justo la
+  cifra que esta pantalla existe para no falsear. Ahora el lienzo se mide.
+
+- **Los dos avisos de precisión eran dos cuentas distintas que discrepaban.** El
+  de la ficha decía usar la misma escala que el plano y comparaba contra un
+  umbral fijo de 25 cm: un elemento con 30 cm de duda no recibía el aviso aunque
+  el plano lo marcara. Ahora hay una sola cuenta, y la hace quien mide el
+  lienzo.
+
+- **La aplicación inventaba posiciones y las declaraba con ±5 cm.** Al agregar
+  un elemento o ubicar un componente, el lugar es un punto de partida para poder
+  agarrarlo, no una medición; declararlo con la duda de un pie de micrófono
+  metía precisión inventada en la entrada de una inferencia geométrica. Ahora
+  nace con una duda del orden del local, y la pantalla dice que es eso.
+
+- **Unidades mezcladas en tres campos.** El redondeo a centímetros se aplicaba
+  también a grados y a un valor que ya estaba en centímetros; el campo de duda
+  en centímetros no aceptaba decimales —escribir 7,5 guardaba 8—; y la lectura
+  de números aceptaba notación científica y hexadecimal, así que `1e3` entraba
+  como mil metros sin avisar.
+
+- **Un elemento fuera de las paredes quedaba invisible e intocable.** Pasa al
+  achicar el local después de cargar el escenario. No se dibujaba, no aparecía
+  en ninguna lista, y si se perdía la selección no había forma de recuperarlo.
+  Ahora tiene su lista, con un botón para traerlo de vuelta.
+
+- **Un local sin sistema de amplificación no decía nada.** La pantalla se veía
+  completa y los monitores simplemente no existían.
+
+- **Un test mío no distinguía una de las tres ramas.** Al aplicar un movimiento
+  sobre una ficha que ya no existe, quitarle la guarda al camino de los
+  componentes pasaba 24 de 24: yo sólo probaba el camino de las fuentes. Lo
+  encontró romper el código a propósito, una guarda por vez.
+
+- **Escribí una cuenta sin hacerla.** Un comentario afirmaba 58 px por metro y
+  76 cm de ambigüedad para el dedo; corriendo la función da **51,4 y 86 cm** —el
+  número estimado se olvidaba de restar los márgenes—. Corregido, y con un test
+  que ata el ejemplo del comentario para que no pueda quedar viejo en silencio.
+
+- **Y dos fichas de diseño inventadas, más un número que ya estaba declarado.**
+  El plano usaba `--text`, que no existe —es `--ink`— y lo escondía detrás de un
+  valor de reserva: la guarda de fichas dice, con razón, que un valor de reserva
+  no arregla un nombre mal escrito sino que lo tapa. Y el blanco táctil de 48 px
+  estaba escrito a mano cuando el repositorio ya lo declara en `--tap-min`.
+  Ahora un test compara los dos números, porque dos cifras que dicen lo mismo y
+  pueden separarse son un defecto esperando.
+
+- **Un filtro de la revisión estaba tapando errores reales.** Buscar `error TS`
+  en la salida de la compilación no ve los errores de plantilla de Angular, que
+  `tsc --noEmit` tampoco revisa: hace falta `ng build`, que ya está en el `lint`
+  del paquete. Detrás de ese filtro había un error propio.
+
+- **Una migración que dejaba la base sin abrir para siempre.** Un elemento de
+  la lista de componentes que no fuera un objeto —un texto, un número, un
+  `null`— es JSON perfectamente válido, así que la guarda por documento
+  ilegible no lo filtraba, y la conversión fallaba con «malformed JSON». Como
+  la aplicación manda cada migración **en un solo lote junto con la versión del
+  esquema**, el error revertía todo: no migraba ninguna fila, la versión quedaba
+  atrás, y en el arranque siguiente se reintentaba y volvía a fallar. Una sola
+  fila con esa forma y la base no abre nunca más — exactamente el desenlace que
+  el bloque decía estar evitando, entrando por la puerta de al lado. La
+  migración anterior había previsto el caso y esta no lo copió. Lo encontraron
+  **dos auditorías por separado**, cada una por su camino.
+
+- **Dos de los cinco tests de la migración pasaban con la migración entera
+  borrada.** Uno plantaba un documento que ya traía las tres claves, así que
+  «no las pisa» era cierto también si nadie las tocaba; el otro comprobaba
+  idempotencia, y **una migración que no hace nada es idempotente por
+  definición**. Los dos llevan ahora un componente sin claves al lado. Se
+  comprobó rompiendo cada guarda a propósito: borrar la migración hace fallar
+  seis tests, y quitar cualquiera de las cuatro guardas hace fallar exactamente
+  uno.
+
+- **El margen del ángulo se ensanchaba por un término que la fórmula no
+  sostiene.** Sumaba la incertidumbre de orientación del elemento **mirado**,
+  cuando el cálculo usa el eje de quien mira y la recta entre posiciones: hacia
+  dónde mira el otro no entra en ninguno de los dos. Ensanchar de más es la
+  dirección segura para equivocarse, pero no es gratis: un rango inflado sin
+  motivo hace que una pareja parezca indecidible cuando no lo es.
+
+- **Los tests de ángulo no distinguían un escenario espejado.** Todos usaban
+  azimut 0, así que invertir el eje x —cambiar izquierda por derecha en toda la
+  sala— los dejaba **20 de 20 en verde**. Es el error que pone la cuña apuntando
+  al otro lado y señala como más acoplado al micrófono equivocado. Comprobado
+  rompiéndolo a propósito, y ahora hay un caso con azimut ±90.
+
+- **Un escenario sin dimensiones del local no se validaba en absoluto.** Todo
+  el bloque de posición colgaba de que el local las tuviera, así que al aire
+  libre pasaban coordenadas negativas y un 200 tipeado donde iba 2,00. Había un
+  test que consagraba eso como correcto. Los negativos se revisan siempre; sólo
+  los topes necesitan paredes.
+
+- **`NaN` pasaba por «rango apto para decidir».** Toda comparación con `NaN` es
+  falsa, así que un azimut mal cargado producía un rango de `NaN` a `NaN` y el
+  filtro de rangos inservibles lo dejaba pasar. Lo mismo un rango invertido, que
+  es lo que produce una incertidumbre angular negativa — que ahora además se
+  denuncia al validar.
+
+- **La lista de componentes sin ubicar devolvía nombres y perdía la
+  identidad.** Los dos lados de un general estéreo comparten bus y pueden
+  compartir nombre: quien recibiera la lista no podía distinguirlos para pedirle
+  al usuario que ubicara uno en particular.
+
+- **`json_patch` habría dejado la migración sin hacer nada, en silencio.** La
+  migración 5 agrega tres claves a cada componente guardado, y la primera
+  versión las escribía con `json_patch`, que implementa la fusión de la RFC
+  7386: ahí un `null` **borra la clave** en vez de escribirla. `modelo` y
+  `emplazamiento` no aparecían, no fallaba nada, y la versión del esquema
+  quedaba subida — así que no se volvía a intentar nunca. Se escribe con
+  `json_set`, y el test pregunta por la existencia de la clave con `in` y no
+  sólo por su valor, porque `deepEqual` no distingue un campo ausente de uno en
+  `undefined` después de `JSON.parse`. **El motivo que escribí primero para eso
+  era falso** y lo corrigió una auditoría que corrió las cuatro comparaciones en
+  vez de razonarlas: `deepEqual` sí distingue un campo ausente; quien no
+  distingue es `assert.equal(x, null)`, porque `undefined == null`.
+
+- **Un `json()` que puse por las dudas y no hacía nada.** Envolvía el
+  emplazamiento al reinsertarlo, por miedo a que volviera como cadena. El test
+  pasa igual con y sin él: `json_extract` le deja el subtipo JSON al valor y
+  `json_set` lo vuelve a insertar como objeto. Se saca en vez de dejarlo, y el
+  comentario que lo justificaba se corrige: decía que sin el envoltorio el
+  objeto «volvía como cadena», y eso era razonamiento, no observación.
+
+- **La cifra de la suite completa estaba un test corta.** Se venía arrastrando
+  827 de memoria, sin archivo donde comprobarla —no aparece en ningún documento
+  del repositorio, sólo en las instrucciones de trabajo—. Contada: en el commit
+  anterior a esto, `npm test --workspaces` más `npm run test:dsp` dan **828
+  tests en 10 bloques**; con lo agregado acá y con lo que sumaron las
+  auditorías, **995**. Los diez bloques son
+  nueve paquetes con `test` más las pruebas de señal; `tools/mixer-sim` y
+  `packages/dsp-contract` no tienen suite propia.
+
+
+- **Un mecanismo que presenté como la pieza central de un arreglo, y era
+  inerte.** Marcaba cada cambio como «ya contado» en vez de borrarlo, y una
+  auditoría midió que las dos cosas dan **salida idéntica**: quien detecta ya
+  filtra por «no anunciado» y la poda por tiempo se lleva lo viejo igual.
+
+  Se saca, en vez de inventarle un test alrededor. Los cinco escenarios dan
+  exactamente lo mismo con y sin él — que es la prueba de que no hacía nada. Lo
+  que de verdad arregló el recuento repetido fue el otro cambio del mismo
+  trabajo: detectar y contar sobre lo que todavía no se anunció.
+
+  **Y de los cinco arreglos declarados, dos no tenían un test que los
+  distinguiera de su ausencia** — con cifras publicadas que no eran las medidas.
+  Uno era éste, que se retira. El otro sí tiene consecuencia y ahora tiene su
+  prueba: cerrar la ráfaga **antes** de anotar la línea que dispara el cierre,
+  porque si no, esa línea queda dentro de la ráfaga que se cierra y la siguiente
+  la cuenta otra vez.
+
+  Se corrige además una afirmación incompatible consigo misma: se dijo que un
+  solo cambio de criterio arreglaba **dos** casos opuestos. No puede — detectar
+  sobre lo no anunciado es exactamente lo que deja el segundo caso sin aviso.
+  Se eligió un lado, y ahora está dicho cuál y qué cuesta: se pierde un segundo
+  cartel, no la protección, porque el estado ya quedó inválido.
+
+- **Un archivo de evidencia que no era salida del guion que decía haberlo
+  producido.** Se archivó una corrida, después se editó el guion para agregarle
+  una rama, y el cambio presentó esa rama como su aporte — mientras el archivo
+  seguía diciendo el nombre del guion. **La rama que se celebraba nunca se había
+  ejecutado.** Es lo que la herramienta de archivado existe para impedir,
+  entrando por otra puerta: no «mirar una corrida y archivar otra», sino
+  archivar una y **cambiar el guion debajo**.
+
+  El arreglo es del mecanismo: el encabezado ahora lleva **la huella del guion
+  que corrió**. Si hoy no coincide, el archivo es de otra versión y lo que diga
+  de sí mismo no vale.
+
+- **Y la remedición del tic era más pobre que la transcripción que reemplazaba.**
+  La vieja contaba **cuántas líneas difunde la consola** y la nueva había perdido
+  esa columna — que es justo la que separa «colapsó la difusión» de «nunca
+  ocurrió». Restaurada: una sola línea por vuelta, las diez veces, con el valor
+  de la segunda escritura. **Colapso, no descarte.**
+
+  Con ella cae una afirmación que se venía repitiendo en tres documentos: que la
+  consola «aplica las dos». **Eso no está medido** — una sola línea difundida es
+  compatible con las dos historias. Lo que la política necesita es lo otro, que
+  sí está medido: que la primera **no se puede confirmar**.
+
+  De paso, un error del instrumento que el propio instrumento delató: la primera
+  versión de esa columna contaba en el socket equivocado —el de quien escribe, al
+  que la consola no le devuelve nada— y el veredicto **no dijo «confirmado»**,
+  dijo «ojo, mirá la columna». Queda archivado, porque un guion que sólo sabe
+  celebrar habría publicado una conclusión sobre una columna vacía.
+
+- **Y la comprobación de que las instantáneas del usuario siguen ahí, por fin
+  archivada.** Se venía afirmando sin dejar rastro, y la comparación de las 6732
+  claves **no puede verlas**: ese volcado no lista instantáneas. Ahora la
+  medición pide la lista de shows y la deja en su archivo. De paso, el guion del
+  tic **borra su propio punto de retorno**, que antes quedaba consumiendo una
+  plaza del tope.
+
+- **La última transcripción que se podía remedir sin la sala, y salió mejor que
+  la original.** La agrupación de un arrastre ajeno se había medido a un solo
+  espaciado; ahora se barren seis, a los dos lados de la ventana, y **la tensión
+  entre dos criterios del spike deja de ser una nota al pie y pasa a ser una
+  tabla**: por debajo de la ventana, doce escrituras dan **un** aviso; por
+  encima, dan **doce**.
+
+  Los dos criterios piden cosas opuestas sobre la misma ruta —uno que cada
+  cambio se cuente, otro que un arrastre se cuente como uno— y **lo que decide
+  cuál se cumple es el espaciado, no la consola**. Por eso el primero se midió
+  a 120 ms, dio 1 de 100, y se subió a 400 a propósito. Un «100 de 100» sin
+  decir a qué espaciado se midió no informa nada.
+
+  **Y la fila del medio es la que más enseña**: justo en la ventana no da ni uno
+  ni doce, da **siete**. El límite no es nítido, así que medir exactamente ahí
+  produce un número que depende del temblor de la red y no del diseño.
+
+  Los espaciados grandes son además el control de la corrida: sin ellos, «doce
+  escrituras dan un aviso» no distingue agrupar de no avisar nada.
+
+- **Tres de las cinco transcripciones que quedaban, remedidas con guiones
+  nuevos.** Las originales se archivaron a mano antes de que existiera la
+  herramienta, y sus guiones no habían quedado en el árbol: remedirlas era
+  escribirlos de nuevo.
+
+  **El tic que se traga una escritura, confirmado diez veces — y con el control
+  que la primera versión no tenía.** Si se escriben dos valores sobre la misma
+  ruta dentro del tic de la consola, ésta aplica los dos y difunde uno solo: el
+  testigo vio la segunda **10 de 10** veces y la primera **0 de 10**.
+
+  Ese resultado, solo, **no valía**: es un nulo, y un nulo sin control no
+  distingue «la consola no la difunde» de «el instrumento no sabe verla».
+  Repitiendo las mismas escrituras **separadas por más que el tic**, el testigo
+  ve **las dos, 10 de 10**. El instrumento puede ver la primera; el cero es de la
+  consola. Una escritura que funcionó puede salir sin verificar, y eso no es un
+  fallo del testigo sino la forma del aparato.
+
+  **Y la retención trajo su propio control, por accidente.** La primera corrida
+  arrancó con las veinte del tope: la lista se clavó en veinte y borró la más
+  vieja. Pero **medir un tope lo gasta** —cada automática de más se lleva puesta
+  una vieja— así que terminó con cuatro menos, y el guion lo dijo en vez de
+  taparlo. La segunda arrancó por debajo del tope y la lista creció hasta veinte
+  **sin borrar nada**: ése es exactamente el control que faltaba, porque es la
+  situación de todas las corridas anteriores. La retención no «nunca había
+  borrado» por fallar, sino porque nunca le había tocado.
+
+  Quedan dos: una necesita señal en la sala, y a la otra le falta el guion.
+
+- **Cuatro formas de esquivar la regla de la evidencia, cerradas.** La guarda
+  sólo miraba los `.txt`, así que guardar una transcripción como `.md` la volvía
+  invisible — y al ampliarla aparecieron **tres archivos de evidencia reales**
+  que nunca habían estado sujetos a nada.
+
+  La detección de citas se satisfacía con **cualquier nombre que tuviera al
+  pedido como sufijo**: bastaba citar `pre-loquesea.txt` para dar por cumplida
+  la obligación de citar `loquesea.txt`. Y el aviso de una transcripción se
+  contaba aunque estuviera en otra fila de la misma tabla, si la tabla iba
+  pegada al párrafo que la introduce — Markdown la renderiza igual, y la función
+  que parte las tablas miraba sólo el primer carácter del bloque. Es justo el
+  defecto que esa función vino a cerrar, sobreviviendo a su arreglo.
+
+  Y la rama de las remediciones pedía **una sola aparición en cualquier
+  documento**, sin exigir que estuviera donde se lee la transcripción. Al
+  apretarla salieron a la luz los lugares donde la vieja se citaba sin decir que
+  hay una medición nueva al lado — **cinco**, contados después del diff, no los
+  «cuatro» que esta nota decía.
+
+- **Cinco agujeros más en el conteo de avalanchas, todos medidos por auditoría.**
+
+  El recuento repetido que la entrega anterior daba por cerrado **seguía vivo a
+  un milisegundo de donde miraba su test**: con la línea llegando justo en el
+  vencimiento de la ventana —y el temporizador todavía sin correr, que es un
+  orden perfectamente posible— el cierre decía doce y el cambio siguiente, **uno
+  solo**, se anunciaba como trece y con causa «grupo de canales».
+
+  El arreglo es un cambio de criterio: **se detecta y se cuenta sobre lo que
+  todavía no se anunció.** Con eso, un cambio suelto después de una ráfaga ya no
+  abre nada, y once rutas nuevas sí.
+
+  > **Y acá esta nota decía algo que no es cierto**, corregido después por una
+  > auditoría. Afirmaba que el mismo cambio arreglaba también el caso de doce
+  > rutas antes de un cierre y nueve después — diecinueve distintas en menos de
+  > un segundo sin un solo aviso. **No lo arregla, y no puede**: detectar sobre
+  > lo no anunciado es exactamente lo que deja a esas nueve por debajo del
+  > umbral. Los dos objetivos son incompatibles y se eligió uno. Lo que sí
+  > ocurre en ese caso, y es lo que importa, es que **el estado sigue
+  > inválido** desde la primera avalancha: el operador ya tiene su aviso y el
+  > cartel puesto.
+
+  El aviso de cambio externo pendiente también sobrevivía a la relectura y
+  hablaba trescientos milisegundos después de un estado que el usuario ya había
+  releído — el mismo defecto que se arregló para el aviso de ráfaga, sin arreglar
+  para el de al lado.
+
+  **Y queda dicho lo que no tiene arreglo desde acá**: un recall de otro
+  operador caído en medio de nuestro volcado entra sin un solo aviso, porque la
+  consola manda las dos cosas por el mismo camino y sin decir de quién son.
+
+- **La clave que faltaba en un recall: contada en septiembre, identificada
+  ahora, y el error de método estaba a la vista.** El guion **contaba** las
+  claves que se habían movido y no las **nombraba**. Contar no es identificar, y
+  con el número solo la pregunta no se podía contestar: quedó meses como «una
+  clave sin rendir cuentas». Ahora las nombra, y sobre cuatro canales
+  verificados muertos la cuenta cierra exacta — **ninguna se movió sola** salvo
+  el puntero de instantánea, que ya estaba contado.
+
+  **La hipótesis que estaba escrita se descartó midiendo**: decía que el
+  candidato obvio era un compañero de par estéreo. Leídos los 24 canales, **los
+  24 están sueltos**. Los únicos enlazados son las dos entradas de línea — lo
+  que confirma, por otro camino, que enumerarlas como dos fuentes
+  independientes es un doble conteo real.
+
+- **Y el aviso de avalancha se queda corto en un recall: 44 rutas difundidas
+  contra 39 informadas.** El hecho está medido. **La explicación que se publicó
+  era falsa y hay que decirlo**: se dijo que el recall «tarda tres segundos y la
+  ventana dura uno», y esos tres segundos eran la espera fija del propio guion de
+  medición. Con marca de tiempo real, **el recall difunde sus 44 rutas en un
+  milisegundo** — todas caben en la ventana. De dónde salen los cinco que faltan
+  **no está medido**.
+
+  Y la otra mitad de esa frase también era falsa: se dijo que «la invalidación
+  no se queda corta porque es por línea». No lo es — un cambio ajeno suelto no
+  invalida nada, y está bien que no lo haga, porque arrastrar un fader no es una
+  avalancha. Lo que quedó abierto y sí es un hueco: si el operador relee **en
+  mitad** de un recall, las rutas que faltan entran sin invalidar ni avisar.
+
+  De paso: el guion de medición seguía leyendo el contrato viejo de ese aviso
+  —el de un solo evento— así que venía informando «1» donde antes informaba el
+  total. **La medición no había cambiado; cambió quien la leía.**
+
+- **El aviso de tamaño de la avalancha volvía a poner el cartel después de que
+  el usuario releyera** — una regresión de la entrega anterior, encontrada por
+  auditoría. El segundo aviso, el que trae el total, no se cancelaba nunca: el
+  operador tocaba «Releer», el cartel se iba, y hasta un segundo después
+  reaparecía solo **con las escrituras bloqueadas otra vez**.
+
+  Con él se iban también la ventana y la causa de la ráfaga vieja, así que un
+  recall nuevo llegado dentro de esa ventana quedaba sin avisar: el estado se
+  invalidaba **en silencio**, que es la dirección peligrosa.
+
+  Y dos cosas más del mismo conteo: al cerrar, la ráfaga no consumía sus rutas,
+  así que un solo cambio ajeno posterior abría otra avalancha que se llevaba
+  puestas las ya contadas —medido: un cambio producía un aviso de doce rutas,
+  once repetidas—; y abrir una avalancha nueva **cancelaba** el total de la
+  anterior en vez de decirlo, con lo que la pantalla se quedaba en «al menos N»
+  para siempre.
+
+  Se corrige además la explicación que acompañaba al arreglo anterior, que era
+  falsa: una avalancha no puede estirarse más allá de su ventana. Lo que se
+  perdía eran las rutas llegadas **antes** de cruzar el umbral. El mecanismo
+  hacía falta; el motivo escrito estaba mal.
+
+- **Seis cosas que las auditorías habían dejado señaladas, y dos son de las que
+  corrompen tests.**
+
+  El ayudante que fabrica niveles de medidor en las pruebas **inflaba todo un
+  6,27 %** por convertir dos veces. Pedir −20 dB entregaba −16,24; pedir −6
+  entregaba −1,36; y pedir 0 dB entregaba **+5,02, por encima del fondo de
+  escala**. El error crece hacia arriba, que es justo donde viven los umbrales
+  de saturación. Ninguna prueba cambió de color al corregirlo —hay que decirlo—
+  pero todas medían un mundo deformado. Ahora hay un control que compara el
+  atajo contra la función de verdad, que es lo que convierte dos fórmulas
+  independientes en una comprobación en vez de en un punto ciego.
+
+  Y el fabricante de tramas de medidor ponía **el mismo valor** en «entrada» y
+  «salida», y cero en los dos campos del dinámico. Un lector que los confundiera
+  seguía en verde: dos bytes iguales no delatan a nadie, y un byte que siempre
+  vale cero tampoco. **Es el mismo defecto que tenía el doble de transporte**, y
+  la misma lección. Ahora los seis bytes pueden ir distintos, y hay una prueba
+  que los hace distintos y comprueba dónde aterriza cada uno — con su control
+  positivo, que confirma que sin eso entrada y salida eran indistinguibles.
+
+  Tres documentos decían más de lo que habían medido. El criterio de la tabla de
+  confirmación pedía «100 % de las filas» y se leía como cumplido: la matriz
+  tiene **21 filas** y el barrido recorrió **18 rutas**, así que el 100 % es la
+  meta y no el resultado. El acta atribuía a la tablet una mediana que había
+  salido de la corrida por cable — dos estadísticos de una medición y el tercero
+  de otra, cosidos en una línea.
+
+  Y había **dos reglas contradictorias sobre la misma clave**: la especificación
+  del protocolo decía que la aplicación no escribe `var.rta` «en ningún nivel de
+  autonomía» mientras la decisión del usuario la autoriza con permiso y el código
+  la escribe. La regla muerta era la prohibición.
+
+  Por último, el mecanismo de presencia figuraba en verde sin decir que **nadie
+  lo llama todavía**: está medido, expuesto en la interfaz, y ninguna pantalla lo
+  muestra. El verde es del mecanismo, no del producto.
+
+- **Cinco mediciones que sostienen criterios en verde son transcripciones — y
+  la primera versión de esta nota acusaba en falso.** Decía que se habían
+  archivado a mano «el mismo día en que entró la herramienta que existe para
+  impedirlo». Contado: la herramienta entró a las **12:55** del 2026-09-10 y las
+  nueve evidencias señaladas entraron entre las **00:56 y las 12:30** de ese
+  mismo día. **Ninguna pudo usarla.** La frase era cierta en cuanto al día y
+  falsa en cuanto a lo único que importaba. Lo marcó una auditoría y el reproche
+  se retira.
+
+  Lo que queda en pie: que nadie tuviera con qué medirlas explica cómo pasó, y
+  no las convierte en mediciones. **Cuatro se remidieron** contra la consola,
+  sobre un canal verificado muerto —silenciado, fader al fondo y **sin envíos
+  abiertos a auxiliares ni a efectos**— y con la restauración comprobada por
+  HTTP. Los tres criterios de concurrencia y el tic de ~34 ms reproducen; el
+  barrido del testigo vuelve a dar 18 de 18.
+
+  **Y tres diferencias entre las corridas que esta nota no mencionaba.** El
+  criterio del arrastre no reprodujo: **había quedado sin cumplir** aquella
+  noche y ahora se cumple, o sea que lo que se ve es el arreglo posterior
+  funcionando, no una repetición. El criterio de etiquetado se remidió con otro
+  espaciado. Y la latencia del testigo pasó de 17 ms a cero: **la explicación
+  publicada —«la red de esa noche»— no se sostiene**, porque el guion, el canal
+  y las rutas son los mismos, y una mediana de cero milisegundos no describe una
+  red rápida. **Por qué cambió no está medido**, y queda dicho así.
+
+  Las cinco que no se pudieron remedir quedan marcadas como transcripción **en
+  el párrafo donde se las cita**, no en cualquier parte del documento. Y hay una
+  regla nueva: toda evidencia posterior al instante del commit que creó la
+  herramienta tiene que traer su encabezado completo —rótulo, fecha en formato
+  ISO y comando—, no una mención suelta de su nombre.
+
+- **Y se publicaron cuatro afirmaciones medidas sin archivo, en el mismo cambio
+  que prohíbe eso.** «Las dieciocho rutas idénticas y cero claves más movidas en
+  toda la consola» se comprobó de verdad, en la terminal de quien lo corrió, y
+  no quedó en ningún lado — que es exactamente lo que este proyecto llama
+  transcripción. Ahora **la comprobación la hace la propia medición**: lee las
+  6732 claves por HTTP antes y después, compara la consola entera, y deja en su
+  archivo tanto el resultado como la enumeración del canal antes de escribir. Si
+  no puede leer ese estado previo, **no escribe nada**.
+
+- **El aviso de cambio masivo mostraba nuestra constante, no el tamaño de la
+  avalancha.** Medido contra la consola: se escribieron dieciséis rutas y la
+  pantalla dijo diez — las diez vueltas exactas del umbral. El aviso sale en el
+  instante de cruzarlo, y lo que llega después caía en la ventana de silencio
+  sin actualizar la cuenta. El operador leía el valor de una constante nuestra
+  creyendo que era una medición de su consola.
+
+  **No se arregló retrasando el aviso**, porque enterarse tarde de que el estado
+  dejó de ser válido es peor que enterarse con un número corto. Sale uno en el
+  acto, que dice **«al menos N»**, y otro al cerrarse la ventana, con el total.
+
+  El total se acumula aparte y no se cuenta sobre la lista de cambios recientes,
+  que se poda a la ventana contada desde el último: en una avalancha que se
+  estira, esa poda descartaría las primeras rutas justo cuando hay que decir
+  cuántas fueron.
+
+- **Tres fugas de estado detrás de un envío que no sale, dos de ellas serias.**
+  El arreglo anterior hizo que una escritura fallida devolviera un resultado en
+  vez de una excepción. Una auditoría midió que eso no alcanzaba: el camino que
+  devuelve el resultado dejaba **estado armado** detrás, y ese estado no era
+  basura inerte — interfería con lo que venía después.
+
+  **La confirmación del reintento se la comía un fantasma.** La espera del
+  testigo se arma antes del envío, porque a 27 ms medidos armarla después es una
+  carrera perdida. Cuando el envío no salía, esa espera quedaba viva medio
+  segundo, y el testigo resuelve el **primer** pendiente que coincide. Escenario:
+  parpadea la wifi, la escritura sale rechazada, el operador repite el mismo
+  movimiento, **la consola sí lo aplica y lo difunde**, el testigo sí lo ve — y
+  la aplicación contestaba «pudo aplicarse o no». Justo el modo de fallo que el
+  arreglo anterior decía haber eliminado.
+
+  **Y un recall del operador se volvía invisible.** Guardar avisa al almacén de
+  que el cambio de puntero es nuestro, porque la consola se lo devuelve a quien
+  lo provocó. Si la orden de devolver la etiqueta no salía, ese aviso quedaba
+  huérfano cinco segundos y lo gastaba el primer cambio de puntero que llegara
+  — que es un recall **ajeno**, y quedaba sin invalidar nada. El escenario es el
+  más probable de todos: la consola queda apuntando a nuestra automática, el
+  operador lo ve y recarga la suya a mano. Donde el código decía «es molesto y
+  no es peligroso», era peligroso.
+
+  **Y cada intento de conexión fallido dejaba un par de oyentes vivo**, así que
+  al reconectar cada línea entrante se procesaba tantas veces como intentos
+  hubiera habido: tres fallos y cada cambio contaba cuatro veces, con lo que el
+  aviso de avalancha saltaba con una fracción de los cambios.
+
+  Se cerró además el noveno sitio que enviaba sin protección, y el doble de
+  pruebas se acercó al real en cuatro puntos más — uno de ellos **introducido
+  por el arreglo anterior**: el latido del doble lanzaba con el socket caído,
+  donde el del real se saltea el tick en silencio.
+
+- **El tope de ±3 dB de INV-004 comparaba decibeles contra crudo, y no se
+  disparaba nunca.** El motor restaba el valor propuesto menos el esperado —en
+  crudo, que es lo que va al cable— y comparaba eso contra un tope escrito en
+  decibeles. El crudo va de 0 a 1 y el tope es 3: **medido, el mayor salto que
+  dejaba pasar era de 61,9 dB**, el recorrido entero del previo de esta consola,
+  de −6,0 a +55,9.
+
+  El cambio propuesto llevaba un campo `unidad` desde el principio y **no lo
+  leía nadie**: se copiaba al diario y ahí moría, así que el diario registraba
+  «dB» al lado de un número que no eran decibeles.
+
+  **Y la suite estaba verde.** Todos los tests declaraban decibeles y pasaban
+  valores que sí lo eran, o sea que modelaban un universo donde el defecto no
+  existe; el único camino de escritura que la aplicación tiene de verdad pasaba
+  crudo. Un test en verde sobre un mundo que no es el que corre.
+
+  Ahora el cambio lleva las dos magnitudes en la unidad declarada, **y son
+  obligatorias**: así el compilador señala cada sitio de construcción en vez de
+  dejar el fallo silencioso donde estaba. El crudo sigue yendo al cable. La misma
+  corrección alcanza al realce máximo de sala, que tenía el mismo problema.
+
+  Lo que el compilador no puede ver es que alguien llene la magnitud con el
+  crudo, así que hay una guarda que lo busca en el código de producción y falla
+  si los dos salen del mismo sitio — comprobado volviendo a poner el defecto.
+
+- **Una escritura con el socket muerto tiraba una excepción en vez de devolver
+  un resultado.** `escribir()` promete un `WriteResult` con su motivo, y el
+  transporte real **lanza** si se lo llama con el socket cerrado. El adaptador
+  lo llamaba en nueve lugares sin una sola protección.
+
+  El escenario no es raro: es el más probable de una noche de show. La wifi se
+  carga, el socket muere, el aviso de cierre todavía no llegó y la aplicación se
+  cree conectada; o alguien toca «Desconectar» con una escritura en vuelo. Ahora
+  cada camino decide qué significa que la orden no salga — una escritura devuelve
+  rechazo **afirmando que no se aplicó nada**, que es más de lo que se puede
+  decir de un vencimiento; un guardado devuelve que no hubo punto de retorno;
+  devolver el analizador simplemente no ocurre, y no tumba el cierre.
+
+  **No lo encontró un test: lo encontró comparar el doble de pruebas con el
+  transporte real, línea por línea.** El doble aceptaba cualquier envío en
+  cualquier momento, así que la suite entera vivía en un mundo donde esto no
+  pasa. Y lo disfrazaba del peor modo de fallo: con el doble viejo la escritura
+  «sale», el testigo no ve nada y el resultado queda en «pudo aplicarse o no»,
+  que deja la transacción en suspenso en vez de decir la verdad.
+
+  El doble ahora lanza igual que el real, avisa a los suscriptores al abrir,
+  sabe latir —contra la consola el socket **nunca** está mudo, así que las siete
+  aserciones de «no mandó nada» ahora miran lo enviado **sin los latidos**, que
+  significa lo mismo en los dos mundos— y puede entregar una trama cruda, que es
+  como llegan de verdad: varias líneas juntas, o ninguna.
+
+### Agregado
+
+- **El punto de retorno ahora dice su letra chica.** INV-001 promete que se
+  puede deshacer, y hay **dos clases de cosas que una recuperación no trae**.
+  Una ya se conocía: `m.afs.enabled`, el único de 45 campos que un
+  `LOADSNAPSHOT` no devolvió. La otra son los **«safe»**, cincuenta claves con
+  las que el operador le dice a la consola «esto no me lo muevan».
+
+  La aplicación ahora los lee y los enumera, con su nombre. Y mantiene una
+  distinción que este proyecto viene aprendiendo a los golpes: que la supresión
+  de realimentación no vuelva **está medido**; que un safe impida la
+  restauración **no lo está** — el manual técnico del firmware dice que su
+  alcance exacto «necesita ensayos sobre una copia de show». **Se informa qué
+  está marcado, no qué va a pasar.**
+
+  Los safes tienen además categoría propia y **no se escriben**: marcar algo
+  como protegido es la red de seguridad del operador, y que la aplicación la
+  desarmara sería quitarle el paracaídas sin avisar.
+
+- **La aplicación ya puede decir qué está entrando al general.** Era lo que
+  faltaba cuando un receptor Bluetooth enchufado a las entradas de línea,
+  abiertas a 0 dB, metió un tono continuo durante dos días de mediciones del
+  espectro. Quien mide el general estaba midiendo **la suma de cosas que no
+  podía enumerar**.
+
+  Ahora las enumera: canales, entradas de línea, reproductor, subgrupos y
+  efectos, cada uno con su nombre, su fader y si está silenciado. El general y
+  los auxiliares se descartan a propósito —tienen fader y **no son fuentes, son
+  salidas**— y el silencio se informa aparte del fader en cero, porque un fader
+  en cero se sube sin tocar un botón.
+
+  También sabe decir **qué rutas no sabe nombrar**, en vez de dar a entender que
+  las entiende todas.
+
+  **Y declara sus puntos ciegos — que es donde falló dos veces seguidas.** La
+  lista de «lo que no miro» tenía exactamente el defecto que venía a corregir:
+  sus catorce patrones existían todos en la consola, pero estaban escritos para
+  la familia de canales mientras el módulo enumera cinco clases. Declaraba el
+  grupo de silencio de un canal y **no el de una entrada de línea** — la puerta
+  por la que había entrado el Bluetooth, el caso testigo que le da sentido a
+  todo esto. Una lista de huecos con huecos.
+
+  Ahora los patrones **se derivan** de una tabla de conceptos por familia, y son
+  62 en vez de 14, cada uno con la razón por la que importa: cambia el camino,
+  puede callar algo con su silencio diciendo lo contrario, mueve ganancias solo,
+  o **existe y no se sabe qué hace**. Lo que no se pudo descartar se declara.
+
+  **La segunda vez falló contando.** La cuenta decía «cierra exacta sobre 42
+  sufijos», y son 43: el número no salía de la consola, salía de una expresión
+  que no admitía mayúsculas, y por ahí se colaba `stereoIndex` — **que este
+  proyecto ya había medido**, y que dice que dos entradas de línea pueden ser un
+  par enlazado y no dos fuentes. Contadas como dos, que es el mismo doble conteo
+  que el módulo denuncia del subgrupo, sobre su propio caso testigo.
+
+  Peor: la cuenta miraba **un solo eje**. Sólo los parámetros que cuelgan
+  directo de una tira, no los que cuelgan de un segundo tramo. Por ahí faltaba
+  **el envío a efectos**: un canal va al bus de efectos, el efecto vuelve por su
+  retorno, y el módulo enumera ese retorno como fuente del general. Es la segunda
+  puerta, con exactamente la misma forma que el subgrupo — que sí estaba
+  declarado, con esas mismas palabras. Y con el envío antes del fader, **un canal
+  silenciado sigue llegando al general**: el falso negativo que el módulo define
+  como la dirección peligrosa.
+
+  Ahora la cuenta cierra por los dos ejes —43 sufijos y 9 segundos tramos, cada
+  uno con su juicio escrito— se comprueba que **nada esté en dos listas a la
+  vez**, y cada hueco declarado tiene quien lo sujete: se midió que 17 de los 18
+  sueltos se podían borrar con la suite en verde, y eran justo los que la
+  entrega anterior presumía de haber agregado. Son 146 huecos, de 62, de 14.
+
+  Lo que el test sigue sin poder comprobar, y está dicho: que la clasificación
+  sea **la correcta**. Que la ecualización no cambie si una fuente llega al
+  general es un juicio, no una medición.
+
+- **Y el vocabulario que la aplicación reconoce pasó de la mitad al 79 %.**
+  Contrastado contra las 6732 claves capturadas de la consola real, no contra una
+  lista escrita de memoria. Entraron: las **entradas de línea**, que son canales
+  con otra fuente y llevaban 246 claves sin clasificar; los envíos a monitor
+  completos —`.mute`, `.pan`, `.post` y `.postproc`, 960 claves, con los dos
+  puntos de derivación que ya estaban medidos—; los envíos a efectos; y los
+  envíos a la matriz, que necesitaron una categoría nueva.
+
+  La excepción del bus de análisis sigue mirando **sólo `.value`**, que es la
+  única que INV-008 admite, y hay un test que lo fija.
+
+- **La primera realimentación de verdad, medida.** Los tres umbrales del
+  detector estaban marcados como «elegidos, no medidos» y «sin validar contra
+  una realimentación real» desde el primer día. Ahora hay una, provocada a
+  propósito con el usuario en la sala y la mano en el monitor.
+
+  La variable no era el fader —dos intentos con 24 dB de recorrido no movieron
+  nada— sino **la ganancia del previo**. Subiéndola, el lazo arrancó en **~9 kHz**
+  y **2 dB de ganancia produjeron 43 de nivel**. El usuario lo escuchó: «sonó
+  exactamente así».
+
+  Y es la primera medición de espectro del proyecto con el fondo limpio: 0,00 dB
+  en las 122 bandas, con control positivo.
+
+  **Lo que le dice a los umbrales.** El último paso estable daba **8,2 dB** de
+  exceso sobre las vecinas y la fuga **19,4**. `MARGEN_SOBRE_VECINAS_DB` vale 9:
+  cae entre los dos, pero **a 0,8 dB del estable**. Y `PISO_UTIL_DB = 12` deja
+  afuera el último paso estable, que estaba en 12,8 — el detector empieza a mirar
+  cuando el fenómeno ya está encima.
+
+  Lo que separa limpio es **el crecimiento**, que es lo que la regla «no cayó
+  como debía» ya intenta capturar. Ninguna resonancia sube 43 dB por 2 de causa.
+
+  **Es una sala, un micrófono y una corrida.** No es una ley: es el primer punto
+  de una curva que no existe.
+
+### Corregido
+
+- **La guarda de rutas fabricadas atrapaba 3 de 10 formas, medido.** Barría sólo
+  `packages/` —el bug de `m.mute` vivía en `apps/`—, miraba sólo comillas
+  simples, **salteaba los prefijos de fuente** —que es la clase exacta del bug
+  que decía haber cerrado— y eximía cualquier patrón escrito con `N`, que es
+  justamente de lo que está hecho entero el módulo que declara los huecos.
+
+  Ahora barre **código y tests en todo el repositorio**, mira las tres formas de
+  literal, y **valida los índices contra los rangos reales del inventario** en
+  vez de saltearlos. Medido de nuevo: **atrapa siete de ocho**.
+
+  Dos decisiones que costaron entender el problema. **La guarda lee el código
+  sin sus comentarios**: una ruta en un comentario es documentación —así es como
+  este proyecto cuenta su historia, nombrando las rutas que resultaron falsas— y
+  una ruta en el código es una afirmación. Y **la que se le escapa está
+  declarada con su precio**: separar «ruta del general con tramo inventado» de
+  «propiedad de una variable llamada `m`» exige entender plantillas de Angular,
+  y hoy no vale ese precio. **Una guarda que declara su punto ciego vale más que
+  una que aparenta no tenerlo.**
+
+- **Una ruta que la consola no manda estaba viva en producción.** El panel de
+  telemetría traducía `m.mute` a «el silencio general», y **el general no tiene
+  silencio: tiene `m.dim`**. Esa rama era inalcanzable y `m.dim` caía al último
+  `return`, así que el operador veía **la clave cruda** justo en el evento que
+  más importa leer rápido. La guarda de rutas fabricadas no lo había visto
+  porque barre `packages/` y esto vive en `apps/`.
+
+- **Y el argumento con el que retiré un umbral era falso.** Dije que «a los dos
+  lados de `FADER_CERRADO = 0.001` hay −90 dB, así que no separa nada». Eso es
+  cierto de lo que devuelve `faderADb` y **no de la consola**: la función
+  **recorta** en −90. Sin el recorte, 0,0009 da −103,1 y 0,002 da −95,9 —
+  **siete decibeles**, no «exactamente lo mismo». Reemplacé un umbral inventado
+  por un argumento construido sobre otra constante de la misma clase, y lo
+  presenté como medición. **La conclusión sobrevive; el razonamiento no.**
+
+- **Tres cuentas distintas de los «safe» en el mismo commit: 50, 51 y 49.** El
+  inventario dice 50; el clasificador agarraba 51 porque su patrón era un
+  prefijo y se llevaba puesto `var.unsaved.mutegroups` —que **no es un safe**,
+  son los grupos de silencio, que el módulo de al lado declara como un hueco que
+  el código no mira—; y la única función que los lee veía 49, porque filtraba
+  por `.safe` y **nunca miraba `var.unsaved.chsafes`**, la clave que yo
+  enumeraba en el CHANGELOG, en el docblock y en INV-001.
+
+- **«Todavía no llegó» contaba como «apagado».** Un safe que el almacén no
+  confirmó —lo normal durante el volcado inicial, en cada arranque— se leía como
+  apagado: el aviso salía vacío y la aplicación daba a entender que se puede
+  deshacer todo. **El falso negativo iba en la dirección peligrosa.** Ahora lo
+  desconocido cuenta como protegido y se distingue de lo marcado: si no sabemos,
+  no prometemos.
+
+- **El piso de cobertura nació setenta y dos claves viejo.** Se escribió 5334,
+  que era la cobertura de **dos commits antes**. Con ese colchón, la categoría
+  `SAFE` entera —o `PHANTOM`, o `VCA`— podía dejar de reconocerse con todo en
+  verde. **Un piso con colchón no es un piso.**
+
+- **Y dos de los tres tests de lo escribible pasaban con el inventario vacío**:
+  medían el conjunto vacío y lo celebraban. Les faltaba el centinela que el test
+  hermano sí tenía — y el que vigila lo escribible es el peor de los dos para no
+  tenerlo.
+
+- **Las rutas fabricadas en los tests dejaron de depender de que alguien mire.**
+  Ya habían aparecido tres veces: los tests inventan una ruta, el clasificador
+  la agarra por prefijo, y el test pasa **probando el patrón y no el
+  protocolo**. Así vivieron meses `m.eq.b1.gain`, `m.delay.time`, `afs2.enable`
+  y `i.24.aux.6.value` — un canal que esta consola no tiene.
+
+  Ahora hay un test que barre **todos** los archivos de prueba y contrasta cada
+  ruta contra el inventario capturado. Encontró tres más: el canal 24 otra vez,
+  `m.eq.easy` y `m.mixdown`, ninguna de las cuales existe. Las fabricaciones
+  **deliberadas** —probar un borde, probar que una ruta mal formada se rechaza—
+  entran en una lista **con su motivo escrito**: una lista de excepciones sin
+  motivo se convierte en el lugar donde se esconde lo que molesta.
+
+- **Y la quinta discrepancia entre lo que un documento dice y lo que el código
+  hace.** `safety-invariants.md` afirmaba, en presente, que «`releerEstado()`
+  reconecta: **no** pide el volcado». Hace lo contrario desde el 2026-09-08:
+  manda `INIT`. El código lo dice en su propio comentario, y el documento
+  seguía con la frase vieja **a nueve líneas de otra viñeta que describe el
+  comportamiento nuevo** — dos párrafos contradictorios en el mismo archivo, los
+  dos afirmando el presente.
+
+- **Tres cosas más que la auditoría encontró de lo que se entregó anoche.**
+
+  **El puente del perfil de sala no existe, y un commit dijo que sí.** La
+  traducción de buses a prefijos está escrita y probada; lo que no está es quien
+  la llame: la sesión guarda su estado, no la entidad, así que el servicio no
+  tiene de dónde sacar el perfil. Ahora el rechazo lo dice —`SIN_PERFIL_DE_SALA`
+  en vez de culpar al bus— porque **«no hay perfil» y «el bus está mal» no son
+  lo mismo y decían lo mismo**. Cuando alguien escriba ecualización de salida,
+  el rechazo va a decir con todas las letras qué falta cablear.
+
+  **Un umbral inventado que no separaba nada.** Decía `FADER_CERRADO = 0.001`,
+  «por debajo de esto no aporta nada audible», sin cita ni medición. Pasado por
+  la ley del fader medida contra la consola, **a los dos lados de ese número hay
+  −90 dB**. Y 0,001 es el corte de *pantalla* de la consola, contra el que otro
+  archivo del mismo paquete ya advertía por escrito. Se quitó, y ahora se expone
+  el fader **en decibeles**: quien necesite un piso lo pone con un número que
+  alguien haya medido.
+
+  **Y la enumeración de fuentes ahora declara lo que no ve.** Los VCA se
+  descartaban en silencio y el enrutamiento no se miraba: un canal que llega al
+  general por un subgrupo se cuenta dos veces y sin relación. Los huecos salen
+  **en la salida, no en un comentario** — una lista que no declara sus huecos
+  invita a creer que no los tiene, que es el error que ese módulo vino a
+  corregir.
+
+- **Y la cobertura del clasificador dejó de ser una foto.** El 79,2 % salía de
+  un script que se corre a mano y no entra en la verificación: podía volver al
+  50 % con todo en verde. Ahora hay un test con **piso** —subir es bienvenido,
+  bajar duele— que además comprueba por separado que **las puertas por donde
+  entra audio al general** estén cubiertas, porque un porcentaje puede subir
+  dejando afuera lo que importa.
+
+- **Clasificar no es autorizar, y se habían confundido las dos cosas.** El
+  commit anterior amplió el clasificador para que la aplicación pudiera
+  **nombrar** las entradas de línea. Como las clasificó reutilizando las
+  categorías de canal, además las **abrió**: una auditoría midió que **44 rutas
+  de `l.*` pasaron a estar permitidas por el motor de seguridad**, incluida
+  `l.0.mix` — el fader exacto que estuvo a 0 dB metiendo un tono del Bluetooth
+  en el general durante dos días. El commit que arreglaba «la aplicación no sabe
+  qué entra al general» habilitó a la aplicación a moverlo. Ninguno de los dos
+  mensajes mencionaba la palabra «escribible».
+
+  Ahora las entradas de línea tienen categoría propia y no se escriben. Se
+  conserva lo que se buscaba —que el registro diga «entrada de línea» en vez de
+  «ruta desconocida»— sin conceder permiso. Que la aplicación deba poder mezclar
+  una entrada de línea es una decisión de producto que nadie tomó.
+
+- **Y la lista blanca del ecualizador autorizaba cuatro cosas que no son
+  filtros.** `path.startsWith('<bus>.eq.')` dejaba pasar `m.eq.bypass` —que
+  **anula la corrección de sala entera en una escritura**, con un delta de 0 a 1
+  que pasa por debajo del tope de realce—, `m.eq.linked`, y el recall de preset
+  `prmod`/`prname`, que **reemplaza las 62 bandas de golpe** con un valor que es
+  un índice y no decibeles. Lo irónico es que el docstring del módulo las
+  enumera: se miró el inventario para contar, no para acotar.
+
+- **Hay una guarda nueva, y es la que faltaba**: un test que evalúa el motor
+  sobre las **6732 claves reales** y cuenta cuántas permite. Si el número sube,
+  algo que se rechazaba ahora se escribe — y eso es una decisión de producto, no
+  un detalle de mantenimiento.
+
+  Su primera versión dio **642** y estaba mal: fabricaba el contexto a mano con
+  un `sessionState` que no existe y lo forzaba con `as`. El cast tapó el error de
+  tipos y suprimió 24 rutas de ganancia del previo, que sí son trabajo de la
+  aplicación. El número honesto es **666**, y ahora el test usa el arnés que ya
+  existía en vez de fabricar el suyo.
+
+- **La lista blanca de INV-008 comparaba contra una ruta que no existe, y era el
+  único camino por el que el motor aprobaba una escritura de sala.** Declaraba
+  `busesDeSalidaPermitidos: new Set(['m.eq.b1.gain'])` —un solo elemento— con
+  igualdad exacta de ruta completa. Esa ruta no existe: el ecualizador de salida
+  de esta consola **no es paramétrico**. El general es un **gráfico de 31 bandas
+  por lado**, setenta claves en total. Enumerarlas en una lista blanca no era
+  viable, y por eso terminó con un nombre inventado que nadie ejercitó contra el
+  aparato.
+
+  Ahora el perfil declara **buses** —que es lo que un técnico sabe decir— y la
+  traducción a prefijos vive en un solo lugar, contrastada contra las 6732 claves
+  del inventario. Autorizar un bus para ecualizar **no** autoriza a mover su
+  nivel, y la matriz —que no tiene ecualizador, y eso también está medido— no
+  llega a la lista. Tres tests fallan con el código viejo.
+
+- **Y arrastraba una cláusula de INV-004 que no se puede cumplir.** «Q ≥ 0,7 en
+  salidas» se comprueba con `if (c.q !== undefined && …)`, y un ecualizador
+  gráfico **no tiene factor de calidad**: la regla no se dispara nunca. Es la
+  forma nueva de «la constante que nadie consulta»: la condición que nunca se
+  cumple. Queda dicho en la invariante, con un test que lo fija, y lo que sí
+  protege contra el mismo peligro en un gráfico es el realce máximo.
+
+- **RETRACTADO: el aviso de realimentación nunca falló. La sala no estaba en
+  silencio.** Se dijo que el detector marcaba una banda sostenida con todo
+  apagado y que eso lo invalidaba en una sala real. Había un **Bluetooth
+  conectado a las entradas de línea `l.0`/`l.1`, abiertas a 0 dB**, metiendo un
+  tono en el general de forma continua. Lo encontró el oído del usuario, no
+  ninguna medición.
+
+  Desconectado, el general da **0,0 dB en las 122 bandas**, y un control positivo
+  —un tono de 1000 Hz— confirma que el analizador ve cuando hay algo: 0,0 → 21,4
+  y de vuelta a 0,0. **El detector acertaba: había una banda sostenida porque
+  había una banda sostenida.**
+
+  Se cae con eso que los umbrales estén mal, y también la conclusión del día
+  anterior sobre el silencio de un canal: el condensador **no llega al general**
+  con silencio ni sin él, comprobado subiendo su fader en todo el recorrido útil
+  sin que el espectro se moviera.
+
+- **Y queda el hallazgo verdadero, que es de producto.** Algo entraba al general
+  **por una puerta que la aplicación no sabe que existe**: `clasificarRuta` no
+  cubre la familia `l.*`, sesenta claves que caen en «ruta desconocida». Quien
+  mide el general está midiendo la suma de cosas que no puede enumerar, y el
+  operador no tenía forma de enterarse desde la aplicación.
+
+  **Antes de medir el general hay que poder decir qué está entrando en él.**
+
+- **Una auditoría revisó los arreglos del día anterior y encontró que uno
+  afirmaba algo falso en cuatro lugares a la vez.** El commit, el comentario del
+  código, el del test y el CHANGELOG decían que clasificar la alimentación
+  fantasma hacía que se rechazara citando INV-007, «la invariante verdadera».
+  **No era cierto**: el identificador estaba cableado en el motor y seguía
+  siendo INV-008 antes y después. Es el mismo error que ese commit denunciaba —
+  un comentario que describe un arreglo que no se hizo.
+
+  Ahora sí: el registro de propiedad lleva la invariante específica y el motor
+  la usa cuando la hay.
+
+- **Y el clasificador tenía cuatro categorías muertas, no una.** Además de la
+  del supresor, `OUTPUT_POLARITY` buscaba `m.polarity` —el general invierte por
+  lado, `m.l.invert`—, `MASTER_MUTE` buscaba `m.mute` —el general no tiene
+  silencio, tiene `m.dim`— y **`SUBGROUP` no tenía patrón ninguno**, con 612
+  claves `s.N.*` cayendo en «ruta desconocida». Faltaban también dos familias
+  del supresor, `afs.enabled` y `settings.afsonboot`, que solo aparecen mirando
+  los volcados.
+
+  Lo que faltaba era un test que mirara **en la otra dirección**: había uno que
+  comprueba que toda categoría producida existe en el registro, y ninguno que
+  comprobara que toda categoría declarada es alcanzable. Esa es la dirección que
+  dejó cuatro categorías muertas durante meses, y ahora existe. Encontró dos más
+  mientras se escribía.
+
+- **Un test escrito para denunciar aserciones vacías era él mismo vacío.**
+  Comparaba un contador contra un valor capturado antes; con el defecto puesto,
+  el valor era `undefined` y la comparación era `undefined` con `undefined`.
+  Por eso la afirmación «tres de los cuatro fallan al revertir» era falsa cuando
+  se escribió: fallaban **dos**. Ahora compara contra un número concreto, y
+  fallan tres.
+
+- **Cuatro invariantes tenían el texto y el código diciendo cosas distintas.**
+  Los encontró una auditoría rastreando los treinta y cuatro uno por uno, y en
+  los cuatro casos el texto era el que estaba mal: el código hacía lo correcto y
+  la norma describía otra cosa. Eso es peor que un número viejo, porque la norma
+  es lo que alguien lee para decidir si algo se puede hacer.
+
+  **INV-017** decía que la inestabilidad se mide sobre `VU2` con un umbral
+  derivado. Se mide sobre **`RTA` con 300 ms fijos**, y tiene que ser así:
+  **`VU2` se calla en silencio** —una trama cada 30 s sin señal— así que un
+  umbral sobre él declararía inestable cualquier pausa entre canciones. La
+  cláusula del percentil 95 **no la calcula nadie**, y vaciar la cola y
+  suspender transacciones **tampoco está implementado**.
+
+  **INV-011** decía «fader/mute/gain» y «−60 dB». Son **fader y ganancia** —el
+  silencio queda afuera a propósito, porque no mueve el medidor de forma
+  proporcional a lo pedido— y el piso es **−50 dB**.
+
+  **INV-021** figuraba como cubierta por test sin el calificativo que sí llevan
+  otras: lo que hay es la invalidación y el aviso; abortar transacciones e
+  invalidar las mediciones «antes» no cerradas no lo hace nadie.
+
+  **INV-001** ahora dice su excepción: el punto de retorno devuelve 44 de 45
+  campos, y el que no devuelve es el supresor de realimentación. La promesa de
+  «se puede deshacer» no lo cubre, y nada en el código lo sabe.
+
+- **El clasificador de rutas no reconocía ninguna ruta real del supresor de
+  realimentación.** Buscaba `afs2.*`, que es el nombre comercial de Soundcraft;
+  la consola publica `m.afs.*`, `a.B.afs.*` y `var.afsdata`. La categoría era
+  **inalcanzable**, así que tocar el supresor se rechazaba citando «ruta
+  desconocida» en vez de la invariante de propiedad — y el registro es lo que se
+  lee después de un show.
+
+  No es un parámetro cualquiera: ese supresor le mete filtros de −18 dB al audio
+  por su cuenta, y su interruptor es **el único de 45 campos que una
+  recuperación de instantánea no devuelve**. Es además el mismo error que un
+  comentario doce líneas más arriba, en el mismo archivo, describe y dice haber
+  arreglado para la alimentación fantasma.
+
+  De paso, `i.N.phantom` devolvía nada con un comentario que la llamaba
+  «inventada». **No lo está**: existe y está medida. Y la lista de muestras del
+  test tenía tres rutas que el aparato no manda —`afs2.enable`, `m.delay.time`,
+  `a.1.delay.time`—, que pasaban porque el clasificador las agarraba por
+  prefijo. Una lista de muestras con rutas inventadas prueba el patrón, no el
+  protocolo.
+
+- **El doble de transporte de los tests admitía un solo oyente y el real admite
+  una lista.** Con eso, pedir la lista de instantáneas **borraba** al adaptador
+  de los oyentes y lo dejaba mudo: durante y después de cada guardado, el
+  adaptador de los tests no procesaba nada. Los tests pasaban porque casi todos
+  miran lo que se envió, no lo que se recibió.
+
+  Eso fue lo que hizo **estructuralmente intestable** el defecto más caro de la
+  jornada —el eco del puntero de instantánea— y obligó a preguntarle al aparato.
+  Ahora hay cuatro tests que cubren esa ventana, y **tres de los cuatro fallan
+  con el doble viejo**, comprobado revirtiéndolo.
+
+  El cuarto pasa con el defecto puesto, y eso también quedó escrito: afirma que
+  el estado sigue siendo válido, y «nunca llegó el mensaje» produce el mismo
+  resultado que «llegó y se ignoró bien». **Una prueba de que algo no pasa
+  necesita su gemela que muestre que el camino existe.**
+
+### Agregado
+
 - **La aplicación recorrió una sesión entera sobre el aparato de verdad.** Sobre
   una Blackview LINK 8 con Android 15, contra la consola en la sala: recupera la
   sesión anterior al reinstalar encima, se conecta sola, recibe el volcado

@@ -1,0 +1,219 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-13T04:32:35.102Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts 10 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts sha256:11c6ba03af18032d
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 101 — LAS CURVAS DEL ECUALIZADOR, MEDIDAS CONTRA EL FILTRO ===
+canal 10 (i.9), multitono de 104 tonos
+   de 40.0 a 15343 Hz, bin de 0.25 Hz, captura de 4 s
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.eq.bypass          0
+   i.9.eq.easy            0
+   i.9.eq.prmod           0
+   i.9.eq.b1.freq         0.3286901902
+   i.9.eq.b1.q            0.5252185347
+   i.9.eq.b1.gain         0.5
+   i.9.eq.b2.gain         0.5
+   i.9.eq.b3.gain         0.5
+   i.9.eq.b4.gain         0.5
+   i.9.eq.b5.gain         0.5
+   i.9.eq.hpf.freq        0
+   i.9.eq.hpf.slope       0
+   i.9.eq.lpf.freq        1
+   i.9.eq.lpf.slope       0
+   i.9.dyn.bypass         0
+   i.9.dyn.ratio          1
+   i.9.gate.enabled       1
+   i.9.gate.thresh        0
+   i.9.deesser.enabled    0
+   i.9.mix                0.7647058824
+   hw.9.gain              0.2508445026
+   m.mix                  0.7643020595
+   m.dyn.bypass           0
+   m.dyn.l.ratio          0.0487804878
+   m.gate.enabled         0
+   m.eq.bypass            0
+   m.delayL               0
+   m.delayR               0
+   m.afs.enabled          1
+
+   El ecualizador del general, su fader y el supresor apagado son ganancias
+   ESTATICAS: estan en las dos capturas y se cancelan en la resta. Lo que no
+   se cancela es lo dependiente del nivel, y eso se puentea abajo.
+
+Los crudos de FABRICA, evaluados con las dos leyes en disputa:
+   b1 crudo 0.3286901902: exponencial    200 Hz | recta   6587 Hz
+   b2 crudo 0.5584347738: exponencial   1000 Hz | recta  11178 Hz
+   b3 crudo 0.7563259869: exponencial   4000 Hz | recta  15131 Hz
+   b4 crudo 0.887124964: exponencial  10000 Hz | recta  17745 Hz
+   b5 crudo 0.9542171999: exponencial  16000 Hz | recta  19085 Hz
+   Es evidencia sobre la CODIFICACION, no sobre el filtro: dice que numeros
+   muestra el cliente, no a que frecuencia filtra el DSP. Eso se mide abajo.
+
+=== LO QUE SE NEUTRALIZA, Y POR QUE ===
+   supresor del general: estaba en 1, se apaga
+   compresor del canal:  bypass estaba en 0, se puentea
+   de-esser del canal:   estaba en 0, se apaga
+   puerta del canal:     estaba en 1, se apaga
+   compresor del general: bypass estaba en 0, se puentea
+   Todos dependen del NIVEL, y el barrido levanta el pico hasta 12 dB en
+   una banda. Lo que aplastarian es justo la punta de la campana, de
+   donde salen f0, la altura y el Q. Una ganancia estatica se cancela en
+   la resta; una no lineal no.
+
+estimulo: pico -27 dBFS, cresta 5.03 (14.0 dB), -58.2 dBFS por tono, dura 600 s
+
+linea base con el ecualizador PUENTEADO: se aparta 0.82 dB de su media | pico -29.6 dBFS | margen peor 8.2 dB
+recorrido antes del recorte: 14.6 dB (base en -29.6, la campana sube hasta 12, 3 de margen)
+
+linea base con el ecualizador ADENTRO y b1 en su ganancia previa (0.5): difiere 0.12 dB de la puenteada
+   Esa diferencia es la contribucion de b2..b5, del pasa-altos y del
+   pasa-bajos. Sea la que sea, esta en las dos capturas de abajo y se
+   cancela: por eso la base que se usa es ESTA y no la puenteada.
+
+=== CONTROL POSITIVO: la escritura llego al filtro? ===
+   con el crudo de ganancia en 1 la campana sube 20.0 dB
+   crudo escrito 0.5584347738, releido por HTTP 0.5584347738
+   La 99b midio que el crudo del FADER no se redondea. Del ecualizador no
+   se sabia nada, y una cuantizacion se comeria el 5 % de E3 sin tener
+   nada que ver con la ley.
+
+=== E3/E4: LA LEY DE LA FRECUENCIA ===
+crudo        | f0 medido | exponencial | recta     | error exp | factor recta | altura | Q    | margen
+   crudo 0.15: ANULADO, el pico y sus vecinos tienen 8.5 dB de margen sobre el ruido del bin (minimo 45)
+0.1500000000 |  sin pico |          57 |      3017 |         - |            - |      - |     - |      8
+0.2500000000 |       116 |         115 |      5015 |     0.2 % |       x43.41 |   20.0 |  1.00 |      8
+0.3286901902 |       200 |         200 |      6587 |     0.2 % |       x32.88 |   20.0 |  1.00 |      8
+   crudo 0.45: ANULADO, el pico y sus vecinos tienen 43.8 dB de margen sobre el ruido del bin (minimo 45)
+0.4500000000 |  sin pico |         468 |      9011 |         - |            - |      - |     - |      8
+0.5584347738 |      1001 |        1000 |     11178 |     0.1 % |       x11.16 |   20.0 |  1.01 |      8
+0.6500000000 |      1900 |        1899 |     13007 |     0.1 % |        x6.84 |   20.0 |  1.02 |      8
+0.7563259869 |      4006 |        4000 |     15131 |     0.1 % |        x3.78 |   20.0 | 1.07* |      8
+0.9000000000 |     10929 |       10944 |     18002 |    -0.1 % |        x1.65 |   20.0 |     - |      8
+   (*) Arriba de ~3 kHz el ancho medido y el parametro Q dejan de coincidir:
+   el biquad digital se deforma al acercarse a Nyquist y la campana es de
+   verdad mas angosta que lo que su Q nominal diria. Medido contra el biquad
+   del recetario: a 10,9 kHz un Q nominal de 1,00 se mide como 1,55. Por eso
+   E5 se barre con la frecuencia fija en 1 kHz, y estos Q NO se puntuan.
+
+=== E5: LA LEY DEL Q, con la frecuencia fija en el de fabrica de 1 kHz ===
+crudo        | Q medido | exponencial | recta | factor exp | factor recta | f0    | altura
+0.3500000000 |    0.376 |       0.368 |  3.69 |      x1.02 |        x0.10 |  1002 |   20.0
+0.4500000000 |    0.660 |       0.651 |  4.67 |      x1.01 |        x0.14 |  1001 |   20.0
+0.5252185347 |    1.010 |       1.000 |  5.39 |      x1.01 |        x0.19 |  1001 |   20.0
+0.6200000000 |    1.728 |       1.717 |  6.31 |      x1.01 |        x0.27 |  1002 |   20.0
+0.7000000000 |    2.691 |       2.710 |  7.09 |      x0.99 |        x0.38 |  1003 |   19.8
+
+=== E6: LA VUELTA AL PRIMER PUNTO ===
+0.5584347738 |      1001 |        1000 |     11178 |     0.1 % |       x11.17 |   20.0 |  1.01 |      8   (repeticion del primero)
+
+la linea base al cerrar: forma 0.09 dB (max), 0.024 dB (rms punto a punto), nivel +0.004 dB
+
+=== VEREDICTOS, contra el contrato del item 101 ===
+
+E1 planitud de la linea base: 0.82 dB
+   PASA. El banco es plano.
+   contribucion de b2..b5, pasa-altos y pasa-bajos: 0.12 dB
+   Sea la que sea, esta en las dos capturas y se cancela: la base que se usa
+   es la del ecualizador ADENTRO con b1 en su ganancia neutra, no la puenteada.
+
+E2 la banda 1 es una campana: 6 de 6 curvas bajan 6 dB de los DOS lados dentro de la ventana
+   crudo 0.2500 (f0 116 Hz): cae 15.95 dB abajo, 20.00 dB arriba
+   crudo 0.3287 (f0 200 Hz): cae 18.43 dB abajo, 20.01 dB arriba
+   crudo 0.5584 (f0 1001 Hz): cae 19.86 dB abajo, 19.89 dB arriba
+   crudo 0.6500 (f0 1900 Hz): cae 19.96 dB abajo, 19.74 dB arriba
+   crudo 0.7563 (f0 4006 Hz): cae 19.96 dB abajo, 18.84 dB arriba
+   crudo 0.9000 (f0 10929 Hz): cae 19.90 dB abajo, 9.89 dB arriba
+   Ojo con los crudos de los extremos: una campana con f0 en 57 Hz solo
+   puede caer unos 5,6 dB antes de los 40 Hz donde empieza el estimulo. Que
+   no llegue a 6 ahi es la VENTANA y no el filtro, y se informa como tal.
+   PASA en todas. «Frecuencia central» quiere decir lo que se supone.
+
+E3 f0 contra 20*1102,5^V: error maximo 0.24 % sobre 6 crudos
+   PASA, Y ES UNA COTA, NO UNA IDENTIDAD. Dice que si el filtro se aparta
+   de 20*1102,5^V se aparta menos del 5 % EN LOS CRUDOS MEDIDOS, y eso
+   esta MEDIDO contra la respuesta del canal, no contra lo que la consola
+   dice guardar.
+   La familia A*B^V que tambien cae dentro del 5 % en estos crudos tiene
+   B entre 949 y 1268 (declarada 1102,5) y A entre 18.5 y 21.8 (declarada 20).
+   En el crudo 1,0 eso es una frecuencia entre 17530 y 27675 Hz, contra los 22050 que el mixer.html declara.
+   **El tope del recorrido NO queda medido**: cae fuera de la ventana.
+
+E4 la recta queda excluida: se aparta hasta un factor de 43.4
+   PASA. Los dos modelos son distinguibles con este instrumento, asi que el
+   acuerdo de E3 dice algo.
+   **SUBORDINADA, y queda declarado para que nadie la lea como confirmacion
+   independiente:** el factor entre las dos leyes en los ocho crudos va de
+   1,64 a 52,75, asi que SI E3 PASA, E4 PASA NECESARIAMENTE. Su valor es el
+   otro: si E3 falla, E4 dice si fallo porque la ley es la recta (factor
+   cerca de 1) o porque no es ninguna de las dos (factor grande).
+
+E5 Q contra 0,05*300^V: se aparta hasta un factor de 1.02 sobre 5 crudos
+   El ancho se midio a MITAD DE LA GANANCIA EN DECIBELES. La definicion de Q
+   de una campana varia entre fabricantes, asi que esto separa un Q de 1 de
+   uno de 5; no publica una cifra fina.
+   PASA.
+   Y contra la recta 0,3..10: se aparta hasta un factor de 9.83
+   Y TAMPOCO fija la base en 300: la familia A*B^V que cae dentro del
+   factor 1,3 tiene B entre 65 y 1262. E5 separa la exponencial de la recta y no mucho mas, que es lo que el
+   contrato ya declaraba.
+
+E6 la vuelta: f0 difiere 0.03 % | la forma de la base 0.09 dB | su NIVEL +0.004 dB
+   PASA. El banco no se movio durante la corrida.
+   **El nivel va aparte porque la comparacion de formas lo esconde:** a las
+   dos lineas base se les resta su propia media, asi que una deriva uniforme
+   del camino de captura es invisible ahi. Y es la que sesga TODAS las
+   alturas --las curvas se miden contra la base de apertura-- y por tanto
+   todos los Q: medido, 0,5 dB de deriva mueve un Q de 1,004 a 0,963.
+
+dispersion punto a punto entre las dos lineas base: 0.024 dB (rms)
+   **De aca cuelga el +-1,5 % de resolucion del pico.** Sobre una campana
+   limpia la interpolacion parabolica ubica f0 dentro del 0,9 % aun con Q=8,
+   medido contra el biquad del recetario. Pero eso es SIN ruido: con 0,05 dB
+   rms de dispersion por punto el error de f0 tiene p95 de 1,02 %, y con
+   0,10 dB, de 1,89 % --ya afuera de lo declarado.
+   La resolucion declarada se sostiene.
+
+=== LO QUE SE INFORMA Y NO SE PUNTUA ===
+   Altura de la campana con el crudo de ganancia en 1: 20.0 a 20.0 dB
+   El manual dice +-20 dB y el codigo +-15. Pero el pico de una campana NO
+   es la ganancia del parametro salvo que el filtro este normalizado de
+   cierta manera, y eso no se sabe. NO se toca la entrada de la ganancia.
+   **Y la DISPERSION de estas alturas no es una no-linealidad de la
+   ganancia.** En los crudos bajos la campana se sale por abajo de la
+   ventana de 40 Hz, y en los altos el biquad se deforma cerca de Nyquist.
+   Los dos extremos miden la VENTANA. Si hace falta una cifra de ganancia,
+   es la del control positivo a 1 kHz y sola: 20.0 dB.
+   Nivel por tono del estimulo: -58.2 dBFS
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada de las otras cuatro bandas: se midio b1. Que b2..b5 usen la misma
+   ley es lo mas probable y NO esta medido.
+   Nada del pasa-altos ni del pasa-bajos: otros parametros y otra forma.
+   Nada de la ganancia del ecualizador, por lo dicho arriba.
+   Y medir la curva no la vuelve PROBADO en las dos direcciones: esto mide
+   crudo -> Hz. Que `toRaw` acierte es lo mismo invertido SOLO si la funcion
+   es la que se midio.
+   Un canal, una banda, un nivel de estimulo.
+
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.eq.bypass          esperado 0              leido 0
+   i.9.eq.b1.freq         esperado 0.3286901902   leido 0.3286901902
+   i.9.eq.b1.gain         esperado 0.5            leido 0.5
+   i.9.eq.b1.q            esperado 0.5252185347   leido 0.5252185347
+   i.9.dyn.bypass         esperado 0              leido 0
+   i.9.deesser.enabled    esperado 0              leido 0
+   i.9.gate.enabled       esperado 1              leido 1
+   m.dyn.bypass           esperado 0              leido 0
+   m.afs.enabled          esperado 1              leido 1
+   Todo restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

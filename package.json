@@ -2,7 +2,7 @@
   "name": "ui24r-virtual-sound-engineer",
   "version": "0.0.0-semantic-release",
   "private": true,
-  "description": "Ingeniero de sonido virtual asistido por medición para Soundcraft Ui24R",
+  "description": "Ingeniero de sonido virtual asistido por medici\u00f3n para Soundcraft Ui24R",
   "license": "UNLICENSED",
   "workspaces": [
     "packages/*",
@@ -11,15 +11,17 @@
   ],
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && npm run lint:tools",
     "test": "npm run test --workspaces --if-present",
     "pretest:dsp": "node tools/spikes/p0-10a-dsp/src/generate-signals.mjs",
     "test:dsp": "node --test tools/spikes/p0-10a-dsp/test/*.test.mjs",
-    "validate:docs": "node tools/docs/validate-ids.mjs && node tools/docs/validate-numeros.mjs && node tools/docs/validate-huerfanos.mjs && node tools/docs/validate-fichas.mjs && node tools/docs/validate-capturas.mjs && node tools/docs/validate-cifras-medidas.mjs",
+    "test:audio": "node --test tools/audio/test-*.mjs",
+    "validate:docs": "node tools/docs/validate-ids.mjs && node tools/docs/validate-numeros.mjs && node tools/docs/validate-huerfanos.mjs && node tools/docs/validate-fichas.mjs && node tools/docs/validate-capturas.mjs && node tools/docs/validate-cifras-medidas.mjs && node tools/docs/validate-evidencia-archivada.mjs && node tools/docs/validate-huella-de-evidencia.mjs",
     "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
     "validate:limites": "node tools/docs/validate-limites.mjs",
-    "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test && npm run test:dsp",
-    "verificar:commits": "node tools/docs/validate-commits.mjs"
+    "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test && npm run test:dsp && npm run test:audio",
+    "verificar:commits": "node tools/docs/validate-commits.mjs",
+    "lint:tools": "tsc -p tools/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

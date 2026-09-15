@@ -1,0 +1,22 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T03:23:18.888Z
+# comando: node --experimental-strip-types tools/spikes/p0-5/espectro-del-general.ts 192.168.0.78
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+las 8 bandas mas altas del general:
+  banda   0 (~   21 Hz)  0.0 dB
+  banda   1 (~   22 Hz)  0.0 dB
+  banda   2 (~   23 Hz)  0.0 dB
+  banda   3 (~   25 Hz)  0.0 dB
+  banda   4 (~   26 Hz)  0.0 dB
+  banda   5 (~   28 Hz)  0.0 dB
+  banda   6 (~   29 Hz)  0.0 dB
+  banda   7 (~   31 Hz)  0.0 dB
+
+media de las 122 bandas: 0.00 dB
+banda 28 (~105 Hz): 0.0 dB
+bandas 104 y 105 (~8,5 y 9 kHz): 0.0 / 0.0 dB
+
+
+# salida del proceso: 0

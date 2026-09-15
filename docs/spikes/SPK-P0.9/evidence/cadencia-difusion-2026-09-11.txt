@@ -1,0 +1,25 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T09:24:00.025Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/cadencia-difusion.ts 192.168.0.78 16
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+punto de retorno: VSE_AUTO_1789118646266 · i.16.mix vale 0
+
+escrito cada | escritas | llegadas | % | intervalo entre llegadas (ms)
+-------------+----------+----------+-----+------------------------------
+        5 ms |       40 |        5 |  13 | mediana 34, media 34.5, min 32, max 38
+       10 ms |       40 |       14 |  35 | mediana 34, media 33.8, min 32, max 36
+       15 ms |       40 |       20 |  50 | mediana 34, media 33.5, min 31, max 35
+       25 ms |       40 |       31 |  78 | mediana 34, media 33.7, min 32, max 35
+       40 ms |       40 |       40 | 100 | mediana 34, media 40.8, min 32, max 70
+       60 ms |       40 |       40 | 100 | mediana 66, media 61.7, min 33, max 69
+      100 ms |       40 |       40 | 100 | mediana 100, media 100.6, min 65, max 135
+
+restaurada: si
+medianas del intervalo entre llegadas, por ritmo: 34, 34, 34, 34, 34, 66, 100 ms
+
+HAY TIC de ~34 ms. Escribiendo mas rapido que el se pierden lineas y el intervalo se clava ahi; escribiendo mas lento no se pierde ninguna y las llegadas quedan cuantizadas en multiplos del tic (67 = dos, 100 = tres).
+
+
+# salida del proceso: 0

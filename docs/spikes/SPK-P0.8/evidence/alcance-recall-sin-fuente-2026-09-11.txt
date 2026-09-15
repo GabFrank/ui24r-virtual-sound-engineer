@@ -1,0 +1,74 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-11T10:47:43.666Z
+# comando: node --experimental-strip-types tools/spikes/p0-8/alcance-recall.ts 192.168.0.78 20,21,22,23
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+
+consola 192.168.0.78
+campos a mover: 39 numericos y 5 de texto, sobre los canales 21, 22, 23, 24
+
+volcado inicial: 6732 claves
+
+== 1. Guardar la instantanea, que es el estado de AHORA ==
+
+canales enumerados por HTTP antes de escribir (exigencia: sin-fuente):
+  i.20 mute=1 fader=0.5862 src=none     nombre="" -> SIRVE: src=none: no hay entrada fisica conectada a esta tira
+  i.21 mute=1 fader=0.5893 src=none     nombre="" -> SIRVE: src=none: no hay entrada fisica conectada a esta tira
+  i.22 mute=1 fader=0.0221 src=none     nombre="" -> SIRVE: src=none: no hay entrada fisica conectada a esta tira
+  i.23 mute=1 fader=0.0000 src=none     nombre="" -> SIRVE: src=none: no hay entrada fisica conectada a esta tira
+  reproductor: callado -- sin lista cargada y con los dos faders al fondo
+  bus a.6, al que se le cambia el patcheo: sin envios -- ningun canal le manda y su fader esta al fondo
+
+  show VSE, instantanea VSE_AUTO_1789123685679
+  verificada releyendo la lista: SI  (21 automaticas nuestras en el show)
+
+== 2. Mover campos de familias distintas ==
+  claves que de verdad cambiaron: 45
+  de esas, escritas por nosotros: 44
+  se movieron SOLAS: var.currentSnapshot (VSE_AUTO_1789097773977 -> VSE_AUTO_1789123685679)
+
+== 2b. Segunda instantanea, para que el puntero tenga a donde volver ==
+  guardada VSE_AUTO_1789123701223
+  var.currentSnapshot ahora: VSE_AUTO_1789123701223
+  (era VSE_AUTO_1789097773977 al empezar)
+
+== 3. LOADSNAPSHOT de la PRIMERA: la avalancha de verdad ==
+  rutas difundidas por el recall: 44 distintas, 44 mensajes
+  primera linea a los 343 ms, ultima a los 344 ms  <- ESTO es lo que tarda
+  aviso de avalancha: si
+  rutas al abrir la alerta: 1  (lo que se sabe al cruzar el umbral)
+  causa: SNAPSHOT_RECALL   <- se espera SNAPSHOT_RECALL
+  rutas al cerrar la ventana: 39
+  avisos emitidos: 2 -> 1 (apertura), 39 (cierre)
+  ¿difundio var.currentSnapshot? si
+  (la espera del guion fue de 3000 ms fijos: no es una medicion de nada)
+
+== 4. Alcance de la recuperacion, campo por campo ==
+  campo                | volvieron | NO volvieron
+  aux.N.value          |         4 |            0
+  delay                |         4 |            0
+  dyn.bypass           |         4 |            0
+  eq.bN.gain           |         4 |            0
+  gain                 |         4 |            0
+  gate.enabled         |         4 |            0
+  hwoutaux.N.src       |         1 |            0
+  m.afs.enabled        |         0 |            1  (m.afs.enabled)
+  mix                  |         4 |            0
+  mute                 |         4 |            0
+  name                 |         4 |            0
+  p.N.mix              |         1 |            0
+  p.N.mute             |         1 |            0
+  pan                  |         4 |            0
+
+== 5. ¿El recall movio algo que nosotros no tocamos? ==
+  nada
+
+== 6. Dejar todo como estaba ==
+  restaurados a mano los 1 que el recall no devolvio
+  instantaneas borradas: las dos  (quedan 20 automaticas)
+
+== Comprobacion final, por HTTP ==
+  la consola quedo EXACTAMENTE como estaba
+
+
+# salida del proceso: 0

@@ -20,7 +20,7 @@ La tabla de transiciones legales está en `packages/domain/src/entities/session.
 | INV-006 | Ganancia de preamplificador solo en `CHANNEL_SETUP`. |
 | INV-008 | Únicos buses de salida escribibles: los de `PAProfile.outputBuses`. |
 | INV-009 | Fader general nunca por encima de 0 dB. |
-| INV-010 | Ningún auxiliar de monitor recibe escrituras. |
+| INV-010 | Del envío a monitor se escribe **sólo el nivel del canal**, `i.N.aux.M.value` —240 rutas—, con techo por ruta y nunca durante el show (ADR-028, 2026-09-12). Cerrados: `mute`, `pan`, `post`, `postproc` y el fader del bus `a.N.mix`. **Esta fila decía «ningún auxiliar de monitor recibe escrituras»**, o sea lo contrario de lo vigente, y es la referencia que lee un agente. |
 | INV-011 | Toda escritura precedida de lectura del estado confirmado. |
 | INV-015 | El fader del reproductor nunca sube solo. Arranca en −30 dB. |
 | INV-019 | Paro de emergencia visible en el 100 % de las pantallas. |

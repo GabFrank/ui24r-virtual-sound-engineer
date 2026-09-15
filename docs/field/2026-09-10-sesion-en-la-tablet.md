@@ -23,6 +23,39 @@ pantallas con la consola en vivo.
 que escribió: `var.rta` pasó de vacío a `m` al entrar y volvió a vacío al salir. ADR-025
 funciona contra el aparato y no solo contra el simulador.
 
+> # RETRACTADO EL 2026-09-11
+>
+> **Todo lo que sigue en esta sección es falso, y lo encontró el oído del
+> usuario, no ninguna medición.**
+>
+> Había un **Bluetooth conectado a las entradas de línea `l.0` y `l.1`, abiertas
+> a 0 dB**, metiendo un tono en el general de forma continua. La sala **no estaba
+> en silencio**. Al desconectarlo, el general pasó a **0,0 dB en las 122 bandas**,
+> y un control positivo —un tono de 1000 Hz por la Scarlett— confirmó que el
+> analizador sí ve cuando hay algo: 0,0 → 21,4 dB y de vuelta a 0,0.
+> Evidencia: `../spikes/SPK-P0.5/evidence/general-sin-bluetooth-2026-09-11.txt`
+> y `../spikes/SPK-P0.5/evidence/control-positivo-analizador-2026-09-11.txt`.
+>
+> **El detector de realimentación estaba funcionando bien.** Marcó una banda
+> sostenida porque había una banda sostenida. Lo que estaba mal era la premisa de
+> quien leyó el aviso.
+>
+> Se cae con eso: que los umbrales estén mal calibrados, que «la sala le ganó»,
+> que 105 Hz sea un modo resonante, y —de la sección de más abajo— que el
+> silencio de un canal lo saque del analizador: el condensador **nunca llegó al
+> general**, con silencio o sin él, como se comprobó el 2026-09-11 subiendo su
+> fader 24 dB sin que el espectro se moviera
+> (`../spikes/SPK-P0.5/evidence/lazo-realimentacion-2026-09-11.txt`).
+>
+> **La lección no es sobre umbrales.** Es que se midió el espectro del general
+> durante dos días **sin preguntar nunca qué estaba entrando en él**, y que tres
+> conclusiones se apoyaron en resultados nulos sin control positivo. Una
+> auditoría había marcado exactamente ese defecto de método unas horas antes y se
+> lo trató como una formalidad. Era la explicación literal.
+>
+> Se deja el texto original abajo, sin editar, porque una retractación que borra
+> lo retractado no enseña nada.
+
 ## El hallazgo que importa: el aviso de realimentación no se apaga
 
 Con la sala en silencio y nada enchufado sonando, la pantalla marcó **105 Hz sostenida**,
@@ -125,3 +158,68 @@ Las cuatro corridas quedan archivadas, cada una con el error que la invalidó:
 - `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10b.txt` — **la de la doble conversión**: media 4,8 dB, que es 12,7 × 0,375. Las etiquetas de ésta y la siguiente estaban cruzadas acá hasta que una auditoría las desempató
 - `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10c.txt` — escala ya correcta, pero **sin el barrido de las 122 bandas**: no podía contestar la pregunta
 - `../spikes/SPK-P0.5/evidence/voz-muteada-en-el-general-2026-09-10d.txt` — **la buena**, con el barrido de las 122 bandas
+
+
+---
+
+# Lo que quedó en pie, y lo que hay que hacer distinto — 2026-09-11
+
+## Lo que sí se sostiene de este informe
+
+El recorrido de la sesión: la aplicación recupera la sesión anterior, se conecta
+sola, recibe el volcado completo, muestra los nombres reales de los canales, los
+medidores en vivo y el espectro. **Pide permiso antes de tomar el analizador y lo
+devuelve al salir**, comprobado por HTTP. Nada de eso depende de la premisa que
+se cayó.
+
+Y el párrafo «Lo que este informe NO dice» sigue siendo correcto: la tablet no
+está certificada.
+
+## El hallazgo verdadero, que es de producto y no de umbrales
+
+**Algo entraba al general por una puerta que la aplicación no sabe que existe.**
+Las entradas de línea `l.0` y `l.1` estaban abiertas a 0 dB con un Bluetooth
+conectado, y `clasificarRuta` no cubre la familia `l.*` — sesenta claves que
+caen en «ruta desconocida».
+
+El operador no tenía forma de enterarse desde la aplicación. Y quien mide el
+general —la detección de realimentación, los puntajes de sala, cualquier cosa
+que mire el espectro— **está midiendo la suma de cosas que no puede enumerar**.
+
+Eso vale más que el falso hallazgo que reemplaza: antes de medir el general hay
+que poder decir **qué está entrando en él**.
+
+## Tres reglas de método, y las tres salieron de equivocarse hoy
+
+**1. Antes de medir el general, enumerar qué entra en él.** Se midió su espectro
+durante dos días sin preguntarlo nunca.
+
+**2. Un resultado nulo sin control positivo no vale.** Pasó tres veces en dos
+días: «ninguna banda sigue al micrófono» sin comprobar que el micrófono llegue;
+«el estado queda válido» sin comprobar que el mensaje llegue; «el general está en
+0,0 dB» sin comprobar que el analizador vea. Las tres veces la lectura nula tenía
+la misma cara que el resultado bueno.
+
+**3. Lo que el usuario percibe en la sala manda sobre lo que dice el
+instrumento.** El chillido lo oyó él. Antes ya había avisado que el B2 tenía un
+conmutador de graves, y que el general podía tener filtros. Tres de tres.
+
+
+## Las cuatro corridas del 2026-09-11, y qué enseña cada una
+
+- `../spikes/SPK-P0.5/evidence/donde-vive-una-realimentacion-2026-09-11.txt` —
+  **el primer intento, y estaba mal armado.** Cortó a fader 0,32 —unos −25 dB,
+  lejísimos de cualquier umbral— porque el criterio era «una banda sobresale de
+  sus vecinas», y la banda que sobresalía era el Bluetooth. De ahí salió la frase
+  «105 Hz es el modo de realimentación de la sala», escrita treinta segundos
+  después de ver dos filas.
+- `../spikes/SPK-P0.5/evidence/lazo-realimentacion-2026-09-11.txt` — el segundo,
+  con el método correcto: comparar cuánto crece la banda contra cuánto sube el
+  fader. **24 dB de fader y el espectro no se movió.** El condensador no llega al
+  general.
+- `../spikes/SPK-P0.5/evidence/general-sin-bluetooth-2026-09-11.txt` — el general
+  con el Bluetooth desconectado: **0,0 dB en las 122 bandas**.
+- `../spikes/SPK-P0.5/evidence/control-positivo-analizador-2026-09-11.txt` — el
+  control que faltaba: con un tono de 1000 Hz, la banda 67 pasa de 0,0 a 21,4 dB
+  y vuelve a 0,0. **El analizador ve.** Sin esta corrida, los ceros de la
+  anterior no querrían decir nada.

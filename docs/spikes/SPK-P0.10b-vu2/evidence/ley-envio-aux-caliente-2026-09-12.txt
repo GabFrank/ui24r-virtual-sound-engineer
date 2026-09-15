@@ -1,0 +1,31 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-12T04:47:49.996Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-envio-aux.ts 10 2 192.168.0.78  -1
+# guion: tools/spikes/p0-10b-vu/ley-envio-aux.ts sha256:2856ba7df27ed57a
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion tal como estaba al correr: si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+canal 10 (i.9) -> auxiliar 3 (a.2)
+tono de 1000 Hz a -1 dBFS, 1 valores de envio
+
+crudo      | testigo canal  | medidor aux | dB medidos | atenuacion | segun faderADb | razon | n
+    0.0000 | -37.66 (+0.00) |         0.0 |  -Infinity |        NaN |            NaN |   NaN |  56
+
+razon promedio medida/faderADb: NaN
+razon minima: Infinity   maxima: -Infinity
+P1: 1,00 +- 0,05 y plana = el envio usa la ley del fader. Una razon que se mueve = no la usa.
+P4: deriva maxima del testigo: 0.00 dB (se pide < 0,5)
+techo crudo del medidor del bus visto: 0
+
+=== P5: el fader del canal contra el envio pre-fader ===
+fader 0.7647 -> aux -59.00 dB   canal(pre) -37.66 dB
+fader 0.5000 -> aux -59.00 dB   canal(pre) -37.66 dB
+fader 0.3000 -> aux -59.00 dB   canal(pre) -37.66 dB
+fader 0.7647 -> aux -59.00 dB   canal(pre) -37.66 dB
+
+restaurado por el mismo camino que escribio. La comprobacion por HTTP va aparte.
+
+
+# salida del proceso: 0

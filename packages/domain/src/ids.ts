@@ -28,6 +28,30 @@ export type CalibrationStateId = Branded<string, 'CalibrationStateId'>;
 export type MixSceneId = Branded<string, 'MixSceneId'>;
 export type TakeId = Branded<string, 'TakeId'>;
 export type MixCandidateId = Branded<string, 'MixCandidateId'>;
+/**
+ * Un elemento del plano del escenario: una fuente o una captación.
+ *
+ * Se marca por tipo como todo lo demás para que el compilador impida pasar el
+ * identificador de un integrante donde se espera el de una fuente. Es
+ * exactamente el enredo que la geometría vuelve caro: emparejar un micrófono
+ * con la fuente equivocada no rompe nada, devuelve un diagnóstico creíble y
+ * falso.
+ */
+export type EscenarioElementoId = Branded<string, 'EscenarioElementoId'>;
+
+/**
+ * Un componente del sistema de amplificación: una caja, un subgrave, una cuña.
+ *
+ * **No lo tenía, y esa falta costó un defecto.** El editor del escenario lo
+ * identificaba por nombre, y el propio modelo documenta que dos componentes
+ * pueden llamarse igual —los dos lados de un general estéreo—: mover uno movía
+ * los dos. Después se lo identificó por su posición en la lista, que se rompe
+ * en cuanto alguien borra un componente del medio.
+ *
+ * Con identificador propio, el local puede decir dónde está puesto **ese**
+ * componente sin depender ni del nombre ni del orden.
+ */
+export type PAComponentId = Branded<string, 'PAComponentId'>;
 
 /** Índice de entrada física de la Ui24R, de 1 a 24. */
 export type Ui24rInputIndex = Branded<number, 'Ui24rInputIndex'>;

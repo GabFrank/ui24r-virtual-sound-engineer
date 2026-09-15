@@ -1,0 +1,76 @@
+{
+  "firmware": "3.4.8318-ui24",
+  "model": "ui24",
+  "type": "8ch",
+  "flavour": "1",
+  "schema": "6",
+  "capabilities": {
+    "input": 24,
+    "fx": 4,
+    "aux": 10,
+    "bankSize": 8,
+    "sub": 6,
+    "maxx": false,
+    "rec": true,
+    "phantom": 20,
+    "linein": 2
+  },
+  "note": "uniqueid omitido a propósito: identifica la unidad física.",
+  "transport": {
+    "protocol": "socket.io 0.9, protocolo 1",
+    "wrapper": "3:::<mensaje>",
+    "handshake": "GET /socket.io/1/"
+  },
+  "sessions": [
+    {
+      "id": "sesion-1",
+      "startedAt": "2026-09-11T04:02:05.044Z",
+      "durationSeconds": 90,
+      "initReceived": 0,
+      "reconnections": 0
+    }
+  ],
+  "httpSources": [
+    {
+      "path": "/js/initparams.js",
+      "status": 200,
+      "contentType": "text/javascript",
+      "bytes": 148493,
+      "sha256": "183795af206f16a13f119f44f2c1bfaa8a2a2e96f599df468d1e817ad8c98328",
+      "at": "2026-09-11T04:01:52.555Z",
+      "parsedWith": "acorn AST, sin evaluar"
+    },
+    {
+      "path": "/raw",
+      "status": 200,
+      "bytes": 237783,
+      "sha256": "1b48a7dbcfa24c13f3eb4e8e6d7772d95b8a7171f8fc4b7cdda1f17005f51e57",
+      "at": "2026-09-11T04:01:52.952Z",
+      "note": "flujo que no cierra; curl sale con 28 y los datos ya llegaron"
+    }
+  ],
+  "emittedByCollector": {
+    "handshake": 1,
+    "ALIVE": 89,
+    "parameterWrites": 0,
+    "note": "ALIVE es el latido que el protocolo exige. No se envió INIT ni ningún comando de parámetro."
+  },
+  "counts": {
+    "uniqueKeysObserved": 6732,
+    "fromHttpInitialState": 6732,
+    "fromHttpRawStream": 6732,
+    "fromControlChannel": 6732,
+    "onlyLocal": 0,
+    "onlySent": 0,
+    "families": 29,
+    "patterns": 599,
+    "messageTypes": {
+      "UPDATE_PLAYLIST": 1,
+      "RTA": 2693,
+      "SETS": 640,
+      "SETD": 6093,
+      "VU2": 2025,
+      "VUA": 1
+    }
+  }
+}
