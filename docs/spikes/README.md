@@ -37,7 +37,7 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | Spike | Qué ya está contestado | Qué falta para cerrarlo |
 |---|---|---|
 | P0.1 | Cadencia y umbral de inestabilidad (99 ms sobre `RTA`); no hay eco; reconexión con la wifi cortada, 20 de 20 | Los otros dos modos de corte —router apagado y cambio de IP— y los tres clientes durante diez minutos con cambios ocurriendo. Los dos necesitan a alguien delante del aparato |
-| ACK-POLICY | El **mecanismo**: segunda conexión testigo, 11,5 ms de mediana sobre ocho muestras (los 27 ms que se citaron al principio eran una sola muestra, retirada por ADR-024); la tabla parámetro a método y el texto de INV-011, cerrados el 2026-09-10 | Nada de laboratorio: el acta G-A lo da por ✅ |
+| ACK-POLICY | El **mecanismo**: segunda conexión testigo, 11,5 ms de mediana sobre ocho muestras (los 27 ms que se citaron al principio eran una sola muestra, retirada por ADR-024); la tabla parámetro a método y el texto de INV-011, cerrados el 2026-09-10 | Nada de laboratorio, y el ✅ del acta G-A tiene sus reservas anotadas ahí mismo: el 100 % es la meta y no el resultado, dos familias quedan *Inferido*, y la latencia no reprodujo. Sigue en ⬜ por eso |
 | P0.2a | Rutas confirmadas contra el aparato, y las dos primeras escrituras reales | Reproductor, grabación multipista, punto de derivación y enlace estéreo |
 | P0.10b | Escala y recorrido —80 dB—, balística, tasa, respuesta en frecuencia, techo y repetibilidad; y desde el 2026-09-13 **el paso del medidor anclado contra un convertidor externo** por dos caminos (compromisos 99b y 102), que cierra la autoconsistencia que todas las mediciones anteriores declaraban | La correspondencia con **dBFS absolutos**, y la balística como medición propia |
 | P0.2b | Las curvas de **frecuencia y Q** de la campana y los filtros **pasa-altos y pasa-bajos**, medidas contra el filtro real (compromisos 101 y 103): cuatro entradas en `PROBADO`. Las leyes escritas del **compresor**, medidas y **refutadas** (97 y 98) | La **ganancia** del ecualizador (el ítem 108 está escrito y sin correr), la puerta, los tiempos de compresor y puerta, y la superficie del compresor con `softknee` controlado. Las fórmulas del cliente oficial para todo eso están en `SPK-P0.2a/evidence/tablas-conversion-ui24r.js` y entran como hipótesis |
@@ -70,7 +70,8 @@ Anotado el 2026-09-09. La regla de la fase es restaurar todo lo que se toca, y s
 Acordado con el dueño del equipo el 2026-09-09, y vale **sólo para los scripts
 de `tools/spikes/` durante una sesión de medición**. No cambia nada de lo que
 la aplicación puede hacer: sus reglas siguen siendo las de `CONTRIBUTING.md`, y
-en particular INV-010 le sigue prohibiendo tocar un envío de monitor.
+en particular INV-010 —que desde ADR-028 ya no es «nunca»: abre el **nivel** del envío,
+y sigue cerrando `mute`, `pan`, `post`, `postproc` y el fader del bus—.
 
 **La consola entera está disponible**, incluidos los envíos de auxiliar, los
 subgrupos y los efectos, que son lo que hace falta para ubicar cada sección de

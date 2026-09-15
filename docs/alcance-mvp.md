@@ -28,7 +28,7 @@ instantánea de la consola.
 | 9 | Por cada instrumento: **compresor** | **las leyes no están medidas** |
 | 10 | Por cada instrumento: **ecualizador de canal** | **las leyes no están medidas** |
 | 11 | Por cada instrumento: **cuánto manda a cada efecto** | **la ley del envío está acotada, no medida** (96b, 2026-09-12): no se desvía de `faderADb` más de 0,25 dB sobre 28 dB de recorrido, **con la linealidad del reverb sin poder decidirse** |
-| 12 | Envíos de monitor por auxiliar | **la ley del envío está acotada, no medida** (94, 2026-09-12): no se desvía de `faderADb` más de 0,31 dB —un escalón del medidor— sobre 27,87 dB. Con esa cota se pudo declarar un límite en decibeles y ADR-028 abrió las 240 rutas |
+| 12 | Envíos de monitor por auxiliar | **La ley está medida desde el 2026-09-13** (ítem 104, contra un convertidor externo): `i.N.aux.M.value` entró a `RAW_MAP` en `PROBADO`, en dB. Antes estaba sólo acotada (94, 2026-09-12: no se desvía de `faderADb` más de 0,31 dB sobre 27,87 dB), y con esa cota ADR-028 ya había abierto las 240 rutas. **Lo que falta acá no es la ley: es la pantalla.** El servicio `monitor/bajar-envio.service.ts` está escrito y probado y no lo llama nadie |
 | 13 | Guardar la instantánea al terminar | **construido** |
 | 14 | Cerrar la sesión con su registro exportable | **construido** |
 

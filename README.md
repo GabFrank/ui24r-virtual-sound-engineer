@@ -6,16 +6,17 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 **Plataforma:** Angular + Capacitor + Android (tablet).
 **Filosofía:** offline-first, measurement-first, safe-by-design.
-**Estado:** Fase 0 en curso, y desde el 2026-09-11 con un alcance decidido: **un asistente de soundcheck**, no de show ([docs/alcance-mvp.md](docs/alcance-mvp.md)). De los catorce pasos de ese camino hay ocho construidos —perfiles, sesión, canales, el plano del escenario, el recorrido guiado instrumento por instrumento, la ganancia medida y aplicada, la instantánea final y el cierre— y cinco esperan una ley de conversión por medir: puerta, compresor, ecualizador de canal, envío a efectos y envío a monitor.
+**Estado:** Fase 0 en curso, y desde el 2026-09-11 con un alcance decidido: **un asistente de soundcheck**, no de show ([docs/alcance-mvp.md](docs/alcance-mvp.md)). De los catorce pasos de ese camino hay **nueve construidos** —banda, local y amplificación, sesión, canales, el plano del escenario, el recorrido guiado instrumento por instrumento, la ganancia medida y aplicada, la instantánea final y el cierre— y **cinco esperan una ley de conversión**: puerta, compresor, ecualizador de canal y envío a efectos siguen sin medir; la del envío a monitor se midió el 2026-09-13 y lo que falta ahí es la pantalla.
 
-**La aplicación ya escribe en la consola**, por decisión del usuario y con su ADR: la ganancia de entrada (ADR-026), el silencio de un canal para diagnosticar (ADR-027) y el nivel del envío a monitor, con techo y nunca durante el show (ADR-028). Cada escritura pasa por el motor de seguridad y se confirma por una segunda conexión testigo. **No reproduce audio**: todo lo que necesita el micrófono de medición o la interfaz de audio sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md) para lo que se puede hacer hoy, y la [auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) para el estado real contado desde afuera.
+**La aplicación escribe en la consola, y conviene decir hasta dónde llega cada permiso.** El motor tiene tres categorías abiertas: la ganancia de entrada (ADR-026, decisión del usuario), el silencio de un canal para diagnosticar fuera del show (ADR-027, **propuesta del agente** que el usuario aceptó con el argumento que lo sostiene) y el nivel del envío a monitor, con techo y nunca durante el show (ADR-028, decisión del usuario). **Lo único que hoy llega a la consola desde una pantalla es la ganancia**: el envío a monitor tiene el camino construido y probado y ninguna pantalla lo llama todavía, y el silencio de canal no tiene camino de producción. Toda escritura pasa por el motor de seguridad y se confirma por una segunda conexión testigo. **No reproduce audio**: todo lo que necesita el micrófono de medición o la interfaz de audio sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md) para lo que se puede hacer hoy, y la [auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) para el estado real contado desde afuera.
 
 | | |
 |---|---|
 | Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
 | Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
-| Rutas crudas con conversión medida | 5 —frecuencia, Q, pasa-altos y pasa-bajos del ecualizador, y el envío a monitor—, medidas contra el filtro real con un bucle externo. Sólo ésas se escriben por vía cruda; `validate-numeros` lo cuenta |
+| Rutas crudas con conversión medida | 5 —frecuencia, Q, pasa-altos y pasa-bajos del ecualizador contra el filtro real, y el envío a monitor contra la salida del auxiliar—, todas con bucle externo. `validate-numeros` las cuenta |
+| Rutas crudas que el motor deja escribir | **1 de esas 5**, el envío a monitor. Las cuatro del ecualizador las rechaza INV-004: `LIMITES` da una unidad por `kind` y la ley medida está en Hz contra un tope en dB. Medir más leyes del ecualizador no las hace escribibles ([hallazgo](docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)) |
 
 ---
 

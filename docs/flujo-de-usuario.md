@@ -88,9 +88,16 @@ datos de prueba siempre tienen padre.
 
 ## Lo que todavía no hace
 
-Medir. Todo lo que necesita el micrófono, la interfaz de audio y la consola
-sigue pendiente de los spikes de fase 0. La aplicación observa, propone y
-guarda; no escribe en la consola y no reproduce audio.
+Medir con micrófono. Todo lo que necesita el micrófono de medición y la
+interfaz de audio sigue pendiente de los spikes de fase 0, y la aplicación no
+reproduce audio.
+
+**Escribir en la consola ya no está en esta lista, y conviene ser exacto.** La
+pantalla de ganancia aplica la ganancia de entrada y la verifica (ADR-026). El
+motor además admite el silencio de canal para diagnosticar (ADR-027) y el nivel
+del envío a monitor (ADR-028), pero **ninguna pantalla los dispara todavía**:
+del envío hay servicio escrito y probado sin llamador, y del silencio no hay
+camino de producción.
 
 ## Cómo se verifica
 

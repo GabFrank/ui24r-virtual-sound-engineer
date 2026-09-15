@@ -31,11 +31,13 @@ Están en el README y no son decorativas. Cualquier cambio que las contradiga es
 
 **El producto es un asistente de soundcheck, no de show** (`docs/alcance-mvp.md`, decidido con el usuario el 2026-09-11). Durante la función no hace nada. Acompaña a la banda instrumento por instrumento hasta dejar la mezcla guardada en una instantánea de la consola.
 
-**La aplicación escribe en la consola**, y cada apertura tiene su ADR y su decisión del usuario: la ganancia de entrada (ADR-026), el silencio de canal para diagnosticar, fuera del show (ADR-027), y el nivel del envío a monitor, sólo `i.N.aux.M.value`, con techo «hasta donde estaba» si la aplicación lo bajó y nunca en `SHOW` (ADR-028). INV-010 **ya no es «nunca»**. Bajar el fader de un auxiliar para cazar un acople está decidido y sin implementar; el general espera una decisión del usuario (ADR-029). Toda escritura pasa por el motor de seguridad y se confirma por la conexión testigo (ADR-024).
+**El motor tiene tres categorías de escritura abiertas**, cada una con su ADR: la ganancia de entrada (ADR-026, decisión del usuario), el silencio de canal para diagnosticar fuera del show (ADR-027, **propuesta del agente aceptada por el usuario** — no al revés: esa autoría ya se invirtió una vez y el propio ADR lo deja escrito), y el nivel del envío a monitor, sólo `i.N.aux.M.value`, nunca en `SHOW` y con techo (ADR-028, decisión del usuario; el «hasta donde estaba» es del usuario, y anclarlo a la primera vez que la aplicación bajó es operacionalización del agente, que `safety-invariants.md` pide no fusionar). INV-010 **ya no es «nunca»**.
+
+**Abierto no es alcanzable, y es la distinción que esta sección ya se comió una vez.** Hoy sólo dos servicios de producción construyen un `CambioPropuesto`: `gain/aplicar-ganancia.service.ts`, que la pantalla de ganancia llama, y `monitor/bajar-envio.service.ts`, que **nadie llama todavía**. El silencio de canal no tiene ningún camino de producción. Antes de escribir «la aplicación hace X», buscá quién construye ese `kind` y quién llama a ese servicio. Bajar el fader de un auxiliar para cazar un acople está decidido y sin implementar; el general espera una decisión del usuario (ADR-029). Toda escritura pasa por el motor de seguridad y se confirma por la conexión testigo (ADR-024).
 
 **No reproduce audio.** Micrófono de medición, interfaz de audio y motor nativo siguen pendientes de los spikes.
 
-Lo que funciona de punta a punta, comprobado en la tablet contra la consola:
+Lo que funciona de punta a punta sin hardware de medición (lo comprobado en la tablet contra la consola es la sesión del 2026-09-10: conexión, canales, medidores y espectro; el escenario y el recorrido son posteriores y todavía no tienen prueba de campo):
 
 ```
 Perfiles (banda, local, sistema de amplificación)
@@ -48,9 +50,9 @@ Perfiles (banda, local, sistema de amplificación)
 Ajustes (consola, actualización, datos)
 ```
 
-Más: telemetría en vivo, espectro con el analizador prestado (ADR-025), detección de realimentación, saber si hay otro operador tocando, paro de emergencia, y actualización desde GitHub.
+Más: telemetría en vivo, espectro con el analizador prestado (ADR-025), detección de realimentación, paro de emergencia, y actualización desde GitHub. **Saber si hay otro operador está medido y expuesto por el adaptador (`otroOperador()`), y ninguna pantalla lo muestra**: el verde de G-A es del mecanismo, no del producto.
 
-**Leyes de conversión medidas contra el aparato, con bucle externo:** las curvas de frecuencia y Q del ecualizador, el pasa-altos y el pasa-bajos, el envío a monitor, el fader de bus y el fader del general. **Refutadas:** el umbral y la relación del compresor tal como el `mixer.html` las muestra; `raw-map.ts` tiene el estado `REFUTADO` para decirlo. **Sin medir:** la ganancia del ecualizador —el ítem 108 está escrito y sin correr—, la puerta y los tiempos de compresor y puerta. Las fórmulas del cliente oficial para todo eso están archivadas en `docs/spikes/SPK-P0.2a/evidence/tablas-conversion-ui24r.js` y valen como hipótesis, no como medición.
+**Leyes de conversión medidas contra el aparato, con bucle externo:** las curvas de frecuencia y Q del ecualizador, el pasa-altos y el pasa-bajos, el envío a monitor, el fader de bus y el fader del general. **Son siete, y la tabla de conversión tiene cinco**: el fader de bus y el del general están medidos y no se agregaron a `RAW_MAP` a propósito, porque sus rutas siguen cerradas (ADR-029 lo explica). **Refutadas:** el umbral y la relación del compresor tal como el `mixer.html` las muestra; en `raw-map.ts` el estado `REFUTADO` lo lleva `i.N.dyn.threshold`, mientras que `i.N.dyn.ratio` no está en la tabla, a propósito y con su motivo escrito al lado. **Sin medir:** la ganancia del ecualizador —el ítem 108 está escrito y sin correr—, la puerta y los tiempos de compresor y puerta. Las fórmulas del cliente oficial para todo eso están archivadas en `docs/spikes/SPK-P0.2a/evidence/tablas-conversion-ui24r.js` y valen como hipótesis, no como medición.
 
 ## Mapa del código
 
