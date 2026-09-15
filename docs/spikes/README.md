@@ -47,8 +47,7 @@ entre lo contestado y «la balística como medición propia» entre lo que falta
 son dos preguntas distintas que conviene no mezclar:
 
 - **La de P0.10b está cerrada** —criterio 3 en ✅— y lo que contesta es *qué deja
-  ver el protocolo*: la lectura sube dentro de una sola trama y cae 20 dB en 37 ms
-  de mediana, sobre una cadencia de ~44 ms. Con ese límite declarado alcanza para
+  ver el protocolo*: la lectura sube dentro de una sola trama y cae 20 dB en 37 ms de mediana, sobre una cadencia de ~44 ms —[`SPK-P0.10b/evidence/barridos-2026-09-08.txt`](SPK-P0.10b/evidence/barridos-2026-09-08.txt)—. Con ese límite declarado alcanza para
   la conclusión que el producto usa: la consola manda **nivel instantáneo** y la
   retención de picos es decisión nuestra.
 - **La que sigue abierta no es de este spike.** Es *«¿la consola **mide** el

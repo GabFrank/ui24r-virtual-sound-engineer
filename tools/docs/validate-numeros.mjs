@@ -104,6 +104,17 @@ const HECHOS = [
     afirmaciones: [['README.md', /\| Spikes cerrados \| \d+ de (\d+) \|/]],
   },
   {
+    // **El numerador tampoco lo miraba nadie.** Se comprobaba el denominador --23
+    // charters-- y no cuántos están cerrados: un auditor marcó P0.10b en ✅ dentro
+    // de la tabla de estado, con el README raíz diciendo «0 de 23», y no lo vio
+    // ninguno de los once validadores. Un spike que se cierra es una decisión, que
+    // es justo la clase de número que este archivo dice que vale la pena escribir.
+    que: 'spikes cerrados',
+    contar: () => (leer('docs/spikes/README.md')
+      .match(/^\| \[[^\]]+\]\([^)]+\)[^|]*\| [^|]+ \| [^|]+ \| ✅ \|$/gm) ?? []).length,
+    afirmaciones: [['README.md', /\| Spikes cerrados \| (\d+) de \d+ \|/]],
+  },
+  {
     que: 'rutas crudas con conversión medida (PROBADO en RAW_MAP)',
     // Se ejecuta `rutasProbadas()`, que es la función que el adaptador expone
     // como «las únicas escribibles por vía cruda», en vez de contar su texto.
@@ -208,7 +219,7 @@ const DE_LA_CONSOLA = [
  * afirmación, hay que subirlo acá, que es parte de agregarla. Mismo trato que el
  * centinela del inventario en `rutas-de-los-tests.test.ts`.
  */
-const AFIRMACIONES_ESPERADAS = 21;
+const AFIRMACIONES_ESPERADAS = 22;
 
 /**
  * La evidencia contra la que se comparan las constantes de la consola.
