@@ -1,6 +1,8 @@
 # Acta de control G-A
 
-**Estado:** ⬜ Pendiente · **12 de 14 criterios contestados, 8 en verde** · repasado contra la realidad el 2026-09-10
+**Estado:** ⬜ Pendiente · **12 de 14 criterios contestados, 8 en verde** · repasado contra la realidad el 2026-09-10; **vuelto a mirar el 2026-09-15**
+
+> **Repaso del 2026-09-15.** Las tres madrugadas del 11 al 13 no movieron ninguna fila de esta tabla: lo que se midió esas noches es de G-B y G-C —leyes de conversión, el medidor contra un instrumento externo, el compresor—. Lo que sí cambió es el contexto en que este control se lee: **la aplicación ya escribe en la consola** (ADR-026, ADR-027, ADR-028), y lo que este control desbloquea —el adaptador y la máquina de estados de conexión— está en uso con esas escrituras encima. Los dos criterios que faltan siguen necesitando a alguien frente al aparato, y la auditoría externa del mismo día (`docs/backlog/auditorias/2026-09-15-auditoria-externa.md`, §5) trae hipótesis con procedencia para el modo «router apagado»: en una Ui16, un corte de energía es una caída silenciosa sin FIN que sólo un plazo de lectura detecta.
 
 > **Ningún criterio de esta tabla pasa a ✅ sin que lo mire alguien más.** La
 > regla está en [TEMPLATE.md](TEMPLATE.md) con el porqué. Salió de esta misma

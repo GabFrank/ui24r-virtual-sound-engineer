@@ -6,14 +6,16 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 **Plataforma:** Angular + Capacitor + Android (tablet).
 **Filosofía:** offline-first, measurement-first, safe-by-design.
-**Estado:** Fase 0 en curso. La aplicación **observa, propone y guarda**: perfiles, sesión, canales, ganancia, historial, ajustes y actualización propia. **No escribe nada en la consola y no reproduce audio** — todo lo que necesita el micrófono de medición, la interfaz de audio o el protocolo verificado sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md).
+**Estado:** Fase 0 en curso, y desde el 2026-09-11 con un alcance decidido: **un asistente de soundcheck**, no de show ([docs/alcance-mvp.md](docs/alcance-mvp.md)). De los catorce pasos de ese camino hay ocho construidos —perfiles, sesión, canales, el plano del escenario, el recorrido guiado instrumento por instrumento, la ganancia medida y aplicada, la instantánea final y el cierre— y cinco esperan una ley de conversión por medir: puerta, compresor, ecualizador de canal, envío a efectos y envío a monitor.
+
+**La aplicación ya escribe en la consola**, por decisión del usuario y con su ADR: la ganancia de entrada (ADR-026), el silencio de un canal para diagnosticar (ADR-027) y el nivel del envío a monitor, con techo y nunca durante el show (ADR-028). Cada escritura pasa por el motor de seguridad y se confirma por una segunda conexión testigo. **No reproduce audio**: todo lo que necesita el micrófono de medición o la interfaz de audio sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md) para lo que se puede hacer hoy, y la [auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) para el estado real contado desde afuera.
 
 | | |
 |---|---|
 | Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
-| Spikes cerrados | 0 de 22 |
+| Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
-| Rutas crudas escribibles | 0, y así seguirá hasta que un spike verifique cada conversión |
+| Rutas crudas con conversión medida | 5 —frecuencia, Q, pasa-altos y pasa-bajos del ecualizador, y el envío a monitor—, medidas contra el filtro real con un bucle externo. Sólo ésas se escriben por vía cruda; `validate-numeros` lo cuenta |
 
 ---
 
@@ -74,6 +76,8 @@ EP-15 Post-MVP
 
 ## Documentos de entrada
 
+- [Alcance del MVP](docs/alcance-mvp.md) — qué entra y qué no en la primera entrega, decidido con el usuario. Reemplaza la escalera MVP0–MVP4b del plan de abajo
+- [Auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) — estado real, trabajo previo publicado y qué corroborar con la consola
 - [Plan final](docs/backlog/00-plan-final.md)
 - [Auditoría integrada y decisiones](docs/backlog/01-auditoria-integrada.md)
 - [Backlog v1.1](docs/backlog/02-backlog.md)

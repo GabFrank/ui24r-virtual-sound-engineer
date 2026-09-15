@@ -70,6 +70,21 @@ const HECHOS = [
       ['docs/spikes/SPK-P0.2a-capability-basica.md', /filas con estado, (\d+) verificadas/],
     ],
   },
+  // Las dos que siguen son las del README, que estuvo tres días diciendo «0 de
+  // 22» con 23 charters y «0 rutas escribibles» con cinco medidas. Cambian con
+  // una decisión --escribir un charter, medir una ley-- y por eso vale
+  // escribirlas; y por eso mismo hay que contarlas.
+  {
+    que: 'charters de spike',
+    contar: () => readdirSync(join(RAIZ, 'docs/spikes'))
+      .filter((f) => f.startsWith('SPK-') && f.endsWith('.md')).length,
+    afirmaciones: [['README.md', /\| Spikes cerrados \| 0 de (\d+) \|/]],
+  },
+  {
+    que: 'rutas crudas con conversión medida (PROBADO en RAW_MAP)',
+    contar: () => (leer('packages/mixer-adapter/src/raw-map.ts').match(/^\s+medido\($/gm) ?? []).length,
+    afirmaciones: [['README.md', /\| Rutas crudas con conversión medida \| (\d+) /]],
+  },
   {
     que: 'criterios del acta G-A en verde',
     contar: () => (leer('docs/gates/G-A.md').match(/^\| .*\| ✅ \|$/gm) ?? []).length,
