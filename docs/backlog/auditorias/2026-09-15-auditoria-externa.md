@@ -49,6 +49,12 @@ treinta y seis proyectos públicos de GitHub sobre la Ui24R, clonados en local.
    conservarla.** Lo que falta no es rigor: es un paso de «buscar antes de
    medir» que no depende de que alguien se acuerde, y una portada que diga la
    verdad.
+6. **Nadie está construyendo lo mismo sobre la Ui24R, y lo más afín en
+   actitud está en otra consola.** El «competidor» con IA escribe rutas que la
+   consola no tiene. El proyecto que más se parece en filosofía —medir, corregir
+   de a poco, retirarse cuando el humano toca— es una herramienta para X32/M32.
+   Y hay veinte años de investigación académica y código abierto de Sony y QMUL
+   sobre exactamente estos problemas, que nadie había mirado (§10).
 
 ---
 
@@ -72,8 +78,10 @@ capacidades, la especificación del protocolo, `raw-map.ts`, y el `CHANGELOG`.
 | `npm run lint` | En verde: chequeo de tipos de paquetes y `tools/`, y compilación de la aplicación |
 
 **Qué se leyó afuera (VERIFICADO que existe; su contenido es INFERIDO):**
-treinta y seis repositorios públicos, clonados el 2026-09-15. El catálogo
-completo está en el Anexo A. Los que aportan algo concreto se citan en §5.
+treinta y seis repositorios públicos sobre la Ui24R más seis de referencia
+(automatización en otras consolas e investigación), clonados el 2026-09-15. El
+catálogo completo está en el Anexo A. Los que aportan algo concreto se citan en
+§5 y §10.
 
 **Qué NO se hizo, a propósito:** ninguna conexión a la consola, ningún guion de
 `tools/spikes/`, ningún cambio en código ni en documentos existentes. Este
@@ -753,6 +761,257 @@ ancladas afuera. El tiempo de consola es el recurso escaso.
   donde los tres pasan.
 - La cantidad de repositorios (36) es la que dio la búsqueda de GitHub por
   `ui24r` y `soundcraft ui` el 2026-09-15; puede haber más con otros nombres.
+- De §10, leí el código de M32LiveConsoleTool, SoundMaster IA, FxNorm-automix,
+  automix-toolkit, Diff-MST y el tutorial; de AutoMix y Mixing Station sólo sus
+  páginas; de los papers de §10.3 sólo el catálogo, no los textos; y el PDF de
+  *Ten Years of Automatic Mixing* no pude extraerlo en este entorno.
+
+---
+
+## 10. Proyectos afines y referencias profesionales
+
+Agregado el 2026-09-15 a pedido del usuario, después de la primera entrega.
+Lo que sigue sale de **leer el código** de cada proyecto, no su portada; donde
+sólo pude leer la portada, lo digo. Todo es **INFERIDO** salvo lo que se
+comprobó contra el inventario de claves de la consola.
+
+### 10.1 Sobre la Ui24R: nadie está haciendo lo mismo
+
+**`AlexandreCalmonJr/SoundMaster_IA`** es lo más parecido que existe, y
+conviene entender bien qué es y qué no.
+
+*Qué dice ser.* Un «ecosistema inteligente» para técnicos de sonido de iglesias
+y eventos, en portugués. Electron + Node + Python. Un solo commit, del
+2026-08-12 —probablemente importado de un repositorio privado—, y la portada lo
+declara «Beta ativa».
+
+*Qué promete.* Control de la Ui24R; presets de voz por IA («predicador», «voz
+femenina») con ecualizador, pasa-altos y compresor; RT60 por Sabine/Eyring y por
+barrido; STI según la norma IEC 60268-16; mapa de calor 3D de la sala; auto-EQ
+contra una curva objetivo; detector de microfonía; automix Dugan; chat con un
+modelo de lenguaje local (TinyLlama, Llama 3.2 vía Ollama); comandos por voz;
+túnel para control remoto; y drivers para Behringer X32 y Yamaha.
+
+*Qué hace de verdad, leído el código.*
+
+- **Escucha con el micrófono de la computadora**, por el navegador
+  (`getUserMedia` y Web Audio). No usa los medidores ni el analizador de la
+  consola: `VU2` y `RTA` no aparecen en ninguna parte de su código.
+- **Escribe rutas que no existen.** Usa la biblioteca `soundcraft-ui-connection`
+  pero manda texto crudo, y las rutas de ecualizador, puerta y compresor están
+  inventadas: `i.N.eq.band.X.*`, `i.N.gate.on`, `i.N.gate.thr`, `i.N.eq.hpf.on`,
+  `i.N.comp.*`, `m.eq.band.X.*`. **VERIFICADO** contra las 6 732 claves del
+  inventario del 2026-09-11: ninguna de esas familias existe; la consola usa
+  `i.N.eq.b1.freq`, `i.N.gate.enabled`, `i.N.gate.thresh`, `i.N.dyn.*`, y el
+  general no tiene `m.eq.band`. Como la consola ignora en silencio lo que no
+  reconoce, sus presets y su corte de microfonía **no hacen nada en una Ui24R**.
+  Mi lectura: se desarrolló contra el X32 —donde el OSC sí es real— y su
+  simulador, y la Ui24R se agregó por documentación.
+- **El detector de microfonía es razonable en concepto**: un pico angosto y
+  persistente sobre el piso local, una ventana de tiempo, una confianza que
+  combina persistencia con un clasificador, y corre en **«modo sombra»**:
+  propone un corte de −3 dB con Q 10 y lo marca `executable: false` con la
+  leyenda «confirmar el origen antes de aplicar». Es el mismo espíritu que
+  OBSERVAR → SUGERIR. Cuando sí corta, aplica −12 dB con Q 8 en el general.
+- Tiene **deshacer** —guarda el ecualizador antes de cortar— pero **no** tiene el
+  lazo medir → aplicar → volver a medir → revertir. Aplica y confía.
+- Los tests corren contra mocks. No hay evidencia de hardware en el repositorio.
+
+*Qué tomar.* Nada del protocolo. Sí, como hipótesis con origen, la parte de
+acústica de sala: RT60 por barrido exponencial y deconvolución (Farina 2000),
+integración inversa de Schroeder (1965), EDT/T20/T30, claridad C50/C80 y STI por
+la función de transferencia de modulación (IEC 60268-16). Está bien citada en su
+`ARCHITECTURE.md` y puede servir de referencia de implementación cuando llegue
+la corrección de sala.
+
+**Los otros dos con nombre de asistente son cáscaras.**
+`amjplanejados-cyber/ui24-live-assistant` es una clase de 29 líneas
+(`FeedbackKiller`) con los métodos vacíos; `brunosilvafreitas/soundcraft-ui-assist`
+es un «project setup» de enero de 2026 sin código. De los cerca de cuarenta
+repositorios sobre la Ui24R, todo lo demás es control remoto, MIDI, capas
+visuales o formatos de archivo. **Nadie hace medición más corrección sobre esta
+consola.**
+
+### 10.2 Sobre otras consolas: uno muy afín, y dos productos comerciales
+
+**`CristianMoresi/M32LiveConsoleTool`** (Midas M32 / Behringer X32, C#, junio
+de 2026, MIT). Es el proyecto más cercano **en actitud** que encontré, aunque el
+protocolo sea OSC. Corre tres automatizaciones sobre la mezcla en vivo:
+
+| Módulo | Qué hace | Regla que vale la pena copiar |
+|---|---|---|
+| **AutoLeveler** | Mantiene cada canal y bus en un nivel objetivo, comparando una media móvil del medidor con el objetivo y moviendo el fader | Siete guardas **en orden** antes de actuar: posición del fader conocida; silencio respetado; período de estabilización tras un cambio manual; detección de cambio manual nuevo; compuerta de silencio; límite de caída («una caída grande es un corte intencional, no deriva»); umbral de acción. La corrección se limita en pendiente antes de escribirse |
+| **AntiClipper** | Cuando un canal satura de forma confirmada, **baja** la ganancia en el previo | **Sólo atenúa; nunca sube por su cuenta.** Aplica en la grilla real de la consola (0,5 dB en el previo, 0,25 en el trim). Si la ganancia ya está en el mínimo físico y sigue saturando, avisa **una vez** en vez de seguir «corrigiendo» |
+| **DelayController** | Sincroniza los delays de efectos al tempo | Pregunta a la consola qué efecto hay en cada slot antes de escribir, para escribir en el parámetro correcto |
+
+Los parámetros por defecto, que son decisiones de producto explícitas: ventana
+del medidor 2 500 ms; umbral de acción 3 dB; pendiente 0,5 dB por segundo en los
+dos sentidos; límite de caída 8 dB; ciclo de 100 ms; 4 000 ms de estabilización
+después de un movimiento manual; 2 000 ms de captura del objetivo inicial («el
+soundcheck»); anti-clip en pasos de 3 dB, máximo 6, dos muestras de confirmación
+y 2 000 ms de enfriamiento.
+
+Y tres decisiones de diseño que hablan directo al nivel AUTOMÁTICO CONTROLADO de
+este proyecto: **se retira en cuanto el ingeniero toca ese fader** y vuelve sólo
+cuando el fader se asentó y hay señal real («para no confundir silencio con el
+nuevo objetivo»); distingue sus propias escrituras de los movimientos manuales
+suscribiéndose a la realimentación de parámetros de la consola —que es lo que
+este proyecto resolvió con el testigo—; tiene una **tecla de pánico** que
+devuelve el control manual completo; y **no registra cada corrección** —hace
+cientos por minuto— sino sólo los eventos de gestión, porque «un registro de tres
+horas de show sería inmanejable». Trae simulador propio, y la capa de dominio
+nunca toca la red.
+
+**AutoMix** (`automix.live`, comercial, beta privada). «Ingeniero de sonido en
+vivo con IA», sólo X32 por ahora, por OSC. Promete detección y eliminación de
+feedback «en el momento en que empieza», ganancia y ecualización «aprendidas de
+pistas de referencia», comandos por voz, y **monitores autoservicio: cada
+músico ajusta el suyo desde el celular** — la misma idea que este proyecto
+anotó el 2026-09-12 como pantalla por QR. Sin precio, sin empresa, sin detalles
+técnicos de cómo escucha. Sólo pude leer su portada.
+
+**Mixing Station** (`mixingstation.app`, comercial, madura, soporta la serie
+Ui). Lo más parecido a producto terminado, y lo más honesto sobre sus límites:
+
+- *Detección de feedback.* Elegís qué fuente del analizador mirar —típicamente
+  un micrófono—; el analizador muestra **líneas amarillas en las frecuencias que
+  infiere como feedback, y la altura de la línea es la confianza**. Un botón
+  «Auto» baja las bandas del ecualizador gráfico que están acoplando. Sus
+  propios documentos avisan que **«no está diseñado para usarse como
+  destructor de feedback mientras suena música»**: es para hacer el ring-out en
+  la preparación, y el modo automático se apaga solo al salir de la vista.
+- *Auto EQ.* Micrófono de medición en un canal libre, ruido rosa, tres a cinco
+  segundos, curva objetivo (con la posibilidad de una propia), ecualizador
+  paramétrico o gráfico, y **el resultado se ajusta a mano antes de aplicarlo**.
+  Leyenda: «no está pensado para reemplazar tus oídos» y «todavía en desarrollo».
+
+**La propia consola** ya trae supresión automática de feedback (dbx AFS2), con
+los modos LIVE/FIXED/LOCK que este proyecto está terminando de mapear.
+
+**Automixers tipo Dugan** —decenas en GitHub, por ejemplo
+`stoatworks-labs/mixerreturn` o `abelbour/automixer` en Csound— son otra cosa:
+reparto automático de ganancia entre micrófonos de habla. No miden la sala ni
+corrigen; no aplican a una banda.
+
+### 10.3 La investigación: «automatic mixing» e Intelligent Music Production
+
+Hay veinte años de investigación académica sobre exactamente los problemas de
+este proyecto —nivel, ecualización, compresión, monitores, feedback—, casi toda
+del grupo de Joshua Reiss en Queen Mary University of London, y está catalogada
+en un solo lugar: `csteinmetz1/AutomaticMixingPapers` (89 papers, con categoría,
+enfoque y enlace a código cuando existe). La síntesis es *«Ten Years of
+Automatic Mixing»* (De Man, Reiss y Stables, 2017), que ordena el campo en dos
+familias: **sistemas de reglas de oficio** («knowledge-engineered»: si el
+instrumento es X, entonces…) y **sistemas que aprenden** de mezclas existentes.
+No pude leer el PDF entero en esta sesión —el extractor de texto de este entorno
+falló— así que no cito su contenido más allá del índice de la colección.
+
+De los 89, éstos hablan directamente del oficio en vivo o de reglas explícitas.
+Los títulos son exactos; el juicio sobre qué aportan es mío:
+
+| Año | Trabajo | Para qué paso del MVP |
+|---|---|---|
+| 2008 | Perez Gonzalez y Reiss, *An automatic maximum gain normalization technique with applications to audio mixing* | Ganancia (paso 7) |
+| 2009 | Perez Gonzalez y Reiss, *Automatic gain and fader control for live mixing* | Ganancia y fader, **en vivo** |
+| 2009 | **Terrell y Reiss, *Automatic monitor mixing for live musical performance*** | **Envíos de monitor (paso 12)**: es literalmente el problema |
+| 2009 | Perez Gonzalez y Reiss, *Automatic equalization of multichannel audio using cross-adaptive methods* | Ecualizador de canal (paso 10) |
+| 2012 | Terrell y Sandler, *An offline, automatic mixing method for live music, incorporating multiple sources, loudspeakers, and room…* | El escenario: fuentes, cajas y sala en una sola cuenta |
+| 2012 | Mansbridge, Finn y Reiss, *Implementation and evaluation of autonomous multi-track fader control* | Cómo se evalúa un fader automático |
+| 2012 | Maddams, Finn y Reiss, *An autonomous method for multi-track dynamic range compression* | Compresor (paso 9) |
+| 2013 | **De Man y Reiss, *A knowledge-engineered autonomous mixing system*** | **Las reglas de oficio, escritas y evaluadas.** La fuente que `orden-del-soundcheck.md` y `channel-profiles.md` necesitan |
+| 2013 | Giannoulis, Massberg y Reiss, *Parameter automation in a dynamic range compressor* | Compresor: qué parámetro se automatiza y cómo |
+| 2015 | Hafezi y Reiss, *Autonomous multitrack equalization based on masking reduction* | Ecualización entre canales que se tapan |
+| 2015 | Wichern et al., *Comparison of loudness features for automatic level adjustment in mixing* | Qué medida de nivel usar para decidir un nivel |
+| 2018 | Jiménez-Sauma, *Real-time multi-track mixing for live performance* (con código) | Lo único de la lista marcado en vivo y con código |
+| 2018 | Moffat, Thalmann y Sandler, *Towards a semantic web representation and application of audio mixing rules* | Reglas de mezcla como datos, no como prosa |
+| 2019 | Moffat y Sandler, *Approaches in Intelligent Music Production*; De Man, Reiss y Stables, *Intelligent Music Production* (libro) | Panorama |
+| 2020 | Lefford, Bromham y Moffat, *Mixing with intelligent mixing systems: evolving practices and lessons from computer assisted design* | Cómo cambia el trabajo del ingeniero cuando hay un sistema al lado |
+| 2021 | Lefford, Bromham, Fazekas y Moffat, *Context Aware Intelligent Mixing Systems* | El contexto —sala, banda, género— como entrada |
+
+**Sobre feedback en particular**, la referencia estándar es van Waterschoot y
+Moonen, *Fifty years of acoustic feedback control: state of the art and future
+challenges*, Proceedings of the IEEE, vol. 99, n.º 2, pp. 288–327, 2011. Es la
+revisión de cincuenta años de detección y supresión de acoples, con evaluación
+comparativa. Los umbrales del detector de este proyecto están marcados como
+«elegidos, no medidos»; ahí están los criterios con los que la literatura los
+elige (según mi lectura previa del trabajo, no comprobada en esta sesión: razón
+pico-a-armónicos, pico-a-vecinos, persistencia entre tramas del pico, desvío de
+la pendiente entre tramas). Vale leerlo antes de calibrar.
+
+### 10.4 Sony y el estado del arte con aprendizaje profundo
+
+Es la línea más «profesional» en el sentido de documentación, código abierto y
+método de evaluación. Ninguno es en vivo y ninguno habla con una consola. Lo
+que aportan es otra cosa: **cómo se describe una mezcla con números, cómo se
+codifican las reglas de oficio y cómo se evalúa un sistema que mezcla.**
+
+**`sony/FxNorm-automix`** (Martínez-Ramírez, Liao, Fabbro, Uhlich, Nagashima y
+Mitsufuji, ISMIR 2022, licencia MIT). Idea central: **normalización de
+efectos**. Antes de entrenar, cada pista se lleva a un estado de referencia en
+cinco dimensiones —reverberación, ecualización, compresión, paneo y sonoridad—
+usando **el promedio de esas características por instrumento** sobre un
+conjunto de datos (MUSDB18: voz, bajo, batería, otros). Publican esos promedios
+(`features_MUSDB18.npy`), cuatro modelos preentrenados y, lo que más importa
+acá, **rediseñaron el test de escucha** para evaluar sistemas de mezcla, con
+ingenieros de mezcla muy experimentados como jueces, porque el método estándar
+(MUSHRA) no sirve tal cual para esto.
+
+**`csteinmetz1/automix-toolkit`** (Steinmetz, Apache 2.0). Los modelos de la
+literatura implementados y entrenables: la **consola de mezcla diferenciable**
+(DMC: ganancia, ecualizador y compresor como bloques derivables) y
+Mix-Wave-U-Net; recetas para ENST-Drums, MedleyDB y DSD100; pesos en Hugging
+Face; cuadernos de inferencia y evaluación.
+
+**`sai-soum/Diff-MST`** (Vanka y Steinmetz, transferencia de estilo de mezcla,
+licencia CC BY-NC-SA — **no comercial**). Además del modelo, trae en
+`mst/mixing.py` una función `knowledge_engineering_mix`: **reglas de oficio por
+instrumento** que asignan rangos de ganancia (±24 dB), un ecualizador de seis
+secciones con sus frecuencias por banda (estante grave 20–2000 Hz, bandas
+80–2000, 2000–8000, 8000–12000, 12000+ Hz, estante agudo desde 6 kHz), compresor
+y paneo. Es la forma más concreta que encontré de «las reglas de oficio como
+datos», que `channel-profiles.md` y `house-curves.md` hoy escriben a mano.
+
+**El tutorial *Deep Learning for Automatic Mixing*** (`dl4am/tutorial`, ISMIR
+2022; Steinmetz, Vanka, Martínez-Ramírez y Bromham, QMUL y Sony). Un libro web
+en cinco partes: efectos de audio (paneo, ecualización, compresión,
+reverberación), el problema de la mezcla automática y los cuatro métodos
+(Mix-Wave-U-Net, DMC, FxNorm, Diff-MST), funciones de pérdida, implementación en
+cuadernos, y **evaluación**. La parte 4 es la que este proyecto debería leer
+entera: por qué MUSHRA no se recomienda tal cual (una mezcla comercial como
+referencia no siempre puntúa alto; los estímulos de 12 segundos son demasiado
+cortos para juzgar una mezcla) y cómo se arma un test de escucha para esto.
+
+**Y una dirección reciente**: en la misma colección aparece `SonyResearch/LLM2Fx`
+(2025): un modelo de lenguaje que propone parámetros de efectos. No lo leí; lo
+anoto porque es exactamente la forma de «asistente que propone» de este
+proyecto, con la diferencia de que acá la propuesta pasa por un motor de
+seguridad y se mide.
+
+### 10.5 Qué tomar de cada uno, y dónde encaja
+
+| Fuente | Qué sirve | Dónde encaja | Riesgo |
+|---|---|---|---|
+| M32LiveConsoleTool | Las siete guardas ordenadas, la política de «sólo baja», la retirada ante el humano, la tecla de pánico, la política de registro | El nivel AUTOMÁTICO CONTROLADO; INV-004 y el acumulado por sesión; `autonomy-matrix.md` | Otro protocolo; parámetros calibrados para otra consola |
+| Mixing Station | Confianza como altura de línea; «no mientras suena música»; el resultado del Auto EQ se edita antes de aplicar | La pantalla del detector de realimentación; el paso 10 del MVP | Producto cerrado: sólo se ve el comportamiento |
+| AutoMix | Monitores autoservicio por celular | La pantalla QR de la banda | Sólo portada |
+| Terrell y Reiss 2009 | Un método publicado para mezclar monitores automáticamente | Paso 12 del MVP, ADR-028 | Por leer |
+| De Man y Reiss 2013; Moffat 2018 | Reglas de oficio escritas, evaluadas y en formato de datos | `orden-del-soundcheck.md`, `channel-profiles.md`, `house-curves.md` | Reglas de estudio, no de sala |
+| van Waterschoot y Moonen 2011 | Los criterios estándar para decidir que un pico es feedback | Los tres umbrales «elegidos, no medidos» del detector | Por leer entero |
+| FxNorm-automix | Promedios por instrumento como referencia; el diseño del test de escucha | `channel-profiles.md`; `protocolo-de-verificacion.md` | Estudio, no vivo; MUSDB18 no es una banda en una sala |
+| Diff-MST | `knowledge_engineering_mix` como ejemplo de reglas codificadas | `packages/assistants` | Licencia no comercial: leer, no copiar |
+| dl4am, parte 4 | Cómo evaluar con oyentes sin engañarse | El piloto de detección y los criterios de los controles G-C/G-D | — |
+| SoundMaster IA | Acústica de sala bien citada | Fase de corrección de sala | Todo lo demás |
+
+### 10.6 Una recomendación más
+
+**P-09 · Lecturas obligatorias antes de diseñar cada pieza.** Una tabla en
+`docs/referencia/README.md` —o en el `trabajo-previo.md` de P-01— que diga, para
+cada pieza del MVP que todavía no se diseñó, qué hay que haber leído antes:
+monitores → Terrell 2009; automatización → M32LiveConsoleTool y De Man 2013;
+feedback → van Waterschoot 2011 y la documentación de Mixing Station; evaluación
+→ dl4am parte 4 y el test de escucha de Sony. Con la misma regla que todo lo
+demás: lo leído entra como hipótesis, y una hipótesis que coincide con la
+medición se mide igual.
 
 ---
 
@@ -783,6 +1042,12 @@ particular; un proyecto útil para otra cosa puede decir «nada».
 | `oliverhruby/ui24r-midi` | Controlador MIDI, TS | Nada sobre conversiones | — |
 | `stevaedrum/ui2mcp` | Controlador MIDI en C para Raspberry | Nada | — |
 | `AlexandreCalmonJr/SoundMaster_IA` | Asistente con IA para Ui24R, Electron + Python | Nada aprovechable: **escribe rutas que no existen** (H-10) | Advertencia |
+| `CristianMoresi/M32LiveConsoleTool` | Automatización de mezcla en vivo para X32/M32 por OSC, C#, 2026 | El lazo de auto-nivel con sus siete guardas y el anti-clip que sólo baja (§10.2) | Otra consola |
+| `sony/FxNorm-automix` | Mezcla automática con aprendizaje profundo, ISMIR 2022, MIT | Normalización de efectos por instrumento; test de escucha rediseñado (§10.4) | Estudio, no vivo |
+| `csteinmetz1/automix-toolkit` | Modelos y datasets de mezcla automática, Apache 2.0 | Consola de mezcla diferenciable; recetas y pesos (§10.4) | Estudio |
+| `sai-soum/Diff-MST` | Transferencia de estilo de mezcla, CC BY-NC-SA | Reglas de oficio codificadas en `knowledge_engineering_mix` (§10.4) | No comercial |
+| `dl4am/tutorial` | Tutorial ISMIR 2022, QMUL + Sony | La parte 4, evaluación y tests de escucha (§10.4) | — |
+| `csteinmetz1/AutomaticMixingPapers` | Catálogo de 89 papers de mezcla automática | Los quince trabajos de §10.3 | — |
 | `amjplanejados-cyber/ui24-live-assistant` · `brunosilvafreitas/soundcraft-ui-assist` | Esqueletos de «asistente» | Vacíos | — |
 | `martinsprengel/ui-doc` | «Documentación y migración» | Sólo el README | — |
 | `electricsoldier96/ui24rtracksdocs` | Documentación de una app de pistas | Nada | — |
