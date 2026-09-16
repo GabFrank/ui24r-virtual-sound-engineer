@@ -503,6 +503,17 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // `i.N.dyn.ratio` **no esta en la tabla, a proposito**, y ahora hay dos
   // razones en vez de una.
   //
+  // > **AL DIA 2026-09-16: ya hay ley, y falta resolver COMO se escribe aca.**
+  // > El item 117 midio la curva de entrada y salida con una escalera de doce
+  // > escalones y saco `R = 1 + 0,548·(1/a − 1)`, con menos del 3 % de error en
+  // > siete posiciones de 1,2:1 a 11:1. Lo que la frena es la forma: la escala
+  // > esta **invertida** --el crudo 1 es 1:1 y el 0,05 es 11:1-- y `medido()`
+  // > deriva el rango fisico de los extremos del crudo, asi que la entrada
+  // > quedaria con el rango al reves y el trinquete la rechaza, con razon.
+  // > Decidir como representa la tabla una escala invertida es una tarea aparte,
+  // > y no se hace de apuro sobre la tabla de la que depende el motor.
+  // > Ver `docs/compromisos/117-la-curva-del-compresor.md`.
+  //
   // La primera: en 0 la razon seria infinita, asi que no hay rango fisico que
   // declarar sin inventarlo, y una entrada con el rango inventado es justamente
   // lo que se saco de aca.

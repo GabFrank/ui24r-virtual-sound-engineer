@@ -6,6 +6,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Ya se sabe cuánto comprime de verdad el compresor.** Era el agujero más
+  grande que quedaba: la cuenta del fabricante estaba refutada desde hace días y
+  no había nada en su lugar.
+
+  Se midió la curva completa —cuánto sale por cada nivel que entra, doce niveles
+  en una sola pasada— y salió una ley simple: **el compresor aprieta un poco más
+  de la mitad de lo que dice la etiqueta**. Donde tu consola marca 4:1, comprime
+  2,6:1; donde marca 20:1, comprime 11:1.
+
+  Eso importa en la práctica: si venías poniendo 4:1 esperando un control firme
+  sobre una voz, estabas comprimiendo bastante menos de lo que creías.
+
+  La ley acierta con menos del 3 % de error en siete posiciones. Todavía no entra
+  en la tabla que usa la app por un detalle de forma —esa escala va al revés que
+  todas las demás— y queda anotado.
+
 - **El primer tiempo medido que coincide exacto con la consola: el sostenido de
   la puerta.** Es cuánto se queda abierta después de que el sonido baja — lo que
   hace que no castañetee entre sílaba y sílaba. La cuenta de la consola dio el
