@@ -75,7 +75,8 @@ export function lectorDe(raiz) {
    * una entrada así no la veía; al revés, colapsar una llamada a una sola línea
    * disparaba una falsa alarma sin cambiar una coma de la semántica.
    */
-  const contarEjecutando = (modulo, expresion) => {
+  /** El `execFileSync` compartido: lo usan la cuenta y la lista. */
+  const correr = (modulo, expresion) => {
     let salida;
     try {
       salida = execFileSync(
@@ -106,6 +107,11 @@ export function lectorDe(raiz) {
         '  quién cuenta esa cifra ahora.',
       );
     }
+    return salida;
+  };
+
+  const contarEjecutando = (modulo, expresion) => {
+    const salida = correr(modulo, expresion);
     const n = Number(salida.trim());
     if (!Number.isInteger(n)) {
       throw new ProblemaDeLaGuarda(
@@ -115,7 +121,17 @@ export function lectorDe(raiz) {
     return n;
   };
 
-  return { leer, listar, contarEjecutando };
+  /**
+   * Lo mismo, pero cuando lo que hace falta **no es una cuenta sino la lista**.
+   *
+   * `contarEjecutando` alcanza para «¿cuántas hay?». No alcanza para «¿son
+   * exactamente éstas?», y esa es la pregunta que hace falta cuando un documento
+   * tiene que nombrar una por una las cosas que el código declara: una cuenta
+   * igual con una lista distinta pasa en verde.
+   */
+  const textoEjecutando = (modulo, expresion) => String(correr(modulo, expresion)).trim();
+
+  return { leer, listar, contarEjecutando, textoEjecutando };
 }
 
 /**

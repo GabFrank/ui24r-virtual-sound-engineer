@@ -29,8 +29,8 @@ sólo una se midió. Leído del cliente verificado y del estado real de la conso
 | Superficie | Clave | Estructura | Ley de la ganancia |
 |---|---|---|---|
 | Canal, 24 | `i.N.eq.bM.{freq,q,gain}` | **5 bandas paramétricas** | `40·V − 20` — **±20 dB, MEDIDA** por el ítem 108 |
-| General | `m.eq.peak.{l,r}.K` | **gráfico de 31 bandas, estéreo** | `30·V − 15` — ±15 dB, **INFERIDO** |
-| Auxiliares, 10 | `a.N.eq.peak.K` | **gráfico de 31 bandas**, mono | `30·V − 15` — ±15 dB, **INFERIDO** |
+| General | `m.eq.peak.{l,r}.K` | **gráfico de 31 bandas, estéreo** | `30·V − 15` — **±15 dB, MEDIDA** por el ítem 112, en el lado **izquierdo** |
+| Auxiliares, 10 | `a.N.eq.peak.K` | **gráfico de 31 bandas**, mono | `30·V − 15` — **±15 dB, MEDIDA** por el ítem 109, en el aux 5 |
 
 Contado sobre el estado real de la consola: 31 bandas por lado en el general —L y
 R por separado, con su `linked`—, 31 en cada uno de los diez auxiliares. Los
@@ -70,11 +70,21 @@ medida contra el filtro real—, y que las superficies de salida son gráficas d
 bandas con una estructura de clave distinta. Esto último sale del **estado real de
 la consola**, no del cliente: las claves están ahí y se contaron.
 
-**No establecido:** que el ecualizador de salida sea efectivamente ±15 **en el
-audio**. La fórmula del cliente describe lo que la pantalla muestra, y este
-repositorio ya tiene el contraejemplo de que eso puede no coincidir con el
-comportamiento —la medición 97 refutó `VtoTHRESH` y `VtoRATIO`, del mismo
-archivo—. Entra como `INFERIDO`, igual que las demás.
+> **MEDIDO el 2026-09-16, y este párrafo queda como estaba a propósito**: era
+> correcto cuando se escribió y muestra qué hacía falta para cerrarlo.
+>
+> ~~**No establecido:** que el ecualizador de salida sea efectivamente ±15 **en
+> el audio**.~~ Lo está: el ítem [109](../compromisos/109-la-ley-del-ecualizador-de-salida.md)
+> lo midió en un auxiliar y el [112](../compromisos/112-la-ley-del-ecualizador-del-general.md)
+> en el general, y las dos superficies dieron `30·V − 15` con residuo de
+> 0,001 dB. **La fórmula del cliente resultó exacta esta vez.** Sigue sin medirse
+> el **lado derecho** del general, que necesita cambiar un cable.
+
+**Lo que la duda decía, y por qué valía la pena:** la fórmula del cliente
+describe lo que la pantalla muestra, y este repositorio tiene el contraejemplo de
+que eso puede no coincidir con el comportamiento —la medición 97 refutó
+`VtoTHRESH` y `VtoRATIO`, del mismo archivo—. Que acá coincidiera **es un
+resultado de la medición, no un motivo para no haberla hecho**.
 
 **Tampoco establecido:** que las 31 bandas sean de un tercio de octava, ni en qué
 frecuencias están centradas. El gráfico del cliente las dibuja con una tabla

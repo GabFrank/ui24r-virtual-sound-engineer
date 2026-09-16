@@ -39,6 +39,35 @@
 
 > **La consola reporta veinticuatro entradas y hay que preguntárselo.** La cabecera de cada trama `VU2` trae la cantidad de entradas en su byte 0 y el volcado manda un `i.N.name` por cada una. La aplicación tenía doce fijos, y las dos entradas RCA —los canales 21 y 22, justo la fuente con la que se prueba con música— no se veían. La cantidad de canales sale de lo que informa la consola, nunca de una constante.
 
+## Las rutas crudas con ley medida
+
+**Esta tabla la comprueba una guarda**, `tools/docs/validate-rutas-medidas.mjs`:
+tiene que nombrar **exactamente** las rutas que `rutasProbadas()` declara en
+`packages/mixer-adapter/src/raw-map.ts`, ni una más ni una menos.
+
+**Existe porque el primer principio del repositorio apunta acá.** «Ninguna
+función se implementa sobre un parámetro que no esté probado en
+`docs/capability-matrix.md`» — y el 2026-09-16 una auditoría encontró que este
+documento venía **atrasado respecto del código**: el pasa-altos y el ecualizador
+paramétrico seguían figurando como `INFERIDO` y «desconocida» con sus leyes ya
+medidas, el pasa-bajos y el envío a monitor **no tenían fila**, y nada lo avisaba.
+Un documento que decide qué se puede implementar no puede enterarse último.
+
+| Ruta canónica | Ley medida | Ítem | Evidencia |
+|---|---|---|---|
+| `i.N.eq.b1.freq` | la curva de frecuencia del ecualizador de canal | 101 | SPK-P0.10b-vu2 |
+| `i.N.eq.b1.q` | la curva de Q | 101 | SPK-P0.10b-vu2 |
+| `i.N.eq.b1.gain` | `40·V − 20`, o sea **±20 dB** | 108 | `ley-ganancia-del-eq-2026-09-16b.txt` |
+| `i.N.eq.hpf.freq` | la curva del pasa-altos contra el filtro real | 103 | SPK-P0.10b-vu2 |
+| `i.N.eq.lpf.freq` | la curva del pasa-bajos contra el filtro real | 103 | SPK-P0.10b-vu2 |
+| `i.N.aux.M.value` | `VtoLIN`, contra la salida física del bus | 104 | `ley-del-envio-a-monitor-2026-09-13.txt` |
+| `a.M.eq.peak.K` | `30·V − 15`, el gráfico de un **auxiliar** | 109 | `ley-del-eq-de-salida-2026-09-16b.txt` |
+| `m.eq.peak.l.K` | `30·V − 15`, el gráfico del **general**, lado izquierdo | 112 | `ley-del-eq-del-general-2026-09-16b.txt` |
+
+**Lo que NO está en esta tabla no tiene ley medida**, por más que su clave exista
+y acepte escritura: el compresor, la puerta, el deesser, los tiempos, el lado
+derecho del general y las otras treinta bandas de cada gráfico.
+
 ## Entradas y canales
 
 | Función | API tipada | Ruta cruda | Unidad | Estado | Probado | Spike |
@@ -51,8 +80,10 @@
 | Alimentación fantasma | `hw(n).setPhantom` | `hw.N.phantom` | booleano | CONFIRMADO en lectura contra el aparato el 2026-09-10, y con la trampa medida: **`i.N.phantom` existe y dice otra cosa**. Con el condensador alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el mismo momento. Quien lea la ruta del canal en vez de la del previo va a decir «sin fantasma» sobre un micrófono alimentado. Sigue siendo **solo lectura** por INV-007. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ lectura | P0.2a |
 | Alta impedancia | — | `hw.N.hiz` | booleano | INFERIDO | ⬜ | P0.2a |
 | Retardo de canal | `master.input(n).setDelay` | `i.N.delay` | ms, de 0 a 250 | CONFIRMADO | ⬜ | P0.2a |
-| Filtro pasa altos | — | `i.N.eq.hpf.freq`, `.slope` | desconocida | INFERIDO | ⬜ | P0.2b |
-| Ecualizador paramétrico | — | `i.N.eq.b1..b5.{gain,q,freq}` | desconocida | INFERIDO | ⬜ | P0.2b |
+| Filtro pasa altos | — | `i.N.eq.hpf.freq`, `.slope` | **`freq`: curva MEDIDA** contra el filtro real (ítem 103); `slope` sin medir | **MEDIDO** la frecuencia, INFERIDO el resto | ✅ `freq` | P0.2b |
+| Filtro pasa bajos | — | `i.N.eq.lpf.freq` | **curva MEDIDA** contra el filtro real (ítem 103) | MEDIDO | ✅ | P0.2b |
+| Ecualizador paramétrico | — | `i.N.eq.b1..b5.{gain,q,freq}` | **medido en la banda 1**: `gain` es `40·V − 20` —±20 dB, ítem 108—, y `freq` y `q` tienen su curva medida contra el filtro real (ítem 101). **Las bandas 2 a 5 no se midieron**: que compartan la ley con la 1 es suposición, y este repositorio acaba de pagar una igual con el ecualizador del general | **MEDIDO** la banda 1, INFERIDO las otras cuatro | ✅ banda 1 | P0.2b |
+| Envío de canal a auxiliar | — | `i.N.aux.M.value` | **`VtoLIN`, MEDIDA** contra la salida física del bus con un convertidor externo (ítem 104): 0,007 dB sobre los primeros 32 dB de atenuación | MEDIDO | ✅ | P0.10b |
 | Compresor | — | `i.N.dyn.{threshold,ratio,attack,release,gain}` | desconocida | INFERIDO | ⬜ | P0.2b |
 | Puerta de ruido | — | `i.N.gate.{thresh,depth,attack,release}` | desconocida | INFERIDO | ⬜ | P0.2b |
 | Deesser | — | `i.N.deesser.{freq,ratio,threshold}` | desconocida | INFERIDO | ⬜ | P0.2b |
@@ -72,7 +103,7 @@
 | Matriz, con el general como fuente | `mtx(b).master()` | `m.mtx.B.value/mute/pan/postproc` | dB | CONFIRMADO el 2026-09-10 en `m.mtx.0.value` y `m.mtx.0.mute`, escritos, difundidos y restaurados. **La matriz no es `hwoutaux.N.src`**, que es el jack físico. Tienen envío a la matriz 19 fuentes: los 10 auxiliares, los 6 subgrupos, el general y **solo dos canales, `i.9` e `i.19`**. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ | P0.2a |
 | Salida: fader, silencio, retardo | `master.aux(b)` | `a.B.mix/mute/delay` | dB, y el retardo en unidad **sin medir** | CONFIRMADO. `a.0.delay` escrito, difundido y restaurado el 2026-09-10 | ✅ | P0.2a |
 | Retardo general por lado | `setDelayL/R` | `m.delayL`, `m.delayR` | crudo de 0 a 1. **«De 0 a 500 ms» sale de la API tipada de terceros, no de una medición nuestra** | CONFIRMADO como ruta el 2026-09-10: los dos aceptaron 0,25, lo difundieron y volvieron a 0. Cuántos milisegundos son esos 0,25 **no está medido**: la ley de conversión no aparece en el código que la consola sirve. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ ruta, ⬜ unidad | P0.2a |
-| Ecualizador de salida **= el gráfico de 31 bandas** | — | `m.eq.peak.{l,r}.K` y `a.B.eq.peak.K`, con `K` de 0 a 30 | crudo de 0 a 1. **MEDIDO contra el audio el 2026-09-16 en las DOS superficies: `30·V − 15`, o sea ±15 dB.** En un auxiliar ([ítem 109](compromisos/109-la-ley-del-ecualizador-de-salida.md)) dio `29,990·V − 14,995`, y en el general ([ítem 112](compromisos/112-la-ley-del-ecualizador-del-general.md)) `29,993·V − 14,996`, las dos con residuo máximo de 0,001 dB. La fórmula del cliente —`VtoEQGAIN15`— resultó exacta. **Falta el lado DERECHO del general**: la salida que vuelve al banco es la master 1, y medir `.r.K` pide cambiar un cable. No se supone por simetría, porque el enlace L/R **lo copia el cliente y no la consola** ([hallazgo](backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md)). Y una banda de treinta y una en cada superficie | **Las claves están OBSERVADAS en el aparato el 2026-09-16**, contadas sobre el volcado: 31 bandas por lado en el general —L y R por separado, con su `linked`— y 31 en cada uno de los diez auxiliares. Los subgrupos y los bloques de efectos **no tienen**. La unidad es `INFERIDO`: sale del cliente, no de una medición, y la 97 ya refutó dos fórmulas de ese mismo archivo. **No es el ecualizador de canal con otro prefijo**: el canal tiene 5 bandas paramétricas con frecuencia y Q y una ley de ±20 dB medida; acá no existe `m.eq.b1.gain`. Ver [hallazgo](backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md) | ⬜ unidad | P0.2c |
+| Ecualizador de salida **= el gráfico de 31 bandas** | — | `m.eq.peak.{l,r}.K` y `a.B.eq.peak.K`, con `K` de 0 a 30 | crudo de 0 a 1. **MEDIDO contra el audio el 2026-09-16 en las DOS superficies: `30·V − 15`, o sea ±15 dB.** En un auxiliar ([ítem 109](compromisos/109-la-ley-del-ecualizador-de-salida.md)) dio `29,990·V − 14,995`, y en el general ([ítem 112](compromisos/112-la-ley-del-ecualizador-del-general.md)) `29,993·V − 14,996`, las dos con residuo máximo de 0,001 dB. La fórmula del cliente —`VtoEQGAIN15`— resultó exacta. **Falta el lado DERECHO del general**: la salida que vuelve al banco es la master 1, y medir `.r.K` pide cambiar un cable. No se supone por simetría, porque el enlace L/R **lo copia el cliente y no la consola** ([hallazgo](backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md)). Y una banda de treinta y una en cada superficie | **Las claves están OBSERVADAS en el aparato el 2026-09-16**, contadas sobre el volcado: 31 bandas por lado en el general —L y R por separado, con su `linked`— y 31 en cada uno de los diez auxiliares. Los subgrupos y los bloques de efectos **no tienen**. La unidad es **`MEDIDO`** desde el 2026-09-16, en las dos superficies. Venía de una fórmula del cliente y esa procedencia no alcanzaba —la 97 refutó dos fórmulas de ese mismo archivo—, así que se midió; acá la del cliente resultó exacta. **El lado derecho del general sigue sin medir.** **No es el ecualizador de canal con otro prefijo**: el canal tiene 5 bandas paramétricas con frecuencia y Q y una ley de ±20 dB medida; acá no existe `m.eq.b1.gain`. Ver [hallazgo](backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md) | ⬜ unidad | P0.2c |
 | ~~Ecualizador gráfico de 31 bandas, sin clave conocida~~ | — | — | — | **Fila retirada el 2026-09-16: era la de arriba.** Esta matriz tenía dos filas para una sola cosa —el ecualizador de salida y «el gráfico de 31 bandas»— y por eso la segunda decía «sin clave conocida» mientras la primera ya nombraba el prefijo. Son lo mismo | — | — |
 | Polaridad de salida | — | `a.B.invert`, `m.l.invert` | booleano | INFERIDO | ⬜ | P0.2c |
 | Silencio individual por bus | — | según topología | booleano | DESCONOCIDO | ⬜ | PA-BUS |
