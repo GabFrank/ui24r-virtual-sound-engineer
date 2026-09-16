@@ -40,6 +40,19 @@ normalizado el filtro por dentro.
 
 ## El banco, y dos cosas que salieron gratis
 
+> **Las dos dejaron de ser gratis el 2026-09-15, y hubo que reponerlas.** Entre
+> que se escribió este contrato y que se fue a correr, el usuario cargó el show
+> `Prueba` y ensayó sobre el canal 10, que quedó configurado como un bombo: el
+> pasa-bajos en **1002,6 Hz** —sobre el bin que esta corrida mide—, el pasa-altos
+> en **39,8 Hz** —por encima del testigo de 37— y la banda 2 en 105,8 Hz en vez
+> de 1000,0. Lo encontró una lectura por HTTP **antes** de sonar el tono; el
+> usuario autorizó resetear el canal y `aplanar-canal.ts` lo dejó plano, con los
+> valores del bombo archivados para reponerlo. Todo lo que este párrafo dice
+> sigue siendo cierto, pero ahora **porque se restableció**, no porque estuviera
+> intacto. El detalle, y por qué el pasa-bajos habría producido una ley falsa en
+> vez de un aborto, están en
+> [`hallazgo-el-canal-del-banco-no-estaba-plano.md`](../backlog/hallazgo-el-canal-del-banco-no-estaba-plano.md).
+
 - **La banda 2 ya está exactamente en 1000,0 Hz.** Su crudo es
   `0,5584347738`, que es el que la ley medida por el 101 da para 1 kHz. **No se
   escribe la frecuencia**: una clave menos que tocar y una menos que restaurar.

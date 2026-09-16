@@ -64,6 +64,19 @@ anterior.
    verificado por HTTP.
 2. Unos **seis minutos** de consola.
 
+**Corregido el 2026-09-15: el punto 1 resultó falso, y el modo en que falló
+importa.** «El banco está cableado» seguía siendo cierto, pero el canal 10 no
+estaba plano: el show `Prueba` lo había dejado configurado como un bombo, con el
+pasa-bajos apoyado sobre el bin de 1 kHz que la corrida mide. Eso no habría
+abortado la corrida, la habría hecho **publicar una ley deformada**. Hizo falta el
+usuario —para autorizar el reseteo del canal— y una tarea nueva antes de medir.
+Está en
+[`hallazgo-el-canal-del-banco-no-estaba-plano.md`](hallazgo-el-canal-del-banco-no-estaba-plano.md).
+
+Lo que esto le agrega a la lista de arriba: **una precondición sobre el estado de
+un equipo compartido caduca**, y ninguna de las seis auditorías la miró, porque
+las seis auditaron el guion y el contrato —que eran correctos— y no la consola.
+
 ## Y una cosa que la corrida **puede** dejar de regalo
 
 L8 no sabe si el medidor de la consola es de pico o de potencia, así que **mide
