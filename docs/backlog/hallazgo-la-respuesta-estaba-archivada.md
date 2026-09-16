@@ -36,6 +36,29 @@ auditoría en seco y cuatro corridas contra la consola. No de una suposición
 inventada: de una fuente correcta, leída mal, a dos líneas de distancia de la
 correcta.
 
+## Y estaba en un segundo lugar, con un cartel encima
+
+Encontrado el mismo día, auditando: `docs/referencia/README.md` —el resumen del
+manual del fabricante— tenía esta fila **en negrita**:
+
+| | manual | `raw-map.ts` |
+|---|---|---|
+| **EQ de canal: ganancia** | **−20 … +20 dB** | **−15 … +15** |
+
+Y debajo, textual: *«Las tres en negrita de `raw-map.ts` hay que mirarlas»*.
+
+O sea que la contradicción no sólo estaba en el repositorio: **estaba marcada como
+contradicción, señalada para revisar, y sobrevivió igual.** Dos fuentes
+independientes —el manual del fabricante y el código de su propio cliente—
+decían ±20, y la tabla siguió diciendo ±15 durante meses.
+
+**Lo que esto cambia del diagnóstico de arriba.** No fue un descuido de lectura
+aislado. Fue un aviso escrito que nadie levantó, que es un fallo distinto y peor:
+el de leer mal se arregla con más cuidado, y el de no levantar un aviso propio se
+arregla sólo si alguien revisa lo que el repositorio ya se dijo a sí mismo. Es la
+misma forma que tuvo todo lo demás de esta madrugada: lo que faltaba no era medir
+más, era mirar lo que ya estaba escrito.
+
 ## Lo que esto NO significa, y hay que decirlo con cuidado
 
 **No significa que el 108 fuera innecesario.** Significa lo contrario de lo que

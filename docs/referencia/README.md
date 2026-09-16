@@ -50,7 +50,7 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 | De-esser: umbral | −90 … 6 dB | sin entrada |
 | De-esser: relación | infinito … 1:1 | sin entrada |
 | De-esser: frecuencia | 2 … 15 kHz | `2000 · 7,5^a`, o sea 2 … 15 kHz ✔ |
-| **EQ de canal: ganancia** | **−20 … +20 dB** | **−15 … +15** |
+| EQ de canal: ganancia | −20 … +20 dB | **MEDIDO el 2026-09-16: `40·V − 20`, o sea −20 … +20 ✔** — el manual tenía razón y la tabla estaba mal. Ver el [ítem 108](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md) |
 | **EQ de canal: Q** | **0,05 … 15** | **0,3 … 10** |
 | EQ de canal: frecuencia | 20 Hz … 22 kHz | 20 … 20 000 Hz |
 | EQ de salida | 31 bandas, ±15 dB | igual ✔ |
@@ -62,6 +62,25 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 **Las tres en negrita de `raw-map.ts` hay que mirarlas**: el Q del manual
 (0,05 … 15) coincide con lo que `protocol-spec.md` §6.3 sacó del `mixer.html`
 (`0,05 · 300^V`), así que ahí son **dos fuentes independientes contra el código**.
+
+> **Una de las tres se cerró el 2026-09-16, y la lección es sobre este documento.**
+> La ganancia del ecualizador de canal se midió contra el filtro real y dio
+> `40·V − 20`: **el manual tenía razón**. La tabla decía ±15 porque alguien leyó
+> `VtoEQGAIN15` en vez de `VtoEQGAIN20` en el extracto del cliente, dos líneas más
+> abajo.
+>
+> Lo incómodo es que **esta fila ya lo decía, en negrita y con un cartel que pedía
+> mirarla**. Sumada al extracto del cliente, la respuesta estaba en el repositorio
+> **en dos lugares independientes** —el manual del fabricante y el código de su
+> propio cliente— y la contradicción sobrevivió meses igual.
+>
+> Lo que la medición agregó, y que ninguna de las dos fuentes podía dar, es que el
+> **audio** se mueve esos decibeles. Este repositorio ya sabe que una fórmula del
+> cliente puede describir bien la pantalla y mal el audio: la 97 refutó dos del
+> mismo archivo. Así que la corrida no sobró; lo que sobró fue el tiempo que la
+> contradicción estuvo escrita sin que nadie la resolviera.
+>
+> **Quedan dos en negrita**, y siguen abiertas: el Q y la profundidad de la puerta.
 
 ### La relación del compresor llega hasta 50:1
 
