@@ -1,0 +1,47 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T07:03:32.038Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/llega-el-tono.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/llega-el-tono.ts sha256:4ed1765a0a3cf2b3
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== ¿LLEGA EL TONO? — canal 10 (i.9) en 192.168.0.78 ===
+
+   supresor del general: 1
+   fader del canal:      0.7451777309  (NO se toca)
+   mute del canal:       0  (NO se toca)
+   filtros del supresor: 12
+
+=== ANTES DEL TONO ===
+   en silencio               137 cuadros =  22.8/s | pico -71.3 dB | 15 valor(es) distinto(s), 21 repetido(s) seguido(s)
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CON EL TONO SONANDO ===
+   con tono                    7 cuadros =   1.2/s | pico -22.7 dB | 1 valor(es) distinto(s), 6 repetido(s) seguido(s)
+
+=== DESPUES DEL TONO ===
+   en silencio otra vez      134 cuadros =  22.3/s | pico -72.3 dB | 12 valor(es) distinto(s), 15 repetido(s) seguido(s)
+
+=== VEREDICTO ===
+   el bin de 1000 Hz que vuelve por el lazo: -19.71 dBFS
+   el ruido de ese bin:                   -124.60 dBFS
+   margen sobre el ruido:                 104.9 dB
+
+   el medidor de la consola subio 48.7 dB con el tono
+   EL TONO ENTRA A LA CONSOLA. Lo dice su propio medidor.
+   Y VUELVE por el lazo con margen de sobra.
+
+   cadencia VU2: 22.8/s en silencio, 1.2/s con tono, 22.3/s despues
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.enabled  esperado 1  leido 1
+   filtros del supresor: 12 antes, 12 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 0
