@@ -93,8 +93,32 @@ lleva también los suyos. Está anotada, no hecha.
 
 ## Trabajo previo
 
-**No hay coincidencias en otros proyectos.** Ninguno de los cuatro que hablan este
-protocolo expone el supresor de realimentación: ni `fmalcher/soundcraft-ui`, ni
-`ioBroker.soundcraft`, ni `ndikanov/ui24`, ni `MyUiPro` nombran `afs.*`. Es
-coherente con que sean bibliotecas de control de mezcla y no de proceso del
-general, y significa que acá no hay contra qué contrastar.
+> **CORREGIDO el 2026-09-16: la afirmación de abajo era falsa y se deja tachada.**
+>
+> ~~Ninguno de los cuatro que hablan este protocolo expone el supresor: ni
+> `fmalcher/soundcraft-ui`, ni `ioBroker.soundcraft`, ni `ndikanov/ui24`, ni
+> `MyUiPro` nombran `afs.*`.~~
+>
+> **`fmalcher/soundcraft-ui` sí lo nombra**, y con detalle: su
+> `mixer-state.models.ts` declara una interfaz `AAfs` que enumera **todas** las
+> claves —`eq`, `cmode`, **`fmode`**, `enabled`, `clearall`, **`logic`**,
+> `numfixed`, `numtotal`, `sensitivity`, `livelift`, `clearfixed`, `clearlive`—.
+> O sea que **también lista las dos claves del modo**, que es justamente el tema
+> de este documento.
+>
+> La afirmación salió de una búsqueda por `eq.peak`, `graphic` y `geq` —términos
+> del ecualizador de salida— extendida a «no exponen el supresor» sin haberlo
+> buscado. Es la misma forma que este repositorio persigue: **una frase que amplía
+> el alcance en silencio**, de «no encontré esto» a «no hay nada».
+>
+> **Lo que sí sigue siendo cierto, y es lo que importaba:** ninguno documenta
+> **qué combinación de `logic` y `fmode` corresponde a cada etiqueta**. Enumerar
+> las claves en un tipo no es decir qué significan. El mapeo de este documento
+> sigue sin tener precedente publicado; lo que perdió es la exclusividad de haber
+> encontrado las claves.
+
+**Estado corregido del trabajo previo.** `fmalcher/soundcraft-ui` enumera las doce
+claves del supresor en su modelo de estado, sin semántica. `ioBroker.soundcraft`
+sólo aparece en su `package-lock.json`, o sea que no lo toca. `ndikanov/ui24` y
+`NaturalDevCR/MyUiPro` no tocan parámetros de mezcla. **Nadie documenta el mapeo
+de modos**, que es la pregunta de la fila 6.
