@@ -116,9 +116,53 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 
 Lo que no vale es no decir nada, porque el que lee no puede distinguir «no hay» de «no miré». `tools/docs/validate-trabajo-previo.mjs` lo comprueba en las ADR.
 
+**Y hay cuatro repositorios donde mirar primero, que el usuario pidió por nombre
+el 2026-09-16.** Los cuatro hablan el protocolo de esta consola:
+[`fmalcher/soundcraft-ui`](https://github.com/fmalcher/soundcraft-ui),
+[`Dennion/ioBroker.soundcraft`](https://github.com/Dennion/ioBroker.soundcraft),
+[`ndikanov/ui24`](https://github.com/ndikanov/ui24) y
+[`NaturalDevCR/MyUiPro`](https://github.com/NaturalDevCR/MyUiPro).
+
+> **Lo que pasó.** Una medición del ítem 108 fallaba y se probaron **nueve
+> hipótesis**, todas refutadas contra el aparato, sin haber mirado qué hizo nadie
+> más. El usuario lo cortó dos veces: «*¿no hay algún proyecto de GitHub que tenga
+> algo documentado o parecido?*» y después «*buscá también en repositorios de
+> terceros*». De ahí salió la única pista accionable —que la consola cierra el
+> socket si deja de recibir `3:::ALIVE`—, y aunque resultó estar ya cubierta, era
+> la pregunta correcta y se había hecho tarde. El repositorio citaba uno solo de
+> los cuatro, enterrado en un anexo de auditoría.
+
+Y sigue valiendo la advertencia de §3: **el trabajo previo da hipótesis, no
+verdades.** De los cuatro, **ninguno documenta la cadencia del `VU2`** ni que se
+emite por cambio, que es lo que hacía falta. Que no haya precedente es un dato:
+significa más cuidado, no menos.
+
+## 8. Explicarle al usuario en su idioma, que es el del producto
+
+**Nada de nombres de clave, de funciones ni de archivos en la explicación
+principal.** El detalle técnico va al commit, al documento o a la evidencia, que
+es donde se audita. A la conversación va **qué se quiere saber, por qué importa
+para el producto, qué se va a hacer, cuánto lleva y qué le toca de su equipo.**
+
+> **Lo que pasó.** El 2026-09-16 se le explicó un fallo de medición a base de
+> `m.afs.enabled`, conteos de cuadros `VU2` y bloqueos del bucle de eventos. Él
+> pidió la versión simple, la aprobó, y dejó la regla: «*las explicaciones deben
+> de ser así, pues yo ni entiendo de claves ni funciones. **Entiendo del
+> producto**.*»
+
+**Por qué no es cosmética.** Es músico e ingeniero de sonido, no programador, y
+**la autoridad es humana**: las decisiones sobre qué se toca de su consola son
+suyas. Una explicación que no puede evaluar lo obliga a aceptar o rechazar a
+ciegas, que es exactamente lo contrario de la regla 5 del README.
+
+Si hace falta una analogía, que sea del oficio —un velocímetro que se apaga con
+el auto parado, no un búfer que no se vacía—. Y vale igual **cuando él pregunta
+algo técnico**: primero qué significa para el producto, después el detalle si lo
+pide.
+
 ---
 
-## 8. Trabajar con lotes de ediciones
+## 9. Trabajar con lotes de ediciones
 
 **Un lote tiene que informar cuáles no aplicaron.** Si aborta en la primera falla, las siguientes no se ejecutan y nadie se entera.
 
