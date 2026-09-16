@@ -1,5 +1,81 @@
 # 109 — La ley de la ganancia del ecualizador de salida
 
+## MEDIDA el 2026-09-16: `30·V − 15`, o sea ±15 dB
+
+Evidencia:
+[`ley-del-eq-de-salida-2026-09-16b.txt`](../spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt).
+
+| | medido | tope |
+|---|---|---|
+| pendiente | **29.990 dB** por unidad de crudo | — |
+| ordenada | **-14.995 dB** | — |
+| residuo máximo (L2) | **0.001 dB** | 0.3 |
+| recorrido total (L3) | **29.99 dB** | 24 mínimo |
+| corte y realce (L4) | **-14.99** y **15.00 dB** | — |
+| asimetría (L4) | **0.00** | 0.5 |
+| el testigo se movió (C2) | **0.32 dB** | 1.0 |
+
+**La fórmula del cliente resultó exacta**, igual que pasó con la del canal en el
+ítem 108. Se redondea a `30·V − 15`: la milésima no se distingue de cero con esta
+corrida.
+
+## Y la otra pregunta también quedó contestada
+
+**La banda 17 responde en 1000 Hz**, que es lo que decía su etiqueta. Medido
+realzando la banda al máximo y comparando contra plano en cinco candidatas:
+
+| | 630 Hz | 800 Hz | **1000 Hz** | 1250 Hz | 1600 Hz |
+|---|---|---|---|---|---|
+| realce | 1.96 dB | 5.31 dB | **14.99 dB** | 5.42 dB | 1.93 dB |
+
+Simétrico alrededor del centro, y el pico donde la etiqueta prometía. **Con eso el
+orden de las claves sigue al de las etiquetas, para esta banda**, y las 32
+etiquetas contra 31 bandas se explican porque la última —«22k»— es el borde del
+gráfico y no una banda.
+
+**De yapa, la forma de la falda**, que el contrato decía que no iba a medir y
+salió igual: con el realce al máximo, una banda de distancia mueve unos 5,3 dB y
+dos bandas unos 1,95. No es la ley del filtro, pero acota cuánto se pisan las
+bandas vecinas.
+
+## El control C2 falló primero, y el defecto era del instrumento
+
+La primera corrida —
+[`ley-del-eq-de-salida-2026-09-16.txt`](../spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16.txt)—
+dio la **misma ley**, con el mismo residuo de 0,001 dB, y **se negó a publicarla**
+porque C2 midió 16,73 dB de movimiento en el testigo contra un tope de 1,0.
+
+**El testigo estaba en 4000 Hz y el estímulo era un solo tono de 1000.** O sea que
+no había nada que medir en esa frecuencia: lo que se leyó fue el ruido de fondo,
+y su recorrido natural. El ítem 108 usa **dos tonos** exactamente por esto, y ese
+precedente estaba a la vista.
+
+Es la misma familia de error que este repositorio viene documentando —medir sobre
+silencio y leerlo como una lectura— con el agravante de que acá no había que
+descubrir nada: había que copiar al guion hermano.
+
+**Que la corrida se negara a publicar es lo que funcionó.** La ley ya estaba bien
+en esa primera corrida, y publicarla igual —con un control en rojo y la premisa
+rota— habría sido acomodar la regla al resultado.
+
+Corregido el estímulo a dos tonos y puesto el testigo **a seis bandas** —dos era
+demasiado cerca: la propia medición de la falda dice que mueve 1,96 dB, más que el
+tope— C2 pasó con 0,32 dB.
+
+## Lo que esto NO cierra
+
+- **Nada del ecualizador del general.** Se midió el del auxiliar 5 por los motivos
+  de más abajo. Que compartan la ley sigue siendo una suposición razonable.
+- **Nada de las otras 30 bandas.**
+- **No entra a `raw-map.ts` todavía**, y ahora se sabe exactamente qué lo
+  bloquea: `canonizarRuta` sólo entiende las familias `i.N` y `aux.M`, y devuelve
+  `undefined` para cualquier otra. Para `a.N.eq.peak.K` hay que enseñarle la
+  familia `a.` y el índice de banda — y esa función es de la que depende INV-004
+  para rechazar rutas. Es una tarea aparte, con su propia prueba.
+
+---
+
+
 **Contrato escrito el 2026-09-16, ANTES de tocar la consola.** Consola
 192.168.0.78. Canal 10 (`i.9`) → auxiliar 5 (`a.4`) → entrada 2 de la Scarlett.
 

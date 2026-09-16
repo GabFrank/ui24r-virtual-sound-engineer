@@ -1,0 +1,102 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T12:56:30.172Z
+# comando: node --experimental-strip-types tools/spikes/p0-2c/ley-del-eq-de-salida.ts 17 192.168.0.78
+# guion: tools/spikes/p0-2c/ley-del-eq-de-salida.ts sha256:581385361ef8671c
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 109 — LA LEY DEL ECUALIZADOR DE SALIDA ===
+   canal 10 -> auxiliar 5 -> entrada 2 de la interfaz
+   se barre a.4.eq.peak.17
+
+   m.afs.enabled            1
+   a.4.eq.peak.17           0.5
+   i.9.aux.4.value          0
+   a.4.mix                  0
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   i.9.deesser.enabled      0
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CALIBRACION DEL NIVEL ===
+   nivel del auxiliar 0.750 -> -34.17 dBFS
+   C1 PASA: 101.8 dB sobre el piso
+
+=== QUE FRECUENCIA ES LA BANDA ===
+   (no se supone del orden de las etiquetas: se mide)
+      630 Hz: realce de 1.96 dB
+      800 Hz: realce de 5.31 dB
+     1000 Hz: realce de 14.99 dB
+     1250 Hz: realce de 5.42 dB
+     1600 Hz: realce de 1.93 dB
+   -> la banda 17 responde en 1000 Hz (la etiqueta decia 1000)
+
+=== EL BARRIDO ===
+   crudo 0.00 -> -49.16 dBFS   (testigo 4000 Hz: -134.18)
+   crudo 0.10 -> -46.16 dBFS   (testigo 4000 Hz: -138.56)
+   crudo 0.20 -> -43.17 dBFS   (testigo 4000 Hz: -135.49)
+   crudo 0.30 -> -40.17 dBFS   (testigo 4000 Hz: -142.62)
+   crudo 0.40 -> -37.17 dBFS   (testigo 4000 Hz: -139.99)
+   crudo 0.50 -> -34.17 dBFS   (testigo 4000 Hz: -135.42)
+   crudo 0.60 -> -31.17 dBFS   (testigo 4000 Hz: -134.12)
+   crudo 0.70 -> -28.17 dBFS   (testigo 4000 Hz: -132.67)
+   crudo 0.80 -> -25.17 dBFS   (testigo 4000 Hz: -129.85)
+   crudo 0.90 -> -22.17 dBFS   (testigo 4000 Hz: -132.41)
+   crudo 1.00 -> -19.17 dBFS   (testigo 4000 Hz: -125.89)
+   crudo 0.25 -> -41.66 dBFS   (testigo 4000 Hz: -130.92)
+   crudo 0.75 -> -26.67 dBFS   (testigo 4000 Hz: -133.30)
+   crudo 0.50 -> -34.17 dBFS   (testigo 4000 Hz: -138.81)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled            esperado 1  leido 1
+   OK   a.4.eq.peak.17           esperado 0.5  leido 0.5
+   OK   i.9.aux.4.value          esperado 0  leido 0
+   OK   a.4.mix                  esperado 0  leido 0
+   OK   i.9.dyn.bypass           esperado 0  leido 0
+   OK   i.9.gate.enabled         esperado 1  leido 1
+   OK   i.9.deesser.enabled      esperado 0  leido 0
+
+=== VEREDICTOS ===
+C2 la banda es LOCAL: el testigo se movio 16.73 dB (tope 1)
+   NO PASA: lo que se movio fue algo global, no la banda
+
+L2 la ley es lineal: 29.990 dB por unidad de crudo, ordenada -14.994
+   residuo maximo 0.001 dB (tope 0.3)
+   PASA. Y es una COTA, no una identidad.
+
+L3 el recorrido total: 29.99 dB (minimo 24)
+   PASA
+
+L4 la simetria: corte -14.99 dB, realce 15.00 dB, asimetria 0.00
+
+NO SE IMPRIME LEY: fallo al menos un control.
+
+Alcance: UNA banda de treinta y una, en UN auxiliar. Nada del general,
+nada del ancho de banda, nada de como interactuan las bandas entre si.
+
+
+# salida del proceso: 1
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: 77c7f5ea043dd012
+================================================================================
+
+QUE CAMBIO Y POR QUE NO TOCA LO MEDIDO. Despues de esta corrida, la guarda
+escribir-sin-leer.test.ts marco el guion: leia todas las claves que escribe, pero
+las leia a traves de una variable --CLAVES.map(k => exigirClave(e0, k))-- y esa
+guarda las busca escritas enteras. O sea que la lectura existia y no se podia
+COMPROBAR.
+
+Se reescribio la construccion de PREVIO para que cada clave aparezca entera en su
+exigirClave, y las escrituras usan la misma forma. Las claves leidas, las
+escritas, los valores y el orden son IDENTICOS antes y despues: lo unico que
+cambio es que ahora una guarda estatica puede verlo.
+
+Remedir daria exactamente lo mismo, y para la corrida que fallo borraria el
+registro de por que fallo.
