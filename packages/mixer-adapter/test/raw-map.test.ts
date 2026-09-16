@@ -95,10 +95,15 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // fabricante y el propio cliente de la consola. Si alguna vez aparece acá una
   // quinta, este test tiene que fallar: sería ofrecerle al usuario un control que
   // no suena, con todas las comprobaciones en verde.
+  // **La duodecima, `i.N.gate.hold`, es del item 116 y es la PRIMERA en el
+  // dominio del tiempo.** La formula del cliente --`2000^desqr(V)`-- acerto
+  // exacta: errores de +0,7 a −0,1 ms sobre un recorrido de 28 a 2000. El motor
+  // no la deja escribir --esta en ms y el tope de su `kind` esta en dB-- y entra
+  // igual, porque la tabla registra lo medido, no solo lo escribible.
   assert.deepEqual([...rutasProbadas()].sort(),
     ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
       'i.N.eq.b1.q', 'i.N.eq.b2.gain', 'i.N.eq.b3.gain', 'i.N.eq.b4.gain',
-      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'm.eq.peak.l.K'],
+      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'i.N.gate.hold', 'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
   assert.equal(entrada('i.N.eq.b5.gain'), undefined,
     'la quinta banda se midió y no mueve el audio: una entrada acá le ofrecería al '

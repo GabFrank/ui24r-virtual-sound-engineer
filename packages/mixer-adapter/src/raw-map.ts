@@ -457,6 +457,33 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   //
   // Evidencia:
   // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-del-general-2026-09-16b.txt`
+  // **El sostenido de la puerta: la PRIMERA ley de tiempo medida, y acerto sola.**
+  //
+  // El item 116 barrio nueve posiciones y la formula del cliente --`2000^desqr(V)`
+  // con `desqr(a) = 1 − (1−a)²`-- dio el valor exacto: errores de +0,7 a −0,1 ms
+  // sobre un recorrido que va de 28 a 2000. No es «coincide dentro de la
+  // tolerancia»: es el mismo numero.
+  //
+  // **Y ese acierto explica por que los otros tiempos no aciertan.** Un sostenido
+  // es un RETARDO --cuanto se queda abierta antes de empezar a cerrar-- y no
+  // admite convenciones: o empezo a cerrar o no. Un ataque o una relajacion son
+  // ASENTAMIENTOS, y ahi hay que elegir a que fraccion se le llama «el tiempo».
+  // El unico de los tres que no necesita definicion es el unico que coincide.
+  //
+  // De paso vale como control del instrumento: la cadena reproduce una ley
+  // conocida al 0,1%, asi que los desacuerdos del compresor no son suyos.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/tiempos-de-la-puerta-2026-09-16.txt`
+  medido(
+    'i.N.gate.hold', 'ms',
+    (v) => Math.pow(2000, 1 - (1 - v) * (1 - v)),
+    (ms) => 1 - Math.sqrt(1 - Math.log(ms) / Math.log(2000)),
+    // **El quinto y el sexto son el rango CRUDO, no el fisico**, y equivocarlo lo
+    // caza el test: con 1 y 2000 aca, `fisicoMax` sale de `fromRaw(2000)`, que da
+    // cero, y el rango queda invertido. El fisico lo deriva `medido()` solo.
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
   medido(
     'm.eq.peak.l.K', 'dB',
     (v) => 30 * v - 15,

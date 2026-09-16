@@ -66,6 +66,7 @@ Un documento que decide qué se puede implementar no puede enterarse último.
 | `i.N.aux.M.value` | `VtoLIN`, contra la salida física del bus | 104 | `ley-del-envio-a-monitor-2026-09-13.txt` |
 | `a.M.eq.peak.K` | `30·V − 15`, el gráfico de un **auxiliar** | 109 | `ley-del-eq-de-salida-2026-09-16b.txt` |
 | `m.eq.peak.l.K` | `30·V − 15`, el gráfico del **general**, lado izquierdo | 112 | `ley-del-eq-del-general-2026-09-16b.txt` |
+| `i.N.gate.hold` | `2000^desqr(V)` ms — **la primera ley de tiempo medida**, y la fórmula del cliente acertó exacta | 116 | `tiempos-de-la-puerta-2026-09-16.txt` |
 
 **Lo que NO está en esta tabla no tiene ley medida**, por más que su clave exista
 y acepte escritura: el compresor, la puerta, el deesser, los tiempos, el lado

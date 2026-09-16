@@ -6,6 +6,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El primer tiempo medido que coincide exacto con la consola: el sostenido de
+  la puerta.** Es cuánto se queda abierta después de que el sonido baja — lo que
+  hace que no castañetee entre sílaba y sílaba. La cuenta de la consola dio el
+  número justo, con un error de menos de un milisegundo sobre un recorrido que va
+  de 28 a 2000.
+
+  **Y ese acierto explica por qué los otros no coincidían.** Un sostenido es una
+  espera: o empezó a cerrar o no. Un ataque y una relajación son *asentamientos*,
+  y ahí hay que elegir a qué punto se le llama "el tiempo". El único de los tres
+  que no necesita esa elección es el único que da igual.
+
+  De yapa sirve como prueba del equipo de medición: reproduce una ley conocida con
+  un error del 0,1 %, así que los desacuerdos del compresor no son del banco.
+
+- **Y de la puerta también se midió cómo abre y cómo cierra.** Al abrir, la forma
+  de la curva de la consola es correcta y el número no. Al cerrar, **la forma
+  tampoco**: es el primer control donde la cuenta del fabricante no describe lo
+  que hace el aparato, y queda dicho sin reemplazo — no hay ley nueva que ofrecer
+  todavía.
+
 - **Ya se sabe cómo suelta el compresor, y no es como se sospechaba.** Había una
   explicación candidata para por qué los milisegundos de la pantalla no coinciden
   con lo que hace el aparato al soltar: que el tiempo dependiera de **cuánto**
