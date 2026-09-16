@@ -1,0 +1,47 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T13:39:25.357Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts sha256:26594c999faea2a4
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 110 — ¿EL CRUDO 0 DE LA RELACION ES UN LIMITADOR? ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   softknee esta en 0, se LEE y NO se toca: con rodilla blanda la
+   relacion efectiva cerca del umbral no es la nominal.
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== REFERENCIA: el compresor PUENTEADO ===
+   fuente  -28 dBFS -> -57.41 dBFS   (margen 82.6 dB)
+   fuente  -24 dBFS -> -53.42 dBFS   (margen 85.3 dB)
+   fuente  -18 dBFS -> -47.44 dBFS   (margen 91.6 dB)
+   la referencia subio 9.98 dB con 10 dB de fuente
+
+=== CALIBRACION DEL UMBRAL ===
+   (su ley esta refutada desde la 97, asi que se calibra midiendo)
+   umbral 0.45 -> reduccion de -27.74 dB
+   umbral 0.40 -> reduccion de -27.74 dB
+   umbral 0.50 -> reduccion de -27.74 dB
+   umbral 0.35 -> reduccion de -27.42 dB
+   umbral 0.55 -> reduccion de -27.67 dB
+   umbral 0.30 -> reduccion de -25.52 dB
+   umbral 0.60 -> reduccion de -27.66 dB
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts:221
+      throw new Error(`no se encontro un umbral que diera entre ${REDUCCION_BUSCADA_DB[0]} y `
+            ^
+
+Error: no se encontro un umbral que diera entre 2 y 5 dB de reduccion con relacion 0,5. Sin un punto de trabajo en la zona activa, el escalon mide otra cosa.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts:221:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts:161:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

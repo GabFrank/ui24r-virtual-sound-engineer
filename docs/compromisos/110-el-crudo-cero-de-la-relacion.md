@@ -3,6 +3,78 @@
 **Contrato escrito el 2026-09-16, ANTES de tocar la consola.** Consola
 192.168.0.78. Canal 10 (`i.9`) → general → entrada 1 de la Scarlett.
 
+## MEDIDO el 2026-09-16: el crudo 0 sobre-limita, y el 50:1 del manual no es
+
+Evidencia:
+[`crudo-cero-de-la-relacion-2026-09-16d.txt`](../spikes/SPK-P0.10b-vu2/evidence/crudo-cero-de-la-relacion-2026-09-16d.txt).
+Los dos controles en verde.
+
+| crudo | lo que dice la fuente | +4 dB de fuente movieron la salida | relación implícita |
+|---|---|---|---|
+| 0,25 | el cliente: 4:1 | +2,784 dB | **1,4:1** |
+| 0,02 | el manual: 50:1 | +0,510 dB | **7,8:1** |
+| **0** | el cliente: ∞ | **−0,068 dB** | **más que infinita** |
+
+**El crudo 0 sobre-limita.** Al subir la fuente, la salida **baja**: −0,068 dB con
+el escalón chico y −0,046 con el grande. Eso es más que una relación infinita —es
+pendiente negativa— y **descarta el tope 50:1 del manual**, que predice que la
+salida sube 0,080 dB con ese escalón, diez veces más y en el otro sentido.
+
+**Y el crudo 0,02, que el manual llama 50:1, mide 7,8:1.** No es el tope del
+manual ni por asomo.
+
+**Lo que esta tabla NO dice, y conviene leerlo antes de citarla:** las relaciones
+**nominales no reproducen** —4:1 mide 1,4:1—, que es exactamente lo que la
+medición 97 ya había refutado. No es un hallazgo de esta corrida ni un defecto
+suyo: es el estado conocido de esa ley.
+
+**Sigue en pie el límite declarado antes de medir:** con esta precisión no se
+distingue una relación infinita de una muy alta. Lo que sí se puede es descartar
+el 50:1.
+
+> **Nota sobre la evidencia archivada.** En las filas de crudo 0 el informe
+> imprime «el compresor tocó su techo en el medio». Es **espurio**: ese aviso
+> compara el escalón grande contra el chico y con pendiente negativa el cociente
+> se da vuelta, así que sale en la única fila donde no hay techo posible. Se
+> corrigió en el guion después de esta corrida; los números no cambian.
+
+## Las dos corridas intermedias, y qué enseñó cada una
+
+Hicieron falta cuatro. Las tres primeras fallaron **en un control**, que es
+exactamente para lo que están.
+
+**La segunda** —
+[`crudo-cero-de-la-relacion-2026-09-16b.txt`](../spikes/SPK-P0.10b-vu2/evidence/crudo-cero-de-la-relacion-2026-09-16b.txt)—
+ya con la compensación neutralizada, calibró bien pero falló C3: el compresor
+reducía sólo 2,19 dB. Con la señal apenas por encima del umbral, el control de 2:1
+midió **1,6:1**, que es la rodilla y no la ley. Enseñó que el punto de trabajo
+tenía que ser más profundo.
+
+**La tercera** —
+[`crudo-cero-de-la-relacion-2026-09-16c.txt`](../spikes/SPK-P0.10b-vu2/evidence/crudo-cero-de-la-relacion-2026-09-16c.txt)—
+bajó el umbral y pasó C3 con 9,36 dB de reducción, pero falló C2, y **ahí se vio
+que el control estaba mal planteado**. También fue la primera en mostrar la
+pendiente negativa del crudo 0, que la cuarta confirmó.
+
+Que cada una fallara en un control distinto es lo que permitió corregir de a una
+cosa por vez.
+
+## El control positivo estaba mal planteado, y no se corrigió por haber fallado
+
+La versión anterior usaba como control que **una relación nominal del cliente
+diera su valor**: 2:1 tenía que medir 2:1. Eso es poner de control **justamente lo
+que este proyecto ya refutó**. Un control que da por cierta una hipótesis
+refutada no valida el instrumento: falla siempre, y su fallo no dice nada.
+
+**El error es identificable sin mirar los datos**, y se corrigió por eso. Cambiar
+un criterio porque el resultado no gustó es acomodar la regla al resultado, y este
+repositorio tiene esa regla escrita — así que la distinción importa y queda
+asentada acá.
+
+El control nuevo comprueba **la cadena**: con el compresor puenteado, 10 dB de
+fuente tienen que mover la salida 10 dB. Dio **9,98**. No supone ninguna ley del
+compresor.
+
 ## La pregunta, acotada a propósito
 
 **Sólo una cosa: qué hace el compresor con `i.N.dyn.ratio = 0`.**
@@ -90,6 +162,38 @@ bien porque el compresor ni se enteró.
 - **Un umbral, una frecuencia, un canal, un día.**
 - Y si la salida sube **0,1 dB**, esta corrida **no puede distinguir ∞ de 200:1**.
   Lo que puede hacer es descartar el 50:1 del manual, que predice 0,2.
+
+## El primer intento falló en la calibración, y el defecto era del contrato
+
+**2026-09-16.** Evidencia:
+[`crudo-cero-de-la-relacion-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/crudo-cero-de-la-relacion-2026-09-16.txt).
+
+La calibración del umbral no encontró ningún punto de trabajo, y el número decía
+por qué: la «reducción» salió de **−27,74 dB**. Negativa — con el compresor activo
+la salida estaba casi 28 dB **más arriba** que con él puenteado.
+
+**Era la ganancia de compensación.** El canal traía `dyn.outgain = 0,7186045126`
+del preajuste de bombo, y `72·a − 24` da **+27,74 dB**: exactamente el número
+observado. La lista de claves a neutralizar de este contrato **no la incluía**, y
+sin neutralizarla lo que se midió fue compensación pura.
+
+**De paso, y sin buscarlo, eso confirma una fórmula `INFERIDO` contra el audio.**
+`VtoDYNOUTGAIN(a) = 72·a − 24` estaba leída del cliente y nunca comprobada; acá
+predice 27,74 dB y se midieron 27,74. Es una coincidencia a la centésima, en un
+punto, y vale como corroboración —no como ley medida: un punto no es una ley, y
+el paso siguiente sería barrerla.
+
+**Y hay un segundo dato de esa corrida fallida**, que es el que reorienta la
+siguiente: entre los umbrales 0,35 y 0,60 la reducción **no se movió ni una
+centésima**, y recién en 0,30 aparecieron 2,2 dB. O sea que arriba de 0,30 el
+compresor no se entera de esta señal. La rejilla de umbrales pasa a barrer de
+0,30 hacia abajo, y probar arriba es gastar capturas.
+
+La corrida dejó la consola restaurada —las siete claves comprobadas releyendo por
+HTTP— pero **el papelito de `pendiente.ts` quedó abierto**, porque la excepción se
+llevó el guion por delante antes de la verificación que lo cierra. Se cerró a
+mano después de releer. Es el comportamiento correcto del papelito: ante la duda,
+queda.
 
 ## Trabajo previo
 
