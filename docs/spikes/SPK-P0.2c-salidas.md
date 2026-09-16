@@ -19,12 +19,12 @@
 
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
-| 1 | Ecualizador paramétrico de salida: bandas, ganancia, factor de calidad, frecuencia | bloqueante | 7 puntos o más por parámetro | | ⬜ |
+| 1 | Ecualizador paramétrico de salida: bandas, ganancia, factor de calidad, frecuencia | bloqueante | 7 puntos o más por parámetro | **La pregunta estaba mal planteada: el ecualizador de salida de esta consola NO es paramétrico.** El general y los diez auxiliares tienen un gráfico de 31 bandas —`m.eq.peak.{l,r}.K`, `a.B.eq.peak.K`— sin frecuencia ni Q por banda. Ver el criterio 3 | ✅ contestado |
 | 2 | Pasa altos y pasa bajos de salida | bloqueante | 7 puntos o más | | ⬜ |
-| 3 | ¿Existe el ecualizador gráfico de 31 bandas por red? | bloqueante | sí o no. Si no, la corrección de sala usa el paramétrico | | ⬜ |
+| 3 | ¿Existe el ecualizador gráfico de 31 bandas por red? | bloqueante | sí o no. Si no, la corrección de sala usa el paramétrico | **SÍ, y es el único que hay.** 31 bandas por lado en el general —L y R con su `linked`— y 31 en cada uno de los diez auxiliares; subgrupos y efectos no tienen. Contado sobre el aparato. **Su ley de ganancia está MEDIDA** por el [ítem 109](../compromisos/109-la-ley-del-ecualizador-de-salida.md): `30·V − 15`, residuo 0,001 dB, en una banda de un auxiliar. Y la banda 17 responde en 1000 Hz, o sea que el orden de las claves sigue al de las etiquetas | ✅ |
 | 4 | Retardo de salida | bloqueante | 7 puntos o más | | ⬜ |
 | 5 | Inversión de polaridad | informativo | documentada | | ⬜ |
-| 6 | Lectura del estado de supresión de realimentación | informativo | filtros fijos y totales legibles, sí o no | | ⬜ |
+| 6 | Lectura del estado de supresión de realimentación | informativo | filtros fijos y totales legibles, sí o no | **SÍ.** `m.afs.numfixed` y `m.afs.numtotal` se leen, y la pila entera en `m.afs.eq.N` como texto. El modo sale de **dos** claves y no de una: ver [el hallazgo](../backlog/hallazgo-el-modo-del-supresor-son-dos-claves.md) | ✅ |
 | 7 | Ida y vuelta de la conversión | bloqueante | 1 % o menos | | ⬜ |
 | 8 | Escritura de prueba verificada por lectura | bloqueante | dentro del 1 % | | ⬜ |
 

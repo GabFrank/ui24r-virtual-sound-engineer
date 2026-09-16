@@ -58,7 +58,7 @@ cliente— y este proyecto ya usó ese cruce para el Q.
 | EQ de canal: Q | 0,05 … 15 | `0,05·300^V` → 0,05 … 15 | ✔ |
 | EQ de canal: frecuencia | 20 Hz … 22 kHz | `20·1102,5^V` → 20 … 22050 | ✔ |
 | EQ de salida: ganancia | ±15 dB | `30·V − 15` → −15 … +15 | ✔ |
-| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el control llega hasta el crudo **0**, o sea **∞:1** | **✘ no cuadra** |
+| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el control llega hasta el crudo **0**. **MEDIDO el 2026-09-16 ([ítem 110](../compromisos/110-el-crudo-cero-de-la-relacion.md)): en el crudo 0 la salida BAJA al subir la fuente** —sobre-limita— y el crudo 0,02, que el manual llama 50:1, mide 7,8:1 | **✘ el manual no es** |
 
 Con `d(V) = 1 − (1 − V)²`.
 
@@ -66,6 +66,19 @@ Con `d(V) = 1 − (1 − V)²`.
 medidas —siguen describiendo la **pantalla**, y la medición 97 refutó dos de ellas
 contra el audio— pero sí las saca de «fuente única»: el rango que publican es el
 que el fabricante declara en papel.
+
+> **CERRADO el 2026-09-16 midiendo, y el manual es el que pierde.** El
+> [ítem 110](../compromisos/110-el-crudo-cero-de-la-relacion.md) llevó la señal a
+> la zona activa y subió la fuente: con el crudo 0 **la salida baja** —0,068 dB
+> con 4 dB de fuente—, o sea que sobre-limita, que es **más** que una relación
+> infinita. El tope 50:1 del manual predice que la salida **sube** 0,080 dB: diez
+> veces más y en el otro sentido.
+>
+> Y el crudo 0,02 —el que el manual llamaría 50:1— midió **7,8:1**.
+>
+> Lo que sigue sin cerrar es la **ley** de la relación, que la 97 refutó y nadie
+> volvió a establecer: las relaciones nominales no reproducen —4:1 mide 1,4:1— y
+> eso no es un hallazgo del 110 sino el estado conocido de esa ley.
 
 **La que no cuadra es la relación del compresor**, y vale la pena no taparla.
 
