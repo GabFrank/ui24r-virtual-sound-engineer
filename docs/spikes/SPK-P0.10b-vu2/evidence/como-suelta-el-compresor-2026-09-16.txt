@@ -1,0 +1,131 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T21:33:32.358Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/como-suelta-el-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/como-suelta-el-compresor.ts sha256:aeba173f0e75481d
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 114 — LOS TIEMPOS DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   tono 4000 Hz, escalon de -30 a -12 dBFS
+   ventana 6 ciclos = 1.50 ms, paso 0.50 ms -> piso del instrumento 5 ms
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.threshold      0.875
+   i.9.dyn.ratio          1
+   i.9.dyn.bypass         0
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — EL ESCALON CON EL COMPRESOR PUENTEADO ===
+   escalon detectado a los 3039 ms de la captura, de 17.9 dB (se pidieron 18)
+   asentado -41.60 dBFS
+   asentamiento: t63 <5 (piso), t90 <5 (piso)
+   PASA: sin compresor el escalon no se asienta, salta y ya.
+
+C1 el tono llega: 86.0 dB de recorrido en la captura (minimo 45)
+
+=== PROFUNDIDAD ALTA (objetivo 15 dB) ===
+   umbral 0.250 -> reduccion 15.39 dB
+   reduccion de trabajo: 15.42 dB (umbral 0.250)
+   C3 el compresor actua: PASA (minimo 6 dB)
+
+   --- ATAQUE, profundidad alta ---
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.000 | <5 (piso) | <5 (piso) |            1.0 ms | 1.00   (repite 0%)
+   0.125 | <5 (piso) |   5.5 ms |            4.1 ms | 0.61   (repite 0%)
+   0.250 |   9.0 ms |  18.0 ms |           13.8 ms | 0.65   (repite 6%)
+   0.375 |  24.5 ms |  49.0 ms |           38.5 ms | 0.64   (repite 6%)
+   0.500 |  57.0 ms | 113.0 ms |           89.4 ms | 0.64   (repite 4%)
+   0.625 | 110.0 ms | 217.0 ms |          172.2 ms | 0.64   (repite 3%)
+   0.750 | 176.0 ms | 348.0 ms |          275.1 ms | 0.64   (repite 2%)
+   0.875 | 233.0 ms | 462.5 ms |          364.3 ms | 0.64   (repite 0%)
+   1.000 | 257.0 ms | 512.0 ms |          400.0 ms | 0.64   (repite 2%)
+
+   --- RELAJACION, profundidad alta ---
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.000 | <5 (piso) |   7.5 ms |           10.0 ms | 0.35   (repite 0%)
+   0.125 |  10.5 ms |  25.0 ms |           34.6 ms | 0.30   (repite 10%)
+   0.250 |  25.0 ms |  66.0 ms |          101.6 ms | 0.25   (repite 20%)
+   0.375 |  61.5 ms | 157.5 ms |          252.5 ms | 0.24   (repite 9%)
+   0.500 | 119.5 ms | 317.5 ms |          531.8 ms | 0.22   (repite 19%)
+   0.625 | 215.5 ms | 563.5 ms |          949.4 ms | 0.23   (repite 17%)
+   0.750 | 373.5 ms | 1049.0 ms |         1436.2 ms | 0.26   (repite 1%)
+   0.875 | 374.5 ms | 977.0 ms |         1841.1 ms | 0.20   (repite 20%)
+   1.000 | 419.0 ms | 1047.0 ms |         2000.0 ms | 0.21   (repite 12%)
+
+=== PROFUNDIDAD BAJA (objetivo 7 dB) ===
+   umbral 0.400 -> reduccion 6.63 dB
+   reduccion de trabajo: 6.64 dB (umbral 0.400)
+
+   --- ATAQUE, profundidad baja ---
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.250 |   8.5 ms |  20.5 ms |           13.8 ms | 0.62
+   0.500 |  49.0 ms | 105.5 ms |           89.4 ms | 0.55
+   0.750 | 174.5 ms | 438.5 ms |          275.1 ms | 0.63
+   1.000 | 194.5 ms | 374.5 ms |          400.0 ms | 0.49
+
+   --- RELAJACION, profundidad baja ---
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.250 |  32.0 ms |  80.5 ms |          101.6 ms | 0.32
+   0.500 | 166.5 ms | 413.5 ms |          531.8 ms | 0.31
+   0.750 | 436.0 ms | 1048.5 ms |         1436.2 ms | 0.30
+   1.000 | 584.0 ms | 1362.5 ms |         2000.0 ms | 0.29
+
+=== C4 — LAS DOS PROFUNDIDADES SON DISTINTAS ===
+   alta 15.42 dB, baja 6.64 dB, diferencia 8.78 (minimo 5)
+   PASA
+
+=== LA DECISION: ¿CONSTANTE DE TIEMPO O PENDIENTE CONSTANTE? ===
+   razon de profundidades (baja/alta): 0.431
+   Si el t63 no cambia -> constante de tiempo.
+   Si cae a 0.43 -> pendiente constante en dB/s.
+
+   --- ataque ---
+   crudo 0.250: t63 baja 8.5 / alta 9.0 = 0.944
+   crudo 0.500: t63 baja 49.0 / alta 57.0 = 0.860
+   crudo 0.750: t63 baja 174.5 / alta 176.0 = 0.991
+   crudo 1.000: t63 baja 194.5 / alta 257.0 = 0.757
+   PROMEDIO 0.888
+   -> CONSTANTE DE TIEMPO
+   --- relajacion ---
+   crudo 0.250: t63 baja 32.0 / alta 25.0 = 1.280
+   crudo 0.500: t63 baja 166.5 / alta 119.5 = 1.393
+   crudo 0.750: t63 baja 436.0 / alta 373.5 = 1.167
+   crudo 1.000: t63 baja 584.0 / alta 419.0 = 1.394
+   PROMEDIO 1.309
+   -> CONSTANTE DE TIEMPO
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.attack         esperado 0.34375  leido 0.34375
+   OK   i.9.dyn.release        esperado 0.4887695312  leido 0.4887695312
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, un umbral, una relacion, un canal, un dia.
+   El tiempo se define como t63 y t90 del asentamiento; el fabricante
+   no dice cual usa, asi que una diferencia puede ser de definicion.
+   Nada de la puerta, ni de la forma de la curva, ni de señal real.
+
+
+# salida del proceso: 0

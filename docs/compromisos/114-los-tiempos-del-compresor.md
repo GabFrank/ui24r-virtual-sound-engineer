@@ -81,6 +81,13 @@ después.
 rejilla más densa —ocho o diez crudos— y una corrida con otra profundidad de
 reducción, que es lo que distinguiría «otra convención» de «otra ley».
 
+> **HECHO el mismo día**, en el [ítem 115](115-como-suelta-el-compresor.md). Nueve
+> posiciones y dos profundidades. Resultado: **la pendiente constante queda
+> refutada** —con menos reducción la relajación tarda *más*, no menos—, así que la
+> explicación que este párrafo proponía **es falsa**. La forma del **ataque** sí
+> quedó cerrada: factor **0,641** con 2,1 % de dispersión sobre siete posiciones.
+> El desacuerdo de la relajación sigue abierto, con una explicación menos.
+
 ### Tres corridas fallaron antes, y las tres por defectos del instrumento
 
 Ninguna por el aparato, y las tres las cazó **C2** —el control que comprueba que

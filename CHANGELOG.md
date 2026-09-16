@@ -6,6 +6,16 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Ya se sabe cómo suelta el compresor, y no es como se sospechaba.** Había una
+  explicación candidata para por qué los milisegundos de la pantalla no coinciden
+  con lo que hace el aparato al soltar: que el tiempo dependiera de **cuánto**
+  tuviera que recuperar. Se probó midiendo con mucha y con poca compresión, y
+  **es falsa** — con menos que recuperar, tarda *más*, que es justo lo contrario.
+
+  De paso quedó **cerrado el ataque**: la forma de la curva que muestra la consola
+  es correcta sobre un recorrido de 400 a 1, con un error de 2 %. Al soltar, la
+  medición todavía no tiene esa calidad y se dice así.
+
 - **Ya se sabe cuánto tarda de verdad el compresor en apretar y en soltar.** Es
   lo que decide si un bombo tiene pegue o suena chato, y si una voz respira o
   queda pareja.
