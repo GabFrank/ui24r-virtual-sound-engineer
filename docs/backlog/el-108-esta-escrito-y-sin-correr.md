@@ -1,5 +1,14 @@
 # El ítem 108 está escrito, auditado seis veces, y listo para correr
 
+> **Corrió el 2026-09-15 y no salió ley.** Falló en la primera captura con tono,
+> por dos cuadros del medidor donde hacen falta veinte. La consola quedó
+> restaurada y el supresor no plantó nada. Lo que pasó, las cinco hipótesis que
+> se refutaron midiendo y los dos defectos del guion que aparecieron en el
+> camino están en
+> [`el-108-corrio-y-fallo-por-dos-cuadros.md`](el-108-corrio-y-fallo-por-dos-cuadros.md).
+> Este documento describe el estado **antes** de esa corrida y se deja como
+> estaba.
+
 **2026-09-13.** Contrato:
 [`108-la-ley-de-la-ganancia-del-ecualizador.md`](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md).
 Guion: `tools/spikes/p0-10b-vu/ley-ganancia-del-eq.ts`. **No hay evidencia

@@ -289,16 +289,40 @@ const t = new Ui24rTransport();
 // realce. Ese recorte llegaria a la Scarlett a un nivel comodo, sin marca, y se
 // leeria como una ley que se aplana arriba: un hallazgo falso contra la consola.
 // De eso se ocupa L8.
-let cuadros: { canalSalida: number }[] = [];
+/**
+ * Los cuadros del medidor, **con la hora a la que llegaron**.
+ *
+ * **La marca de tiempo no es adorno: sin ella el promedio es de otro punto.**
+ * `analizar()` es sincrono y bloquea el bucle de eventos unos 2,5 s por captura
+ * --medido el 2026-09-15--. Los cuadros que la consola manda durante ese bloqueo
+ * no se pierden: Node los encola y los entrega cuando el bucle se libera, que es
+ * **despues** de que la captura siguiente hizo su `cuadros = []`. Resultado: la
+ * captura N+1 contaba tambien los cuadros del analisis de la N, medidos con la
+ * ganancia ANTERIOR.
+ *
+ * Comprobado midiendo: una ventana de 3,9 s que deberia traer 89 cuadros traia
+ * 149 --37,7/s contra los 22,5/s reales del flujo--, y el exceso era justo el
+ * atraso de la ventana previa.
+ *
+ * De ese promedio cuelga L8, que compara el medidor del canal contra el realce
+ * pedido. Contaminarlo con el punto anterior corre la lectura hacia el punto
+ * anterior, o sea **aplana la curva que L8 vigila**: exactamente la direccion en
+ * la que L8 deja de ver un recorte interno.
+ */
+let cuadros: { canalSalida: number; llegada: number }[] = [];
 t.alRecibir((linea) => {
   if (!linea.startsWith('VU2^')) return;
   const c = decodificarVuCanales(linea.slice(4))[n];
   if (c === undefined) return;
-  cuadros.push({ canalSalida: c.salida });
+  cuadros.push({ canalSalida: c.salida, llegada: Date.now() });
 });
 
 type Medida = {
   canalDb: number; cuadros: number;
+  /** Cuanto duro de verdad la ventana de grabacion, en ms. */
+  ventanaMs: number;
+  /** Cuadros que llegaron FUERA de la ventana y no entraron al promedio. */
+  descartados: number;
   /** El bin del centro de la banda: lo que se mide. */
   centroDb: number;
   /** El ruido del bin del testigo. Sin esto, un C2 en rojo no se diagnostica. */
@@ -324,12 +348,34 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
   vivo('antes de');
   const wav = join(carpeta, `${etiqueta}.wav`);
   cuadros = [];
-  const hijo = spawn(GRABADOR, [String(SEGUNDOS_DE_CAPTURA), wav, 'Scarlett'], { stdio: 'ignore' });
-  await new Promise<void>((resolver, rechazar) => {
+  // **El grabador ya no es mudo, y su codigo de salida se mira.**
+  //
+  // Estaba con `stdio: 'ignore'` y resolviendo en `close` sin leer el codigo: un
+  // grabador que muriera diciendo por que --dispositivo ocupado, permiso de
+  // microfono, la Scarlett desenchufada-- quedaba indistinguible de uno que
+  // grabo bien, y lo que fallaba despues era el analisis, acusando a otra cosa.
+  // Es la misma familia que el mensaje que se equivoca sobre si mismo.
+  const t0 = Date.now();
+  const hijo = spawn(GRABADOR, [String(SEGUNDOS_DE_CAPTURA), wav, 'Scarlett'],
+    { stdio: ['ignore', 'ignore', 'pipe'] });
+  let errorDelGrabador = '';
+  hijo.stderr?.on('data', (b: Buffer) => { errorDelGrabador += b.toString(); });
+  const codigo = await new Promise<number | null>((resolver, rechazar) => {
     hijo.on('error', rechazar);
-    hijo.on('close', () => resolver());
+    hijo.on('close', (c) => resolver(c));
   });
-  const xs = cuadros;
+  const t1 = Date.now();
+  if (codigo !== 0) {
+    throw new Error(`el grabador salio con ${codigo} en la captura «${etiqueta}» tras `
+      + `${t1 - t0} ms (se pidieron ${SEGUNDOS_DE_CAPTURA} s). Lo que dijo: `
+      + `${errorDelGrabador.trim() === '' ? '(nada)' : errorDelGrabador.trim()}`);
+  }
+  // **Solo los cuadros que llegaron DENTRO de la ventana de grabacion.** Ver el
+  // docblock de `cuadros`: sin este filtro, el promedio arrastra los del punto
+  // anterior.
+  const xs = cuadros.filter((x) => x.llegada >= t0 && x.llegada <= t1);
+  const ventanaMs = t1 - t0;
+  const descartados = cuadros.length - xs.length;
   // **Dos analisis sobre la MISMA captura**, no dos capturas: si fueran dos, el
   // testigo y el centro no se medirian en el mismo instante y C2 compararia
   // momentos distintos.
@@ -342,11 +388,21 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
   const anTestigo = tipo(analizar(wav, HZ_TESTIGO));
   rmSync(wav, { force: true });
   vivo('durante');
+  // **Toda captura deja dicho cuantos cuadros junto.** La corrida del
+  // 2026-09-15 fallo con «2 cuadros» en la primera captura con tono, y no se
+  // pudo saber si C0 --la anterior-- habia estado sana, porque nadie lo
+  // imprimia. Un numero que solo aparece cuando ya es tarde no sirve para
+  // diagnosticar: hace falta la serie, no el caso que fallo.
+  console.log(`   [captura ${etiqueta}] ${xs.length} cuadros VU2 en ${ventanaMs} ms`
+    + ` = ${(xs.length / (ventanaMs / 1000)).toFixed(1)}/s`
+    + (descartados > 0 ? `, ${descartados} fuera de ventana descartado(s)` : ''));
   const c = anCentro.canales[ENTRADA_GENERAL_MEDIDA]!;
   const tg = anTestigo.canales[ENTRADA_GENERAL_MEDIDA]!;
   return {
     canalDb: dbDeMedidor(media(xs.map((x) => x.canalSalida))),
     cuadros: xs.length,
+    ventanaMs,
+    descartados,
     centroDb: c.tonoDb,
     testigoDb: tg.tonoDb,
     ruidoTestigoDb: tg.ruidoEnBinDb,
