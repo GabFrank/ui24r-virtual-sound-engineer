@@ -86,9 +86,12 @@ función de ±15 es de otro ecualizador —el de salida, el gráfico, o el de lo
 buses—. Eso es un `kind` distinto y una medición distinta, y hoy el proyecto no
 tiene ninguna entrada para esas rutas.
 
-No se investiga acá para no mezclar tareas, pero queda dicho: **suponer que la ley
-de la ganancia del ecualizador de canal vale para el de salida sería repetir el
-error que este documento cuenta**, sólo que en la otra dirección.
+**Investigado el mismo día**, y resultó peor de lo que esta nota suponía: el
+ecualizador de salida no es el del canal con otro prefijo. El general y los diez
+auxiliares tienen **gráficos de 31 bandas** con otra forma de clave —no existe
+`m.eq.b1.gain`—, y son 372 rutas sin mapear. Suponer que la ley medida vale para
+ellas fallaría por la ley **y** por la clave. Está en
+[`hallazgo-el-ecualizador-de-salida-es-otra-cosa.md`](hallazgo-el-ecualizador-de-salida-es-otra-cosa.md).
 
 ## Trabajo previo
 
