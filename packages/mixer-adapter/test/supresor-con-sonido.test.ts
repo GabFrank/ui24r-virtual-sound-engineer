@@ -73,6 +73,40 @@ const SUENAN_SIN_APAGAR: ReadonlySet<string> = new Set([
   'p0-5/control-positivo-del-analizador.ts',
 ]);
 
+
+/**
+ * **La única excepción que NO es deuda vieja: el guion que mide el supresor.**
+ *
+ * Esta lista se agregó el 2026-09-16 y es la primera vez que el trinquete cede.
+ * Por eso cede de esta forma y no de la otra: **`SUENAN_SIN_APAGAR` sigue
+ * intacta en 44 y sigue pudiendo sólo encoger.** Subirle el número habría
+ * convertido «sólo puede encoger» en «puede crecer cuando conviene», y esa
+ * frase, una vez escrita, no se vuelve a cerrar.
+ *
+ * **Por qué existe la excepción.** La regla es: si un guion hace sonar algo,
+ * tiene que apagar el supresor. Hay exactamente una clase de guion para la que
+ * eso es imposible sin destruir la medición — **el que mide al supresor**. Un
+ * supresor apagado no aprende en ningún modo, así que apagarlo garantizaría de
+ * antemano el resultado que se busca, y la corrida sería la versión cara de
+ * medir sobre silencio.
+ *
+ * **El usuario lo autorizó sabiendo esto.** Se le explicó que correr el ítem 111
+ * exigía hacer crecer, por primera vez, el trinquete que existe porque su
+ * consola perdió filtros dos veces. Contestó «hacela, aflojá la guarda». La
+ * decisión es suya y queda escrita acá, que es donde alguien la va a buscar.
+ *
+ * **Y la excepción trae su propia guarda**, más abajo: un guion de esta lista
+ * tiene que **exigir** `m.afs.enabled` en 1 y no escribirlo. Si alguna vez uno
+ * de acá lo apaga, o deja de comprobarlo, el test falla: entrar en esta lista no
+ * es quedar libre, es cambiar una obligación por otra.
+ */
+const MIDEN_EL_SUPRESOR: ReadonlySet<string> = new Set([
+  'p0-10b-vu/lock-aprende-o-no.ts',
+]);
+
+/** Que exija el supresor encendido, en vez de apagarlo. */
+const EXIGE_ENCENDIDO = /m\.afs\.enabled['"]?\)?\s*\)?[\s\S]{0,80}!==\s*1|enabled\s*!==\s*1/;
+
 const RAIZ = new URL('../../../tools/spikes/', import.meta.url).pathname;
 
 function guiones(dir = RAIZ, prefijo = ''): string[] {
@@ -98,7 +132,8 @@ function clasificar(): { suenan: string[]; sinApagar: string[] } {
 
 test('ningun guion NUEVO hace sonar algo con el supresor del general encendido', () => {
   const { sinApagar } = clasificar();
-  deepStrictEqual(sinApagar.filter((f) => !SUENAN_SIN_APAGAR.has(f)), [],
+  deepStrictEqual(
+    sinApagar.filter((f) => !SUENAN_SIN_APAGAR.has(f) && !MIDEN_EL_SUPRESOR.has(f)), [],
     'Estos guiones hacen sonar un estimulo y no apagan `m.afs.enabled`. El supresor '
     + 'le planta al general una notch de -18 dB en la frecuencia del estimulo, y '
     + 'sacarla exige `clearall`, que se lleva los filtros del usuario.');
@@ -122,4 +157,32 @@ test('el detector encuentra algo: no celebra el conjunto vacio', () => {
   const { suenan, sinApagar } = clasificar();
   ok(suenan.length > 50, `solo ${suenan.length} guiones suenan; el detector se rompio`);
   ok(sinApagar.length > 0, 'si esto llega a cero, sacar la guarda y dejar la regla');
+});
+
+test('la excepcion que mide el supresor es UNA, y exige el supresor encendido', () => {
+  // **El tamaño se escribe a mano, igual que el de la otra lista.** Si sube,
+  // alguien agregó un segundo guion que suena con el supresor encendido, y eso
+  // es una decisión del usuario, no un detalle de implementación.
+  deepStrictEqual(MIDEN_EL_SUPRESOR.size, 1,
+    'si sube, alguien sumó otro guion que suena con el supresor encendido: es una '
+    + 'decisión del usuario y tiene que quedar escrita, no aparecer en un diff');
+
+  for (const rel of MIDEN_EL_SUPRESOR) {
+    const txt = readFileSync(join(RAIZ, rel), 'utf8');
+    ok(EXIGE_ENCENDIDO.test(txt),
+      `${rel} está en la lista de los que miden el supresor y no comprueba que esté `
+      + 'ENCENDIDO. Entrar en esta lista no es quedar libre: es cambiar la obligación '
+      + 'de apagarlo por la de exigirlo prendido y abortar si no lo está.');
+    ok(!APAGA.test(txt),
+      `${rel} apaga m.afs.enabled. Entonces no mide al supresor y no tiene por qué `
+      + 'estar en esta lista: sacalo y dejá que la regla normal lo cubra.');
+  }
+});
+
+test('la excepcion no tapa guiones que ya no existen', () => {
+  for (const rel of MIDEN_EL_SUPRESOR) {
+    ok(guiones().includes(rel),
+      `${rel} está en la lista y no existe. Una excepción a una guarda de seguridad `
+      + 'que apunta a la nada es una puerta abierta sin motivo.');
+  }
 });

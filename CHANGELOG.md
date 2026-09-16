@@ -6,6 +6,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Ya se sabe en qué modo del supresor de acople se puede meter un tono sin que
+  te plante filtros: LOCK.** Cuatro minutos con las tres frecuencias que te
+  plantaron filtros en septiembre, con el supresor encendido y en LOCK, y no
+  aprendió nada.
+
+  Para qué sirve: hasta ahora, para medir cualquier cosa con un tono había que
+  **apagarte el supresor** y volver a encenderlo al terminar. Eso sigue siendo la
+  primera opción —es la más segura y no depende de esta medición—, pero ahora hay
+  una segunda: dejarlo encendido en LOCK.
+
+  **Y de paso se descubrió que los "doce filtros" de tu supresor eran doce
+  ranuras vacías.** Están ahí, con sus valores de fábrica y cero atenuación: no
+  hay ningún filtro plantado. Los que tenías se fueron el 13 de septiembre,
+  cuando se probó cómo borrar uno y resultó que lo único que borra se lleva todo.
+  El proyecto venía llamándolos "filtros" y comparando cuántos había; ahora
+  compara qué dice cada uno, que es lo que detectaría uno nuevo de verdad.
+
 - **El ecualizador de la salida principal ya se puede tocar con números
   reales.** Hasta ayer la aplicación sabía cuántos decibeles mueve una banda del
   gráfico **de un auxiliar**, porque eso era lo que se había medido; para la

@@ -68,7 +68,7 @@ a punta contra el aparato real el 2026-09-16, corriendo `llega-el-tono.ts`:
   solo**.
 
 La misma corrida deja de paso tres confirmaciones: el banco sigue sano —el tono
-entra y vuelve con margen—, el supresor no plantó nada —doce filtros antes y doce
+entra y vuelve con margen—, el supresor no plantó nada —doce ranuras antes y doce
 después— y la cadencia del medidor vuelve a reproducir lo del
 [hallazgo del flujo por cambio](hallazgo-el-medidor-se-emite-por-cambio.md).
 Evidencia:

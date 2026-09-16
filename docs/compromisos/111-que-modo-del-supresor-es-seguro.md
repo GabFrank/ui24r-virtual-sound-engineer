@@ -1,8 +1,80 @@
 # 111 — ¿Qué modo del supresor es seguro para meter un tono?
 
-**Contrato escrito el 2026-09-16. NO se corrió**, y el motivo es el que más
-importa de este documento: **correrlo exige aflojar un trinquete de seguridad que
-nunca se aflojó**, y esa decisión es del usuario.
+## MEDIDO el 2026-09-16: en LOCK no aprende
+
+Evidencia:
+[`lock-aprende-o-no-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/lock-aprende-o-no-2026-09-16.txt).
+
+| | |
+|---|---|
+| Modo puesto | LOCK (`m.afs.logic` a 0), **comprobado releyendo por HTTP** |
+| Supresor | **encendido**, exigido y no escrito |
+| Estímulo | 1000, 100 y 10000 Hz a la vez, **4 minutos** |
+| C1 — el tono llegó al general | **sí**: −29,2, −29,3 y −29,7 dBFS, unos **96 dB** sobre el piso |
+| La pila, ranura por ranura y campo por campo | **idéntica** |
+| Filtros plantados, antes y después | **0 y 0** |
+
+**En LOCK el supresor no aprendió.** Con eso, LOCK es el modo para meter un tono
+sostenido cuando no se quiera apagar el supresor.
+
+**La guarda de `m.afs.enabled = 0` sigue siendo la primera opción**, y no cambia:
+no depende de este resultado, y es la que protegió las once corridas anteriores.
+Lo que esto agrega es una segunda salida, no un reemplazo.
+
+### El control C1 era nuevo, y era necesario
+
+Se agregó **antes** de correr —está en la enmienda de abajo— porque el contrato
+original no distinguía «LOCK no aprende» de «no hubo tono». Midió 96 dB de margen:
+el estímulo llegó al general con holgura, así que el negativo es un negativo y no
+un silencio.
+
+### Lo que este resultado NO dice, y es más de lo que parece
+
+- **Nada de LIVE ni de FIXED.** No se probaron a propósito.
+- **El control positivo es histórico, no concurrente.** Que en LOCK no aprendiera
+  **con este estímulo** no descarta que este estímulo no hiciera aprender a
+  ningún modo. Es el punto más flojo de esta medición y estaba declarado desde el
+  contrato.
+- **Una exposición, de cuatro minutos, un día, un nivel.**
+
+### Y apareció algo que cambia la cuenta del riesgo
+
+**Los doce del supresor son ranuras vacías, no filtros plantados.** Las doce
+publican `1000, 116, 0.0, 0`: atenuación cero. Ver
+[el hallazgo](../backlog/hallazgo-los-doce-no-eran-filtros-eran-ranuras.md).
+
+Eso vuelve barato lo que este contrato descartó por caro: probar LIVE con un
+control **concurrente** costaría un `clearall` sobre una pila que no tiene nada
+que perder, y cerraría de verdad la pregunta. **Es una decisión del usuario y
+queda anotada, no hecha.**
+
+**Contrato escrito el 2026-09-16.** Estuvo un rato sin correr, y el motivo es el
+que más importa de este documento: **correrlo exige aflojar un trinquete de
+seguridad que nunca se había aflojado**, y esa decisión es del usuario.
+
+**La tomó.** Se le explicó exactamente eso y contestó *«hacela, aflojá la
+guarda»*. Así que se corrió. Cómo se aflojó el trinquete —sin convertir «sólo
+puede encoger» en «puede crecer cuando conviene»— está más abajo, en
+«El trinquete cedió, y cómo».
+
+## Enmienda del 2026-09-16, ANTES de correr: hay un control C1
+
+**El contrato no tenía forma de distinguir «LOCK no aprende» de «no hubo tono».**
+Que `afplay` no se muera dice que el iMac reproduce, no que la señal llegue al
+bus donde vive el supresor: en el medio están la interfaz, el previo, el fader
+del canal, **la puerta del canal —que hoy está encendida—** y el fader del
+general. Si algo de eso corta, la pila no se mueve y la conclusión sería la
+falsa.
+
+Es la trampa que este repositorio tiene escrita desde hace meses —medir sobre
+silencio y leerlo como una lectura— y acá costaría caro de una forma nueva: **un
+falso negativo no se nota, se publica**, y lo que publicaría es «este modo es
+seguro para meter tono».
+
+**C1 — el tono llega al general.** Antes de empezar la exposición se graban 3 s
+por donde vuelve el general al banco y se exige que **las tres frecuencias** estén
+al menos **40 dB** sobre el piso. Si alguna no llega, la corrida se detiene sin
+publicar nada.
 
 ## La pregunta
 
@@ -53,7 +125,7 @@ LOCK— y **`m.afs.enabled` se exige en 1 y no se escribe**: es la única forma 
 que la prueba signifique algo, porque un supresor apagado no aprende en ningún
 modo y apagarlo garantizaría de antemano el resultado que se busca.
 
-## Por qué no se corrió: el trinquete
+## El trinquete cedió, y cómo
 
 El guion está escrito y pasa el chequeo de tipos. Lo frena
 `packages/mixer-adapter/test/supresor-con-sonido.test.ts`, que dice:
@@ -71,15 +143,30 @@ que existe porque esta consola perdió filtros dos veces.** No es un trámite de
 configuración: es exactamente la decisión que la lista existe para que alguien
 tome a conciencia.
 
-**Por eso no se corrió, aunque el usuario había autorizado la medición.** Autorizó
-medir; no se le dijo —porque no se sabía al preguntarle— que hacerlo implicaba
-aflojar esa guarda.
+Se le dijo al usuario —no se sabía al preguntarle la primera vez— y decidió que
+sí.
+
+### La lista vieja no se tocó
+
+**`SUENAN_SIN_APAGAR` sigue en 44 y sigue pudiendo sólo encoger.** Subirle el
+número habría convertido «sólo puede encoger» en «puede crecer cuando conviene»,
+y esa frase, una vez escrita, no se vuelve a cerrar.
+
+En su lugar hay una lista nueva, `MIDEN_EL_SUPRESOR`, **de un elemento**, para la
+única clase de guion a la que la regla no se le puede aplicar sin destruir lo que
+mide. Y **la excepción trae su propia obligación**: un guion de esa lista tiene
+que **exigir** `m.afs.enabled` en 1 y no escribirlo nunca. Entrar ahí no es quedar
+libre; es cambiar una obligación por otra.
+
+Los tres caminos de fallo se probaron rompiéndolos a propósito: si el guion deja
+de exigir el supresor encendido, si lo apaga, o si la lista apunta a un archivo
+que no existe, el test falla.
 
 ## Lo que hay que decidir, y las tres salidas
 
 1. **No hacerlo.** La guarda de `m.afs.enabled = 0` ya protege todas las
    mediciones, **no depende de este resultado**, y funcionó en las cuatro corridas
-   del ítem 108 y en las del 109 y el 110: doce filtros antes, doce después, todas
+   del ítem 108 y en las del 109 y el 110: doce ranuras antes, doce después, todas
    las veces. Saber si LOCK es seguro es *cómodo*, no *necesario*.
 2. **Hacerlo, agregando el guion a la lista con su motivo escrito.** Se gana el
    modo seguro; se paga con la primera excepción de ese trinquete, y con el riesgo
@@ -87,8 +174,10 @@ aflojar esa guarda.
 3. **Hacerlo en otra consola**, si alguna vez hay una que no sea la de trabajo de
    nadie. Es la única salida sin riesgo, y hoy no existe.
 
-El guion escrito queda fuera del árbol a propósito: dejarlo adentro mantendría la
-suite en rojo, y en este proyecto no se commitea en rojo.
+~~El guion escrito queda fuera del árbol a propósito: dejarlo adentro mantendría
+la suite en rojo, y en este proyecto no se commitea en rojo.~~ **Ya está adentro**,
+en `tools/spikes/p0-10b-vu/lock-aprende-o-no.ts`, con el trinquete aflojado como
+se explica arriba.
 
 ## Trabajo previo
 

@@ -57,7 +57,10 @@ esta consola: es su configuración normal.
 `m.afs.enabled = 0` antes de cualquier tono sostenido, y un supresor apagado no
 aprende nada sea cual sea el modo. Nada de lo medido esta madrugada estuvo en
 riesgo por esto, y la pila de filtros se comparó antes y después en las cuatro
-corridas del ítem 108: doce antes, doce después.
+corridas del ítem 108: doce antes, doce después. **Y el 2026-09-16 se vio que
+esos doce son ranuras VACIAS, no filtros plantados** — ver
+[el hallazgo](hallazgo-los-doce-no-eran-filtros-eran-ranuras.md)—: la cuenta era
+cierta y la palabra no.
 
 Lo que este hallazgo evita es un error **futuro**: cualquier lógica que decida
 «acá se puede meter tono porque el modo es LOCK» mirando sólo `fmode` se va a
