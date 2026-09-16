@@ -147,3 +147,24 @@ no toca la consola, ni el estimulo, ni la captura, ni ningun umbral ni veredicto
 La secuencia de escrituras a la consola y las funciones que producen los numeros
 de este archivo son identicas antes y despues. Remedir daria lo mismo, y para las
 corridas que fallaron borraria el registro de por que fallaron.
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: c906029d0f89de70
+================================================================================
+
+QUE CAMBIO EN EL GUION. Hasta hoy EXIGIA que la banda a barrer ya estuviera en
+1000 Hz y abortaba si no. Ahora, si no lo esta, la COLOCA --con la ley de
+frecuencia del item 101-- y despues comprueba releyendo con el mismo margen de
+1 Hz de siempre. Lo pidio el item 113: las bandas 1, 3, 4 y 5 no vienen de
+fabrica en 1 kHz, asi que con la precondicion la corrida se negaba a arrancar, y
+por eso el 108 midio la banda 2 y no otra.
+
+POR QUE NO TOCA NADA DE LO MEDIDO ACA. Esta corrida barrio la BANDA 2, que ya
+estaba en 1000,0 Hz. El codigo nuevo no escribe nada cuando la banda ya esta
+donde tiene que estar: el camino que recorrio esta corrida es identico linea por
+linea. Ninguna escritura a la consola, ningun umbral, ningun control y ningun
+numero de este archivo cambian.
+
+CONFIGURACION QUE MIDIO, dicha explicitamente: canal 10, BANDA 2, en 1000,0 Hz
+de fabrica, Q crudo 0,5252185347, con las otras cuatro bandas planas.

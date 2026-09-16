@@ -618,14 +618,38 @@ for (const k of [
   }
 
   // **La banda que se barre tiene que estar en 1000 Hz**, que es donde esta el
-  // tono. Se EXIGE y no se escribe: el crudo de hoy ya es el que la ley medida por
-  // el 101 da para 1 kHz, asi que es una clave menos que tocar y que restaurar.
+  // tono. Fuera del centro, la altura medida no es la ganancia.
+  //
+  // **Hasta el 2026-09-16 esto se EXIGIA y no se escribia**, y tenia sentido: la
+  // banda 2 --la unica que el item 108 midio-- ya venia en 1 kHz de fabrica, asi
+  // que era una clave menos que tocar. El problema aparecio al querer medir las
+  // otras cuatro: ninguna esta en 1 kHz, y con la precondicion la corrida se
+  // negaba a arrancar. La consecuencia fue peor que una molestia --la tabla de
+  // conversion declaraba `i.N.eq.b1.gain` con una ley medida en la BANDA 2-- asi
+  // que ahora la banda se coloca.
+  //
+  // **Se coloca con la ley medida, y despues se COMPRUEBA releyendo.** El crudo
+  // sale de la ley del item 101, que esta medida contra el filtro real; pero
+  // calcularlo no es lo mismo que que la consola lo acepte, asi que se relee y se
+  // aplica el mismo margen de 1 Hz de siempre. Si ya esta donde tiene que estar,
+  // no se escribe nada: la banda 2 se mide hoy igual que el 2026-09-16.
   {
-    const crudoFreq = Number(exigirClave(e0, `i.${n}.eq.b${banda}.freq`));
-    const hz = 20 * Math.pow(1102.5, crudoFreq);
+    const RUTA_FREQ = `i.${n}.eq.b${banda}.freq`;
+    let crudoFreq = Number(exigirClave(e0, RUTA_FREQ));
+    let hz = 20 * Math.pow(1102.5, crudoFreq);
     if (Math.abs(hz - HZ) > 1) {
-      throw new Error(`i.${n}.eq.b${banda}.freq = ${crudoFreq}, que son ${hz.toFixed(1)} Hz `
-        + `y el tono esta en ${HZ}. Fuera del centro la altura medida no es la ganancia.`);
+      const objetivo = Math.log(HZ / 20) / Math.log(1102.5);
+      console.log(`   banda ${banda} esta en ${hz.toFixed(1)} Hz: se la coloca en ${HZ} `
+        + `con el crudo ${objetivo.toFixed(10)} (ley del item 101)`);
+      t.enviar(codificarSetd(RUTA_FREQ, objetivo));
+      await new Promise((r) => { setTimeout(r, 1200); });
+      crudoFreq = await leerUnaClave(maquina, RUTA_FREQ) ?? NaN;
+      hz = 20 * Math.pow(1102.5, crudoFreq);
+      if (!(Math.abs(hz - HZ) <= 1)) {
+        throw new Error(`se pidio ${RUTA_FREQ} = ${objetivo} y quedo en ${crudoFreq}, que son `
+          + `${hz.toFixed(1)} Hz contra los ${HZ} del tono. Fuera del centro la altura medida `
+          + `no es la ganancia.`);
+      }
     }
     const crudoQ = Number(exigirClave(e0, `i.${n}.eq.b${banda}.q`));
     // **El Q sale del aparato y alimenta el tope de C2.** La ley `0,05·300^v` la
@@ -639,7 +663,7 @@ for (const k of [
         + 'no se puede calcular la falda, y el tope de C2 sale de ahi.');
     }
     console.log(`   banda ${banda} en ${hz.toFixed(1)} Hz, Q crudo ${crudoQ} `
-      + `(${qDeLaBanda.toFixed(3)}), se registran y NO se tocan`);
+      + `(${qDeLaBanda.toFixed(3)}). El Q se registra y NO se toca.`);
     console.log(`   falda de esa campana en el testigo de ${HZ_TESTIGO} Hz: `
       + `${Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, 20)).toFixed(3)} dB por lado con ±20, `
       + `o sea ${(2 * Math.abs(faldaDb(HZ_TESTIGO, HZ, qDeLaBanda, 20))).toFixed(3)} de RANGO`);

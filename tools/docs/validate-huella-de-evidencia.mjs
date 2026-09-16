@@ -177,8 +177,19 @@ for (const ruta of evidencias(join(RAIZ, 'docs', 'spikes'))) {
     // huella de hoy. No es una exencion por prosa: **si el guion vuelve a
     // cambiar, la huella reconocida deja de ser la de hoy y vuelve el ✘**. El
     // reconocimiento caduca solo.
-    const reconocida = completo.match(/^# divergencia reconocida: ([0-9a-f]+)/m);
-    if (reconocida !== null && reconocida[1] === h.hex) {
+    // **Se leen TODAS las anotaciones, no la primera.** Con `match` y `/m` se
+    // devolvia solo la primera, y eso rompia el segundo reconocimiento legitimo:
+    // un guion que cambia dos veces acumula dos anotaciones, la vieja queda
+    // arriba, y el validador seguia comparando contra la huella de la primera. El
+    // resultado era un ✘ que decia «no reconocida» sobre un archivo que SI la
+    // reconocia, dos lineas mas abajo. Paso el 2026-09-16 con el guion del 108.
+    //
+    // **Que caduque solo sigue valiendo**, que es lo que le da sentido a la
+    // exencion: si el guion vuelve a cambiar, ninguna de las huellas anotadas es
+    // la de hoy y el ✘ vuelve igual.
+    const reconocidasEnArchivo = [...completo.matchAll(/^# divergencia reconocida: ([0-9a-f]+)/gm)]
+      .map((m) => m[1]);
+    if (reconocidasEnArchivo.includes(h.hex)) {
       noCoinciden.push(`${relative(RAIZ, ruta)}\n     archivada ${hex}, hoy ${h.hex} `
         + '\n     DIVERGENCIA RECONOCIDA en el archivo, y la huella reconocida es la de hoy');
       reconocidas += 1;
