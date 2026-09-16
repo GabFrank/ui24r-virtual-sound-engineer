@@ -132,6 +132,26 @@ el 2026-09-16.** Los cuatro hablan el protocolo de esta consola:
 > la pregunta correcta y se había hecho tarde. El repositorio citaba uno solo de
 > los cuatro, enterrado en un anexo de auditoría.
 
+**Y hay una tercera forma de fallar, que es la que de verdad muerde: «no
+encontré X» dicho como «no hacen X».** Un `grep` del parámetro del día que vuelve
+vacío dice que ese parámetro no aparece, y nada más. Convertirlo en una
+afirmación sobre todo el proyecto ajeno es ampliar el alcance en silencio.
+
+> **Lo que pasó, tres veces.** Se escribió que ninguno de los cuatro nombra
+> `afs.*` —`fmalcher` lista las doce claves del supresor—. Se escribió que
+> `fmalcher` tiene «cero coincidencias de `eq.peak`» y con eso «no expone el
+> ecualizador de salida» —lo expone entero, anidado en un JSON, donde esa cadena
+> nunca aparece—. Y se escribió que `MyUiPro` e `ioBroker` «no tocan parámetros
+> de mezcla» —los dos escriben la ganancia del previo, y `MyUiPro` publica una
+> ley para convertirla, la misma que publica `fmalcher`—. Las tres veces la frase
+> falsa era la **cómoda**: dejaba el hallazgo propio sin precedente.
+
+**Para estos cuatro la respuesta está archivada**, con el commit que se miró de
+cada uno: `docs/referencia/trabajo-previo-de-terceros.md`. Qué escribe cada uno,
+qué convierte y qué no tiene. Antes de escribir «ninguno de los cuatro hace X»,
+se busca ahí; si X no está, se clona, se grepea y **se agrega la fila**. Recordar
+no cuenta.
+
 Y sigue valiendo la advertencia de §3: **el trabajo previo da hipótesis, no
 verdades.** De los cuatro, **ninguno documenta la cadencia del `VU2`** ni que se
 emite por cambio, que es lo que hacía falta. Que no haya precedente es un dato:
