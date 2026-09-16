@@ -1,0 +1,94 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T19:36:33.776Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/tiempos-del-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/tiempos-del-compresor.ts sha256:ebedd0fecefe6c73
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo tiempos-del-compresor.ts el 2026-09-16T19:35:12.386Z en 192.168.0.78
+     m.afs.enabled tiene que volver a 1
+     m.dyn.bypass tiene que volver a 0
+     i.9.dyn.attack tiene que volver a 0.34375
+     i.9.dyn.release tiene que volver a 0.4887695312
+     i.9.dyn.threshold tiene que volver a 0.875
+     i.9.dyn.ratio tiene que volver a 1
+     i.9.dyn.bypass tiene que volver a 0
+     i.9.dyn.outgain tiene que volver a 0.7186045126
+     i.9.gate.enabled tiene que volver a 1
+     i.9.deesser.enabled tiene que volver a 0
+     i.9.mix tiene que volver a 0.7451777309
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== 114 — LOS TIEMPOS DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   tono 4000 Hz, escalon de -30 a -12 dBFS
+   ventana 6 ciclos = 1.50 ms, paso 0.50 ms -> piso del instrumento 5 ms
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.threshold      0.875
+   i.9.dyn.ratio          1
+   i.9.dyn.bypass         0
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — EL ESCALON CON EL COMPRESOR PUENTEADO ===
+   escalon detectado a los 3040 ms de la captura, de 17.9 dB (se pidieron 18)
+   asentado -41.62 dBFS
+   asentamiento: t63 <5 (piso), t90 <5 (piso)
+   PASA: sin compresor el escalon no se asienta, salta y ya.
+
+C1 el tono llega: 85.0 dB de recorrido en la captura (minimo 45)
+
+C3 el compresor actua: reduccion asentada 15.36 dB (minimo 6)
+
+=== EL ATAQUE ===
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.00  | <5 (piso) | <5 (piso) |            1.0 ms | 1.00   (repite 0%)
+   0.25  |   9.0 ms |  17.5 ms |           13.8 ms | 0.65   (repite 0%)
+   0.50  |  57.0 ms | 115.0 ms |           89.4 ms | 0.64   (repite 3%)
+   0.75  | 176.0 ms | 352.5 ms |          275.1 ms | 0.64   (repite 0%)
+   1.00  | 259.0 ms | 515.5 ms |          400.0 ms | 0.65   (repite 4%)
+
+=== LA RELAJACION ===
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.00  | <5 (piso) |   7.0 ms |           10.0 ms | 0.30   (repite 17%)
+   0.25  |  25.5 ms |  63.5 ms |          101.6 ms | 0.25   (repite 6%)
+   0.50  | 120.5 ms | 296.0 ms |          531.8 ms | 0.23   (repite 17%)
+   0.75  | 322.0 ms | 783.5 ms |         1436.2 ms | 0.22   (repite 7%)
+   1.00  | 459.0 ms | 1111.5 ms |         2000.0 ms | 0.23   (repite 2%)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.attack         esperado 0.34375  leido 0.34375
+   OK   i.9.dyn.release        esperado 0.4887695312  leido 0.4887695312
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, un umbral, una relacion, un canal, un dia.
+   El tiempo se define como t63 y t90 del asentamiento; el fabricante
+   no dice cual usa, asi que una diferencia puede ser de definicion.
+   Nada de la puerta, ni de la forma de la curva, ni de señal real.
+
+
+# salida del proceso: 0

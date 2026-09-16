@@ -6,6 +6,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Ya se sabe cuánto tarda de verdad el compresor en apretar y en soltar.** Es
+  lo que decide si un bombo tiene pegue o suena chato, y si una voz respira o
+  queda pareja.
+
+  El resultado tiene dos mitades. **La buena:** la forma de la curva que muestra
+  la consola es correcta — si movés el control para duplicar el tiempo, se duplica
+  de verdad. Eso se midió sobre un recorrido de 400 a 1 y el error no pasa del
+  1,5 %.
+
+  **La otra:** los milisegundos que muestra la pantalla **no son los que hace el
+  aparato**, sobre todo al soltar. Lo que la consola llama medio segundo de
+  relajación, en el audio recupera en unos 120 milisegundos. Parte de esa
+  diferencia puede ser sólo una forma distinta de contar el mismo tiempo —el
+  fabricante no dice cuál usa—, pero al soltar la diferencia es demasiado grande
+  para explicarse así, y queda como pregunta abierta.
+
+  Todavía no entra en la tabla que usa la app: la forma se confirmó, no se dedujo,
+  y falta explicar ese desacuerdo. Está escrito qué haría falta para cerrarlo.
+
 - **El ecualizador de canal ya se puede tocar con números reales, en sus cuatro
   bandas.** Antes se sabía cuántos decibeles mueve **una** banda; ahora están
   medidas las cuatro, una por una, contra el audio que sale. Las cuatro se
