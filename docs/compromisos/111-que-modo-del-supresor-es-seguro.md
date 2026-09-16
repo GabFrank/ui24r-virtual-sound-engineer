@@ -96,6 +96,22 @@ suite en rojo, y en este proyecto no se commitea en rojo.
   de estado, `logic` y `fmode` incluidas, **sin semántica**.
 - **`Dennion/ioBroker.soundcraft`** sólo lo toca en su `package-lock.json`.
 - **`ndikanov/ui24`** y **`NaturalDevCR/MyUiPro`** no tocan parámetros de mezcla.
+
+> **CORREGIDO el 2026-09-16 por una auditoría, y la corrección es más grande que
+> este documento.** La frase «`ndikanov/ui24` y `NaturalDevCR/MyUiPro` no tocan
+> parámetros de mezcla» es **falsa para MyUiPro**: escribe `SETD^i.N.gain` y
+> `SETD^i.N.hiz` desde su `mixer-store.ts`, y publica una ley de la ganancia de
+> entrada. Y «`Dennion/ioBroker.soundcraft`: sólo estado» también es falsa:
+> escribe fader, panorama, silencio y la ganancia del previo.
+>
+> **Lo que este documento concluía sigue en pie** —ninguno de los cuatro toca el
+> ecualizador, el compresor, la puerta ni el supresor, y eso es lo que acá se
+> medía—. Lo que estaba mal es el alcance de la frase: un `grep` del parámetro
+> del día, ampliado en silencio a una afirmación sobre todo el proyecto ajeno.
+>
+> El inventario comprobado, con el commit de cada repositorio, está en
+> [`trabajo-previo-de-terceros.md`](../referencia/trabajo-previo-de-terceros.md).
+
 - **Propio**: [`hallazgo-solo-clearall-borra-y-se-lleva-todo.md`](../backlog/hallazgo-solo-clearall-borra-y-se-lleva-todo.md)
   midió que `clearlive` y `clearfixed` no borran nada y que **sólo `clearall`**
   lo hace, llevándose la pila entera.

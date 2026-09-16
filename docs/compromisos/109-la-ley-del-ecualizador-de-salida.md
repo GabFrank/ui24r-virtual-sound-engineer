@@ -64,8 +64,11 @@ tope— C2 pasó con 0,32 dB.
 
 ## Lo que esto NO cierra
 
-- **Nada del ecualizador del general.** Se midió el del auxiliar 5 por los motivos
-  de más abajo. Que compartan la ley sigue siendo una suposición razonable.
+- ~~**Nada del ecualizador del general.**~~ **Cerrado el mismo día por el
+  [ítem 112](112-la-ley-del-ecualizador-del-general.md)**, que lo midió y dio
+  `29,993·V − 14,996`: la misma ley. Se deja el renglón porque la deuda que
+  declaraba —«que compartan la ley sigue siendo una suposición razonable»— es lo
+  que hizo que alguien fuera a medirla.
 - **Nada de las otras 30 bandas.**
 - **No entra a `raw-map.ts` todavía**, y ahora se sabe exactamente qué lo
   bloquea: `canonizarRuta` sólo entiende las familias `i.N` y `aux.M`, y devuelve
@@ -193,12 +196,32 @@ Si falla C1, C2, L1 o L3, **no se imprime ley**.
 Los cuatro que hablan este protocolo:
 
 - **`fmalcher/soundcraft-ui`**: cero coincidencias de `eq.peak`, `graphic` y `geq`.
-  No expone el ecualizador de salida.
+  ~~No expone el ecualizador de salida.~~ **La segunda mitad es falsa y se deja
+  tachada:** sí lo expone —31 bandas por lado del general y 31 por auxiliar, con
+  su `linked`— sólo que **anidado en un JSON de estado**, donde `eq.peak` nunca
+  aparece como cadena. La búsqueda de texto era cierta; la conclusión, no. Lo
+  corrigió el [ítem 112](112-la-ley-del-ecualizador-del-general.md) el mismo día.
 - **`Dennion/ioBroker.soundcraft`**: cero coincidencias de lo mismo.
 - **`ndikanov/ui24`**: es un retoque visual del cliente oficial —vista de
   reproductores y color de botones—. No toca parámetros de mezcla.
 - **`NaturalDevCR/MyUiPro`**: un envoltorio para ver varias ventanas del cliente a
   la vez. Archivado en julio de 2025. Sin funciones de ecualizador.
+
+> **CORREGIDO el 2026-09-16 por una auditoría, y la corrección es más grande que
+> este documento.** La frase «`ndikanov/ui24` y `NaturalDevCR/MyUiPro` no tocan
+> parámetros de mezcla» es **falsa para MyUiPro**: escribe `SETD^i.N.gain` y
+> `SETD^i.N.hiz` desde su `mixer-store.ts`, y publica una ley de la ganancia de
+> entrada. Y «`Dennion/ioBroker.soundcraft`: sólo estado» también es falsa:
+> escribe fader, panorama, silencio y la ganancia del previo.
+>
+> **Lo que este documento concluía sigue en pie** —ninguno de los cuatro toca el
+> ecualizador, el compresor, la puerta ni el supresor, y eso es lo que acá se
+> medía—. Lo que estaba mal es el alcance de la frase: un `grep` del parámetro
+> del día, ampliado en silencio a una afirmación sobre todo el proyecto ajeno.
+>
+> El inventario comprobado, con el commit de cada repositorio, está en
+> [`trabajo-previo-de-terceros.md`](../referencia/trabajo-previo-de-terceros.md).
+
 
 **Nadie lo expone, nadie lo documenta, nadie mapea sus claves.** Que no haya
 precedente significa que hay que tener más cuidado, no menos: no hay una segunda
