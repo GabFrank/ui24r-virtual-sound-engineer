@@ -32,6 +32,30 @@ el promedio no es un promedio.
 `C1-puenteado` es **la primera captura con el tono sonando**. Juntó 2 cuadros del
 medidor donde el guion exige 20.
 
+## La segunda corrida, ya con el instrumento arreglado
+
+Se volvió a correr el mismo día con los tres arreglos puestos —el grabador ya no
+es mudo, los cuadros se filtran a su ventana, y **toda captura imprime cuántos
+juntó**—. Falló en el mismo punto, y **esta vez dijo dónde**:
+
+```
+[captura C0]           8 cuadros VU2 en 3492 ms = 2.3/s
+[captura C1-puenteado] 8 cuadros VU2 en 3489 ms = 2.3/s
+[captura C1-plano]     5 cuadros VU2 en 3491 ms = 1.4/s
+```
+
+Evidencia:
+[`ley-ganancia-del-eq-2026-09-15b.txt`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-15b.txt).
+
+**Eso tiró la lectura que se venía haciendo.** Se había supuesto que el flujo se
+moría al entrar el tono, porque el primer fallo apareció en la primera captura
+con tono. Con C0 imprimiendo su conteo se ve que **ya venía a 2,3/s antes de que
+sonara nada**. La ausencia de ese número —y no el número— era lo que hacía
+imposible el diagnóstico.
+
+La consola quedó restaurada también en esta corrida, y el supresor con la misma
+pila antes y después.
+
 ## Cinco hipótesis, las cinco refutadas contra el aparato
 
 Ninguna de éstas es la causa. Se dejan escritas porque una hipótesis descartada
@@ -66,6 +90,16 @@ correcta para ir a mirar.
 punto que hace falta. Eso sigue siendo un hallazgo propio de este repositorio.
 
 ## Y una afirmación de este repositorio que hoy no reproduce
+
+> **RESUELTO el mismo día, y no era un desacuerdo.** Las dos mediciones eran
+> correctas: la consola emite `VU2` **por cambio y no por reloj**, así que
+> «música contra silencio digital» y «ruido de fondo contra tono fijo» son la
+> misma regla vista desde dos lados. Lo que estaba mal era el enunciado —«se
+> calla en silencio»—, que es un caso particular escrito como si fuera la regla.
+> Está medido en
+> [`hallazgo-el-medidor-se-emite-por-cambio.md`](hallazgo-el-medidor-se-emite-por-cambio.md).
+> Lo que sigue se deja como se escribió, porque es el estado de conocimiento con
+> el que se cerró el commit anterior y borrarlo escondería que se pasó por ahí.
 
 Cinco documentos —[`SPK-P0.1-conectividad.md`](../spikes/SPK-P0.1-conectividad.md),
 `risk-register.md` R-25, `safety-invariants.md` INV-017,
@@ -118,6 +152,15 @@ porque nadie lo imprimía. Un número que sólo aparece cuando ya es tarde no si
 para diagnosticar: hace falta la serie, no el caso que falló.
 
 ## Lo que queda abierto
+
+> **CONTESTADO el mismo día.** Los 2 cuadros/s no eran un flujo enfermo: eran un
+> flujo **sano midiendo un nivel quieto**. El tono sostenido del propio 108 es el
+> estímulo que menos cuadros produce, porque la consola sólo informa cuando el
+> nivel cambia. Y la décima prueba encontró además que el banco está caído: el
+> tono entra a la consola —su medidor sube 47 dB— pero vuelve 70 dB por debajo de
+> lo que el contrato espera. Las dos cosas están en
+> [`hallazgo-el-medidor-se-emite-por-cambio.md`](hallazgo-el-medidor-se-emite-por-cambio.md).
+> Lo de abajo queda como se escribió.
 
 **No se sabe por qué esa captura vio 2 cuadros**, y no se va a saber
 teorizando: cinco hipótesis razonables cayeron contra el aparato. La corrida
