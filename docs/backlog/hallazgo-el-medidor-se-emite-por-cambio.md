@@ -113,6 +113,34 @@ descartó midiendo:** el piso de ruido de la entrada 1 está en −62,5 dBFS y e
 la entrada 2 en −83,7. Una entrada con la ganancia al mínimo es la más silenciosa,
 no la más ruidosa; el dato dice lo contrario de lo que esa hipótesis predice.
 
+> ## RETRACTADO el 2026-09-16: no era una filtración, era el cable equivocado
+>
+> Lo que sigue en esta sección —la hipótesis de la fuga y el cable flojo— **es
+> falso**, y se deja escrito en vez de borrarlo porque el modo en que cayó enseña
+> más que la conclusión correcta.
+>
+> **Qué la tiró.** El usuario desconectó todos los cables y reconectó de a uno.
+> Con **nada** enchufado, la entrada 1 dio −138 a −148 dBFS, o sea silencio de
+> verdad. Si lo que se medía antes hubiera sido una fuga por el aire, desconectar
+> no habría cambiado nada. O sea que **sí entraba señal por un cable**; sólo que
+> por el cable equivocado. Al poner el correcto, el retorno pasó a −19,74 dBFS con
+> 105,4 dB de margen.
+>
+> **Por qué me equivoqué, que es lo que importa.** Los 23 dB sobre el ruido
+> *parecen* nivel de filtración, y este repositorio tiene una fuga documentada por
+> esa misma entrada, con una acción pendiente sin cerrar. La hipótesis encajaba
+> con todo lo escrito. Lo que nunca comprobé es lo más simple —qué cable estaba
+> enchufado dónde— y me quedé con la explicación que cerraba.
+>
+> Es la segunda hipótesis mía que cayó por lo mismo en esa media hora: antes había
+> acusado a la perilla de la Scarlett, y también encajaba. Está contado entero en
+> [`el-banco-estaba-roto-y-era-un-cable.md`](el-banco-estaba-roto-y-era-un-cable.md).
+>
+> **Lo que sí sigue en pie de esta sección:** que faltaban ~70 dB en el retorno,
+> que el tono entraba bien a la consola, que el ruteo del general estaba
+> correcto, y que la hipótesis de la perilla se descartó midiendo. Lo retractado
+> es sólo el diagnóstico de la causa.
+
 **Lo que queda, y encaja con lo ya documentado:** 23 dB sobre el ruido no es una
 señal atenuada, es el nivel de una **filtración**. Y esa filtración por la
 entrada 1 ya está medida y escrita en
@@ -132,6 +160,13 @@ revisar que el cable de Master 1 esté firme en la entrada 1 de la Scarlett, de
 los dos lados. Hasta entonces el 108 no puede correr, y **subir ganancia sería lo
 peor que se puede hacer**: amplificaría la fuga y produciría una ley con aspecto
 de medición.
+
+> **Cerrado el 2026-09-16.** El usuario recableó y el banco quedó sano. La
+> recomendación de arriba resultó ser la correcta **por el motivo equivocado**: no
+> había que asentar mejor ese cable, había que poner otro. Y la advertencia final
+> —no subir ganancia para tapar el problema— **sigue valiendo tal cual**, y es lo
+> único de este párrafo que se salvó entero: habría amplificado la señal del cable
+> equivocado y producido una ley con aspecto de medición.
 
 ## Trabajo previo
 

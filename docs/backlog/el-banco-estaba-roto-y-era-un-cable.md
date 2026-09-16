@@ -97,9 +97,14 @@ haya precedente significa que hay que tener más cuidado con esto, no menos.
 
 ## Lo que queda
 
-- **El 108 sigue sin poder correr**, ahora por un solo motivo y ya no físico: la
-  guarda `CUADROS_MINIMOS` tiene la premisa dada vuelta para su propio estímulo.
-  Está explicado en
-  [`hallazgo-el-medidor-se-emite-por-cambio.md`](hallazgo-el-medidor-se-emite-por-cambio.md).
+- ~~**El 108 sigue sin poder correr**, ahora por un solo motivo y ya no físico: la
+  guarda `CUADROS_MINIMOS` tiene la premisa dada vuelta para su propio estímulo.~~
+  **Cerrado el 2026-09-16**: se arregló la guarda —piso de 3 cuadros y acuerdo
+  entre lecturas en vez de cantidad—, después hubo que alargar la ventana porque
+  la consola se calló una captura entera, y la cuarta corrida dio la ley:
+  `40·V − 20`, o sea ±20 dB. El porqué de la guarda está en
+  [`hallazgo-el-medidor-se-emite-por-cambio.md`](hallazgo-el-medidor-se-emite-por-cambio.md)
+  y el resultado en el
+  [contrato del 108](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md).
 - **El envío del canal 10 al auxiliar 5 quedó en cero**, como estaba. Cuando una
   medición lo necesite, lo abre ella y lo restaura.

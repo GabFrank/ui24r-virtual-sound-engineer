@@ -1,6 +1,14 @@
 # El ítem 108 está escrito, auditado seis veces, y listo para correr
 
-> **Corrió el 2026-09-15 y no salió ley.** Falló en la primera captura con tono,
+> **CERRADO el 2026-09-16: la ley salió, y son ±20 dB.** `40·V − 20`, con residuo
+> máximo de 0,01 dB, todos los controles y todas las expectativas en verde. El
+> resultado está en el
+> [contrato](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md) y la
+> tabla de conversión ya lo lleva. Hicieron falta cuatro corridas: las tres
+> primeras fallaron por el instrumento, no por la consola, y están contadas abajo.
+> Este documento describe el estado **anterior a todo eso** y se deja como estaba.
+>
+> **Corrió el 2026-09-15 y esa vez no salió ley.** Falló en la primera captura con tono,
 > por dos cuadros del medidor donde hacen falta veinte. La consola quedó
 > restaurada y el supresor no plantó nada. Lo que pasó, las cinco hipótesis que
 > se refutaron midiendo y los dos defectos del guion que aparecieron en el
