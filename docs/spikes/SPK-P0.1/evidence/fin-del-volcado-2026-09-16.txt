@@ -1,0 +1,44 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T05:35:15.831Z
+# comando: node --experimental-strip-types tools/spikes/p0-1/fin-del-volcado.ts 192.168.0.78 10
+# guion: tools/spikes/p0-1/fin-del-volcado.ts sha256:9a888616ae8531d4
+# la huella cubre 2 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== FIN DEL VOLCADO EN 192.168.0.78, 10 CONEXIONES ===
+
+   el adaptador da el volcado por terminado con 250 ms
+   sin lineas de estado. Lo que decide si alcanza es el HUECO MAYOR.
+
+   #  | 1a linea | ultima  | lineas | hueco mayor | a los
+   ---|----------|---------|--------|-------------|-------
+    1 |    191 ms |   305 ms |   6665 |       10 ms |   206 ms
+    2 |     66 ms |   146 ms |   6665 |       12 ms |   134 ms
+    3 |     61 ms |   147 ms |   6665 |       12 ms |   135 ms
+    4 |     64 ms |   150 ms |   6665 |       11 ms |   139 ms
+    5 |     66 ms |   146 ms |   6665 |       13 ms |   133 ms
+    6 |     66 ms |   150 ms |   6665 |       11 ms |   139 ms
+    7 |     62 ms |   134 ms |   6665 |        9 ms |   125 ms
+    8 |     65 ms |   139 ms |   6665 |       10 ms |   129 ms
+    9 |     61 ms |   145 ms |   6665 |       10 ms |   135 ms
+   10 |     62 ms |   134 ms |   6665 |        9 ms |   125 ms
+
+=== RESUMEN ===
+   duracion del volcado: mediana 146 ms, min 134, max 305
+   lineas de estado:     mediana 6665, min 6665, max 6665
+   HUECO MAYOR:          mediana 11 ms, min 9, max 13
+
+   El plazo aguanta: el peor hueco fue 13 ms y el plazo es 250, o sea 237 ms de margen.
+   ES UNA COTA SOBRE 10 CONEXIONES, no una garantia: la Ui16 tardo
+   una vez 12 s, y eso no se ve repitiendo diez veces en un rato tranquilo.
+
+   verbos vistos: RTA, SETD, SETS, UPDATE_PLAYLIST, VU2, VUA
+   Si alguno fuera un marcador de fin, el plazo sobraria. Buscarlo aca es
+   la unica forma barata de descartarlo.
+
+
+# salida del proceso: 0
