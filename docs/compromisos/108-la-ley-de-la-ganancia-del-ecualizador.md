@@ -40,6 +40,19 @@ normalizado el filtro por dentro.
 
 ## El banco, y dos cosas que salieron gratis
 
+> **Las dos dejaron de ser gratis el 2026-09-15, y hubo que reponerlas.** Entre
+> que se escribió este contrato y que se fue a correr, el usuario cargó el show
+> `Prueba` y ensayó sobre el canal 10, que quedó configurado como un bombo: el
+> pasa-bajos en **1002,6 Hz** —sobre el bin que esta corrida mide—, el pasa-altos
+> en **39,8 Hz** —por encima del testigo de 37— y la banda 2 en 105,8 Hz en vez
+> de 1000,0. Lo encontró una lectura por HTTP **antes** de sonar el tono; el
+> usuario autorizó resetear el canal y `aplanar-canal.ts` lo dejó plano, con los
+> valores del bombo archivados para reponerlo. Todo lo que este párrafo dice
+> sigue siendo cierto, pero ahora **porque se restableció**, no porque estuviera
+> intacto. El detalle, y por qué el pasa-bajos habría producido una ley falsa en
+> vez de un aborto, están en
+> [`hallazgo-el-canal-del-banco-no-estaba-plano.md`](../backlog/hallazgo-el-canal-del-banco-no-estaba-plano.md).
+
 - **La banda 2 ya está exactamente en 1000,0 Hz.** Su crudo es
   `0,5584347738`, que es el que la ley medida por el 101 da para 1 kHz. **No se
   escribe la frecuencia**: una clave menos que tocar y una menos que restaurar.
@@ -51,10 +64,10 @@ de +20 dB dejaría el **pico capturado en −0,18 dBFS** según la cadena que mi
 conversor. Con 0,50 el pico peor queda en −11,8.
 
 **Estímulo de DOS tonos: 1000 Hz y 37 Hz**, cada uno a −18 dBFS. El pico de la
-suma es −12,03 dBFS, con doce decibeles de aire en el archivo.
+suma es −11,98 dBFS, con doce decibeles de aire en el archivo. *(Decía −12,03; con dos tonos de igual amplitud a −18 dBFS el pico es −18 + 20·log₁₀2 = −11,98, y con los enteros que el generador escribe —4125 + 4125 sobre 32767— da lo mismo.)*
 
 **El testigo está en 37 Hz y no en 100, y el motivo es física.** Con la campana en
-1 kHz y el Q de fábrica —que el ítem 101 midió en 1,010— la falda a 100 Hz mueve
+1 kHz y el Q de fábrica —que el ítem 101 midió en 1,010, aunque las faldas de abajo salen de Q = 1,000 y por eso difieren en la tercera cifra— la falda a 100 Hz mueve
 ese bin **0,41 dB con +20 de realce y −0,41 con −20**: un rango de 0,82 dB. Con el
 tope de 0,5 que este contrato tenía, **C2 habría fallado justo en el escenario que
 la corrida sale a encontrar** —la ley de ±20— y el mensaje habría acusado a la
@@ -83,7 +96,10 @@ son 20 Hz, y `lpf.freq` en 1, que son 22 050—.
 
 **C1 — el tono llega.** El bin de 1 kHz con la banda plana tiene que estar al
 menos **75 dB** por encima del piso efectivo, que es `MARGEN_MINIMO_DB +
-RECORRIDO_MINIMO_DB` —45 más 30—. **Es conservador a propósito**: el punto más
+EXCURSION_PREVISTA_DB` —45 más 30—. *(Hasta la sexta auditoría esos 30 eran el
+mismo número que el piso de L4; se separaron al bajar ese piso, porque aflojar la
+precondición es la dirección insegura: menos margen exigido son puntos cayéndose
+al piso a mitad del barrido.)* **Es conservador a propósito**: el punto más
 bajo está, como mucho, todo el recorrido por debajo del plano, y eso es la cota
 que se puede afirmar *antes* de medir cuánto corta. En este banco se esperan
 94 dB.
@@ -136,9 +152,19 @@ El umbral es que la curvatura aporte menos de 0,15 dB en el borde del recorrido,
 la mitad de lo que L3 tolera: el control que busca estructura tiene que ser más
 fino que el que la acota.
 
-**L4 — el recorrido total es de al menos 30 dB**, y se informa cuál es. La tabla
-dice ±15 —o sea 30 de recorrido— y el 101 vio +20 en el extremo, que serían 40.
-**Los dos números no pueden ser ciertos**, y esta corrida dice cuál es.
+**L4 — el recorrido total es de al menos 24 dB**, y se informa cuál es. La tabla
+dice ±15 y el 101 vio +20 en el extremo. **Los dos números no pueden ser
+ciertos**, y esta corrida dice cuál es: quien lo dice es la **pendiente** del
+ajuste de L3 —unos 30 dB por unidad de crudo es ±15 y unos 40 es ±20—.
+
+*El piso valía 30 y la sexta auditoría midió que **30 es exactamente la respuesta
+±15***, o sea el peor lugar donde puede estar: con esa ley y una corrida perfecta
+el recorrido da 30,00 y pasa por **cero margen**, y basta perder un crudo por
+punta para quedarse en 27 y no publicar nada —el ítem 101, mismo instrumento y
+mismo banco, anuló 2 de 8—. La corrida estaba armada para no poder contestar una
+de sus dos respuestas. El razonamiento que sostenía el 30 era circular: no hace
+falta medir 30 dB de recorrido para distinguir ±15 de ±20, porque las distingue la
+pendiente, que con 27 sale igual de determinada.
 
 **L5 — la simetría.** |dB en el crudo 0| y |dB en el crudo 1| no difieren más de
 0,5 dB. Una asimetría sería un hallazgo: muchos ecualizadores cortan más de lo que
@@ -202,6 +228,37 @@ referencia está anulado, tampoco: de él cuelga toda la ley.
   que es lo que el producto necesita y lo que `fromRaw` tiene que devolver.
 - Una frecuencia, un Q, un nivel de fuente. Y un acuerdo dentro del umbral es una
   **cota**, no una identidad.
+
+### Lo que la sexta auditoría encontró y se deja sin arreglar, a propósito
+
+Se deja dicho en vez de arreglado porque son cosas que **la propia corrida ayuda a
+decidir**, y seguir auditando en seco tiene rendimientos decrecientes: seis rondas,
+y varias veces lo que una encontraba lo había introducido el arreglo de la
+anterior. Lo que podía dañar la consola sí se arregló; esto no puede.
+
+- **Un aplastamiento interno de menos de ~0,5 dB no lo ve nadie**, y la ley
+  aplastada se publicaría como la ley. Entre 0,6 y 1,5 dB ahora lo dice L3 con la
+  ayuda de L8; por debajo, ninguno de los dos llega.
+- **Un solo nivel de estímulo.** No hay control que separe «la ley se aplana
+  arriba» de «algo recorta arriba» por variación de nivel. Repetir con el estímulo
+  10 dB más bajo es el paso siguiente si L3 falla, y está escrito en su mensaje.
+- **C2 puede fallar en una corrida limpia.** Su tope de 0,15 dB de holgura está
+  dimensionado como la incertidumbre de *una lectura* y se compara contra el rango
+  de 42; con el instrumento en el mínimo de margen que este mismo guion acepta
+  (σ ≈ 0,049 dB), una auditoría midió que falla en una de cada cuatro corridas
+  sanas. Si pasa, **no** es un hallazgo sobre la consola: es el tope.
+- **L8 supone que los dos tonos llegan iguales al medidor.** El desequilibrio real
+  entre 37 Hz y 1 kHz —pasa-altos del canal, cadena analógica, el gráfico del
+  general, que este guion no exige plano— no está medido por nadie. Unos 3 dB
+  producirían una falla de L8 que sería falsa. El dato para estimarlo está en cada
+  captura y hoy no se usa.
+- **L3b es ciego a la estructura impar.** El término cuadrático no se mueve con un
+  taper del tipo `u³`, que es la forma que usan muchas mesas; ahí sólo alcanza la
+  prueba de rachas, y recién con ~1 dB. La afirmación de su docblock —«más fino que
+  L3»— vale para estructura **par**, y está escrita sin esa condición.
+- **Si el barrido no llega a |g| > 13,1 dB con los dos extremos vivos**, las dos
+  predicciones de L8 entran en el tope y la corrida no decide si el medidor es de
+  pico o de potencia. Lo dice por pantalla.
 
 ## Restauración
 

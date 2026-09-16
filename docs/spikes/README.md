@@ -39,8 +39,27 @@ Cada charter distingue **criterios bloqueantes** de **informativos**. Un criteri
 | P0.1 | Cadencia y umbral de inestabilidad (99 ms sobre `RTA`); no hay eco; reconexión con la wifi cortada, 20 de 20 | Los otros dos modos de corte —router apagado y cambio de IP— y los tres clientes durante diez minutos con cambios ocurriendo. Los dos necesitan a alguien delante del aparato |
 | ACK-POLICY | El **mecanismo**: segunda conexión testigo, 11,5 ms de mediana sobre ocho muestras (los 27 ms que se citaron al principio eran una sola muestra, retirada por ADR-024); la tabla parámetro a método y el texto de INV-011, cerrados el 2026-09-10 | Nada de laboratorio, y el ✅ del acta G-A tiene sus reservas anotadas ahí mismo: el 100 % es la meta y no el resultado, dos familias quedan *Inferido*, y la latencia no reprodujo. Sigue en ⬜ por eso |
 | P0.2a | Rutas confirmadas contra el aparato, y las dos primeras escrituras reales | Reproductor, grabación multipista, punto de derivación y enlace estéreo |
-| P0.10b | Escala y recorrido —80 dB—, balística, tasa, respuesta en frecuencia, techo y repetibilidad; y desde el 2026-09-13 **el paso del medidor anclado contra un convertidor externo** por dos caminos (compromisos 99b y 102), que cierra la autoconsistencia que todas las mediciones anteriores declaraban | La correspondencia con **dBFS absolutos**, y la balística como medición propia |
+| P0.10b | Escala y recorrido —80 dB—, tasa, respuesta en frecuencia, techo, repetibilidad y la **balística hasta donde el protocolo deja verla** (criterio 3, ✅): sube dentro de una trama y cae 20 dB con mediana de 37 ms, con su límite declarado —nada por debajo de la cadencia de ~44 ms se puede afirmar— y la conclusión de que **la consola manda nivel instantáneo y la balística la dibuja su cliente**; y desde el 2026-09-13 **el paso del medidor anclado contra un convertidor externo** por dos caminos (compromisos 99b y 102), que cierra la autoconsistencia que todas las mediciones anteriores declaraban | Los criterios 1 y 2, que son los únicos bloqueantes: la correspondencia con **dBFS absolutos**. Y, sin ser bloqueante, **archivar la salida cruda de la respuesta en frecuencia y la repetibilidad**: están medidas y anotadas en el charter, pero mientras no estén archivadas no cumplen el punto 2 de la definición de terminado y valen como números escritos a mano |
 | P0.2b | Las curvas de **frecuencia y Q** de la campana y los filtros **pasa-altos y pasa-bajos**, medidas contra el filtro real (compromisos 101 y 103): cuatro entradas en `PROBADO`. Las leyes escritas del **compresor**, medidas y **refutadas** (97 y 98) | La **ganancia** del ecualizador (el ítem 108 está escrito y sin correr), la puerta, los tiempos de compresor y puerta, y la superficie del compresor con `softknee` controlado. Las fórmulas del cliente oficial para todo eso están en `SPK-P0.2a/evidence/tablas-conversion-ui24r.js` y entran como hipótesis |
+
+**Sobre la balística, porque esta fila se leía de dos maneras.** Decía «balística»
+entre lo contestado y «la balística como medición propia» entre lo que falta, y
+son dos preguntas distintas que conviene no mezclar:
+
+- **La de P0.10b está cerrada** —criterio 3 en ✅— y lo que contesta es *qué deja
+  ver el protocolo*: la lectura sube dentro de una sola trama y cae 20 dB en 37 ms de mediana, sobre una cadencia de ~44 ms —[`SPK-P0.10b/evidence/barridos-2026-09-08.txt`](SPK-P0.10b/evidence/barridos-2026-09-08.txt)—. Con ese límite declarado alcanza para
+  la conclusión que el producto usa: la consola manda **nivel instantáneo** y la
+  retención de picos es decisión nuestra.
+- **La que sigue abierta no es de este spike.** Es *«¿la consola **mide** el
+  medidor post-fader o lo **calcula**?»*, que levantó el auditor de expectativas
+  del **ítem 99a** y que el ítem 99b declara adentro de su contrato como algo que
+  su corrida no puede decidir. Lo que sí se sacó del contrato de la 99b, antes de
+  correr, fue el **control de balística** con el que se pensaba separarlas: 37 ms
+  es menos que un cuadro de 44, así que el control estaba garantizado a dar el
+  resultado que se iba a leer. Medir esa balística de verdad pide un instrumento
+  que todavía no existe. Vive en
+  [`../backlog/la-balistica-del-medidor-es-otra-medicion.md`](../backlog/la-balistica-del-medidor-es-otra-medicion.md),
+  y **no bloquea a P0.10b**: lo único bloqueante son los criterios 1 y 2.
 
 ## Sobre actualizar el firmware de la consola
 

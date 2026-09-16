@@ -152,8 +152,48 @@ const SEGUNDOS_DE_CAPTURA = 3;
 const CRUDO_PLANO = 0.5;
 /** Un punto vale si esta este margen por encima del piso EFECTIVO. */
 const MARGEN_MINIMO_DB = 45;
-/** L4: por debajo de esto no se distingue ±15 de ±20, que es lo que hay que decidir. */
-const RECORRIDO_MINIMO_DB = 30;
+/**
+ * **L4: cuanto recorrido hace falta para que el ajuste signifique algo.**
+ *
+ * **Valia 30, y 30 es exactamente la respuesta +-15.** Una auditoria lo midio y es
+ * el peor lugar donde puede estar este numero: el item existe para decidir entre
+ * +-15 --que la tabla declara-- y +-20 --que el item 101 vio--, y el piso estaba
+ * puesto en el recorrido de la primera. Con +-15 y una corrida perfecta el
+ * recorrido da 30,00 y pasa por CERO margen, asi que cualquier ruido la tumba; y
+ * basta perder un crudo por punta --recorte, margen, un tartamudeo del
+ * reproductor-- para quedarse en 27 y no publicar nada. Con +-20 sobrevive
+ * perdiendo dos. El item 101, mismo instrumento y mismo banco, anulo 2 de 8.
+ *
+ * O sea que la corrida estaba armada para no poder contestar una de sus dos
+ * respuestas.
+ *
+ * **El razonamiento que sostenia el 30 era circular**: «por debajo de esto no se
+ * distingue +-15 de +-20». No hace falta medir 30 dB de recorrido para
+ * distinguirlas: las distingue la PENDIENTE del ajuste de L3, que con 27 dB de
+ * recorrido sale igual de determinada. El numero confundia «datos suficientes para
+ * ajustar» con «la respuesta misma».
+ *
+ * Ahora son 24: deja a +-15 sobreviviendo dos crudos perdidos por lado, lo mismo
+ * que +-20, y sigue siendo mucho mas que lo que un ajuste necesita. Quien decide
+ * entre las dos hipotesis es la pendiente, y L4 solo cuida que haya con que
+ * ajustar.
+ */
+const RECORRIDO_MINIMO_DB = 24;
+
+/**
+ * **Lo que C1 dimensiona, que NO es lo mismo y por eso es otro numero.**
+ *
+ * C1 comprueba ANTES de barrer que el centro tenga margen de sobra, y para eso usa
+ * una cota superior de cuanto va a bajar el punto mas hondo. Hasta ahora compartia
+ * constante con el piso de L4 --eran el mismo 30-- y bajar el piso habria aflojado
+ * tambien la precondicion, que es la direccion insegura: menos margen exigido
+ * significa puntos cayendose al piso a mitad del barrido.
+ *
+ * Asi que se queda en 30, con el comportamiento de hoy intacto. Es conservador
+ * para las dos hipotesis --el punto mas hondo baja 15 o 20, no 30-- y esa holgura
+ * es deliberada.
+ */
+const EXCURSION_PREVISTA_DB = 30;
 /**
  * **Por debajo de esto, ninguna expectativa decide.**
  *
@@ -179,7 +219,7 @@ const CUADROS_MINIMOS = 20;
  * contrato, y un docblock que decia «45 + 40 = 85» sobre un `RECORRIDO_MINIMO_DB`
  * que vale 30. Los dos ultimos eran del item 107, de donde se copio la formula.)
  */
-const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + RECORRIDO_MINIMO_DB;
+const C1_SOBRE_EL_PISO_DB = MARGEN_MINIMO_DB + EXCURSION_PREVISTA_DB;
 
 /**
  * L2: la referencia interna de la interfaz no puede derivar mas que esto.
@@ -249,16 +289,40 @@ const t = new Ui24rTransport();
 // realce. Ese recorte llegaria a la Scarlett a un nivel comodo, sin marca, y se
 // leeria como una ley que se aplana arriba: un hallazgo falso contra la consola.
 // De eso se ocupa L8.
-let cuadros: { canalSalida: number }[] = [];
+/**
+ * Los cuadros del medidor, **con la hora a la que llegaron**.
+ *
+ * **La marca de tiempo no es adorno: sin ella el promedio es de otro punto.**
+ * `analizar()` es sincrono y bloquea el bucle de eventos unos 2,5 s por captura
+ * --medido el 2026-09-15--. Los cuadros que la consola manda durante ese bloqueo
+ * no se pierden: Node los encola y los entrega cuando el bucle se libera, que es
+ * **despues** de que la captura siguiente hizo su `cuadros = []`. Resultado: la
+ * captura N+1 contaba tambien los cuadros del analisis de la N, medidos con la
+ * ganancia ANTERIOR.
+ *
+ * Comprobado midiendo: una ventana de 3,9 s que deberia traer 89 cuadros traia
+ * 149 --37,7/s contra los 22,5/s reales del flujo--, y el exceso era justo el
+ * atraso de la ventana previa.
+ *
+ * De ese promedio cuelga L8, que compara el medidor del canal contra el realce
+ * pedido. Contaminarlo con el punto anterior corre la lectura hacia el punto
+ * anterior, o sea **aplana la curva que L8 vigila**: exactamente la direccion en
+ * la que L8 deja de ver un recorte interno.
+ */
+let cuadros: { canalSalida: number; llegada: number }[] = [];
 t.alRecibir((linea) => {
   if (!linea.startsWith('VU2^')) return;
   const c = decodificarVuCanales(linea.slice(4))[n];
   if (c === undefined) return;
-  cuadros.push({ canalSalida: c.salida });
+  cuadros.push({ canalSalida: c.salida, llegada: Date.now() });
 });
 
 type Medida = {
   canalDb: number; cuadros: number;
+  /** Cuanto duro de verdad la ventana de grabacion, en ms. */
+  ventanaMs: number;
+  /** Cuadros que llegaron FUERA de la ventana y no entraron al promedio. */
+  descartados: number;
   /** El bin del centro de la banda: lo que se mide. */
   centroDb: number;
   /** El ruido del bin del testigo. Sin esto, un C2 en rojo no se diagnostica. */
@@ -284,12 +348,34 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
   vivo('antes de');
   const wav = join(carpeta, `${etiqueta}.wav`);
   cuadros = [];
-  const hijo = spawn(GRABADOR, [String(SEGUNDOS_DE_CAPTURA), wav, 'Scarlett'], { stdio: 'ignore' });
-  await new Promise<void>((resolver, rechazar) => {
+  // **El grabador ya no es mudo, y su codigo de salida se mira.**
+  //
+  // Estaba con `stdio: 'ignore'` y resolviendo en `close` sin leer el codigo: un
+  // grabador que muriera diciendo por que --dispositivo ocupado, permiso de
+  // microfono, la Scarlett desenchufada-- quedaba indistinguible de uno que
+  // grabo bien, y lo que fallaba despues era el analisis, acusando a otra cosa.
+  // Es la misma familia que el mensaje que se equivoca sobre si mismo.
+  const t0 = Date.now();
+  const hijo = spawn(GRABADOR, [String(SEGUNDOS_DE_CAPTURA), wav, 'Scarlett'],
+    { stdio: ['ignore', 'ignore', 'pipe'] });
+  let errorDelGrabador = '';
+  hijo.stderr?.on('data', (b: Buffer) => { errorDelGrabador += b.toString(); });
+  const codigo = await new Promise<number | null>((resolver, rechazar) => {
     hijo.on('error', rechazar);
-    hijo.on('close', () => resolver());
+    hijo.on('close', (c) => resolver(c));
   });
-  const xs = cuadros;
+  const t1 = Date.now();
+  if (codigo !== 0) {
+    throw new Error(`el grabador salio con ${codigo} en la captura «${etiqueta}» tras `
+      + `${t1 - t0} ms (se pidieron ${SEGUNDOS_DE_CAPTURA} s). Lo que dijo: `
+      + `${errorDelGrabador.trim() === '' ? '(nada)' : errorDelGrabador.trim()}`);
+  }
+  // **Solo los cuadros que llegaron DENTRO de la ventana de grabacion.** Ver el
+  // docblock de `cuadros`: sin este filtro, el promedio arrastra los del punto
+  // anterior.
+  const xs = cuadros.filter((x) => x.llegada >= t0 && x.llegada <= t1);
+  const ventanaMs = t1 - t0;
+  const descartados = cuadros.length - xs.length;
   // **Dos analisis sobre la MISMA captura**, no dos capturas: si fueran dos, el
   // testigo y el centro no se medirian en el mismo instante y C2 compararia
   // momentos distintos.
@@ -302,11 +388,21 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
   const anTestigo = tipo(analizar(wav, HZ_TESTIGO));
   rmSync(wav, { force: true });
   vivo('durante');
+  // **Toda captura deja dicho cuantos cuadros junto.** La corrida del
+  // 2026-09-15 fallo con «2 cuadros» en la primera captura con tono, y no se
+  // pudo saber si C0 --la anterior-- habia estado sana, porque nadie lo
+  // imprimia. Un numero que solo aparece cuando ya es tarde no sirve para
+  // diagnosticar: hace falta la serie, no el caso que fallo.
+  console.log(`   [captura ${etiqueta}] ${xs.length} cuadros VU2 en ${ventanaMs} ms`
+    + ` = ${(xs.length / (ventanaMs / 1000)).toFixed(1)}/s`
+    + (descartados > 0 ? `, ${descartados} fuera de ventana descartado(s)` : ''));
   const c = anCentro.canales[ENTRADA_GENERAL_MEDIDA]!;
   const tg = anTestigo.canales[ENTRADA_GENERAL_MEDIDA]!;
   return {
     canalDb: dbDeMedidor(media(xs.map((x) => x.canalSalida))),
     cuadros: xs.length,
+    ventanaMs,
+    descartados,
     centroDb: c.tonoDb,
     testigoDb: tg.tonoDb,
     ruidoTestigoDb: tg.ruidoEnBinDb,
@@ -545,6 +641,28 @@ await conRestauracion(
             + 'del nivel, que es lo que el barrido mueve cuarenta decibeles.');
         }
       }
+      // **La unica cuya perdida le cuesta algo AL USUARIO y no a la medicion.**
+      //
+      // Las tres de arriba se releen porque si se pierden, la ley sale mal. Esta
+      // se relee por otra cosa: si el `setd` no llega, el supresor del general
+      // aprende de los 900 s de tono a 1 kHz que estan por empezar y **planta una
+      // notch de -18 dB con Q 7 en el general del usuario**. Sacarla exige
+      // `clearall`, que se lleva la pila entera incluido su ring-out.
+      //
+      // No es hipotetico: el guion hermano lo dice --«ya paso dos veces; la
+      // segunda le costo tres filtros»-- y esa es la regla del 2026-09-13.
+      //
+      // La comparacion de la pila que este guion hace al final DETECTA el dano y
+      // no lo PREVIENE, y para entonces ya no se puede deshacer. Una comprobacion
+      // que llega despues del hecho es un reproche, no una guarda.
+      {
+        const afs = await leerUnaClave(maquina, 'm.afs.enabled');
+        if (afs !== 0) {
+          throw new Error('m.afs.enabled quedo en ' + afs + ': el supresor del general sigue '
+            + 'encendido y el estimulo son 900 s de tono sostenido a 1 kHz. Abortar aca cuesta '
+            + 'una corrida; seguir cuesta una notch permanente en la consola del usuario.');
+        }
+      }
     }
     console.log('');
     console.log('=== LO QUE SE NEUTRALIZA ===');
@@ -678,6 +796,29 @@ await new Promise((r) => setTimeout(r, 1000));
 // ------------------------------------------------------------------ veredictos
 const d = (x: number): string => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 const problemas: string[] = [];
+
+/**
+ * **Lo que L8 vio en el extremo de realce, con signo, para que L3 lo lea.**
+ *
+ * Una auditoria midio que los dos topes **no componen**, y es el defecto de diseno
+ * mas caro que quedaba: L8 existe para que L3 no acuse en falso a la consola, pero
+ * L8 tolera 1,5 dB y L3 tolera 0,3. Simulado sobre este mismo banco, con un
+ * aplastamiento interno de entre **0,6 y 1,5 dB** L8 PASA y L3 FALLA diciendo «la
+ * ley NO es lineal en el crudo» --que es justamente la acusacion falsa que L8 vino
+ * a evitar, ocurriendo igual--. Cada tope tenia su justificacion propia y nunca se
+ * compararon entre si.
+ *
+ * La salida no fue mover ningun tope --bajar el de L8 lo haria fallar en falso por
+ * cuantizacion-- sino **hacer que L3 lea lo que L8 vio**. Si el medidor del canal
+ * se aparto hacia ARRIBA de lo que la atenuacion medida predice, la explicacion
+ * «algo aplasto aguas abajo del medidor» esta viva, y L3 no puede atribuir su
+ * residuo a la ley.
+ *
+ * Y la comparacion es cuantitativa, no un «si vio algo»: un aplastamiento de Δ dB
+ * produce en L3 un residuo de ~0,52·Δ y en L8 un desvio de ~0,99·Δ, asi que la
+ * explicacion solo es consistente si **el desvio de L8 alcanza al residuo de L3**.
+ */
+let l8DesvioArriba: number | undefined;
 
 // **PRIMERA PASADA: quien vale.**
 //
@@ -859,9 +1000,17 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
   const planoDe = (sentido: 'baja' | 'sube'): Punto | undefined =>
     conMedidor.find((p) => p.sentido === sentido && p.crudo === CRUDO_PLANO);
   const refM = planoDe('baja');
-  console.log(`\nL8 el medidor del canal sigue al realce: ${conMedidor.length} puntos por `
-    + 'encima del fondo de escala');
-  if (refM === undefined || conMedidor.length < PUNTOS_MINIMOS) {
+  // **Los dos sentidos, porque el bucle usa los dos.** El guarda miraba solo el
+  // plano de «baja» --era lo correcto cuando todos los puntos se comparaban contra
+  // el, antes de que la quinta ronda hiciera que cada punto use el plano de SU
+  // sentido--. Con el guarda viejo, si el plano de «sube» quedaba fuera del filtro,
+  // sus 21 puntos se salteaban en silencio, `conMedidor.length` los seguia contando
+  // y L8 decidia sobre la mitad de los datos diciendo que uso todos.
+  const conPlano = conMedidor.filter((p) => planoDe(p.sentido) !== undefined);
+  console.log(`\nL8 el medidor del canal sigue al realce: ${conPlano.length} puntos por `
+    + `encima del fondo de escala y con su plano${conPlano.length === conMedidor.length ? ''
+      : ` (${conMedidor.length - conPlano.length} quedaron sin plano de su sentido)`}`);
+  if (refM === undefined || conPlano.length < PUNTOS_MINIMOS) {
     console.log('   NO DECIDE: sin el plano o con menos de '
       + `${PUNTOS_MINIMOS} puntos utiles no hay con que comparar.`);
     problemas.push('L8 sin puntos');
@@ -899,13 +1048,18 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     ] as const;
     const ajustes = modelos.map(([nombre, f]) => {
       let peor = 0;
-      for (const p of conMedidor) {
-        const r = planoDe(p.sentido);
-        if (r === undefined) continue;
-        const dif = Math.abs((p.m.canalDb - r.m.canalDb) - f(p.atenuacion));
+      // **Y el desvio CON SIGNO en el extremo de realce**, que es lo que L3 necesita
+      // saber y el maximo absoluto pierde. Ver el bloque de L3.
+      let arriba = 0;
+      let atArriba = -Infinity;
+      for (const p of conPlano) {
+        const r = planoDe(p.sentido)!;
+        const crudoDesvio = (p.m.canalDb - r.m.canalDb) - f(p.atenuacion);
+        const dif = Math.abs(crudoDesvio);
         if (dif > peor) peor = dif;
+        if (p.atenuacion > atArriba) { atArriba = p.atenuacion; arriba = crudoDesvio; }
       }
-      return { nombre, peor };
+      return { nombre, peor, arriba };
     });
     for (const a of ajustes) {
       console.log(`   si el medidor fuera de ${a.nombre.padEnd(9)}: desvio maximo `
@@ -913,17 +1067,39 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
     }
     const mejor = ajustes.reduce((m, a) => (a.peor < m.peor ? a : m), ajustes[0]!);
     const ok = mejor.peor <= L8_DESVIO_MAXIMO_DB;
+    // **Si las DOS ajustan, no se nombra ninguna.** El veredicto es sobre la
+    // hipotesis compuesta --el medidor es una de las dos-- y eso sigue valiendo,
+    // pero decir cual seria elegir por un margen que no separa nada. Una auditoria
+    // lo midio: las dos predicciones se separan 1,5 dB recien en |g| = 13,1, asi que
+    // si el barrido pierde los crudos extremos las dos entran y el ganador se
+    // decide por centesimas. Con la ley +-15 y dos crudos anulados por lado, que es
+    // lo que le paso al item 101, pasa siempre.
+    //
+    // Y hay un tercer detector posible que nadie midio --uno que integre en una
+    // ventana comparable al cuadro-- que caeria justo ahi. Nombrarlo seria archivar
+    // una moneda como medicion.
+    const cuantasAjustan = ajustes.filter((a) => a.peor <= L8_DESVIO_MAXIMO_DB).length;
+    l8DesvioArriba = mejor.arriba;
     console.log(`   tope ${L8_DESVIO_MAXIMO_DB}`);
     console.log(ok
-      ? `   PASA, y de paso: el medidor del canal se comporta como de ${mejor.nombre.toUpperCase()}. `
-        + 'Nada recorto adentro de la consola.'
-      : '   FALLA. El medidor no sigue al realce por NINGUNO de los dos modelos: hubo '
-        + 'recorte o limitacion ADENTRO, y la ley se aplanaria arriba sin que el '
-        + 'detector de recorte de la interfaz lo vea.');
-    console.log('   **L8 es un control del REALCE.** Su sensibilidad es 0,99 en +20 dB y');
-    console.log('   0,01 en -20: en el corte es ciego, y da igual, porque el recorte solo');
-    console.log('   puede ocurrir arriba. Y solo ve lo que pase AGUAS ABAJO de donde ese');
-    console.log('   medidor toma, que este proyecto no midio.');
+      ? (cuantasAjustan === 1
+        ? `   PASA, y de paso: el medidor del canal se comporta como de ${mejor.nombre.toUpperCase()}. `
+          + 'Nada recorto adentro de la consola.'
+        : '   PASA: nada recorto adentro de la consola. Pero las DOS predicciones '
+          + 'entran en el tope, asi que esta corrida NO decide si el medidor es de '
+          + 'pico o de potencia: haria falta que el barrido llegue a |g| > 13,1 dB '
+          + 'con los dos extremos vivos.')
+      : '   FALLA. El medidor no sigue al realce por NINGUNO de los dos modelos. Las '
+        + 'dos explicaciones son: hubo recorte o limitacion ADENTRO --que es lo que '
+        + 'esta expectativa busca-- o el medidor no es ninguno de los dos, que nadie '
+        + 'midio. No se puede atribuir a la primera sin descartar la segunda.');
+    console.log('   **L8 es un control del REALCE.** Su sensibilidad en +20 dB es 0,99 si el');
+    console.log('   medidor es de potencia y 0,91 si es de pico; en -20 dB, 0,01 y 0,09. En el');
+    console.log('   corte es casi ciego, y da igual, porque el recorte solo puede ocurrir');
+    console.log('   arriba. (Las dos cifras iban antes como una sola, la de potencia, de');
+    console.log('   cuando se suponia ese modelo; desde que el veredicto es sobre los dos hay');
+    console.log('   que decir los dos.) Y solo ve lo que pase AGUAS ABAJO de donde ese medidor');
+    console.log('   toma, que este proyecto no midio.');
     if (!ok) problemas.push('L8');
   }
 }
@@ -934,8 +1110,11 @@ console.log('=== VEREDICTOS, contra el contrato del item 108 ===');
   console.log(`\nL4 el recorrido total: ${d(recorrido)} dB sobre ${utiles.length} puntos `
     + `(minimo ${RECORRIDO_MINIMO_DB})`);
   console.log(`   maximo realce ${d(Math.max(...ats))} dB, maximo corte ${d(Math.min(...ats))} dB`);
-  console.log('   La tabla declara ±15 —30 de recorrido— y el item 101 vio +20 en el');
-  console.log('   extremo, que serian 40. Los dos no pueden ser ciertos: esto lo dice.');
+  console.log('   La tabla declara ±15 y el item 101 vio +20 en el extremo. Los dos no');
+  console.log('   pueden ser ciertos, y quien lo dice es la PENDIENTE de L3: ~30 dB por');
+  console.log('   unidad de crudo es ±15 y ~40 es ±20. Este minimo solo cuida que haya con');
+  console.log('   que ajustar, y por eso NO vale 30: 30 es una de las dos respuestas, y');
+  console.log('   ponerlo ahi dejaba a ±15 pasando por cero margen.');
   if (ats.length < PUNTOS_MINIMOS) {
     // Con dos puntos que abarquen el recorrido, `recorrido >= 30` pasaba. Era el
     // unico gate sin piso propio.
@@ -973,8 +1152,20 @@ if (problemas.length > 0) {
         + `crudo, ordenada ${orden.toFixed(3)} dB`);
       console.log(`   residuo maximo ${d(peor.r)} dB en el crudo ${peor.crudo} `
         + `(tope ${L3_RESIDUO_MAXIMO_DB})`);
-      console.log(ok ? '   PASA. Y es una COTA, no una identidad.' : '   FALLA: la ley NO es lineal en el crudo.');
-      if (!ok) problemas.push('L3');
+      // **La otra explicacion del mismo residuo, cuando L8 la sostiene.** Ver el
+      // docblock de `l8DesvioArriba`: L8 pasa con hasta 1,5 dB de desvio y L3 falla
+      // con 0,3 de residuo, asi que entre medio L3 acusaba sola.
+      const aplastamiento = !ok && peor.r < 0 && peor.y > 0
+        && l8DesvioArriba !== undefined && l8DesvioArriba >= Math.abs(peor.r);
+      console.log(ok ? '   PASA. Y es una COTA, no una identidad.'
+        : (aplastamiento
+          ? '   FALLA, y NO se puede atribuir a la ley: L8 vio el medidor del canal '
+            + `${d(l8DesvioArriba!)} dB por encima de lo que la atenuacion medida predice, `
+            + 'que alcanza para explicar este residuo. Posible APLASTAMIENTO INTERNO aguas '
+            + 'abajo de donde ese medidor toma. La ley no se imprime, y el proximo paso es '
+            + 'repetir con el estimulo 10 dB mas bajo: si el residuo se va, era aplastamiento.'
+          : '   FALLA: la ley NO es lineal en el crudo.'));
+      if (!ok) problemas.push(aplastamiento ? 'L3 (posible aplastamiento interno)' : 'L3');
 
       // **Ordenados por crudo, no por orden de barrido.** `CRUDOS` no es monotona
       // --sube de 0,50 a 1,00 y salta a 0,45-- asi que contar rachas en el orden en

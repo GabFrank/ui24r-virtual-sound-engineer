@@ -1,0 +1,69 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T02:45:54.665Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/llega-el-tono.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/llega-el-tono.ts sha256:d68c6c15b3edb218
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== ¿LLEGA EL TONO? — canal 10 (i.9) en 192.168.0.78 ===
+
+   supresor del general: 1
+   fader del canal:      0.7451777309  (NO se toca)
+   mute del canal:       0  (NO se toca)
+   filtros del supresor: 12
+
+=== ANTES DEL TONO ===
+   en silencio                     136 cuadros =  22.7/s | pico del canal -71.0 dB
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CON EL TONO SONANDO ===
+   con tono                          6 cuadros =   1.0/s | pico del canal -22.7 dB
+
+=== DESPUES DEL TONO ===
+   en silencio otra vez            137 cuadros =  22.8/s | pico del canal -71.0 dB
+
+=== VEREDICTO ===
+   el bin de 1000 Hz que vuelve por el lazo: -94.32 dBFS
+   el ruido de ese bin:                   -118.49 dBFS
+   margen sobre el ruido:                 24.2 dB
+
+   EL TONO NO LLEGA, o no vuelve por el lazo.
+   => el canal estuvo CALLADO en las capturas del 108, y la supresion
+      del VU2 en silencio explica los 2 cuadros/s.
+
+   cadencia VU2: 22.7/s en silencio, 1.0/s con tono, 22.8/s despues
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.enabled  esperado 1  leido 1
+   filtros del supresor: 12 antes, 12 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
+# divergencia reconocida: 8ef864e5db549235
+================================================================================
+
+Cambio el CODIGO despues de esta corrida, asi que hay que decir que midio.
+
+QUE MIDIO. La version del guion cuyo veredicto se decidia por el margen del bin
+que vuelve por la interfaz. Esa version imprimio «EL TONO NO LLEGA» dos renglones
+despues de haber impreso que el medidor del canal subia de -71.0 a -22.7 dB, o
+sea contradiciendo su propio dato.
+
+QUE SE ARREGLO. Se separo la pregunta en dos --si el tono ENTRA a la consola, que
+lo contesta el medidor de la consola, y si VUELVE por el lazo, que lo contesta la
+interfaz-- y se agrego el conteo de valores DISTINTOS por ventana, que es la
+medicion que probo que el flujo se emite por cambio.
+
+POR QUE VALE IGUAL. Los numeros que se le citan --la cadencia de 22.7/s en
+silencio contra 1.0/s con tono, y el salto del medidor del canal-- los midio esta
+corrida y no dependen del veredicto mal razonado. El error estaba en la frase
+final, no en el instrumento.

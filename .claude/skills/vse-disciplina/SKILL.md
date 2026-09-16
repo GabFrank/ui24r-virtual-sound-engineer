@@ -104,6 +104,18 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 
 **Cuando las fuentes se contradicen y no se puede medir, decidí por procedencia y escribí el razonamiento.** El byte 5 de la cabecera de `VU2` se resolvió así: el cliente del fabricante y dos implementaciones de terceros dicen cosas distintas, en una Ui24R los dos valores son iguales, y se siguió a quien probablemente tenga la documentación oficial.
 
+
+**Y antes de proponer, mirá qué hicieron los demás. Siempre, no sólo para el protocolo.** La línea de §3 decía «buscá trabajo previo antes de decodificar a mano», y por estar en la sección de medir se leyó como que valía sólo para el protocolo. No vale sólo para eso.
+
+> **Lo que pasó.** El 2026-09-15 se le pidió al usuario que decidiera hasta dónde puede volver a subir la aplicación el fader del general después de bajarlo para cazar un acople, ofreciéndole cuatro opciones **sin haber mirado qué hace nadie más**. Su respuesta: «*¿no habíamos quedado en que nada iba a ser implementado antes que se investigue en proyectos existentes?*». Y tenía razón dos veces, porque al mirar apareció que **el supresor de la propia consola ya contesta esa pregunta** —los filtros LIVE del dbx AFS se levantan solos cuando dejan de hacer falta— y que el argumento que el ADR daba para dudar tenía la acústica al revés.
+
+**Toda propuesta lleva su sección de trabajo previo**, y lleva una de estas dos formas:
+
+- **Qué proyecto o documentación hace algo parecido, y cómo lo resolvió**, con el enlace. Entra como hipótesis, no como verdad: `DigiMixer` recorta el medidor en 240 y está mal.
+- **«No hay coincidencias en otros proyectos»**, dicho así de explícito. Que no haya nada es un dato: significa que lo que se propone no tiene precedente y hay que tener más cuidado, no menos.
+
+Lo que no vale es no decir nada, porque el que lee no puede distinguir «no hay» de «no miré». `tools/docs/validate-trabajo-previo.mjs` lo comprueba en las ADR.
+
 ---
 
 ## 8. Trabajar con lotes de ediciones
