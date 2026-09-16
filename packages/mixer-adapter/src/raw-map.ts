@@ -258,12 +258,66 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt`
   //
   // (El pasa-altos y el pasa-bajos se midieron: estan arriba.)
+  // **Y son CUATRO entradas, no una, desde el item 113.**
+  //
+  // Hasta el 2026-09-16 aca habia una sola linea, `i.N.eq.b1.gain`, y estaba mal
+  // de dos maneras a la vez: el item 108 habia medido la **banda 2**, no la 1
+  // --se lee en el encabezado de su evidencia-- asi que el motor dejaba escribir
+  // una banda sin ley medida y rechazaba la unica medida.
+  //
+  // El item 113 midio las cuatro contra el audio, cada una con su banda puesta en
+  // 1000 Hz y las otras planas. Las cuatro dan la misma recta:
+  //
+  //   banda 1   40,005·V − 20,004
+  //   banda 2   39,999·V − 19,999   (item 108)
+  //   banda 3   40,010·V − 20,006
+  //   banda 4   39,998·V − 19,998
+  //
+  // Se redondea a `40·V − 20` para las cuatro: la milesima no se distingue de
+  // cero con estas corridas.
+  //
+  // Evidencia: `ley-ganancia-banda-{1,3,4}-2026-09-16*.txt` en
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/`, mas la del 108 para la banda 2.
   medido(
     'i.N.eq.b1.gain', 'dB',
     (v) => 40 * v - 20,
     (db) => (db + 20) / 40,
     0, 1, 'SPK-P0.10b-vu2',
   ),
+  medido(
+    'i.N.eq.b2.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'i.N.eq.b3.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'i.N.eq.b4.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  // **`i.N.eq.b5.gain` NO esta, y no es que falte medirla: se midio y no hace
+  // nada.** Con la banda 5 puesta en 1000 Hz, el tono presente y 80,5 dB sobre el
+  // piso, barrer su crudo de 0 a 1 movio el audio **0,00 dB** sobre 39 puntos.
+  //
+  // El ecualizador de canal de esta consola tiene CUATRO campanas. Lo dice el
+  // manual del fabricante --«4-band Parametric EQ»--, lo dibuja asi su propio
+  // cliente --recorre `"hpf b1 b2 b3 b4 lpf"`-- y ahora lo dice el audio. Las
+  // claves `b5` existen, se pueden escribir y no llegan a ningun lado.
+  //
+  // **Poner una entrada aca seria lo peor posible**: la aplicacion le ofreceria
+  // al usuario una quinta banda que no suena, y el motor la dejaria escribir
+  // porque la unidad cuadra. Ver
+  // `docs/backlog/hallazgo-el-ecualizador-de-canal-tiene-cuatro-bandas.md`.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-5-2026-09-16b.txt`
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
   // entradas salen de mediciones. Las funciones de abajo estan **leidas del

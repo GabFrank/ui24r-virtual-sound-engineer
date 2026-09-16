@@ -1,5 +1,69 @@
 # 113 — ¿Las otras bandas del ecualizador de canal comparten la ley? ¿Y son cinco?
 
+## MEDIDO el 2026-09-16: son cuatro bandas, y las cuatro comparten la ley
+
+| Banda | Ley medida | Residuo máx. | Recorrido | Evidencia |
+|---|---|---|---|---|
+| 1 | `40,005·V − 20,004` | 0,00 dB | 40,01 dB | [`banda-1`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-1-2026-09-16.txt) |
+| 2 | `39,999·V − 19,999` | 0,01 dB | 39,99 dB | ítem 108 |
+| 3 | `40,010·V − 20,006` | — | 40,02 dB | [`banda-3`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-3-2026-09-16.txt) |
+| 4 | `39,998·V − 19,998` | — | 39,99 dB | [`banda-4b`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-4-2026-09-16b.txt) |
+| **5** | **no mueve el audio** | — | **0,00 dB** | [`banda-5b`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-5-2026-09-16b.txt) |
+
+**Las cuatro dan la misma recta**, dentro de las milésimas. La expectativa
+declarada antes de medir —0,3 dB en pendiente y ordenada— se cumple con dos
+órdenes de magnitud de sobra. Entran las cuatro en `RAW_MAP` como `40·V − 20`.
+
+**Y la quinta no existe como banda.** Con el tono presente y **80,5 dB sobre el
+piso**, barrer su crudo de punta a punta movió **0,00 dB** sobre 39 puntos. No es
+un negativo sobre silencio: C1 pasó, L1 pasó —el punto plano con el ecualizador
+activo coincidió con el puenteado a la centésima— y C2 pasó. Ver
+[el hallazgo](../backlog/hallazgo-el-ecualizador-de-canal-tiene-cuatro-bandas.md).
+
+**Eso estaba declarado antes de medir**, arriba: *«Si el recorrido queda por
+debajo del piso de L4, la corrida no publica ley, y eso es el resultado, no un
+fracaso»*. Y es lo que pasó.
+
+### Dos corridas fallaron en C1, y no se tocó el umbral
+
+[`banda-4`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-4-2026-09-16.txt)
+falló con **74,4 dB** sobre un mínimo de 75, y
+[`banda-5`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-5-2026-09-16.txt)
+con **71,5**. En las dos el tono valía lo mismo que en las que pasaron —−58,3
+dBFS—: lo que se movió fue **el piso del banco**, que entre capturas varía unos
+seis decibeles.
+
+**Había dos salidas y sólo una es honesta.** La otra era bajar el mínimo de C1,
+que hoy vale 75 porque asume una excursión de 30 dB —conservadora a propósito
+cuando no se sabía si eran ±15 o ±20— y ya está medido cuatro veces que son ±20.
+Puede que ese 75 sobre; **pero tocarlo justo después de que falle es acomodar la
+regla al resultado**, y este repositorio tiene esa regla escrita.
+
+Así que se arregló el banco: **el fader del canal subió de 0,5 a 0,65**, que está
+*después* del ecualizador y por lo tanto no cambia el nivel al que el filtro
+trabaja. La banda 5 pasó C1 con 80,5 dB. **Ningún control se aflojó.**
+
+### Y hubo un defecto propio, que se vio en el aparato
+
+**El guion escribía la frecuencia de la banda y no la restauraba.** Al hacer que
+la *coloque* en 1000 Hz se agregó la escritura y **no** se agregó la clave a
+`PREVIO`. Las bandas 1, 3 y 4 del canal 10 quedaron las tres en 1000 Hz en vez de
+sus 200, 4000 y 10000 de fábrica.
+
+Se arregló el guion y se devolvió la consola:
+[`devolver-las-frecuencias-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/devolver-las-frecuencias-2026-09-16.txt),
+con los valores del volcado del 2026-09-15 a las 21:50 —no inventados— y las
+cinco comprobadas releyendo por HTTP.
+
+**Ninguna guarda lo cazó, y es lo que hay que arreglar.** `escribir-sin-leer`
+exige que la clave se **lea**, y se leía. `restauracion-garantizada` exige que el
+guion use `conRestauracion`, y la usaba. Las dos miran la estructura; **ninguna
+comprueba que `PREVIO` esté completo respecto de lo que el guion escribe.** Queda
+anotado como tarea: es una guarda que falta, y su caso motivador ya existe.
+
+---
+
+
 **Contrato escrito el 2026-09-16, ANTES de tocar la consola.** Consola
 192.168.0.78. Canal 10 (`i.9`) → general → entrada 1 de la Scarlett.
 

@@ -273,7 +273,7 @@ consola las difunde, pero no qué significan los números.
 
 | Qué | Rutas | Qué falta saber |
 |---|---|---|
-| Ecualizador de canal | `i.N.eq.b1..b5.{gain,q,freq}`, `i.N.eq.hpf.freq` | cuántos dB, sobre qué Hz, con qué Q |
+| Ecualizador de canal | `i.N.eq.b1..b4.{gain,q,freq}`, `i.N.eq.hpf.freq` | cuántos dB, sobre qué Hz, con qué Q |
 | Puerta | `i.N.gate.{thresh,depth,attack,hold,release}` | sobre todo **el umbral en dB**: es lo que la filtración estimada alimenta |
 | Compresor | `i.N.dyn.{threshold,ratio,attack,release,outgain}` | umbral en dB, relación, tiempos en ms |
 | Envío a efecto y a monitor | `i.N.fx.M.value`, `i.N.aux.M.value` | dB, y dónde se deriva (antes o después del fader) |

@@ -6,6 +6,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El ecualizador de canal ya se puede tocar con números reales, en sus cuatro
+  bandas.** Antes se sabía cuántos decibeles mueve **una** banda; ahora están
+  medidas las cuatro, una por una, contra el audio que sale. Las cuatro se
+  comportan igual: de tope a tope son 40 dB, veinte para arriba y veinte para
+  abajo.
+
+  Con eso, cuando la aplicación proponga «bajá 3 dB en 800 Hz» en cualquier banda,
+  **van a ser 3 dB de verdad**.
+
+- **Y son cuatro, no cinco.** La consola publica una quinta banda que **no suena**:
+  se movió su control de punta a punta con el tono presente y el audio no cambió
+  ni una centésima de decibel. El manual de Soundcraft ya decía «4-band
+  Parametric EQ» y el manual técnico avisaba, con todas las letras, que las
+  referencias sueltas a una quinta banda no la convierten en banda.
+
+  Importa porque una aplicación que te ofreciera cinco te estaría mostrando un
+  control que no hace nada — y peor: la aplicación creería que sí, porque la
+  consola acepta el valor y lo guarda. Queda fuera, con el motivo escrito al lado.
+
 - **El botón CLEAR ALL de tu supresor estaba trabado, y lo destrabamos.** La
   consola guardaba ese botón como "apretado" desde el 13 de septiembre —muy
   probablemente por culpa de una prueba nuestra—, y como dispara al apretarse y

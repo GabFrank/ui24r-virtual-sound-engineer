@@ -28,7 +28,7 @@ sólo una se midió. Leído del cliente verificado y del estado real de la conso
 
 | Superficie | Clave | Estructura | Ley de la ganancia |
 |---|---|---|---|
-| Canal, 24 | `i.N.eq.bM.{freq,q,gain}` | **5 bandas paramétricas** | `40·V − 20` — **±20 dB, MEDIDA** por el ítem 108 |
+| Canal, 24 | `i.N.eq.b1..b4.{freq,q,gain}` | **4 bandas paramétricas** —la clave `b5` existe y [no mueve el audio](hallazgo-el-ecualizador-de-canal-tiene-cuatro-bandas.md)— | `40·V − 20` — **±20 dB, MEDIDA** por el ítem 108 |
 | General | `m.eq.peak.{l,r}.K` | **gráfico de 31 bandas, estéreo** | `30·V − 15` — **±15 dB, MEDIDA** por el ítem 112, en el lado **izquierdo** |
 | Auxiliares, 10 | `a.N.eq.peak.K` | **gráfico de 31 bandas**, mono | `30·V − 15` — **±15 dB, MEDIDA** por el ítem 109, en el aux 5 |
 

@@ -83,10 +83,26 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   //
   // **El test sigue siendo un trinquete**: si aparece una novena sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
+  // **Las tres nuevas son del ítem 113 del 2026-09-16**, y aparecieron arreglando
+  // un defecto: el ítem 108 había medido la **banda 2** y esta tabla declaraba la
+  // **banda 1**, así que el motor dejaba escribir una banda sin ley medida y
+  // rechazaba la única medida. El 113 midió las cuatro y las cuatro dan
+  // `40·V − 20` dentro de las milésimas.
+  //
+  // **Son cuatro y no cinco a propósito.** `i.N.eq.b5.gain` se midió y **no mueve
+  // el audio**: 0,00 dB de recorrido con el tono 80 dB sobre el piso. El
+  // ecualizador de canal tiene cuatro campanas, como dicen el manual del
+  // fabricante y el propio cliente de la consola. Si alguna vez aparece acá una
+  // quinta, este test tiene que fallar: sería ofrecerle al usuario un control que
+  // no suena, con todas las comprobaciones en verde.
   assert.deepEqual([...rutasProbadas()].sort(),
     ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
-      'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'm.eq.peak.l.K'],
+      'i.N.eq.b1.q', 'i.N.eq.b2.gain', 'i.N.eq.b3.gain', 'i.N.eq.b4.gain',
+      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
+  assert.equal(entrada('i.N.eq.b5.gain'), undefined,
+    'la quinta banda se midió y no mueve el audio: una entrada acá le ofrecería al '
+    + 'usuario un control que no suena, y el motor lo dejaría escribir');
 });
 
 test('toda entrada declara su spike y su rango físico', () => {

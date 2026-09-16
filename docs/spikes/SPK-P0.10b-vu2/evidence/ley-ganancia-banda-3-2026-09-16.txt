@@ -1,0 +1,256 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T17:52:39.223Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-ganancia-del-eq.ts 10 3 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-ganancia-del-eq.ts sha256:c906029d0f89de70
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 108 — LA LEY DE LA GANANCIA DEL ECUALIZADOR, CONTRA LA SALIDA REAL ===
+canal 10 (i.9) -> general -> entrada 1 de la interfaz
+se barre i.9.eq.b3.gain | tonos de 1000 Hz y 37 Hz a -18 dBFS
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.mute                 0
+   i.9.mix                  0.7451777309
+   hw.9.gain                0.2508445026
+   i.9.eq.bypass            0
+   i.9.eq.b3.freq           0.7563259869
+   i.9.eq.b3.q              0.5252185347
+   i.9.eq.b3.gain           0.5
+   i.9.eq.hpf.freq          0
+   i.9.eq.lpf.freq          1
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   m.mix                    0.6441404487
+   m.afs.enabled            1
+   m.afs.fmode              1
+   las cinco bandas del canal en 0.5, comprobado
+   banda 3 esta en 4000.0 Hz: se la coloca en 1000 con el crudo 0.5584347738 (ley del item 101)
+   banda 3 en 1000.0 Hz, Q crudo 0.5252185347 (1.000). El Q se registra y NO se toca.
+   falda de esa campana en el testigo de 37 Hz: 0.059 dB por lado con ±20, o sea 0.117 de RANGO
+   corte en 20 y 22050 Hz: los dos tonos libres
+
+   exigido sin escribir: canal sin mutear, ecualizador activo y sin
+   preset, cinco bandas planas, la banda barrida en 1 kHz, cortes libres
+
+=== LO QUE SE NEUTRALIZA ===
+   compresor, puerta y de-esser del canal: dependen del nivel y el
+   barrido mueve cuarenta decibeles.
+   fader del canal: estaba en 0.7451777309, a 0.5 para hacer lugar al realce. Esta DESPUES del
+   ecualizador, asi que no cambia el nivel al que el filtro trabaja.
+   supresor del general: estaba en 1, apagado mientras suene
+   NO se tocan: la frecuencia ni el Q de la banda, ni las otras cuatro.
+
+=== LOS CONTROLES POSITIVOS ===
+   [captura C0] 4 cuadros VU2 en 3462 ms = 1.2/s, se separan 0.00 dB
+C0 con el canal muteado: -135.00 dBFS en 1000 Hz
+   ruido del bin en esa captura: -142.07 dBFS
+   PISO EFECTIVO = -135.00 dBFS, el mayor de los dos.
+   [captura C1-puenteado] 8 cuadros VU2 en 3477 ms = 2.3/s, se separan 0.33 dB
+   [captura C1-plano] 4 cuadros VU2 en 4282 ms = 0.9/s, se separan 0.00 dB
+C1 con el ecualizador ACTIVO y la banda en 0.5: -58.31 dBFS, 76.7 dB sobre el piso
+   con el ecualizador PUENTEADO: -58.31 dBFS
+
+=== EL BARRIDO ===
+crudo  | leido    | centro   | testigo  | canal    | margen
+   [captura baja-0.5] 4 cuadros VU2 en 3490 ms = 1.1/s, se separan 0.00 dB
+0.5000 |   0.5000 |   -58.31 |   -58.70 |   -55.33 |     77
+   [captura baja-0.55] 16 cuadros VU2 en 3488 ms = 4.6/s, se separan 0.00 dB
+0.5500 |   0.5500 |   -56.31 |   -58.69 |   -54.33 |     79
+   [captura baja-0.6] 4 cuadros VU2 en 3482 ms = 1.1/s, se separan 0.00 dB
+0.6000 |   0.6000 |   -54.31 |   -58.69 |   -52.99 |     81
+   [captura baja-0.65] 4 cuadros VU2 en 5888 ms = 0.7/s, se separan 0.00 dB
+0.6500 |   0.6500 |   -52.31 |   -58.69 |   -51.66 |     83
+   [captura baja-0.7037] 3 cuadros VU2 en 3486 ms = 0.9/s, se separan 0.00 dB
+0.7037 |   0.7037 |   -50.16 |   -58.68 |   -50.33 |     85
+   [captura baja-0.75] 6 cuadros VU2 en 3487 ms = 1.7/s, se separan 0.00 dB
+0.7500 |   0.7500 |   -48.31 |   -58.68 |   -48.99 |     87
+   [captura baja-0.8] 4 cuadros VU2 en 3473 ms = 1.2/s, se separan 0.00 dB
+0.8000 |   0.8000 |   -46.31 |   -58.67 |   -47.33 |     89
+   [captura baja-0.85] 11 cuadros VU2 en 3485 ms = 3.2/s, se separan 0.00 dB
+0.8500 |   0.8500 |   -44.31 |   -58.67 |   -45.66 |     91
+   [captura baja-0.9] 6 cuadros VU2 en 3485 ms = 1.7/s, se separan 0.00 dB
+0.9000 |   0.9000 |   -42.31 |   -58.66 |   -43.99 |     93
+   [captura baja-0.95] 6 cuadros VU2 en 3488 ms = 1.7/s, se separan 0.00 dB
+0.9500 |   0.9500 |   -40.31 |   -58.65 |   -42.33 |     95
+   [captura baja-1] 13 cuadros VU2 en 3484 ms = 3.7/s, se separan 0.33 dB
+1.0000 |   1.0000 |   -38.31 |   -58.64 |   -40.35 |     97
+   [captura baja-0.45] 23 cuadros VU2 en 3491 ms = 6.6/s, se separan 0.00 dB
+0.4500 |   0.4500 |   -60.31 |   -58.70 |   -56.33 |     75
+   [captura baja-0.4] 20 cuadros VU2 en 3478 ms = 5.8/s, se separan 0.33 dB
+0.4000 |   0.4000 |   -62.31 |   -58.70 |   -57.01 |     73
+   [captura baja-0.35] 28 cuadros VU2 en 3487 ms = 8.0/s, se separan 0.33 dB
+0.3500 |   0.3500 |   -64.31 |   -58.70 |   -57.86 |     71
+   [captura baja-0.2963] 25 cuadros VU2 en 3473 ms = 7.2/s, se separan 0.67 dB
+0.2963 |   0.2963 |   -66.46 |   -58.71 |   -58.52 |     69
+   [captura baja-0.25] 13 cuadros VU2 en 3494 ms = 3.7/s, se separan 0.00 dB
+0.2500 |   0.2500 |   -68.31 |   -58.71 |   -59.00 |     67
+   [captura baja-0.2] 11 cuadros VU2 en 3489 ms = 3.2/s, se separan 0.00 dB
+0.2000 |   0.2000 |   -70.32 |   -58.72 |   -59.33 |     65
+   [captura baja-0.15] 11 cuadros VU2 en 3485 ms = 3.2/s, se separan 0.33 dB
+0.1500 |   0.1500 |   -72.32 |   -58.72 |   -59.84 |     63
+   [captura baja-0.1] 17 cuadros VU2 en 3483 ms = 4.9/s, se separan 0.00 dB
+0.1000 |   0.1000 |   -74.32 |   -58.73 |   -60.00 |     61
+   [captura baja-0.05] 5 cuadros VU2 en 3488 ms = 1.4/s, se separan 0.00 dB
+0.0500 |   0.0500 |   -76.32 |   -58.74 |   -60.33 |     59
+   [captura baja-0] 57 cuadros VU2 en 3485 ms = 16.4/s, se separan 0.00 dB
+0.0000 |   0.0000 |   -78.33 |   -58.75 |   -60.66 |     57
+   [captura sube-0] 47 cuadros VU2 en 3490 ms = 13.5/s, se separan 0.00 dB
+0.0000 |   0.0000 |   -78.32 |   -58.75 |   -60.66 |     57
+   [captura sube-0.05] 8 cuadros VU2 en 3486 ms = 2.3/s, se separan 0.00 dB
+0.0500 |   0.0500 |   -76.32 |   -58.74 |   -60.33 |     59
+   [captura sube-0.1] 13 cuadros VU2 en 3475 ms = 3.7/s, se separan 0.00 dB
+0.1000 |   0.1000 |   -74.31 |   -58.73 |   -60.00 |     61
+   [captura sube-0.15] 16 cuadros VU2 en 3481 ms = 4.6/s, se separan 0.33 dB
+0.1500 |   0.1500 |   -72.32 |   -58.72 |   -59.79 |     63
+   [captura sube-0.2] 14 cuadros VU2 en 3479 ms = 4.0/s, se separan 0.33 dB
+0.2000 |   0.2000 |   -70.31 |   -58.72 |   -59.38 |     65
+   [captura sube-0.25] 24 cuadros VU2 en 3484 ms = 6.9/s, se separan 0.00 dB
+0.2500 |   0.2500 |   -68.31 |   -58.71 |   -59.00 |     67
+   [captura sube-0.2963] 17 cuadros VU2 en 3470 ms = 4.9/s, se separan 0.33 dB
+0.2963 |   0.2963 |   -66.46 |   -58.71 |   -58.54 |     69
+   [captura sube-0.35] 22 cuadros VU2 en 3472 ms = 6.3/s, se separan 0.33 dB
+0.3500 |   0.3500 |   -64.31 |   -58.70 |   -57.81 |     71
+   [captura sube-0.4] 11 cuadros VU2 en 3464 ms = 3.2/s, se separan 0.00 dB
+0.4000 |   0.4000 |   -62.31 |   -58.70 |   -57.00 |     73
+   [captura sube-0.45] 8 cuadros VU2 en 3482 ms = 2.3/s, se separan 0.00 dB
+0.4500 |   0.4500 |   -60.31 |   -58.70 |   -56.33 |     75
+   [captura sube-1] 3 cuadros VU2 en 3476 ms = 0.9/s, se separan 0.00 dB
+1.0000 |   1.0000 |   -38.31 |   -58.63 |   -40.33 |     97
+   [captura sube-0.95] 2 cuadros VU2 en 6680 ms = 0.3/s, se separan 0.00 dB
+0.9500 |   0.9500 |   -40.31 |   -58.65 |   -42.33 |     95
+   [captura sube-0.9] 8 cuadros VU2 en 3468 ms = 2.3/s, se separan 0.00 dB
+0.9000 |   0.9000 |   -42.31 |   -58.66 |   -43.99 |     93
+   [captura sube-0.85] 8 cuadros VU2 en 3477 ms = 2.3/s, se separan 0.00 dB
+0.8500 |   0.8500 |   -44.31 |   -58.67 |   -45.66 |     91
+   [captura sube-0.8] 4 cuadros VU2 en 3479 ms = 1.1/s, se separan 0.00 dB
+0.8000 |   0.8000 |   -46.31 |   -58.67 |   -47.33 |     89
+   [captura sube-0.75] 3 cuadros VU2 en 3479 ms = 0.9/s, se separan 0.00 dB
+0.7500 |   0.7500 |   -48.31 |   -58.68 |   -48.99 |     87
+   [captura sube-0.7037] 8 cuadros VU2 en 3479 ms = 2.3/s, se separan 0.33 dB
+0.7037 |   0.7037 |   -50.16 |   -58.68 |   -50.37 |     85
+   [captura sube-0.65] 8 cuadros VU2 en 3480 ms = 2.3/s, se separan 0.00 dB
+0.6500 |   0.6500 |   -52.31 |   -58.68 |   -51.66 |     83
+   [captura sube-0.6] 6 cuadros VU2 en 3472 ms = 1.7/s, se separan 0.33 dB
+0.6000 |   0.6000 |   -54.31 |   -58.69 |   -53.05 |     81
+   [captura sube-0.55] 16 cuadros VU2 en 3477 ms = 4.6/s, se separan 0.00 dB
+0.5500 |   0.5500 |   -56.31 |   -58.69 |   -54.33 |     79
+   [captura sube-0.5] 7 cuadros VU2 en 3479 ms = 2.0/s, se separan 0.00 dB
+0.5000 |   0.5000 |   -58.31 |   -58.69 |   -55.33 |     77
+
+=== VEREDICTOS, contra el contrato del item 108 ===
+
+L1 el crudo 0.5 es el punto plano: activo -58.31 dBFS contra puenteado -58.31 (difiere 0.00, tope 0.2)
+   PASA. El crudo del centro no agrega ni saca nada.
+
+L2 la referencia interna de la interfaz: 42 capturas finitas
+   deriva 0.00 dB (tope 0.05)
+   PASA. El instrumento no se movio.
+
+C2 la banda es LOCAL: 40 lecturas del testigo en 37 Hz
+   rango 0.12 dB mientras el centro se mueve 40.02 dB
+   tope 0.27 = 0.12 de falda de la campana (Q 1.000) + 0.15 de holgura
+   PASA. Lo que se movio fue la banda y no el camino entero.
+
+L8 el medidor del canal sigue al realce: 40 puntos por encima del fondo de escala y con su plano
+   si el medidor fuera de potencia : desvio maximo 2.37 dB
+   si el medidor fuera de pico     : desvio maximo 0.20 dB
+   tope 1.5
+   PASA, y de paso: el medidor del canal se comporta como de PICO. Nada recorto adentro de la consola.
+   **L8 es un control del REALCE.** Su sensibilidad en +20 dB es 0,99 si el
+   medidor es de potencia y 0,91 si es de pico; en -20 dB, 0,01 y 0,09. En el
+   corte es casi ciego, y da igual, porque el recorte solo puede ocurrir
+   arriba. (Las dos cifras iban antes como una sola, la de potencia, de
+   cuando se suponia ese modelo; desde que el veredicto es sobre los dos hay
+   que decir los dos.) Y solo ve lo que pase AGUAS ABAJO de donde ese medidor
+   toma, que este proyecto no midio.
+
+L4 el recorrido total: 40.02 dB sobre 40 puntos (minimo 24)
+   maximo realce 20.00 dB, maximo corte -20.02 dB
+   La tabla declara ±15 y el item 101 vio +20 en el extremo. Los dos no
+   pueden ser ciertos, y quien lo dice es la PENDIENTE de L3: ~30 dB por
+   unidad de crudo es ±15 y ~40 es ±20. Este minimo solo cuida que haya con
+   que ajustar, y por eso NO vale 30: 30 es una de las dos respuestas, y
+   ponerlo ahi dejaba a ±15 pasando por cero margen.
+   PASA.
+
+L3 la ley es lineal en el crudo: 40.010 dB por unidad de crudo, ordenada -20.006 dB
+   residuo maximo -0.01 dB en el crudo 0 (tope 0.3)
+   PASA. Y es una COTA, no una identidad.
+
+L3b el residuo no tiene estructura: 8 cambios de signo sobre 40 ordenados por crudo (con residuos independientes se esperarian ~20)
+   termino cuadratico -0.024 dB, que aporta 0.004 dB en el borde del recorrido (tope 0.15)
+   PASA. Sin estructura que explicar.
+
+L6 ida y vuelta: 19 pares comparados
+   diferencia maxima 0.01 dB en el crudo 0
+   PASA.
+
+L5 la simetria: realce 20.00 dB, corte -20.02 dB, asimetria -0.02 (tope 0.5)
+   PASA.
+
+L7 el crudo escrito contra el releido: 42 comparados
+   diferencia maxima 0.0e+0
+   PASA. Y es una COTA, no una identidad.
+   Dos de los crudos barridos estan fuera de la rejilla de centesimos a
+   proposito: sin ellos esta expectativa no podria fallar.
+
+=== LOS PUNTOS ANULADOS, QUE NO SE PUNTUAN PERO SE INFORMAN ===
+   baja 0.2963: el medidor se movio 0.67 dB dentro de la captura, y el tope son 0.63
+   sube 0.95: solo 2 cuadros VU2: con menos de tres no hay con que comparar
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada sobre la FORMA de la campana: se mide la altura en el centro.
+   Nada sobre el parametro interno del filtro: se mide el efecto en el audio.
+   Nada sobre la ley INVERSA: esto mide crudo -> dB.
+   Una banda de cinco, un canal de veinticuatro, una frecuencia, un Q.
+   Nada sobre las otras cuatro bandas, ni sobre el ecualizador de salida.
+   Un dia, una frecuencia, un nivel de fuente.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.eq.b3.gain           esperado 0.5            leido 0.5
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   i.9.mute                 esperado 0              leido 0
+   i.9.eq.bypass            esperado 0              leido 0
+   m.dyn.bypass             esperado 0              leido 0
+   m.afs.enabled            esperado 1              leido 1
+   i.9.mix                  esperado 0.7451777309   leido 0.7451777309
+   Las 9 claves volvieron, por un camino distinto del que escribio.
+
+   filtros del supresor: 0 antes, 0 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: e452d1eac231c448
+================================================================================
+
+QUE CAMBIO EN EL GUION DESPUES DE ESTA CORRIDA. Dos cosas, las dos del item 113:
+
+1) `i.N.eq.bK.freq` entro en PREVIO. El guion escribia la frecuencia de la banda
+   --para colocarla en 1000 Hz-- y NO la restauraba. Era un defecto real y se vio
+   en el aparato. Se arreglo, y la consola se devolvio a mano con
+   `devolver-las-frecuencias-2026-09-16.txt`.
+
+2) El fader del canal subio de 0,5 a 0,65, porque dos corridas fallaron C1 por
+   menos de un decibel y la alternativa --bajar el minimo de C1-- habria sido
+   acomodar la regla al resultado. El fader esta DESPUES del ecualizador: sube lo
+   que llega al conversor y no el nivel al que el filtro trabaja.
+
+POR QUE LOS NUMEROS DE ESTE ARCHIVO SIGUEN VALIENDO. Ninguno de los dos cambios
+toca lo que se mide. El primero solo agrega una restauracion al final; el segundo
+cambia el punto de trabajo del CONVERSOR, y esta corrida informa el suyo en su
+propio encabezado. La ley que sale es una relacion entre el crudo y los
+decibeles, y las cuatro bandas dieron la misma con los dos faders.
+
+CONFIGURACION QUE MIDIO ESTA CORRIDA, dicha explicitamente: canal 10, BANDA 3, colocada en 1000,0 Hz desde sus 4000 de fabrica, fader del canal 0,5.

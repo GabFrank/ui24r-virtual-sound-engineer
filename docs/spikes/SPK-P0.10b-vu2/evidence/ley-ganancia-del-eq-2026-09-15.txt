@@ -168,3 +168,28 @@ numero de este archivo cambian.
 
 CONFIGURACION QUE MIDIO, dicha explicitamente: canal 10, BANDA 2, en 1000,0 Hz
 de fabrica, Q crudo 0,5252185347, con las otras cuatro bandas planas.
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: e452d1eac231c448
+================================================================================
+
+QUE CAMBIO EN EL GUION DESPUES DE ESTA CORRIDA. Dos cosas, las dos del item 113:
+
+1) `i.N.eq.bK.freq` entro en PREVIO. El guion escribia la frecuencia de la banda
+   --para colocarla en 1000 Hz-- y NO la restauraba. Era un defecto real y se vio
+   en el aparato. Se arreglo, y la consola se devolvio a mano con
+   `devolver-las-frecuencias-2026-09-16.txt`.
+
+2) El fader del canal subio de 0,5 a 0,65, porque dos corridas fallaron C1 por
+   menos de un decibel y la alternativa --bajar el minimo de C1-- habria sido
+   acomodar la regla al resultado. El fader esta DESPUES del ecualizador: sube lo
+   que llega al conversor y no el nivel al que el filtro trabaja.
+
+POR QUE LOS NUMEROS DE ESTE ARCHIVO SIGUEN VALIENDO. Ninguno de los dos cambios
+toca lo que se mide. El primero solo agrega una restauracion al final; el segundo
+cambia el punto de trabajo del CONVERSOR, y esta corrida informa el suyo en su
+propio encabezado. La ley que sale es una relacion entre el crudo y los
+decibeles, y las cuatro bandas dieron la misma con los dos faders.
+
+CONFIGURACION QUE MIDIO ESTA CORRIDA, dicha explicitamente: canal 10, BANDA 2, en sus 1000,0 Hz de fabrica, fader del canal 0,5.

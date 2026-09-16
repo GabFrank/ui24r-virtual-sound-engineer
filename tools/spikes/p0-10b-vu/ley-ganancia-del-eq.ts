@@ -512,11 +512,51 @@ await t.conectar(maquina);
 const e0 = await estadoPorHttpExigido(maquina);
 
 const RUTA_GANANCIA = `i.${n}.eq.b${banda}.gain`;
-/** Fader del canal bajado para hacer lugar al realce. Ver el contrato. */
-const FADER_PARA_HACER_LUGAR = 0.5;
+/**
+ * Fader del canal, para el punto de trabajo. Ver el contrato.
+ *
+ * **Subio de 0,5 a 0,65 el 2026-09-16, y NO es aflojar un control.** Las corridas
+ * de las bandas 4 y 5 fallaron C1 por menos de un decibel --71,5 y 74,4 sobre un
+ * minimo de 75-- porque el piso de ruido del banco se mueve unos seis decibeles
+ * entre capturas. Con el tono en -58,3 dBFS el margen quedaba justo.
+ *
+ * Habia dos salidas y solo una es honesta. La otra era bajar el minimo de C1, que
+ * hoy vale 75 porque asume una excursion de 30 dB --conservadora a proposito
+ * cuando no se sabia si eran +-15 o +-20-- y ya se midio cuatro veces que son
+ * +-20. Puede que ese 75 sobre; **pero tocarlo justo despues de que falle es
+ * acomodar la regla al resultado**, y este repositorio tiene esa regla escrita.
+ *
+ * Asi que se arregla el banco y no la regla: se sube el fader, que esta DESPUES
+ * del ecualizador y por lo tanto **no cambia el nivel al que el filtro trabaja**
+ * --lo unico que sube es lo que llega al conversor--. Con +20 dB de realce sobre
+ * el nuevo plano sigue sobrando margen hasta el fondo de escala.
+ *
+ * **Las bandas 1, 2 y 3 se midieron con 0,5** y sus evidencias lo dicen. Que la
+ * banda 4 y la 5 salgan igual con otro punto de trabajo del conversor es, si
+ * acaso, una comprobacion de mas.
+ */
+const FADER_PARA_HACER_LUGAR = 0.65;
+
+const RUTA_FRECUENCIA = `i.${n}.eq.b${banda}.freq`;
 
 const PREVIO: readonly (readonly [string, number])[] = [
   [RUTA_GANANCIA, Number(exigirClave(e0, RUTA_GANANCIA))],
+  // **La frecuencia de la banda, desde el 2026-09-16 y por un defecto propio.**
+  //
+  // Hasta hoy el guion EXIGIA que la banda ya estuviera en 1000 Hz y no escribia
+  // nada, asi que esta clave no tenia por que estar aca. Al hacer que la COLOQUE
+  // --para poder medir las bandas que no vienen en 1 kHz-- se agrego la escritura
+  // y NO se agrego la restauracion.
+  //
+  // El resultado fue real y se vio en el aparato: las bandas 1, 3 y 4 del canal
+  // 10 quedaron las tres en 1000 Hz en vez de sus 200, 4000 y 10000 de fabrica.
+  //
+  // **Ninguna de las guardas lo caza, y conviene entender por que.**
+  // `escribir-sin-leer` exige que la clave se LEA, y se leia. `restauracion-
+  // garantizada` exige que el guion use `conRestauracion`, y la usaba. Las dos
+  // miran la estructura; ninguna comprueba que PREVIO este COMPLETO respecto de
+  // lo que el guion escribe. Queda anotado como tarea: es una guarda que falta.
+  [RUTA_FRECUENCIA, Number(exigirClave(e0, RUTA_FRECUENCIA))],
   [`i.${n}.dyn.bypass`, Number(exigirClave(e0, `i.${n}.dyn.bypass`))],
   [`i.${n}.gate.enabled`, Number(exigirClave(e0, `i.${n}.gate.enabled`))],
   [`i.${n}.deesser.enabled`, Number(exigirClave(e0, `i.${n}.deesser.enabled`))],
@@ -634,7 +674,7 @@ for (const k of [
   // aplica el mismo margen de 1 Hz de siempre. Si ya esta donde tiene que estar,
   // no se escribe nada: la banda 2 se mide hoy igual que el 2026-09-16.
   {
-    const RUTA_FREQ = `i.${n}.eq.b${banda}.freq`;
+    const RUTA_FREQ = RUTA_FRECUENCIA;
     let crudoFreq = Number(exigirClave(e0, RUTA_FREQ));
     let hz = 20 * Math.pow(1102.5, crudoFreq);
     if (Math.abs(hz - HZ) > 1) {
