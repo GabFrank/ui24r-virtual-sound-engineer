@@ -408,6 +408,11 @@ test('INV-004: un filtro estrecho en un bus PARAMETRICO se rechaza', () => {
 });
 
 test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar', () => {
+  // **El crudo va en `valorPropuesto`, los decibeles en `magnitudPropuesta`.**
+  // Desde el item 112 `m.eq.peak.l.K` tiene ley medida --`30·V − 15`-- asi que la
+  // guarda de coherencia compara las dos cosas: escribir -3 en el crudo seria
+  // pedir -105 dB y dispara antes que la clausula que este test mira. Es el mismo
+  // arreglo que ya se le hizo al grafico del auxiliar el 2026-09-16.
   // **El hallazgo, fijado para que no se olvide.** El ecualizador de salida de
   // esta consola es un grafico de 31 bandas: no tiene factor de calidad, asi que
   // `q` es `undefined` siempre y la regla no se ejecuta nunca. Es la forma nueva
@@ -421,8 +426,8 @@ test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar',
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -3, valorEsperado: 0,
-  magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
+      valorPropuesto: (-3 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -435,8 +440,8 @@ test('INV-004: la correccion de sala atenua, no realza', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: 3, valorEsperado: 0,
-  magnitudPropuesta: 3, magnitudEsperada: 0, q: 1.4,
+      valorPropuesto: (3 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: 3, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -452,8 +457,8 @@ test('una atenuacion con Q ancho en un bus declarado pasa', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0, q: 1.4,
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -476,8 +481,9 @@ test('sin perfil de sala el rechazo lo DICE, no culpa al bus', () => {
   // mensaje mandaba a revisar el bus cuando falta el perfil entero.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0 }],
+    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set() }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );

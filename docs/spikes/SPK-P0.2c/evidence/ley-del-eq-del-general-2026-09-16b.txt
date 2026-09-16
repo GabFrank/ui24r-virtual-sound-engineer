@@ -1,0 +1,111 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T15:26:59.204Z
+# comando: node --experimental-strip-types tools/spikes/p0-2c/ley-del-eq-del-general.ts 17 192.168.0.78
+# guion: tools/spikes/p0-2c/ley-del-eq-del-general.ts sha256:cea778687f6eb1eb
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo ley-del-eq-del-general.ts el 2026-09-16T15:23:51.662Z en 192.168.0.78
+     m.afs.enabled tiene que volver a 1
+     m.dyn.bypass tiene que volver a 0
+     m.eq.peak.l.17 tiene que volver a 0.5
+     m.eq.peak.r.17 tiene que volver a 0.5
+     i.9.mix tiene que volver a 0.7451777309
+     i.9.dyn.bypass tiene que volver a 0
+     i.9.gate.enabled tiene que volver a 1
+     i.9.deesser.enabled tiene que volver a 0
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== 112 — LA LEY DEL ECUALIZADOR DEL GENERAL ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   m.eq.linked = 1: los dos lados entran en PREVIO
+   se barre m.eq.peak.l.17
+
+   m.afs.enabled            1
+   m.dyn.bypass             0
+   m.eq.peak.l.17           0.5
+   m.eq.peak.r.17           0.5
+   i.9.mix                  0.7451777309
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   i.9.deesser.enabled      0
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CALIBRACION DEL NIVEL ===
+   C0: fuente -18 -> -8 dBFS (10 dB pedidos) movio 9.96 dB
+   fader del canal 0.450 -> -51.40 dBFS
+   fader del canal 0.530 -> -46.70 dBFS
+   fader del canal 0.610 -> -42.85 dBFS
+   fader del canal 0.690 -> -39.55 dBFS
+   C1 PASA: 99.7 dB sobre el piso
+
+=== QUE FRECUENCIA ES LA BANDA ===
+   (no se supone del orden de las etiquetas: se mide)
+      630 Hz: realce de 1.96 dB
+      800 Hz: realce de 5.31 dB
+     1000 Hz: realce de 14.99 dB
+     1250 Hz: realce de 5.42 dB
+     1600 Hz: realce de 1.93 dB
+   -> la banda 17 responde en 1000 Hz (la etiqueta decia 1000)
+
+=== EL BARRIDO ===
+   crudo 0.00 -> -54.55 dBFS   (testigo 4000 Hz: -39.78)
+   crudo 0.10 -> -51.55 dBFS   (testigo 4000 Hz: -39.73)
+   crudo 0.20 -> -48.55 dBFS   (testigo 4000 Hz: -39.70)
+   crudo 0.30 -> -45.55 dBFS   (testigo 4000 Hz: -39.67)
+   crudo 0.40 -> -42.55 dBFS   (testigo 4000 Hz: -39.65)
+   crudo 0.50 -> -39.55 dBFS   (testigo 4000 Hz: -39.63)
+   crudo 0.60 -> -36.55 dBFS   (testigo 4000 Hz: -39.60)
+   crudo 0.70 -> -33.55 dBFS   (testigo 4000 Hz: -39.58)
+   crudo 0.80 -> -30.55 dBFS   (testigo 4000 Hz: -39.55)
+   crudo 0.90 -> -27.55 dBFS   (testigo 4000 Hz: -39.52)
+   crudo 1.00 -> -24.56 dBFS   (testigo 4000 Hz: -39.47)
+   crudo 0.25 -> -47.05 dBFS   (testigo 4000 Hz: -39.68)
+   crudo 0.75 -> -32.05 dBFS   (testigo 4000 Hz: -39.57)
+   crudo 0.50 -> -39.55 dBFS   (testigo 4000 Hz: -39.62)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled            esperado 1  leido 1
+   OK   m.dyn.bypass             esperado 0  leido 0
+   OK   m.eq.peak.l.17           esperado 0.5  leido 0.5
+   OK   m.eq.peak.r.17           esperado 0.5  leido 0.5
+   OK   i.9.mix                  esperado 0.7451777309  leido 0.7451777309
+   OK   i.9.dyn.bypass           esperado 0  leido 0
+   OK   i.9.gate.enabled         esperado 1  leido 1
+   OK   i.9.deesser.enabled      esperado 0  leido 0
+
+=== EL ENLACE L/R ===
+   m.eq.peak.r.17: antes 0.5, al final 0.5
+   con m.eq.linked = 1, la consola deberia mover los dos lados juntos
+
+=== VEREDICTOS ===
+C2 la banda es LOCAL: el testigo se movio 0.32 dB (tope 1)
+   PASA
+
+L2 la ley es lineal: 29.993 dB por unidad de crudo, ordenada -14.996
+   residuo maximo 0.001 dB (tope 0.3)
+   PASA. Y es una COTA, no una identidad.
+
+L3 el recorrido total: 29.99 dB (minimo 24)
+   PASA
+
+L4 la simetria: corte -15.00 dB, realce 15.00 dB, asimetria 0.00
+
+LA LEY: dB = 29.99·V − 15.00
+   medida en la banda 17 del GENERAL, en 1000 Hz.
+   El item 109 midio 29,99·V − 14,99 en un auxiliar: si coincide,
+   deja de ser suposicion que las dos superficies compartan la ley.
+
+Alcance: UNA banda de treinta y una, en el general. Nada del ancho de
+banda, ni de como interactuan las bandas entre si, ni de los auxiliares
+restantes: el 109 midio el aux 5 y este el general, no los seis.
+
+
+# salida del proceso: 0

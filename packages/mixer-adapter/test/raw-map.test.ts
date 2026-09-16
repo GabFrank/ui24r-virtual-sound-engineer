@@ -64,15 +64,28 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // Evidencia: `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`.
   //
   // **Es la tercera que el motor puede usar de verdad**, porque está en dB igual
-  // que el tope de su `kind`. Y **no cubre al general**: su gráfico
-  // —`m.eq.peak.l.K`— se puede direccionar pero no tiene conversión, porque se
-  // midió un auxiliar y que compartan la ley es suposición.
+  // que el tope de su `kind`.
   //
-  // **El test sigue siendo un trinquete**: si aparece una octava sin que alguien
+  // **La octava, `m.eq.peak.l.K`, es del ítem 112 del 2026-09-16**, y existe
+  // porque la séptima dejó una deuda escrita: el 109 midió un AUXILIAR y dijo
+  // que el general compartiera la ley era «una suposición razonable, no un
+  // resultado». El 112 barrió la banda 17 del general —con el fader del general
+  // sin tocar, que es el volumen de PA del usuario— y dio `29,993·V − 14,996`,
+  // con el mismo residuo de 0,001 dB. **La misma ley, medida, no supuesta.**
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-del-general-2026-09-16b.txt`.
+  //
+  // **Y es la cuarta que el motor puede usar de verdad.** Lo que sigue afuera es
+  // el lado DERECHO del general: la salida que vuelve al banco es la master 1,
+  // así que medirlo pide cambiar un cable. Y no se da por simetría, porque
+  // `m.eq.linked` no lo resuelve la consola —lo copia el cliente—: ver
+  // `docs/backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md`.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una novena sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
   assert.deepEqual([...rutasProbadas()].sort(),
     ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
-      'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
+      'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 
@@ -381,14 +394,23 @@ test('la ley del grafico de salida esta en la tabla y convierte', () => {
 });
 
 /**
- * **El general NO esta en la tabla, y es deliberado.**
+ * **El general ya convierte, y el lado derecho NO.**
  *
- * Se midio una banda de un AUXILIAR. Que el general comparta la ley es una
- * suposicion razonable y no un resultado, asi que su ruta se canoniza --para que
- * el motor pueda hablar de ella-- pero no tiene conversion. `SIN_MAPEO` es la
- * respuesta correcta hasta que se mida.
+ * Hasta el 112 este test decia lo contrario --que el general se direccionaba y
+ * no convertia-- porque se habia medido un AUXILIAR. El 112 midio el general y
+ * dio la misma ley, asi que el lado izquierdo entro en la tabla.
+ *
+ * **El derecho sigue afuera, y no por olvido.** La salida que vuelve al banco es
+ * la master 1: medir `m.eq.peak.r.K` pide cambiar un cable. Suponerlo por
+ * simetria seria exactamente lo que el 109 hizo con el general y el 112 tuvo que
+ * ir a medir. Y hay un motivo mas: `m.eq.linked` no lo resuelve la consola.
  */
-test('el grafico del general se direcciona pero todavia no convierte', () => {
+test('el general ya convierte y el lado derecho todavia no', () => {
   notEqual(canonizarRuta('m.eq.peak.l.17'), undefined, 'se puede nombrar');
-  equal(entrada('m.eq.peak.l.17'), undefined, 'y no se puede escribir: no se midio');
+  notEqual(entrada('m.eq.peak.l.17'), undefined, 'y se puede escribir: se midio');
+  equal(entrada('m.eq.peak.l.17')!.fromRaw(0.5), 0, 'el crudo 0,5 es el plano');
+  equal(entrada('m.eq.peak.l.17')!.fromRaw(1), 15, 'y el crudo 1 son +15 dB');
+
+  notEqual(canonizarRuta('m.eq.peak.r.17'), undefined, 'el derecho se puede nombrar');
+  equal(entrada('m.eq.peak.r.17'), undefined, 'y NO se puede escribir: no se midio');
 });

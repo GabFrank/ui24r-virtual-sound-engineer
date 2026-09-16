@@ -384,10 +384,9 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // no existe. Ver
   // `docs/backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md`.
   //
-  // **Alcance, y por eso el general NO esta en la tabla todavia:** se midio UNA
-  // banda de UN auxiliar. El general tiene su propio grafico --`m.eq.peak.l.K` y
-  // `.r.K`-- y que comparta la ley es una suposicion razonable, no un resultado.
-  // Entra cuando se mida.
+  // **Alcance:** se midio UNA banda de UN auxiliar (el 5) y UNA banda del
+  // general. Las otras treinta de cada superficie, y los otros cinco
+  // auxiliares, siguen sin medirse.
   //
   // Evidencia:
   // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`
@@ -397,6 +396,29 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     (db) => (db + 15) / 30,
     0, 1, 'SPK-P0.2c',
   ),
+  // **El grafico del GENERAL, lado izquierdo.** Medido el 2026-09-16 y dio
+  // `29,993·V − 14,996`: la MISMA ley que el auxiliar, con el mismo residuo de
+  // 0,001 dB. El item 109 habia dejado escrito que compartieran la ley era «una
+  // suposicion razonable, no un resultado»; el 112 la midio y dejo de serlo.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-del-general-2026-09-16b.txt`
+  medido(
+    'm.eq.peak.l.K', 'dB',
+    (v) => 30 * v - 15,
+    (db) => (db + 15) / 30,
+    0, 1, 'SPK-P0.2c',
+  ),
+  // **El lado DERECHO no esta, y no es un olvido.** La salida que vuelve al
+  // banco es la master 1 --el lado izquierdo--, asi que el derecho no se puede
+  // medir sin que alguien cambie un cable. Suponerlo por simetria seria
+  // exactamente el error que este proyecto viene documentando: el ecualizador
+  // del general es una superficie estereo y nadie comprobo que las dos mitades
+  // se comporten igual.
+  //
+  // Y hay un motivo mas fuerte para no darlo por hecho: `m.eq.linked` **no lo
+  // resuelve la consola**. Ver
+  // `docs/backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md`.
   // `i.N.dyn.ratio` **no esta en la tabla, a proposito**, y ahora hay dos
   // razones en vez de una.
   //

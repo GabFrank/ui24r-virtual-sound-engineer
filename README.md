@@ -15,8 +15,8 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 | Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
 | Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
-| Rutas crudas con conversión medida | 7 —frecuencia, Q, **ganancia**, pasa-altos y pasa-bajos del ecualizador de canal contra el filtro real; el envío a monitor contra la salida del auxiliar; y la **ganancia del ecualizador gráfico de salida**—, todas con bucle externo. `validate-numeros` las cuenta |
-| Rutas crudas que el motor deja escribir | **3 de esas 7**: el envío a monitor, la **ganancia del ecualizador de canal** y la del **ecualizador gráfico de salida**, las tres en dB igual que el tope de su `kind`. Las otras cuatro del ecualizador las sigue rechazando INV-004: `LIMITES` da una unidad por `kind` y sus leyes están en Hz y en Q contra un tope en dB ([hallazgo](docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)). Medir la ganancia sí las mueve porque es la única hoja del ecualizador cuya unidad coincide con la del tope |
+| Rutas crudas con conversión medida | 8 —frecuencia, Q, **ganancia**, pasa-altos y pasa-bajos del ecualizador de canal contra el filtro real; el envío a monitor contra la salida del auxiliar; y la **ganancia del ecualizador gráfico de salida, medida en las dos superficies**: un auxiliar y el general—, todas con bucle externo. `validate-numeros` las cuenta |
+| Rutas crudas que el motor deja escribir | **4 de esas 8**: el envío a monitor, la **ganancia del ecualizador de canal** y la del **ecualizador gráfico de salida en sus dos superficies** —un auxiliar y el general—, las cuatro en dB igual que el tope de su `kind`. Las otras cuatro del ecualizador las sigue rechazando INV-004: `LIMITES` da una unidad por `kind` y sus leyes están en Hz y en Q contra un tope en dB ([hallazgo](docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)). Medir la ganancia sí las mueve porque es la única hoja del ecualizador cuya unidad coincide con la del tope |
 
 ---
 

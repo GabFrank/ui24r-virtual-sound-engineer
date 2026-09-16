@@ -6,6 +6,26 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El ecualizador de la salida principal ya se puede tocar con números
+  reales.** Hasta ayer la aplicación sabía cuántos decibeles mueve una banda del
+  gráfico **de un auxiliar**, porque eso era lo que se había medido; para la
+  salida por la que sale la mezcla al público, la misma ley era una suposición
+  —razonable, pero suposición—. Se midió, y **da lo mismo**: de tope a tope el
+  recorrido es de 30 dB, quince para abajo y quince para arriba, y el punto de
+  descanso está justo en el medio.
+
+  Lo que cambia en la práctica: cuando la aplicación proponga corregir la sala,
+  va a poder decir «bajá 3 dB en 1 kHz» sobre la salida principal **y que sean
+  3 dB de verdad**, no una estimación.
+
+  **Falta la mitad derecha**, y no es un olvido: el equipo de medición vuelve por
+  la salida izquierda, así que la derecha no se puede comprobar sin cambiar un
+  cable. Se anotó como tarea en vez de darla por sentada — entre otras cosas
+  porque se descubrió que **la consola no copia sola** un cambio de un lado al
+  otro, aunque los muestre enlazados: el que copia es el programa que uno usa
+  para tocarla. Un programa que escriba un solo lado deja la mezcla
+  desbalanceada en esa banda, sin avisar.
+
 - **El escenario: dónde está cada cosa en la sala, y con cuánta duda.** La
   aplicación razonaba sobre señales —niveles, espectro, medidores— y ahora puede
   razonar también sobre el espacio. Lo que eso agrega no es una pantalla: es un
