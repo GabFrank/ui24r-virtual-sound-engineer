@@ -78,5 +78,11 @@ y no 48.
 
 - **Qué distingue a `clearfixed` de `clearlive`**, si es que alguno hace algo.
   Con dos corridas que se contradicen, lo honesto es decir que no se sabe.
-- **Qué valor de `m.afs.fmode` es LIVE, FIXED y LOCK** (tarea T2). Decide si una
+- **Qué valor de `m.afs.fmode` es LIVE, FIXED y LOCK** (tarea T2). **Contestado a
+  medias el 2026-09-16, y la pregunta estaba mal planteada**: el modo sale de DOS
+  claves, `afs.logic` y `afs.fmode`, y con `logic = 0` la consola muestra LOCK sea
+  cual sea `fmode`. El mapeo clave→etiqueta esta en
+  [`hallazgo-el-modo-del-supresor-son-dos-claves.md`](hallazgo-el-modo-del-supresor-son-dos-claves.md).
+  Lo que sigue abierto es cual de los tres modos es seguro para meter un tono, que
+  es semantica del aparato y no se lee del cliente. Decide si una
   corrida planta filtros permanentes o pasajeros, y sigue sin medirse.
