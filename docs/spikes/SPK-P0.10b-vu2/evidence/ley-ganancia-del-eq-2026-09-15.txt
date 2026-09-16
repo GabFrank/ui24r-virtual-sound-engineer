@@ -94,7 +94,7 @@ C0 con el canal muteado: -116.38 dBFS en 1000 Hz
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
-# divergencia reconocida: d08203eb401dbe64
+# divergencia reconocida: c2e6b938b5ba3245
 ================================================================================
 
 La huella de arriba --sha256:70ca1dd3afb5d39e-- YA NO COINCIDE con el guion de
@@ -126,3 +126,13 @@ POR QUE NO SE REMIDE PARA ARREGLAR LA HUELLA. Remedir es exactamente lo que hay
 que hacer, pero como corrida NUEVA y con el guion nuevo: esa corrida trae la
 serie de conteos que a esta le falta. Reemplazar este archivo borraria el
 registro del primer fallo, que es el dato que motivo los tres arreglos.
+
+TERCERA ANOTACION, 2026-09-16. El guion cambio otra vez: el piso de cuadros paso
+de 20 a 3 y se le agrego el criterio de acuerdo entre lecturas. La huella
+reconocida de arriba ya es la de esa version. Esta corrida se archivo ANTES de
+ese cambio, y de hecho es una de las dos que lo motivaron.
+
+CUARTA ANOTACION, 2026-09-16. El guion cambio otra vez: la ventana del medidor
+ahora se ALARGA hasta juntar sus tres cuadros en vez de anular la captura. La
+huella reconocida de arriba ya es la de esa version. Nada de lo que este archivo
+registra cambia: siguen siendo corridas de antes de ese arreglo.

@@ -73,10 +73,16 @@ test('sin ley verificada se dice, y no se rechaza', () => {
   // ejemplo era `i.N.eq.hpf.freq`; la medición 103 lo midió y lo promovió, así que
   // el ejemplo pasa a la ganancia del ecualizador, que sigue sin medirse. Que el
   // ejemplo tenga que cambiar es la señal de que el trabajo avanza.
-  const r = verificarAtadura('i.N.eq.b1.gain', 0.5, 5, 'dB');
+  //
+  // **Cambio otra vez el 2026-09-16.** El item 108 midio la ganancia del
+  // ecualizador --±20 dB, `40·V - 20`-- y con eso NO queda ninguna entrada en
+  // DESCONOCIDO. El ejemplo pasa a una INFERIDO: `i.N.gate.thresh`, cuya formula
+  // esta leida del cliente de la consola y no comprobada contra el hardware. El
+  // motor tampoco la ata, que es lo que este test protege.
+  const r = verificarAtadura('i.N.gate.thresh', 0.5, 5, 'dB');
   assert.equal(r.atada, false);
   assert.equal(r.atada === false && r.codigo, 'SIN_LEY_VERIFICADA');
-  assert.match(r.atada === false ? r.motivo : '', /DESCONOCIDO/);
+  assert.match(r.atada === false ? r.motivo : '', /INFERIDO/);
 
   // Y una que no está en la tabla.
   const s = verificarAtadura('i.3.mix', 0.5, -10, 'dB');

@@ -227,17 +227,43 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     0.0, 0.60, 'SPK-P0.2b',
   ),
 
-  // **La ganancia: ahora hay DOS fuentes contra el codigo, y sigue sin medirse
-  // bien.** El manual dice ±20 dB contra los ±15 de aca, y la medicion 101 vio la
-  // campana subir **20,0 dB exactos** con el crudo de ganancia en 1,0, en los
-  // ocho puntos del barrido. Eso es fuerte, pero **el pico de una campana no es
-  // el parametro de ganancia** salvo que el filtro este normalizado de cierta
-  // manera, y eso no se sabe. Ademas la 101 midio un solo crudo de ganancia --el
-  // extremo--, asi que de la FORMA de la ley no se sabe nada: podria no ser
-  // lineal. Queda DESCONOCIDO con el hallazgo anotado, y se mide aparte.
+  // **La ganancia, MEDIDA contra el filtro real el 2026-09-16. Son ±20 dB.**
+  //
+  // Esta entrada decia `lineal(-15, +15)` en `DESCONOCIDO` y era falsa. Contra
+  // ella habia dos fuentes: el manual dice ±20, y la medicion 101 vio la campana
+  // subir **20,0 dB exactos** con el crudo en 1,0. Las dos tenian razon.
+  //
+  // El item 108 barrio 42 puntos con dos tonos --1 kHz y un testigo en 37 Hz--
+  // midiendo cuantos decibeles cambia el nivel en el centro de la banda como
+  // funcion del crudo. La recta ajustada da **39,999 dB por unidad de crudo y
+  // ordenada -19,999 dB**, con **residuo maximo de 0,01 dB** sobre un tope de
+  // 0,3, termino cuadratico de 0,004 dB, asimetria de 0,01 dB entre el realce
+  // maximo (20,00) y el corte maximo (-19,99), e ida y vuelta dentro de 0,01 dB.
+  // Se redondea a `40·V - 20`: escribir 39,999 seria fabricar una precision que
+  // la corrida no distingue de 40 exactos.
+  //
+  // **Es la magnitud que el producto necesita, y conviene decir cual es.** No se
+  // midio «el parametro de ganancia del filtro» sino **cuanto cambia el audio en
+  // la frecuencia central**, que es lo que `fromRaw` tiene que devolver cuando la
+  // aplicacion diga «realza esta banda 3 dB». No depende de como este normalizado
+  // el filtro por dentro.
+  //
+  // **Lo que NO dice, y hay que tenerlo presente antes de generalizar:** una
+  // banda de cinco, un canal de veinticuatro, una frecuencia, un Q, un nivel de
+  // fuente y un dia. Nada sobre la forma de la campana --se midio la altura en el
+  // centro, no el ancho-- ni sobre el ecualizador de salida, que es otro `kind`.
+  // Y un acuerdo dentro del umbral es una **cota**, no una identidad.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt`
   //
   // (El pasa-altos y el pasa-bajos se midieron: estan arriba.)
-  lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
+  medido(
+    'i.N.eq.b1.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
   // entradas salen de mediciones. Las funciones de abajo estan **leidas del

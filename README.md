@@ -15,8 +15,8 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 | Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
 | Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
-| Rutas crudas con conversión medida | 5 —frecuencia, Q, pasa-altos y pasa-bajos del ecualizador contra el filtro real, y el envío a monitor contra la salida del auxiliar—, todas con bucle externo. `validate-numeros` las cuenta |
-| Rutas crudas que el motor deja escribir | **1 de esas 5**, el envío a monitor. Las cuatro del ecualizador las rechaza INV-004: `LIMITES` da una unidad por `kind` y la ley medida está en Hz contra un tope en dB. Medir más leyes del ecualizador no las hace escribibles ([hallazgo](docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)) |
+| Rutas crudas con conversión medida | 6 —frecuencia, Q, **ganancia**, pasa-altos y pasa-bajos del ecualizador contra el filtro real, y el envío a monitor contra la salida del auxiliar—, todas con bucle externo. `validate-numeros` las cuenta |
+| Rutas crudas que el motor deja escribir | **2 de esas 6**: el envío a monitor y, desde el 2026-09-16, la **ganancia del ecualizador de canal**, que está en dB igual que el tope de su `kind`. Las otras cuatro del ecualizador las sigue rechazando INV-004: `LIMITES` da una unidad por `kind` y sus leyes están en Hz y en Q contra un tope en dB ([hallazgo](docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)). Medir la ganancia sí las mueve porque es la única hoja del ecualizador cuya unidad coincide con la del tope |
 
 ---
 

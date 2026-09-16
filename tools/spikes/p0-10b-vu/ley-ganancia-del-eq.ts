@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   Ui24rTransport, codificarSetd, decodificarVuCanales,
-  dbDeMedidor,
+  dbDeMedidor, MEDIDOR_RANGO_DB,
 } from '@vse/mixer-adapter';
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
@@ -202,8 +202,53 @@ const EXCURSION_PREVISTA_DB = 30;
  * determinada.
  */
 const PUNTOS_MINIMOS = 10;
-/** Menos cuadros VU2 que esto y el promedio no es un promedio. */
-const CUADROS_MINIMOS = 20;
+/**
+ * El piso de cuadros VU2 por captura, y **por que ya no son 20**.
+ *
+ * **La premisa vieja estaba dada vuelta para este estimulo.** El criterio era 20
+ * cuadros, con el argumento «menos que esto y el promedio no es un promedio»,
+ * que supone cuadros como muestras ruidosas a promediar. Medido el 2026-09-15:
+ * la consola emite `VU2` cuando el nivel CAMBIA, no a cadencia fija --138
+ * cuadros en 6 s con 13 valores distintos en silencio, contra 12 cuadros con UN
+ * valor distinto con un tono sostenido--. Ver
+ * `docs/backlog/hallazgo-el-medidor-se-emite-por-cambio.md`.
+ *
+ * Este item mide con un tono sostenido a proposito, o sea con el medidor quieto,
+ * o sea en la condicion que menos cuadros produce. El criterio castigaba a la
+ * corrida por hacer bien lo que el contrato le pide, y la castigaba MAS cuanto
+ * mas estable estuviera el banco. Las tres capturas de la segunda corrida
+ * juntaron 8, 8 y 5 cuadros: no faltaba informacion, sobraba exigencia.
+ *
+ * **Tres es un piso, no una muestra**: con menos no hay con que comparar. Lo que
+ * de verdad protege el promedio es el acuerdo entre las lecturas, y de eso se
+ * ocupa `RECORRIDO_MAXIMO_DEL_MEDIDOR_DB`.
+ */
+const CUADROS_MINIMOS = 3;
+/**
+ * Cuanto pueden separarse entre si las lecturas del medidor dentro de UNA captura.
+ *
+ * **Sale del aparato, no de una preferencia.** El medidor tiene
+ * `MEDIDOR_RANGO_DB` = 80 dB repartidos en 255 escalones, o sea **0,3137 dB por
+ * escalon**. Este tope son **dos escalones**: el minimo que tolera el ruido de
+ * cuantizacion sin dejar pasar un medidor que se mueve de verdad.
+ *
+ * Dentro de una captura la ganancia esta fija y el tono es sostenido, asi que el
+ * medidor deberia estar quieto; las corridas medidas dan **un** valor distinto
+ * por captura, o sea recorrido cero, con los dos escalones enteros de margen.
+ *
+ * **Es mas exigente que el criterio viejo donde importa.** Veinte cuadros
+ * moviendose cinco decibeles pasaban el anterior y son basura; tres cuadros
+ * identicos lo fallaban y son una medicion perfecta. Este invierte los dos.
+ */
+const RECORRIDO_MAXIMO_DEL_MEDIDOR_DB = 2 * (MEDIDOR_RANGO_DB / 255);
+/**
+ * Cuanto se espera de mas, por captura, a que el medidor junte sus tres cuadros.
+ *
+ * Con 42 puntos, el peor caso agrega poco mas de dos minutos a una corrida de
+ * seis. Es barato comparado con volver a correrla entera porque una captura se
+ * quedo callada.
+ */
+const ESPERA_EXTRA_MAXIMA_MS = 3000;
 /**
  * C1: el plano tiene que estar al menos esto por encima del piso efectivo.
  *
@@ -323,6 +368,13 @@ type Medida = {
   ventanaMs: number;
   /** Cuadros que llegaron FUERA de la ventana y no entraron al promedio. */
   descartados: number;
+  /**
+   * Cuanto se separan entre si las lecturas del medidor de esta captura.
+   *
+   * Con la ganancia fija y el tono sostenido deberia ser cero. Es lo que decide
+   * si el promedio significa algo, en lugar de cuantas lecturas hubo.
+   */
+  recorridoDelMedidor: number;
   /** El bin del centro de la banda: lo que se mide. */
   centroDb: number;
   /** El ruido del bin del testigo. Sin esto, un C2 en rojo no se diagnostica. */
@@ -334,6 +386,13 @@ type Medida = {
 
 let sonando: ReturnType<typeof spawn> | null = null;
 let falloDelTono: Error | null = null;
+/** El recorrido en dB de un conjunto de posiciones de medidor. Iguales => 0. */
+const recorridoEnDb = (posiciones: number[]): number => {
+  if (posiciones.length === 0) return NaN;
+  const alto = Math.max(...posiciones);
+  const bajo = Math.min(...posiciones);
+  return alto === bajo ? 0 : dbDeMedidor(alto) - dbDeMedidor(bajo);
+};
 const media = (xs: number[]): number => (xs.length === 0 ? NaN : xs.reduce((s, x) => s + x, 0) / xs.length);
 
 async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
@@ -364,15 +423,36 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
     hijo.on('error', rechazar);
     hijo.on('close', (c) => resolver(c));
   });
-  const t1 = Date.now();
   if (codigo !== 0) {
     throw new Error(`el grabador salio con ${codigo} en la captura «${etiqueta}» tras `
-      + `${t1 - t0} ms (se pidieron ${SEGUNDOS_DE_CAPTURA} s). Lo que dijo: `
+      + `${Date.now() - t0} ms (se pidieron ${SEGUNDOS_DE_CAPTURA} s). Lo que dijo: `
       + `${errorDelGrabador.trim() === '' ? '(nada)' : errorDelGrabador.trim()}`);
   }
-  // **Solo los cuadros que llegaron DENTRO de la ventana de grabacion.** Ver el
-  // docblock de `cuadros`: sin este filtro, el promedio arrastra los del punto
-  // anterior.
+  // **La ventana se ALARGA si el medidor no hablo, en vez de anular la captura.**
+  //
+  // La corrida del 2026-09-16 se freno con CERO cuadros en la captura «plano».
+  // No era falta de senal --el tono estaba y el bin lo confirmaba-- sino lo
+  // contrario: el nivel estaba tan quieto que la consola no tuvo nada que
+  // informar. Con un flujo que se emite por cambio, un medidor perfectamente
+  // estable puede callarse una ventana entera.
+  //
+  // **Alargar es legitimo, y conviene decir por que.** Durante todo el punto la
+  // ganancia esta fija y el tono es sostenido, asi que el nivel del canal es una
+  // propiedad del estado y no de esos 3,5 s en particular: un cuadro que llega
+  // medio segundo despues describe el mismo estado. Lo que NO se alarga es el
+  // audio --el bin del centro y el del testigo siguen saliendo de la misma
+  // captura, que es lo que C2 necesita para comparar el mismo instante--.
+  //
+  // Se espera de a poco y con tope. Si el tope se agota, la captura se queda con
+  // lo que junto y la guarda decide: es preferible informar «no hablo» a inventar
+  // una espera infinita en el medio de un barrido con el tono sonando.
+  let t1 = Date.now();
+  const topeDeEspera = t1 + ESPERA_EXTRA_MAXIMA_MS;
+  while (cuadros.filter((x) => x.llegada >= t0).length < CUADROS_MINIMOS
+    && Date.now() < topeDeEspera) {
+    await new Promise((r) => { setTimeout(r, 400); });
+    t1 = Date.now();
+  }
   const xs = cuadros.filter((x) => x.llegada >= t0 && x.llegada <= t1);
   const ventanaMs = t1 - t0;
   const descartados = cuadros.length - xs.length;
@@ -395,12 +475,21 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
   // diagnosticar: hace falta la serie, no el caso que fallo.
   console.log(`   [captura ${etiqueta}] ${xs.length} cuadros VU2 en ${ventanaMs} ms`
     + ` = ${(xs.length / (ventanaMs / 1000)).toFixed(1)}/s`
-    + (descartados > 0 ? `, ${descartados} fuera de ventana descartado(s)` : ''));
+    + (descartados > 0 ? `, ${descartados} fuera de ventana descartado(s)` : '')
+    + `, se separan ${xs.length === 0 ? '(sin datos)'
+      : `${recorridoEnDb(xs.map((x) => x.canalSalida)).toFixed(2)} dB`}`);
   const c = anCentro.canales[ENTRADA_GENERAL_MEDIDA]!;
   const tg = anTestigo.canales[ENTRADA_GENERAL_MEDIDA]!;
   return {
     canalDb: dbDeMedidor(media(xs.map((x) => x.canalSalida))),
     cuadros: xs.length,
+    // **Con todas las lecturas iguales el recorrido es CERO, aunque sean
+    // -Infinity.** Con el canal muteado el medidor da posicion 0, que
+    // `dbDeMedidor` manda a -Infinity, y la resta daba `NaN` --que despues
+    // fallaba toda comparacion y se leia como «el medidor se movio»--. Un
+    // conjunto de valores identicos no tiene dispersion, y el caso mudo es el
+    // mas identico de todos.
+    recorridoDelMedidor: recorridoEnDb(xs.map((x) => x.canalSalida)),
     ventanaMs,
     descartados,
     centroDb: c.tonoDb,
@@ -729,7 +818,17 @@ await conRestauracion(
       if (m.recorta) throw new Error(`la captura «${nombre}» de L1 recorta`);
       if (m.cuadros < CUADROS_MINIMOS) {
         throw new Error(`la captura «${nombre}» de L1 tiene ${m.cuadros} cuadros VU2 y hacen `
-          + `falta ${CUADROS_MINIMOS}: el promedio no es un promedio.`);
+          + `falta ${CUADROS_MINIMOS}: con menos de tres no hay con que comparar. OJO: pocos `
+          + `cuadros NO significa que falte senal --el flujo se emite por cambio y un tono `
+          + `sostenido casi no lo mueve--; si son cero, la consola no emitio nada en la `
+          + `ventana y hay que alargarla, no bajar el piso.`);
+      }
+      if (!(m.recorridoDelMedidor <= RECORRIDO_MAXIMO_DEL_MEDIDOR_DB)) {
+        throw new Error(`las lecturas del medidor en la captura «${nombre}» de L1 se separan `
+          + `${m.recorridoDelMedidor.toFixed(2)} dB y el tope es `
+          + `${RECORRIDO_MAXIMO_DEL_MEDIDOR_DB.toFixed(2)} (dos escalones del medidor). Con la `
+          + `ganancia fija y el tono sostenido el medidor deberia estar quieto: que se mueva `
+          + `dice que la fuente no es estable, y el promedio no representa a ningun momento.`);
       }
       if (!(m.centroDb - pisoEfectivo >= MARGEN_MINIMO_DB)) {
         throw new Error(`la captura «${nombre}» de L1 esta a `
@@ -824,7 +923,7 @@ let l8DesvioArriba: number | undefined;
 //
 // **Esta pasada se perdio en una edicion y una auditoria lo encontro.** Sin ella
 // `anulado` nacia en `null` y moria en `null`: `utiles` era `puntos`, un punto
-// hundido en el ruido o una captura que recorto puntuaban igual, `CUADROS_MINIMOS`
+// hundido en el ruido o una captura que recorto puntuaban igual, el piso de cuadros
 // quedaba muerto, el detector de recorte pasaba de guarda a adorno, y **la guarda
 // del punto de referencia quedaba vestigial** --su `ref.anulado !== null` no podia
 // ser verdadero nunca--. El fosil que lo delataba era el rotulo «TERCERA» sin
@@ -840,7 +939,11 @@ for (const p of puntos) {
   }
   if (p.m.recorta && p.anulado === null) p.anulado = 'la captura recorta';
   if (p.m.cuadros < CUADROS_MINIMOS && p.anulado === null) {
-    p.anulado = `solo ${p.m.cuadros} cuadros VU2: el promedio no es un promedio`;
+    p.anulado = `solo ${p.m.cuadros} cuadros VU2: con menos de tres no hay con que comparar`;
+  }
+  if (!(p.m.recorridoDelMedidor <= RECORRIDO_MAXIMO_DEL_MEDIDOR_DB) && p.anulado === null) {
+    p.anulado = `el medidor se movio ${p.m.recorridoDelMedidor.toFixed(2)} dB dentro de la `
+      + `captura, y el tope son ${RECORRIDO_MAXIMO_DEL_MEDIDOR_DB.toFixed(2)}`;
   }
   // **Y el testigo tambien tiene que estar sobre SU piso.** C2 se decide sobre el
   // bin de 37 Hz, que es zona de retumbe y de la falda del pasa-altos; sin esto,

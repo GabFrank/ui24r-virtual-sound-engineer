@@ -1,5 +1,48 @@
 # 108 — La ley de la ganancia del ecualizador de canal
 
+## MEDIDA el 2026-09-16: son ±20 dB
+
+**`dB = 40·V − 20`.** Todos los controles y todas las expectativas en verde, a la
+cuarta corrida. Evidencia:
+[`ley-ganancia-del-eq-2026-09-16b.txt`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt).
+
+| | medido | tope |
+|---|---|---|
+| pendiente de la recta | **39.999 dB** por unidad de crudo | — |
+| ordenada | **-19.999 dB** | — |
+| residuo máximo (L3) | **0.01 dB** | 0.3 |
+| término cuadrático (L3b) | **0.004 dB** | 0.15 |
+| recorrido total (L4) | **40.00 dB** sobre 41 puntos | 24 mínimo |
+| realce y corte máximos (L5) | **20.00 dB** y **-19.99 dB** | — |
+| asimetría (L5) | **0.01** | 0.5 |
+| plano contra puenteado (L1) | **0.00** | 0.2 |
+
+**La contradicción queda resuelta y la tabla estaba mal.** Declaraba
+`lineal(−15, +15)`; el manual decía ±20 y el ítem 101 había visto +20,0 exactos en
+el extremo. Los dos tenían razón. `raw-map.ts` pasa a `40·V − 20` en estado
+`PROBADO` —se redondea desde 39,999 a propósito: escribir la milésima sería
+fabricar una precisión que la corrida no distingue de 40 exactos—.
+
+**Y sale un regalo que era condicional.** El barrido llegó a los dos extremos
+vivos, así que L8 pudo decidir: **el medidor del canal se comporta como de PICO**,
+y nada recortó adentro de la consola. Es la primera vez en este proyecto que la
+distinción entre pico y potencia importa, porque el 99b calibró la escala con un
+solo seno, donde las dos se diferencian en una constante que se cancela.
+
+**Lo que costó llegar.** Tres corridas fallidas antes: dos por una guarda cuya
+premisa estaba dada vuelta para su propio estímulo, y una —
+[`ley-ganancia-del-eq-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16.txt)—
+porque la consola se calló entera durante una captura, que es el caso que este
+mismo contrato había declarado posible y sin observar. Las cuatro dejaron la
+consola restaurada y el supresor sin plantar un solo filtro.
+
+**Lo que sigue valiendo de «Lo que esta corrida NO va a decir»**: una banda de
+cinco, un canal de veinticuatro, una frecuencia, un Q, un nivel de fuente y un
+día. Nada sobre la forma de la campana ni sobre el ecualizador de salida. Y un
+acuerdo dentro del umbral es una **cota**, no una identidad.
+
+---
+
 **Contrato escrito el 2026-09-13, ANTES de tocar la consola.** Consola
 192.168.0.78. Canal 10 (`i.9`) → general → entrada 1 de la Scarlett, el mismo
 banco que el ítem 107.
@@ -207,11 +250,92 @@ existe. Lo que el medidor tiene que seguir es
 **L7 — el crudo escrito contra el releído**, con dos crudos fuera de la rejilla de
 centésimos a propósito.
 
-**Mínimos y anulación**: 10 puntos útiles para L3 y L3b, 20 cuadros por captura,
-45 dB de margen sobre el piso efectivo, y **45 dB del testigo sobre su propio
-piso** —que se mide, porque 37 Hz es zona de retumbe y de la falda del pasa-altos,
-y sin eso un C2 en rojo no se puede diagnosticar—. Una captura que recorta se
-anula.
+**Mínimos y anulación**: 10 puntos útiles para L3 y L3b, **3 cuadros por captura y
+un acuerdo entre ellos de 0,63 dB** —corregido el 2026-09-16; decía 20 cuadros, y
+por qué cambió está abajo—, 45 dB de margen sobre el piso efectivo, y **45 dB del
+testigo sobre su propio piso** —que se mide, porque 37 Hz es zona de retumbe y de
+la falda del pasa-altos, y sin eso un C2 en rojo no se puede diagnosticar—. Una
+captura que recorta se anula.
+
+### El mínimo de cuadros tenía la premisa dada vuelta
+
+**Corregido el 2026-09-16, después de dos corridas que no dieron ley.** El
+criterio era «20 cuadros por captura», con este argumento: *«menos cuadros que
+esto y el promedio no es un promedio»*. Supone que los cuadros son **muestras
+ruidosas** que hay que promediar para sacarles el ruido.
+
+**Medido el 2026-09-15, ese supuesto es falso para este estímulo.** La consola
+emite `VU2` cuando el nivel **cambia**, no a cadencia fija: en silencio da
+138 cuadros en 6 s con 13 valores distintos, y con un tono sostenido da 12 cuadros
+con **un solo valor distinto**. Está en
+[`hallazgo-el-medidor-se-emite-por-cambio.md`](../backlog/hallazgo-el-medidor-se-emite-por-cambio.md).
+
+Un tono sostenido es, por construcción, el estímulo que menos cuadros produce
+—el medidor queda quieto y no hay nada nuevo que contar—. Y este ítem mide con un
+tono sostenido **a propósito**. O sea que el criterio castigaba a la corrida
+justamente por hacer bien lo que el contrato le pide, y la castigaba **más cuanto
+más limpio y estable estuviera el banco**. Una guarda que se endurece con la
+calidad de la medición no está midiendo la calidad de la medición.
+
+Las tres capturas de la segunda corrida juntaron 8, 8 y 5 cuadros, todas por
+debajo de 20. Doce cuadros con un solo valor promedian exactamente igual que
+doscientos: no faltaba información, sobraba exigencia.
+
+**El criterio nuevo pregunta lo que el viejo quería preguntar.** Lo que hay que
+proteger no es que lleguen muchas lecturas sino que el promedio **signifique
+algo**, y con un flujo por cambio eso se comprueba mirando si las lecturas
+**coinciden entre sí**:
+
+- **Al menos 3 cuadros.** Es un piso, no una muestra: con menos de tres no hay
+  con qué comparar. No sale de una teoría, sale de que con dos no se puede
+  distinguir una coincidencia de una casualidad.
+- **Y un recorrido máximo de 0,63 dB entre el mayor y el menor.** El medidor de
+  esta consola tiene **80 dB en 255 escalones, o sea 0,3137 dB por escalón**
+  (`MEDIDOR_RANGO_DB`), así que 0,63 dB son **dos escalones**: el mínimo que
+  tolera el ruido de cuantización sin dejar pasar un medidor que se mueve de
+  verdad. Las corridas medidas dan **un** valor distinto por captura, o sea
+  recorrido cero, con dos escalones enteros de margen.
+
+**Es más exigente que el viejo donde importa.** Veinte cuadros moviéndose cinco
+decibeles pasaban el criterio anterior y son basura; tres cuadros idénticos lo
+fallaban y son una medición perfecta. El criterio nuevo invierte los dos
+veredictos, que es lo que hay que pedirle a una corrección.
+
+### Y la consola se calló entera, en la corrida siguiente
+
+Este contrato declaró el caso como posible y no observado —*«si la consola llegara
+a no emitir **ningún** cuadro durante una captura»*— y anotó que, si aparecía, el
+arreglo era **alargar la ventana y no bajar el piso**.
+
+**Apareció en la corrida inmediatamente posterior, el 2026-09-16.** La captura
+«plano» de L1 juntó **0 cuadros en 3 471 ms**, mientras la de «puenteado», tomada
+segundos antes, juntaba 6 con un recorrido de 0,00 dB. No era falta de señal —el
+bin del centro la confirmaba— sino lo contrario: el nivel estaba tan quieto que la
+consola no tuvo nada que informar.
+
+Así que se implementó lo que estaba escrito. **La ventana del medidor se alarga
+—hasta 3 s más— hasta juntar los tres cuadros**, y sólo entonces se cierra.
+
+**Por qué alargar es legítimo, que es la parte que hay que justificar.** Durante
+todo el punto la ganancia está fija y el tono es sostenido, así que el nivel del
+canal es una **propiedad del estado**, no de esos 3,5 s en particular: un cuadro
+que llega medio segundo después describe el mismo estado. Lo que **no** se alarga
+es el audio —el bin del centro y el del testigo siguen saliendo de la misma
+captura, que es lo que C2 necesita para comparar el mismo instante—.
+
+**Y el tope es tope.** Si los 3 s extra se agotan, la captura se queda con lo que
+juntó y la guarda decide. Esperar sin límite en medio de un barrido, con el tono
+sonando sobre la consola del usuario, sería peor que informar que el medidor no
+habló.
+
+Coste: 42 puntos por 3 s de peor caso son poco más de dos minutos sobre una
+corrida de seis, y sólo si **todas** las capturas se callan.
+
+**Lo que sigue sin garantía.** Que 3 s alcancen sale de la cadencia observada —el
+flujo da 2 cuadros/s con tono sostenido—, y eso es una observación de esta
+consola, este firmware y este día. Ningún proyecto de terceros documenta la
+cadencia del `VU2` ni su dependencia del cambio, así que no hay contra qué
+contrastarlo.
 
 Si falla **C1, C2, L1, L2, L4 o L8**, no se imprime ley. Y si el punto de
 referencia está anulado, tampoco: de él cuelga toda la ley.

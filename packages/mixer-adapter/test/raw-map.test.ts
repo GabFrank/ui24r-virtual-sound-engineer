@@ -11,14 +11,21 @@ test('ADR-006: una ruta sin mapeo no se escribe', () => {
 test('ADR-006: una conversión no verificada en hardware no se escribe', () => {
   // Todas las entradas arrancan sin verificar: llenarlas con conversiones
   // inventadas es exactamente el riesgo que esta tabla evita.
-  // **El ejemplo cambia cuando el hecho cambia.** Hasta el 2026-09-13 este test
-  // usaba `i.N.eq.hpf.freq`, que entonces era un numero puesto a ojo en
-  // DESCONOCIDO. La medicion 103 lo midio y lo promovio, asi que el ejemplo pasa a
-  // la ganancia del ecualizador, que sigue sin medirse.
-  const r = aRaw('i.N.eq.b1.gain', 5);
+  //
+  // **El ejemplo cambia cuando el hecho cambia, y ya cambio dos veces.** Hasta el
+  // 2026-09-13 era `i.N.eq.hpf.freq`, un numero puesto a ojo; la medicion 103 lo
+  // midio y lo promovio. Paso entonces a `i.N.eq.b1.gain`, y el item 108 la midio
+  // el 2026-09-16: son ±20 dB, `40·V - 20`.
+  //
+  // **Con eso se acabaron las entradas DESCONOCIDO**, asi que el ejemplo ya no
+  // puede ser una. Pasa a `i.N.gate.thresh`, que esta en INFERIDO: su formula
+  // esta LEIDA del `mixer.html` de la consola, no medida contra el aparato. El
+  // motor la rechaza igual, y por el mismo motivo de fondo --nadie la comprobo
+  // contra el hardware--, que es lo que este test protege.
+  const r = aRaw('i.N.gate.thresh', 5);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.codigo, 'NO_PROBADO');
-  assert.match(r.ok === false ? r.mensaje : '', /SPK-P0.2b/,
+  assert.match(r.ok === false ? r.mensaje : '', /SPK-/,
     'el mensaje dice qué spike lo desbloquea');
 });
 
@@ -38,10 +45,23 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // rechaza por INV-004. Ver
   // `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   //
-  // **El test sigue siendo un trinquete**: si aparece una sexta sin que alguien
+  // **La sexta, `i.N.eq.b1.gain`, es del ítem 108 del 2026-09-16**: barrió 42
+  // puntos con dos tonos midiendo cuántos decibeles cambia el nivel en el centro
+  // de la banda como función del crudo. La recta da 39,999 dB por unidad y
+  // ordenada -19,999, con residuo máximo de 0,01 dB. O sea ±20 dB, contra los ±15
+  // que esta tabla declaraba. Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt`.
+  //
+  // **Y es la segunda que el motor puede usar de verdad**, porque está en dB
+  // igual que el tope de su `kind`. Las cuatro del ecualizador que siguen sin
+  // servir están en Hz y en Q. Medir la ganancia sí movió la aguja, y por eso
+  // este ítem existía: es la única hoja del ecualizador cuya unidad coincide.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una séptima sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
   assert.deepEqual([...rutasProbadas()].sort(),
-    ['i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
+    ['i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain', 'i.N.eq.b1.q',
+      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 
