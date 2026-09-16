@@ -68,6 +68,24 @@ con INV-034:
 - **INV-004**, tope acumulado: sumaba magnitudes en vez de desplazamiento neto,
   así que bloqueaba justamente el movimiento que devuelve el parámetro hacia su
   valor inicial.
+- **INV-004**, y esto no es un defecto sino un supuesto que dejó de serlo: **la
+  consola NO recorta un crudo fuera de rango**. Medido el 2026-09-16 sobre
+  `i.4.mix`, en un canal silenciado y con el fader abajo: se le pidieron 1,5,
+  −0,2 y 2, y **los tres quedaron escritos tal cual**, releídos por HTTP.
+  Evidencia:
+  [`recorta-la-consola-2026-09-16.txt`](spikes/SPK-P0.2a/evidence/recorta-la-consola-2026-09-16.txt).
+
+  Hasta esa medición la respuesta estaba **inferida de otro modelo de consola**,
+  una Ui16, y una invariante de seguridad apoyada en el comportamiento de un
+  aparato distinto es una invariante con un supuesto adentro. Ahora está medida
+  en el aparato que importa, y dice lo mismo: **no hay red de contención del lado
+  de la consola**. Toda la guarda tiene que estar en la aplicación, que es donde
+  INV-004 la pone — así que la invariante no cambia; lo que cambia es que ya no
+  se apoya en un préstamo.
+
+  Alcance de lo medido, dicho para que nadie lo estire: **una ruta de fader en un
+  canal**. Nada sobre `hw.N.gain` —la ganancia analógica del previo, que no se
+  tocó a propósito— ni sobre rutas de otro tipo.
 - **INV-019**, lista blanca: estaba escrita y el motor rechazaba todo con el
   paro activo, incluido un retroceso. Funcionaba porque el retroceso no pasaba
   por el motor, que no es lo mismo que estar permitido.
