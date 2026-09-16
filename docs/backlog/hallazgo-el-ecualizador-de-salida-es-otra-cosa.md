@@ -5,6 +5,25 @@
 sólo una se midió. Leído del cliente verificado y del estado real de la consola;
 **no se escribió nada**.
 
+> **Corrección de procedencia, 2026-09-16.** La parte estructural de este
+> documento —que el ecualizador de salida del general es un **gráfico de 31 bandas
+> por lado**, con las claves `m.eq.peak.l.0`…`.30` y sin factor de calidad— **ya
+> estaba escrita en `safety-invariants.md`, en el texto de INV-004, desde el
+> 2026-09-11**. No es un hallazgo de esta madrugada y se corrige acá para no
+> atribuírselo.
+>
+> **Lo que esta nota sí agrega**, y es bastante menos de lo que el título sugiere:
+> el conteo sobre el aparato real —31 bandas en cada uno de los **diez
+> auxiliares**, y **ninguna** en subgrupos ni en bloques de efectos, que INV-004 no
+> dice—, la atribución de la ley de ±15 dB a esas rutas leyendo `VtoEQGAIN15` en el
+> cliente, y la advertencia explícita de no transferirles la ley medida del canal.
+>
+> **Y es la tercera vez en la misma madrugada.** Antes pasó con los ±15 —la
+> respuesta estaba archivada en dos lugares— y con la relación infinita del
+> compresor, que `raw-map.ts` ya decía. El patrón no es que falte información: es
+> que está repartida en documentos que nadie cruza. Eso vale más que cualquiera de
+> los tres hallazgos.
+
 ## Las tres superficies, que no son la misma con distinto prefijo
 
 | Superficie | Clave | Estructura | Ley de la ganancia |
