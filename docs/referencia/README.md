@@ -33,6 +33,51 @@ como no verificada.
 
 ## Lo que aporta, y que el proyecto no tenía
 
+### Los rangos del manual contra las fórmulas del cliente, uno por uno
+
+**2026-09-16.** Con el extracto del cliente
+[verificado contra la consola](../backlog/hallazgo-la-respuesta-estaba-archivada.md)
+el mismo día, se puede hacer algo que no se había hecho: **evaluar cada fórmula en
+los extremos del crudo y compararla contra el rango que declara el manual**. Son
+dos fuentes independientes —el papel del fabricante y el código de su propio
+cliente— y este proyecto ya usó ese cruce para el Q.
+
+| Parámetro | Manual | La fórmula, en V=0 y V=1 | |
+|---|---|---|---|
+| Compresor: ataque | 1 … 400 ms | `400^d(V)` → 1 … 400 | ✔ |
+| Compresor: relajación | 10 … 2000 ms | `10·200^d(V)` → 10 … 2000 | ✔ |
+| Compresor: umbral | −90 … +6 dB | `96·V − 90` → −90 … +6 | ✔ |
+| Compresor: compensación | −24 … +48 dB | `72·V − 24` → −24 … +48 | ✔ |
+| Puerta: umbral | −inf … +6 dB | `96·V − 90` → −90 … +6, y el cliente escribe `-inf` por debajo de −89 | ✔ |
+| Puerta: profundidad | −inf … 0 dB | `60·V − 60` → −60 … 0, con piso de pantalla en −60 | ✔ |
+| Puerta: ataque | — | `400^d(V)` → 1 … 400 | — |
+| Puerta: relajación | — | `5·400^d(V)` → 5 … 2000 | — |
+| Puerta: retención | — | `2000^d(V)` → 1 … 2000 | — |
+| De-esser: frecuencia | 2 … 15 kHz | `2000·7,5^V` → 2000 … 15000 | ✔ |
+| EQ de canal: ganancia | −20 … +20 dB | `40·V − 20` → −20 … +20 | ✔ **y medido** |
+| EQ de canal: Q | 0,05 … 15 | `0,05·300^V` → 0,05 … 15 | ✔ |
+| EQ de canal: frecuencia | 20 Hz … 22 kHz | `20·1102,5^V` → 20 … 22050 | ✔ |
+| EQ de salida: ganancia | ±15 dB | `30·V − 15` → −15 … +15 | ✔ |
+| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el cliente escribe `inf` por encima de **60** | **✘ no cuadra** |
+
+Con `d(V) = 1 − (1 − V)²`.
+
+**Trece de catorce coinciden exactamente.** Eso no convierte las fórmulas en leyes
+medidas —siguen describiendo la **pantalla**, y la medición 97 refutó dos de ellas
+contra el audio— pero sí las saca de «fuente única»: el rango que publican es el
+que el fabricante declara en papel.
+
+**La que no cuadra es la relación del compresor**, y vale la pena no taparla. El
+manual declara un tope de 50:1; el formateador del cliente muestra `inf` recién
+por encima de 60, que sale de un crudo de 0,0167 en vez del 0,02 que daría 50.
+Puede ser que el control esté limitado por otro lado, o que uno de los dos números
+esté redondeado. **No se resuelve leyendo**, y es coherente con que esta sea
+justamente la ley que la medición 97 ya refutó por otro motivo.
+
+**Esta comparación no tiene guarda propia, y no hace falta**: si una fórmula del
+cliente cambia, lo detecta `tools/spikes/p0-2a/cliente-sigue-igual.ts`, que
+compara las 56 funciones contra el extracto archivado.
+
 ### La tabla de especificaciones
 
 Rangos declarados por el fabricante. **Ninguno está medido contra el aparato**,
