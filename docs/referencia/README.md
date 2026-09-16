@@ -46,12 +46,12 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 | Compresor: relajación | 10 … 2000 ms | sin medir |
 | Compresor: compensación | −24 … +48 dB | `i.N.dyn.outgain` con `72a − 24`, o sea −24 … +48 ✔ |
 | Puerta: umbral | −inf … +6 dB | `96a − 90`, o sea −90 … +6 |
-| **Puerta: profundidad** | **−inf … 0 dB** | `60a − 60`, o sea **−60 … 0** |
+| Puerta: profundidad | −inf … 0 dB | `60a − 60`, o sea −60 … 0. **Resuelto el 2026-09-16: no es una discrepancia** — el cliente formatea esta perilla con un piso de −60 y muestra **−∞** en cuanto el valor lo alcanza, y la ley da exactamente −60 en el extremo. El manual describe la pantalla; la tabla, el crudo ✔ |
 | De-esser: umbral | −90 … 6 dB | sin entrada |
 | De-esser: relación | infinito … 1:1 | sin entrada |
 | De-esser: frecuencia | 2 … 15 kHz | `2000 · 7,5^a`, o sea 2 … 15 kHz ✔ |
 | EQ de canal: ganancia | −20 … +20 dB | **MEDIDO el 2026-09-16: `40·V − 20`, o sea −20 … +20 ✔** — el manual tenía razón y la tabla estaba mal. Ver el [ítem 108](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md) |
-| **EQ de canal: Q** | **0,05 … 15** | **0,3 … 10** |
+| EQ de canal: Q | 0,05 … 15 | `0,05 · 300^V`, que en el rango completo del crudo da **exactamente 0,05 … 15,0000** ✔. **Resuelto el 2026-09-16: tampoco era una discrepancia** — lo que la tabla publica como rango físico es el **tramo que se midió** (crudo 0,35 … 0,70), no el recorrido del control |
 | EQ de canal: frecuencia | 20 Hz … 22 kHz | 20 … 20 000 Hz |
 | EQ de salida | 31 bandas, ±15 dB | igual ✔ |
 | **Ganancia de entrada** | **−6 … +58 dB** | el recorrido medido da −6,0 … +55,9 |
@@ -80,7 +80,21 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 > mismo archivo. Así que la corrida no sobró; lo que sobró fue el tiempo que la
 > contradicción estuvo escrita sin que nadie la resolviera.
 >
-> **Quedan dos en negrita**, y siguen abiertas: el Q y la profundidad de la puerta.
+> **Las otras dos se cerraron el mismo día, leyendo, y ninguna era una
+> contradicción.** El Q: `0,05 · 300^V` evaluado en el rango completo del crudo da
+> exactamente 0,05 … 15,0000, que es el manual clavado; lo que la tabla publica es
+> el **tramo medido** (crudo 0,35 … 0,70), no el recorrido del control, y comparar
+> uno contra otro es comparar dos cosas distintas. La profundidad de la puerta: el
+> cliente la formatea con un piso de −60 y muestra **−∞** en cuanto el valor lo
+> alcanza, y la ley da justo −60 en el extremo; el manual describe la pantalla y
+> la tabla el crudo.
+>
+> **De las tres en negrita, una era real y dos eran aparentes**, y conviene no
+> quedarse con la parte cómoda de esa frase. La real —los ±15— costó meses y una
+> medición. Las dos aparentes costaron media hora de lectura **que nadie había
+> hecho en meses**, y mientras tanto estuvieron ahí marcadas, indistinguibles de
+> la que sí importaba. Una lista de sospechas sin depurar le quita fuerza a la
+> sospecha que vale.
 
 ### La relación del compresor llega hasta 50:1
 
