@@ -369,6 +369,34 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   deLaConsola('i.N.dyn.outgain', 'dB', (a) => 72 * a - 24, (db) => (db + 24) / 72),
   deLaConsola('i.N.deesser.freq', 'Hz', (a) => 2000 * Math.pow(7.5, a),
     (hz) => Math.log(hz / 2000) / Math.log(7.5)),
+  // **El ecualizador GRAFICO de salida, medido contra el audio el 2026-09-16.**
+  //
+  // `30·V - 15`, o sea ±15 dB. El item 109 barrio la banda 17 del auxiliar 5 con
+  // retorno por la interfaz: pendiente 29,990, ordenada -14,995, residuo maximo
+  // **0,001 dB** sobre un tope de 0,3, recorrido 29,99 y asimetria 0,00. La
+  // formula del cliente --`VtoEQGAIN15`-- resulto exacta, igual que paso con la
+  // del canal en el 108. Se redondea a 30 y 15: la milesima no se distingue de
+  // cero con esta corrida.
+  //
+  // **NO es el ecualizador de canal con otro prefijo, y confundirlos falla por
+  // dos lados.** El canal tiene 5 bandas parametricas con frecuencia y Q y una
+  // ley de ±20; esto es un grafico de 31 bandas sin Q, con ±15. Y `m.eq.b1.gain`
+  // no existe. Ver
+  // `docs/backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md`.
+  //
+  // **Alcance, y por eso el general NO esta en la tabla todavia:** se midio UNA
+  // banda de UN auxiliar. El general tiene su propio grafico --`m.eq.peak.l.K` y
+  // `.r.K`-- y que comparta la ley es una suposicion razonable, no un resultado.
+  // Entra cuando se mida.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`
+  medido(
+    'a.M.eq.peak.K', 'dB',
+    (v) => 30 * v - 15,
+    (db) => (db + 15) / 30,
+    0, 1, 'SPK-P0.2c',
+  ),
   // `i.N.dyn.ratio` **no esta en la tabla, a proposito**, y ahora hay dos
   // razones en vez de una.
   //

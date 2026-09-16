@@ -258,8 +258,17 @@ test('INV-008: la ecualización de salida solo va a los buses declarados', () =>
   const e = new SafetyEngine();
   const permitido: CambioPropuesto = {
     kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-    valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0,
+    // **El crudo y la magnitud tienen que ser coherentes, y hasta el 2026-09-16
+    // nadie podia notar que no lo eran.** Estos fixtures declaraban el crudo -2
+    // como «-2 dB»: mientras el grafico de salida no tenia conversion,
+    // `verificarAtadura` devolvia SIN_LEY_VERIFICADA --que no es un rechazo-- y
+    // la incoherencia pasaba. El item 109 midio la ley del grafico del auxiliar
+    // --`30·V - 15`-- y entonces el crudo -2 pasa a significar -75 dB, asi que
+    // la atadura rechaza ANTES que INV-008 y el test dejaba de probar lo suyo.
+    // Con el crudo correcto de -2 dB, la atadura pasa y el rechazo vuelve a ser
+    // el del bus, que es lo que este test dice comprobar.
+    valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+    magnitudPropuesta: -2, magnitudEsperada: 0,
   };
   assert.equal(e.evaluar([permitido], contexto(), ok).permitido, true);
 
@@ -485,8 +494,10 @@ test('con perfil, un bus ajeno SI se rechaza por el bus', () => {
   // verdad corresponde.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0 }],
+    // Mismo arreglo de coherencia que arriba: el crudo de -2 dB con la ley medida.
+    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB',
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set(['m']) }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );

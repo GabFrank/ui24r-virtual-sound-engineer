@@ -1,6 +1,7 @@
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import assert, { equal, notEqual } from 'node:assert/strict';
 import { aRaw, entrada, rutasProbadas, RAW_MAP } from '../src/raw-map.ts';
+import { canonizarRuta } from '../src/clasificar-ruta.ts';
 
 test('ADR-006: una ruta sin mapeo no se escribe', () => {
   const r = aRaw('i.1.inventado', 5);
@@ -57,11 +58,21 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // servir están en Hz y en Q. Medir la ganancia sí movió la aguja, y por eso
   // este ítem existía: es la única hoja del ecualizador cuya unidad coincide.
   //
-  // **El test sigue siendo un trinquete**: si aparece una séptima sin que alguien
+  // **La séptima, `a.M.eq.peak.K`, es del ítem 109 del 2026-09-16**: barrió la
+  // banda 17 del auxiliar 5 con retorno por la interfaz y dio `30·V − 15` —±15 dB—
+  // con residuo máximo de 0,001 dB. La fórmula del cliente resultó exacta.
+  // Evidencia: `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`.
+  //
+  // **Es la tercera que el motor puede usar de verdad**, porque está en dB igual
+  // que el tope de su `kind`. Y **no cubre al general**: su gráfico
+  // —`m.eq.peak.l.K`— se puede direccionar pero no tiene conversión, porque se
+  // midió un auxiliar y que compartan la ley es suposición.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una octava sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
   assert.deepEqual([...rutasProbadas()].sort(),
-    ['i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain', 'i.N.eq.b1.q',
-      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
+    ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
+      'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
 });
 
@@ -324,4 +335,60 @@ test('fuera del tramo medido, los dos filtros se niegan', () => {
   // medición, así que su codo es irrecuperable con ese método.
   const bajo = aRaw('i.N.eq.hpf.freq', 30);
   assert.equal(bajo.ok === false && bajo.codigo, 'FUERA_DE_RANGO');
+});
+
+/**
+ * **El ecualizador gráfico de salida, y las dos formas de su clave.**
+ *
+ * `canonizarRuta` reconocía dos familias —`i.N` y `aux.M`— y devolvía `undefined`
+ * para todo lo demás, que es su modo de fallar cerrado. El ítem 109 midió la ley
+ * del gráfico de salida, así que ahora tiene que reconocer también el bus como
+ * sujeto y la banda. Y **son dos formas distintas**: el auxiliar pone el número
+ * después de `peak` y el general lo pone después de `l` o `r`, porque separa los
+ * dos lados.
+ *
+ * Lo que estos casos protegen es que la extensión **no afloje el rechazo**: la
+ * función tiene que seguir diciendo que no a todo lo que nadie acotó.
+ */
+test('el grafico de salida se canoniza en sus dos formas, y nada mas', () => {
+  equal(canonizarRuta('a.4.eq.peak.17'), 'a.M.eq.peak.K');
+  equal(canonizarRuta('m.eq.peak.l.17'), 'm.eq.peak.l.K');
+  equal(canonizarRuta('m.eq.peak.r.0'), 'm.eq.peak.r.K');
+  equal(canonizarRuta('a.0.mix'), 'a.M.mix', 'el bus como sujeto, no solo su eq');
+
+  // Fuera de rango: la consola tiene 10 auxiliares y 31 bandas.
+  equal(canonizarRuta('a.10.eq.peak.0'), undefined, 'no hay auxiliar 11');
+  equal(canonizarRuta('a.4.eq.peak.31'), undefined,
+    'la banda 31 no existe: son 0..30, y el cliente trae 32 ETIQUETAS para 31 bandas');
+
+  // **Un numero despues de `l` que NO viene de `peak` no es una banda.** Si esto
+  // canonizara, la funcion estaria inventando una acotacion que nadie midio.
+  equal(canonizarRuta('m.l.7'), undefined);
+  equal(canonizarRuta('m.eq.otracosa.l.7'), undefined);
+  // Forma no canonica: `03` no es `3`.
+  equal(canonizarRuta('a.04.eq.peak.1'), undefined);
+});
+
+test('la ley del grafico de salida esta en la tabla y convierte', () => {
+  const e = entrada('a.4.eq.peak.17');
+  notEqual(e, undefined, 'una ruta real del aparato tiene que encontrar su plantilla');
+  equal(e!.unidad, 'dB');
+  equal(e!.estado, 'PROBADO');
+  // `30·V - 15`, medida por el item 109 con residuo de 0,001 dB.
+  equal(e!.fromRaw(0), -15);
+  equal(e!.fromRaw(0.5), 0);
+  equal(e!.fromRaw(1), 15);
+});
+
+/**
+ * **El general NO esta en la tabla, y es deliberado.**
+ *
+ * Se midio una banda de un AUXILIAR. Que el general comparta la ley es una
+ * suposicion razonable y no un resultado, asi que su ruta se canoniza --para que
+ * el motor pueda hablar de ella-- pero no tiene conversion. `SIN_MAPEO` es la
+ * respuesta correcta hasta que se mida.
+ */
+test('el grafico del general se direcciona pero todavia no convierte', () => {
+  notEqual(canonizarRuta('m.eq.peak.l.17'), undefined, 'se puede nombrar');
+  equal(entrada('m.eq.peak.l.17'), undefined, 'y no se puede escribir: no se midio');
 });

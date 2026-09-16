@@ -58,6 +58,26 @@ const DELIBERADAS = new Map<string, string>([
     + 'rechace. Existe como `l.N.eq.easy` y `i.N.eq.easy`, no como `m.eq.easy`'],
   ['i.mix', 'una ruta MAL FORMADA a proposito: familia sin indice de canal'],
 
+  // **Las del ecualizador grafico de salida, del 2026-09-16.** El item 109 midio
+  // su ley y `canonizarRuta` aprendio a direccionarlo, asi que hubo que probar
+  // las dos formas de su clave y sus bordes. Igual que las cinco de abajo: que no
+  // esten en el inventario es el punto.
+  ['a.M.eq.peak.K', 'la PLANTILLA con la que la tabla indexa el grafico del auxiliar. '
+    + 'Las plantillas no son claves del aparato: `a.4.eq.peak.17` si lo es'],
+  ['m.eq.peak.l.K', 'la plantilla del grafico del general. Se direcciona pero NO tiene '
+    + 'conversion: se midio un auxiliar, y que el general comparta la ley es suposicion'],
+  ['m.eq.peak.r.K', 'la misma plantilla del lado derecho: el general separa L y R, con su '
+    + 'propio `linked`, y hay que probar que las dos formas se canonizan'],
+  ['a.10.eq.peak.0', 'hay 10 auxiliares, 0 a 9: prueba que el borde de arriba se rechace'],
+  ['a.10.mix', 'el mismo borde, sobre el bus como sujeto'],
+  ['a.4.eq.peak.31', 'son 31 bandas, 0 a 30. El cliente trae 32 ETIQUETAS y la ultima es '
+    + 'el borde del grafico: acotar con 32 daria conversion para una banda inexistente'],
+  ['a.04.eq.peak.1', 'el ALIAS con cero a la izquierda, por el mismo motivo que '
+    + '`i.03.aux.1.value`: es la misma banda y el estado se indexa por cadena cruda'],
+  ['m.eq.otracosa.l.7', 'una ruta MAL FORMADA a proposito: un numero despues de `l` que '
+    + 'NO viene de `peak` no es una banda, y tiene que fallar cerrado'],
+  ['m.l.7', 'idem, en su forma mas corta'],
+
   // **Las cinco de abajo existen para probar que NO se escriben.** Son las que
   // pasaban la lista blanca de ADR-028 cuando era `/^i\.\d+\.aux\.\d+\.value$/`
   // con `\d+` sin cota, y las encontro una auditoria de seguridad. Que no esten
