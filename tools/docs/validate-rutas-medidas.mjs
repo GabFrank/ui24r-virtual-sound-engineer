@@ -92,6 +92,43 @@ const pudo = intentar(() => {
   // **El mínimo se escribe a mano**, que es la regla del repositorio: uno
   // calculado de la misma lista que se recorre encoge junto con ella y no es un
   // mínimo. Eran 8 el 2026-09-16. Si alguna vez son menos, es una decisión.
+  // --- la otra mitad: las filas narrativas ---------------------------------
+  //
+  // **La tabla de arriba no alcanza, y se vio el mismo dia que se escribio esta
+  // guarda.** El 2026-09-16, con `i.N.gate.hold` ya medido y bien puesto en esa
+  // tabla, la fila «Puerta de ruido» de la matriz seguia diciendo «desconocida /
+  // INFERIDO» y ni siquiera nombraba `hold`. La guarda estaba en verde y el
+  // documento mentia: comprobaba que lo medido estuviera NOMBRADO, no que las
+  // filas que lo describen dijeran la verdad.
+  //
+  // Esto cierra ese hueco: una fila que enumere una ruta PROBADA no puede
+  // declararse INFERIDO ni DESCONOCIDO. Se expanden las llaves --`i.N.gate.{a,b}`
+  // son dos rutas-- porque asi es como la matriz las escribe.
+  const filas = texto.split('\n').filter((l) => l.startsWith('| ') && l.includes(' | '));
+  for (const fila of filas) {
+    const celdas = fila.split('|').map((c) => c.trim());
+    const rutas = [];
+    for (const m of fila.matchAll(/`([A-Za-z][\w.]*\.)\{([^}]+)\}`/g)) {
+      for (const hoja of m[2].split(',')) rutas.push(`${m[1]}${hoja.trim()}`);
+    }
+    for (const m of fila.matchAll(/`([A-Za-z][\w.]*)`/g)) rutas.push(m[1]);
+    const probadasAqui = rutas.filter((r) => declaradas.has(r));
+    if (probadasAqui.length === 0) continue;
+    const dice = celdas.join(' | ');
+    const niega = /\bINFERIDO\b|\bDESCONOCIDO\b|desconocida/.test(dice);
+    const afirma = /\bMEDIDO\b|\bMEDIDA\b/.test(dice);
+    if (niega && !afirma) {
+      problemas++;
+      console.error(
+        `una fila de ${MATRIZ} enumera ${probadasAqui.join(', ')} --que esta PROBADO-- `
+        + 'y se declara INFERIDO o desconocida.\n'
+        + `  Fila: ${fila.slice(0, 110)}...\n`
+        + '  La tabla de rutas medidas puede estar bien y esta fila seguir mintiendo:\n'
+        + '  es lo que paso el 2026-09-16 con la puerta. Si la ley esta medida, la fila\n'
+        + '  lo tiene que decir.');
+    }
+  }
+
   centinela(nombradas.size, 8, `filas de «${TITULO}»`);
   console.log(problemas === 0
     ? `Rutas medidas: ${declaradas.size} en el código y las mismas ${declaradas.size} `
