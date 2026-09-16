@@ -33,3 +33,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [027](ADR-027-silenciar-para-diagnosticar.md) | Silenciar un canal para diagnosticar, en soundcheck | Aceptada |
 | [028](ADR-028-abrir-el-envio-a-monitor.md) | Abrir el envío a monitor, sólo el nivel y con techo en donde estaba | Aceptada |
 | [029](ADR-029-bajar-los-buses-para-cazar-acoples.md) | Bajar el auxiliar y el general para cazar un acople: los dos sólo bajan, con techo en dónde estaban | Decidida, sin implementar |
+| [030](ADR-030-como-se-nombran-los-tiempos.md) | Los tiempos del compresor se muestran con los dos números: el de la consola y el medido | Decidida, sin implementar |
