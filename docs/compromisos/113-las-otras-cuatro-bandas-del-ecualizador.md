@@ -55,11 +55,23 @@ Se arregló el guion y se devolvió la consola:
 con los valores del volcado del 2026-09-15 a las 21:50 —no inventados— y las
 cinco comprobadas releyendo por HTTP.
 
-**Ninguna guarda lo cazó, y es lo que hay que arreglar.** `escribir-sin-leer`
-exige que la clave se **lea**, y se leía. `restauracion-garantizada` exige que el
-guion use `conRestauracion`, y la usaba. Las dos miran la estructura; **ninguna
-comprueba que `PREVIO` esté completo respecto de lo que el guion escribe.** Queda
-anotado como tarea: es una guarda que falta, y su caso motivador ya existe.
+**Ninguna guarda lo cazó, y eso era lo que había que arreglar.**
+`escribir-sin-leer` exige que la clave se **lea**, y se leía.
+`restauracion-garantizada` exige que el guion use `conRestauracion`, y la usaba.
+Las dos miran la estructura; ninguna comprobaba que la lista de restauración
+estuviera **completa** respecto de lo que el guion escribe.
+
+**Hecho el mismo día**, a pedido del usuario:
+`packages/mixer-adapter/test/restaurar-lo-que-se-escribe.test.ts`. Toma el cuerpo
+de la vuelta atrás y exige que nombre toda clave que el guion escriba.
+
+**Y encontró un agujero más grande que el que venía a tapar.** La primera versión
+**no cazaba este mismo caso**: la escritura era `codificarSetd(RUTA_FREQ, …)` con
+`const RUTA_FREQ = RUTA_FRECUENCIA`, y el detector sólo resolvía nombres que
+apuntaran directo a un literal. Un salto de nombre alcanzaba para volverla ciega
+—y `escribir-sin-leer` tiene el mismo punto ciego, porque exige un literal
+después de `codificarSetd(`—. Ahora resuelve cadenas de nombres, y lo que **no**
+puede resolver **lo cuenta en vez de callarlo**.
 
 ---
 
