@@ -58,7 +58,7 @@ cliente— y este proyecto ya usó ese cruce para el Q.
 | EQ de canal: Q | 0,05 … 15 | `0,05·300^V` → 0,05 … 15 | ✔ |
 | EQ de canal: frecuencia | 20 Hz … 22 kHz | `20·1102,5^V` → 20 … 22050 | ✔ |
 | EQ de salida: ganancia | ±15 dB | `30·V − 15` → −15 … +15 | ✔ |
-| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el cliente escribe `inf` por encima de **60** | **✘ no cuadra** |
+| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el control llega hasta el crudo **0**, o sea **∞:1** | **✘ no cuadra** |
 
 Con `d(V) = 1 − (1 − V)²`.
 
@@ -67,12 +67,28 @@ medidas —siguen describiendo la **pantalla**, y la medición 97 refutó dos de
 contra el audio— pero sí las saca de «fuente única»: el rango que publican es el
 que el fabricante declara en papel.
 
-**La que no cuadra es la relación del compresor**, y vale la pena no taparla. El
-manual declara un tope de 50:1; el formateador del cliente muestra `inf` recién
-por encima de 60, que sale de un crudo de 0,0167 en vez del 0,02 que daría 50.
-Puede ser que el control esté limitado por otro lado, o que uno de los dos números
-esté redondeado. **No se resuelve leyendo**, y es coherente con que esta sea
-justamente la ley que la medición 97 ya refutó por otro motivo.
+**La que no cuadra es la relación del compresor**, y vale la pena no taparla.
+
+Una primera lectura supuso que sería un redondeo —el formateador muestra `inf` por
+encima de 60, y de ahí salía un crudo de 0,0167 contra el 0,02 que daría 50—.
+**No es un redondeo, y esto el proyecto ya lo sabía.** `raw-map.ts` dice, desde
+antes: *«en 0 la razón sería infinita, así que no hay rango físico que declarar
+sin inventarlo»*. Lo único que agrega esta lectura es la confirmación desde el
+control: el deslizador declara sus marcas en
+`[1, 1/1,2, 0,625, 0,5, 1/3, 0,2, 0,1, 0]` y **la última es cero**, o sea que el
+control del fabricante efectivamente llega hasta ahí. Las marcas intermedias caen
+en 1, 1,2, 1,6, 2, 3, 5 y 10.
+
+Así que la pregunta queda más afilada, no resuelta: **el cliente permite escribir
+∞ y el manual declara 50:1.** O el manual describe el rango útil y redondea, o el
+procesador recorta en algún lado que la pantalla no muestra. Lo segundo es
+comportamiento y no se lee: se mide.
+
+Y no es un detalle de catálogo. Si el crudo 0 es de verdad un limitador, **hay una
+ruta donde un valor extremo cambia la naturaleza del proceso**, no sólo su
+intensidad. Es coherente con que ésta sea justamente la ley que la medición 97 ya
+refutó contra el audio por otro motivo, y con que `i.N.dyn.ratio` esté fuera de la
+tabla de conversión a propósito, con su motivo escrito al lado.
 
 **Esta comparación no tiene guarda propia, y no hace falta**: si una fórmula del
 cliente cambia, lo detecta `tools/spikes/p0-2a/cliente-sigue-igual.ts`, que
@@ -86,7 +102,7 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 | Parámetro | Manual | En el código hoy |
 |---|---|---|
 | Compresor: umbral | −90 dB … +6 dB | igual (la fórmula refutada evaluada en 0 y 1) |
-| **Compresor: relación** | **1:1 … 50:1** | **no está**, por «no se conoce el crudo mínimo» |
+| **Compresor: relación** | **1:1 … 50:1** | **no está en la tabla, a propósito**, y el motivo que figuraba acá —«no se conoce el crudo mínimo»— **no es el que `raw-map.ts` da**. Los suyos son dos: en el crudo 0 la razón sería infinita, así que no hay rango físico que declarar sin inventarlo; y la medición 97 **refutó** `1/V` contra el audio. Corregido el 2026-09-16 |
 | Compresor: ataque | 1 … 400 ms | sin medir |
 | Compresor: relajación | 10 … 2000 ms | sin medir |
 | Compresor: compensación | −24 … +48 dB | `i.N.dyn.outgain` con `72a − 24`, o sea −24 … +48 ✔ |
