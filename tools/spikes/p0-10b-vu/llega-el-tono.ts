@@ -54,6 +54,7 @@ import {
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
+import { anotarPendiente, cerrarPendiente, avisarSiHayPendiente } from '../pendiente.ts';
 import { restaurarClaves } from '../restaurar.ts';
 import { leerUnaClave } from '../leer-una-clave.ts';
 // @ts-expect-error -- JavaScript sin tipos
@@ -112,6 +113,7 @@ const pilaDelSupresor = (e: ReadonlyMap<string, string>): string[] => {
   return f;
 };
 
+avisarSiHayPendiente();
 await t.conectar(maquina);
 const e0 = await estadoPorHttpExigido(maquina);
 const pilaAntes = pilaDelSupresor(e0);
@@ -152,6 +154,11 @@ const ventana = async (etiqueta: string, ms: number): Promise<number> => {
 };
 
 let sonando: ReturnType<typeof spawn> | null = null;
+
+// **El papelito, ANTES de la primera escritura.** Si a este proceso lo matan de
+// golpe --SIGKILL, corte de energia--, `conRestauracion` no llega a correr y lo
+// unico que sabe que hay que restaurar muere con el. El papelito sobrevive.
+anotarPendiente('llega-el-tono.ts', maquina, PREVIO);
 
 await conRestauracion(
   async () => {
@@ -254,8 +261,14 @@ console.log('');
 console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
 console.log(`   m.afs.enabled  esperado ${PREVIO[0]![1]}  leido ${exigirClave(e1, 'm.afs.enabled')}`);
 console.log(`   filtros del supresor: ${pilaAntes.length} antes, ${pilaDespues.length} despues`);
-console.log(pilaAntes.join('|') === pilaDespues.join('|')
+const pilaIgual = pilaAntes.join('|') === pilaDespues.join('|');
+const afsVolvio = Number(exigirClave(e1, 'm.afs.enabled')) === PREVIO[0]![1];
+console.log(pilaIgual
   ? '   Sin cambios: el supresor no planto nada.'
   : '   LA PILA CAMBIO. Hay que mirar la consola.');
+// Ver el comentario del guion hermano: el papelito solo se borra si la relectura
+// por HTTP confirma que todo volvio.
+if (pilaIgual && afsVolvio) cerrarPendiente();
+else process.exitCode = 1;
 
 await t.desconectar();

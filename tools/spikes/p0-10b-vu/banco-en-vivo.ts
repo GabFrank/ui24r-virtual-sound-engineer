@@ -58,6 +58,7 @@ import {
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
+import { anotarPendiente, cerrarPendiente, avisarSiHayPendiente } from '../pendiente.ts';
 import { restaurarClaves } from '../restaurar.ts';
 import { leerUnaClave } from '../leer-una-clave.ts';
 // @ts-expect-error -- JavaScript sin tipos
@@ -129,6 +130,7 @@ t.alRecibir((linea) => {
   });
 });
 
+avisarSiHayPendiente();
 await t.conectar(maquina);
 const e0 = await estadoPorHttpExigido(maquina);
 const n = CANAL_DEL_BANCO - 1;
@@ -145,14 +147,39 @@ const PREVIO: readonly (readonly [string, number])[] = [
 
 let sonando: ReturnType<typeof spawn> | null = null;
 
+// **El papelito, ANTES de la primera escritura.** Si a este proceso lo matan de
+// golpe --SIGKILL, corte de energia--, `conRestauracion` no llega a correr y lo
+// unico que sabe que hay que restaurar muere con el. El papelito sobrevive.
+anotarPendiente('banco-en-vivo.ts', maquina, PREVIO);
+
 await conRestauracion(
   async () => {
     sonando?.kill();
     await new Promise((r) => { setTimeout(r, 1000); });
     await restaurarClaves(t, maquina, PREVIO);
     rmSync(carpeta, { recursive: true, force: true });
+    // **Se relee por HTTP antes de cantar victoria.** Este guion esta hecho para
+    // cortarlo a mano, que es justo cuando la restauracion puede quedar a medias:
+    // decir «restaurado» sin comprobarlo seria el exito falso que este proyecto
+    // persigue. Y de eso depende que se borre el papelito.
+    const fin = await estadoPorHttpExigido(maquina);
+    let todoVolvio = true;
     console.log('');
-    console.log('supresor restaurado. Banco libre.');
+    console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
+    for (const [k, v2] of PREVIO) {
+      const leido = Number(exigirClave(fin, k));
+      const ok = Math.abs(leido - v2) < 1e-9;
+      if (!ok) todoVolvio = false;
+      console.log(`   ${ok ? 'OK  ' : 'MAL '} ${k.padEnd(22)} esperado ${v2}  leido ${leido}`);
+    }
+    if (todoVolvio) {
+      cerrarPendiente();
+      console.log('   Todo volvio. Banco libre.');
+    } else {
+      process.exitCode = 1;
+      console.error('   HAY CLAVES SIN RESTAURAR. El papelito se deja: '
+        + 'node --experimental-strip-types tools/spikes/reparar-pendiente.ts');
+    }
   },
   async () => {
     t.enviar(codificarSetd('m.afs.enabled', 0));

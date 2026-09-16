@@ -97,7 +97,7 @@ C0 con el canal muteado: -116.89 dBFS en 1000 Hz
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
-# divergencia reconocida: c2e6b938b5ba3245
+# divergencia reconocida: 49b8708176f552ce
 ================================================================================
 
 Cambio el CODIGO despues de esta corrida, asi que hay que decir que midio.
@@ -120,3 +120,14 @@ CUARTA ANOTACION, 2026-09-16. El guion cambio otra vez: la ventana del medidor
 ahora se ALARGA hasta juntar sus tres cuadros en vez de anular la captura. La
 huella reconocida de arriba ya es la de esa version. Nada de lo que este archivo
 registra cambia: siguen siendo corridas de antes de ese arreglo.
+
+ANOTACION DEL 2026-09-16 (papelito de restauracion). El guion cambio: ahora deja
+un registro en disco de lo que escribio, ANTES de escribirlo, para que una
+corrida que muera de golpe --SIGKILL, corte de energia-- se pueda deshacer
+despues. `conRestauracion` declaraba ese caso como «no hay vuelta».
+
+POR QUE NO TOCA NADA DE LO MEDIDO. El agregado escribe y borra un archivo local;
+no toca la consola, ni el estimulo, ni la captura, ni ningun umbral ni veredicto.
+La secuencia de escrituras a la consola y las funciones que producen los numeros
+de este archivo son identicas antes y despues. Remedir daria lo mismo, y para las
+corridas que fallaron borraria el registro de por que fallaron.

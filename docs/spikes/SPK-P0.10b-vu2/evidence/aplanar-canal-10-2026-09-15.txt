@@ -26,7 +26,7 @@ Node.js v22.23.2
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
-# divergencia reconocida: 6a874175bdb2e246
+# divergencia reconocida: 037108b9507761c0
 ================================================================================
 
 La huella de arriba --sha256:bd1080492dbd14f0-- YA NO COINCIDE con el guion de
@@ -55,3 +55,10 @@ SEGUNDA ANOTACION, EL MISMO DIA. El guion volvio a cambiar despues de esto: se
 le agrego `conRestauracion` con vuelta atras condicional. La huella reconocida
 de arriba ya es la de esa version. Nada de lo que este archivo documenta cambia:
 la corrida aborto ANTES de conectarse, en la guarda de unanimidad.
+
+NOTA DEL 2026-09-16: la huella reconocida de arriba se volvio a fijar, sin tocar
+el reconocimiento en si. Se movio porque cambiaron COMENTARIOS de un modulo
+compartido --`con-restauracion.ts`, que ahora explica el papelito de
+`pendiente.ts`-- y la huella cubre el guion y sus imports. El codigo que corrio
+sigue siendo el de hoy; lo que esta anotado mas arriba sobre esta corrida no
+cambia.

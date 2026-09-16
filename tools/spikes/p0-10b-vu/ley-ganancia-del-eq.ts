@@ -35,6 +35,7 @@ import {
 import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
+import { anotarPendiente, cerrarPendiente, avisarSiHayPendiente } from '../pendiente.ts';
 import { restaurarClaves } from '../restaurar.ts';
 import { leerUnaClave } from '../leer-una-clave.ts';
 // @ts-expect-error -- JavaScript sin tipos
@@ -506,6 +507,7 @@ async function medir(etiqueta: string, exigeTono: boolean): Promise<Medida> {
 let qDeLaBanda = NaN;
 
 // ---------------------------------------------------------------- montaje
+avisarSiHayPendiente();
 await t.conectar(maquina);
 const e0 = await estadoPorHttpExigido(maquina);
 
@@ -695,6 +697,11 @@ let planoDb = NaN;
  */
 let falloDelCuerpo: Error | null = null;
 try {
+// **El papelito, ANTES de la primera escritura.** Si a este proceso lo matan de
+// golpe --SIGKILL, corte de energia--, `conRestauracion` no llega a correr y lo
+// unico que sabe que hay que restaurar muere con el. El papelito sobrevive.
+anotarPendiente('ley-ganancia-del-eq.ts', maquina, PREVIO);
+
 await conRestauracion(
   async () => {
     // **Se espera a que el tono muera antes de restaurar.** `m.afs.enabled` vuelve
@@ -1404,6 +1411,9 @@ console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
   console.log(bien ? `   Las ${PREVIO.length} claves volvieron, por un camino distinto del que escribio.`
     : '   HAY CLAVES SIN RESTAURAR. Revisar la consola antes de seguir.');
   if (!bien) process.exitCode = 1;
+  // **El papelito se borra SOLO si la relectura dio bien.** Borrarlo igual seria
+  // perder el unico registro de lo que falta arreglar, justo cuando hace falta.
+  if (bien) cerrarPendiente();
 
   const antes = FILTROS_AL_EMPEZAR;
   const despues = filtrosDelSupresor(fin);

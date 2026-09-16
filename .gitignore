@@ -34,3 +34,6 @@ tools/audio/bin/
 # --un auditor sembrando defectos sin pisar el árbol principal--. Son copias
 # completas del repositorio y se borran solas al terminar.
 .claude/worktrees/
+
+# Estado de una maquina, no del proyecto: lo que una corrida dejo sin restaurar.
+.restauracion-pendiente.json

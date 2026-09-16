@@ -48,7 +48,7 @@
 
 ================================================================================
 ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
-# divergencia reconocida: 8ef864e5db549235
+# divergencia reconocida: 4ed1765a0a3cf2b3
 ================================================================================
 
 Cambio el CODIGO despues de esta corrida, asi que hay que decir que midio.
@@ -67,3 +67,14 @@ POR QUE VALE IGUAL. Los numeros que se le citan --la cadencia de 22.7/s en
 silencio contra 1.0/s con tono, y el salto del medidor del canal-- los midio esta
 corrida y no dependen del veredicto mal razonado. El error estaba en la frase
 final, no en el instrumento.
+
+ANOTACION DEL 2026-09-16 (papelito de restauracion). El guion cambio: ahora deja
+un registro en disco de lo que escribio, ANTES de escribirlo, para que una
+corrida que muera de golpe --SIGKILL, corte de energia-- se pueda deshacer
+despues. `conRestauracion` declaraba ese caso como «no hay vuelta».
+
+POR QUE NO TOCA NADA DE LO MEDIDO. El agregado escribe y borra un archivo local;
+no toca la consola, ni el estimulo, ni la captura, ni ningun umbral ni veredicto.
+La secuencia de escrituras a la consola y las funciones que producen los numeros
+de este archivo son identicas antes y despues. Remedir daria lo mismo, y para las
+corridas que fallaron borraria el registro de por que fallaron.
