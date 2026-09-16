@@ -1,0 +1,37 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T17:15:18.935Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/live-planta-o-no.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/live-planta-o-no.ts sha256:4a212b03c266ea9c
+# la huella cubre 6 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== CONTROL POSITIVO CONCURRENTE: ¿ESTE ESTIMULO PLANTA EN LIVE? ===
+
+   supresor encendido: 1  (se EXIGE)
+   modo: logic=1 fmode=1 -> LIVE  (se EXIGE, no se pone)
+   ranuras: 12, con filtro plantado: 0
+   estimulo: 1000, 100, 10000 Hz, 4 min -- el MISMO del 111
+   vigilancia: socket + relectura por HTTP cada 8 s
+
+   C1 -- ¿el tono llega al general?
+       1000 Hz: -36.27 dBFS, 39.1 dB sobre el piso
+        100 Hz: -36.35 dBFS, 39.1 dB sobre el piso
+      10000 Hz: -36.71 dBFS, 39.1 dB sobre el piso
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/live-planta-o-no.ts:195
+      throw new Error(`C1 FALLA: alguna frecuencia no llega a ${MARGEN_MINIMO_DB} dB sobre el `
+            ^
+
+Error: C1 FALLA: alguna frecuencia no llega a 40 dB sobre el piso. Sin estimulo, «no planto» no dice nada del modo.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/live-planta-o-no.ts:195:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/live-planta-o-no.ts:160:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

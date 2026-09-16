@@ -40,6 +40,13 @@ y entonces la cuenta no se mueve y el aviso no llega.
 **Así que la comparación por cuenta era más débil de lo que parecía**, y nadie lo
 habría notado hasta que fallara.
 
+> **COMPROBADO unas horas después, y falló.** El control positivo del 111 dejó
+> que el supresor plantara tres filtros en LIVE, y `m.afs.numtotal` valió **12
+> antes y 12 después**. La cuenta no se movió ni con tres notches de −15 dB
+> puestos. Deja de ser una sospecha razonable: **comparar cuántas ranuras hay no
+> habría detectado ninguno de los tres.** Evidencia:
+> [`limpiar-supresor-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/limpiar-supresor-2026-09-16.txt).
+
 **Ninguna medición anterior estuvo en riesgo por esto**, y conviene decirlo
 separado: todas las corridas con tono sostenido apagaron `m.afs.enabled` antes de
 sonar y lo comprobaron releyendo por HTTP. Un supresor apagado no planta nada.

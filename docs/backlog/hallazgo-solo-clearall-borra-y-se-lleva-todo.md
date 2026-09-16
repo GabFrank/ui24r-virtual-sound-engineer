@@ -19,6 +19,12 @@ m.afs.eq.6 ^ 1000.0081787109, 7.0, -18.0, 2
 
 Una notch de **−18 dB con Q 7 en 1 kHz**. Atenuación real sobre su PA.
 
+> **La profundidad no es una constante.** El 2026-09-16 el supresor plantó tres
+> notches de **−15 dB** —Q 7 también— con un estímulo de tres tonos. Las dos son
+> observaciones reales, así que **−18 no es «la» profundidad del supresor**: es
+> una de dos que se vieron. De qué depende no se midió. Donde este repositorio
+> diga «notches de −18 dB» hay que leer «del orden de −15 a −18».
+
 ## Lo que se creía y no era
 
 El guion `limpiar-supresor-del-general.ts` afirmaba, desde el 2026-09-10:

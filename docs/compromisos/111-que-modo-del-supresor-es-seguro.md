@@ -1,5 +1,82 @@
 # 111 — ¿Qué modo del supresor es seguro para meter un tono?
 
+## CERRADO el 2026-09-16: el control positivo dejó de ser histórico
+
+**Y cerró de la forma más contundente posible.** Evidencia:
+[`live-planta-o-no-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/live-planta-o-no-2026-09-16.txt)
+y [`limpiar-supresor-2026-09-16.txt`](../spikes/SPK-P0.10b-vu2/evidence/limpiar-supresor-2026-09-16.txt).
+
+El usuario autorizó el control concurrente cuando se supo que la pila estaba
+vacía: *«sí, probalo ahora»*. Se corrió el **mismo estímulo**, al **mismo
+nivel**, el **mismo día**, con el supresor en **LIVE** —que es como su consola
+trabaja— y sin escribir nada para llegar ahí.
+
+| | LOCK | LIVE |
+|---|---|---|
+| Exposición | **4 minutos** | **menos de 5 segundos** |
+| Filtros plantados | **0** | **3** |
+
+Los tres, en las tres frecuencias del estímulo:
+
+```
+m.afs.eq.0   100.0076 Hz,  Q 7,  −15 dB
+m.afs.eq.1  1000.0090 Hz,  Q 7,  −15 dB
+m.afs.eq.2 10000.0742 Hz,  Q 7,  −15 dB
+```
+
+**Con eso, «en LOCK no aprendió» significa lo que se quería que significara.** El
+estímulo hace aprender —y rápido— al modo que se sabe que aprende. Que en LOCK no
+pasara nada en cuarenta y ocho veces más tiempo es del modo, no del estímulo.
+
+### C1 falló, y su falla ERA el hallazgo
+
+La corrida se detuvo en el control C1: el tono llegaba a **−36,3 dBFS** con 39,1 dB
+de margen, cuando en la corrida de LOCK había llegado a −29,2 con 96. Siete
+decibeles menos.
+
+**La primera lectura fue «algo cambió en el banco», y era falsa.** Lo que había
+cambiado era que **el supresor ya estaba atenuando el tono cuando C1 lo midió**.
+Los tres notches se plantaron en los segundos que van entre arrancar el tono y
+terminar la captura de C1.
+
+O sea que el control que se agregó para que un negativo no se leyera como
+silencio terminó **detectando el positivo**, y deteniendo la corrida antes de los
+cuatro minutos. El daño quedó en tres filtros en vez de los que hubieran entrado
+en una exposición completa.
+
+### Y probó, sin buscarlo, que la cuenta de ranuras no sirve
+
+`m.afs.numtotal` valía **12 antes y 12 después** de que se plantaran los tres
+filtros. La cuenta **no se movió**.
+
+Eso deja de ser un argumento y pasa a ser una medición: comparar cuántas ranuras
+hay —que es lo que este proyecto hizo durante meses— **no habría detectado
+ninguno de los tres**. Ver
+[el hallazgo](../backlog/hallazgo-los-doce-no-eran-filtros-eran-ranuras.md).
+
+### La profundidad del notch no es una constante
+
+Estos tres midieron **−15 dB**. El que se plantó el 2026-09-13 midió **−18**. Las
+dos son observaciones reales, así que **−18 no es «la» profundidad**: es una de
+dos que se vieron. De qué depende —duración, nivel, cuántos ya hay— no se midió.
+
+### La limpieza, y lo que apareció haciéndola
+
+Los tres se borraron con `clearall` y la pila volvió a cero, comprobado releyendo
+por HTTP. Haciéndolo apareció que **`m.afs.clearall` estaba trabado en 1**, lo que
+deja el botón CLEAR ALL del usuario sin flanco que disparar — probablemente por
+culpa de este proyecto. Ver
+[el hallazgo](../backlog/hallazgo-el-boton-clear-all-estaba-trabado.md).
+
+### Lo que sigue sin probarse
+
+- **FIXED no se probó**, y sigue sin probarse a propósito.
+- **Un nivel, un estímulo de tres tonos, un día.** Que LOCK no aprenda con esto no
+  dice que no aprenda con algo más fuerte o más largo.
+- **No se midió de qué depende la profundidad del notch.**
+
+---
+
 ## MEDIDO el 2026-09-16: en LOCK no aprende
 
 Evidencia:
@@ -31,10 +108,10 @@ un silencio.
 ### Lo que este resultado NO dice, y es más de lo que parece
 
 - **Nada de LIVE ni de FIXED.** No se probaron a propósito.
-- **El control positivo es histórico, no concurrente.** Que en LOCK no aprendiera
-  **con este estímulo** no descarta que este estímulo no hiciera aprender a
-  ningún modo. Es el punto más flojo de esta medición y estaba declarado desde el
-  contrato.
+- ~~**El control positivo es histórico, no concurrente.**~~ **Cerrado el mismo
+  día**, arriba: el mismo estímulo plantó tres filtros en LIVE en menos de cinco
+  segundos. Se deja el renglón porque declarar ese punto flojo es lo que hizo que
+  alguien fuera a cerrarlo.
 - **Una exposición, de cuatro minutos, un día, un nivel.**
 
 ### Y apareció algo que cambia la cuenta del riesgo

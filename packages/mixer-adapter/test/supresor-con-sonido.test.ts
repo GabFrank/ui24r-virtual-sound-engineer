@@ -102,6 +102,17 @@ const SUENAN_SIN_APAGAR: ReadonlySet<string> = new Set([
  */
 const MIDEN_EL_SUPRESOR: ReadonlySet<string> = new Set([
   'p0-10b-vu/lock-aprende-o-no.ts',
+  // **El segundo entró el mismo día, y por un motivo que no existía la semana
+  // pasada.** El 111 midió que en LOCK no aprende y dejó declarado su punto
+  // flojo: el control positivo era histórico. Este guion lo vuelve concurrente
+  // —comprueba que ESTE estímulo, HOY, haga aprender al modo que se sabe que
+  // aprende—, y sin él la conclusión del 111 no se puede distinguir de «el
+  // estímulo era flojo».
+  //
+  // Se pudo correr porque la pila está vacía: limpiar después ya no se lleva el
+  // trabajo de ring-out del usuario, que era el argumento por el que no se hacía.
+  // El usuario decidió con esa información: «sí, probalo ahora».
+  'p0-10b-vu/live-planta-o-no.ts',
 ]);
 
 /** Que exija el supresor encendido, en vez de apagarlo. */
@@ -159,11 +170,11 @@ test('el detector encuentra algo: no celebra el conjunto vacio', () => {
   ok(sinApagar.length > 0, 'si esto llega a cero, sacar la guarda y dejar la regla');
 });
 
-test('la excepcion que mide el supresor es UNA, y exige el supresor encendido', () => {
+test('la excepcion que mide el supresor esta acotada, y exige el supresor encendido', () => {
   // **El tamaño se escribe a mano, igual que el de la otra lista.** Si sube,
   // alguien agregó un segundo guion que suena con el supresor encendido, y eso
   // es una decisión del usuario, no un detalle de implementación.
-  deepStrictEqual(MIDEN_EL_SUPRESOR.size, 1,
+  deepStrictEqual(MIDEN_EL_SUPRESOR.size, 2,
     'si sube, alguien sumó otro guion que suena con el supresor encendido: es una '
     + 'decisión del usuario y tiene que quedar escrita, no aparecer en un diff');
 

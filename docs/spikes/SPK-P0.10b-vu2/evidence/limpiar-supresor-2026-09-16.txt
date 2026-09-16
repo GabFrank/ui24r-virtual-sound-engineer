@@ -1,0 +1,58 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T17:17:32.546Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/limpiar-supresor.ts 3 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/limpiar-supresor.ts sha256:a6c0d56b7cd130f8
+# la huella cubre 4 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo live-planta-o-no.ts el 2026-09-16T17:15:25.122Z en 192.168.0.78
+     m.afs.clearall tiene que volver a 1
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== LIMPIAR LOS FILTROS DEL SUPRESOR DEL GENERAL ===
+
+   filtros plantados ahora: 3  (se esperaban 3)
+      ranura 0: 100.0076522827,7.0000000000,-15.0000000000,2
+      ranura 1: 1000.0089721680,7.0000000000,-15.0000000000,2
+      ranura 2: 10000.0742187500,7.0000000000,-15.0000000000,2
+
+   clearall antes: 1
+   se baja a 0 para que exista el flanco, y despues la secuencia del cliente.
+
+=== RELEIDO POR HTTP ===
+   filtros plantados: 0
+   m.afs.clearall  0  (queda en 0, como lo deja el cliente)
+   m.afs.enabled   1   (no se toco)
+   m.afs.logic     1   (no se toco)
+   m.afs.fmode     1   (no se toco)
+   m.afs.numtotal  12
+
+LIMPIA. La pila del supresor vuelve a no tener ningun filtro plantado.
+
+
+# salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: fb61770705dd46a6
+================================================================================
+
+QUE CAMBIO. El guion se corrio primero sin `conRestauracion`, y la guarda
+`restauracion-garantizada` lo rechazo --con razon--. Se envolvieron las tres
+escrituras en `conRestauracion` y se agrego el papelito de `pendiente.ts`.
+
+POR QUE NO TOCA NADA DE LO MEDIDO. Las escrituras a la consola son las MISMAS,
+en el mismo orden y con las mismas esperas: 0, 700 ms, 1, 500 ms, 0. Lo que se
+agrego es la garantia de que, si el proceso muere en el medio, la clave termine
+igual en 0 --que es justamente el estado que este guion existe para dejar--. Los
+tres filtros que se borraron, la relectura por HTTP y el veredicto salen de la
+corrida real y no cambian.
+
+LO QUE NO SE HIZO, Y SE DICE: no se volvio a correr. Volver a correrlo hoy no
+mediria lo mismo, porque la pila ya esta vacia y no habria nada que borrar.

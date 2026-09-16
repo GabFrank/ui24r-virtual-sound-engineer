@@ -6,10 +6,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El botón CLEAR ALL de tu supresor estaba trabado, y lo destrabamos.** La
+  consola guardaba ese botón como "apretado" desde el 13 de septiembre —muy
+  probablemente por culpa de una prueba nuestra—, y como dispara al apretarse y
+  ya figuraba apretado, **no podía volver a dispararse**. Si alguna vez hubieras
+  querido borrar los filtros del supresor desde la tablet, no habría pasado nada.
+
+  Quedó como lo deja el programa oficial. Es el único dato de tu consola que no
+  volvió al valor que tenía, y es a propósito: devolverlo habría sido devolverte
+  el defecto.
+
 - **Ya se sabe en qué modo del supresor de acople se puede meter un tono sin que
   te plante filtros: LOCK.** Cuatro minutos con las tres frecuencias que te
   plantaron filtros en septiembre, con el supresor encendido y en LOCK, y no
-  aprendió nada.
+  aprendió nada. **Y se comprobó el mismo día que no era por flojo el tono**:
+  con el supresor en su modo normal, el mismo sonido le plantó **tres filtros en
+  menos de cinco segundos**. Cuatro minutos sin nada contra cinco segundos con
+  tres. Los tres se borraron y tu consola quedó como estaba.
 
   Para qué sirve: hasta ahora, para medir cualquier cosa con un tono había que
   **apagarte el supresor** y volver a encenderlo al terminar. Eso sigue siendo la
