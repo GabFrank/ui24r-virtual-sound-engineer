@@ -6,6 +6,13 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Anotado por qué se perdió una madrugada de mediciones, para que no se repita.**
+  El audio de la Mac se traba y el síntoma se lee igual que un permiso denegado: el
+  grabador encuentra la interfaz, dice que graba, y no captura nada. La sesión que
+  lo encontró concluyó que las mediciones no se podían lanzar por conexión remota —y
+  era falso—. Se arregla reiniciando el servicio de audio, sin tocar la máquina.
+  Queda escrito cómo distinguirlo en treinta segundos.
+
 - **La puerta de ruido de tu consola cierra tanto como promete — y lo de anoche
   era culpa de nuestro instrumento, no de ella.** Anteanoche se midió que la
   puerta "se saturaba" a 29 dB de atenuación y se escribió que no llegaba a lo que

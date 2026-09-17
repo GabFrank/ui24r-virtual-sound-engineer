@@ -32,6 +32,21 @@ Necesita **permiso de micrófono para la terminal** en macOS. Ese permiso no es
 del micrófono: gobierna **toda** entrada de audio, incluida una interfaz USB por
 sus entradas de línea. Apple lo llamó así por el caso más común.
 
+### Si no arranca la captura, NO asumas que es el permiso
+
+El fallo más caro de este grabador **no es el permiso y se le parece**: el
+servicio de audio de macOS se traba y deja de entregar la entrada a todo el
+mundo, sin decir nada. El grabador encuentra el dispositivo, informa su formato,
+anuncia que graba, y `kAUStartIO` falla.
+
+**Se distingue en treinta segundos:** si falla **también con el micrófono
+interno**, no es la interfaz; y si el permiso figura concedido desde antes de que
+la terminal arrancara, no es el permiso. Se cura con `sudo killall coreaudiod`,
+que se puede lanzar por SSH.
+
+El caso completo, con cómo una sesión entera concluyó lo contrario, está en
+[`hallazgo-el-audio-de-la-mac-se-traba-y-parece-un-permiso.md`](../../docs/backlog/hallazgo-el-audio-de-la-mac-se-traba-y-parece-un-permiso.md).
+
 ## Las dos guardas, y por qué
 
 **No cae al dispositivo por omisión.** Si se le pide un nombre y no lo encuentra,
