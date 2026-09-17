@@ -1,0 +1,80 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T02:19:17.327Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts sha256:195fc7195665e2ce
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 120 — EL UMBRAL Y LA PROFUNDIDAD DE LA PUERTA ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 19 escalones, -36 a -9 dBFS, y por primera vez tambien AL REVES
+   6 umbrales y 6 profundidades
+   los tiempos de la puerta van a su MINIMO para que cada escalon asiente,
+   asi que la histeresis que sale es la del detector, no la que se percibe
+   con el sostenido puesto. El contrato lo dice.
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.gate.thresh        0
+   i.9.gate.depth         0
+   i.9.gate.bypass        0
+   i.9.gate.attack        0
+   i.9.gate.hold          0.3042441765
+   i.9.gate.release       0.3150737134
+   i.9.dyn.bypass         0
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -36 dBFS -> salida   -65.52 dBFS
+   entrada -34.5 dBFS -> salida   -64.03 dBFS
+   entrada  -33 dBFS -> salida   -62.53 dBFS
+   entrada -31.5 dBFS -> salida   -61.04 dBFS
+   entrada  -30 dBFS -> salida   -59.55 dBFS
+   entrada -28.5 dBFS -> salida   -58.05 dBFS
+   entrada  -27 dBFS -> salida   -56.56 dBFS
+   entrada -25.5 dBFS -> salida   -55.06 dBFS
+   entrada  -24 dBFS -> salida   -53.56 dBFS
+   entrada -22.5 dBFS -> salida   -52.06 dBFS
+   entrada  -21 dBFS -> salida   -50.57 dBFS
+   entrada -19.5 dBFS -> salida   -49.08 dBFS
+   entrada  -18 dBFS -> salida   -47.58 dBFS
+   entrada -16.5 dBFS -> salida   -46.09 dBFS
+   entrada  -15 dBFS -> salida   -44.60 dBFS
+   entrada -13.5 dBFS -> salida   -43.11 dBFS
+   entrada  -12 dBFS -> salida   -41.62 dBFS
+   entrada -10.5 dBFS -> salida   -40.12 dBFS
+   entrada   -9 dBFS -> salida   -38.62 dBFS
+   pendiente 0.9962 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -65.5 dBFS
+
+=== EL UMBRAL (profundidad fija en 0.6667) ===
+   crudo | cierre abajo | apertura (dBFS) | ancho de la transicion
+   0.30  |      19.9 dB | -29.25 dBFS | 0.8 escalones
+         atenuacion: -36:19.9  -34.5:20.0  -33:19.9  -31.5:20.0  -30:20.0  -28.5:0.0  -27:0.0  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.33  |      46.0 dB | -26.13 dBFS | 0.7 escalones
+         atenuacion: -36:46.0  -34.5:47.3  -33:48.9  -31.5:50.0  -30:51.1  -28.5:53.3  -27:54.7  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts:183
+  if (codigo !== 0) throw new Error(`el grabador salio con ${codigo}: ${err.trim()}`);
+                          ^
+
+Error: el grabador salio con null: 
+    at medirEscalera (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts:183:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts:384:19
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts:297:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

@@ -16,6 +16,7 @@
  * Uso:
  *   node --experimental-strip-types tools/spikes/reparar-pendiente.ts
  */
+import { execFileSync } from 'node:child_process';
 import { Ui24rTransport } from '@vse/mixer-adapter';
 import { restaurarClaves } from './restaurar.ts';
 import { leerPendiente, cerrarPendiente, RUTA_PENDIENTE } from './pendiente.ts';
@@ -43,10 +44,52 @@ if (p.pares.length === 0) {
 for (const [k, v] of p.pares) console.log(`   ${k} -> ${v}`);
 console.log('');
 
+/**
+ * **Callar TODO antes de tocar nada, y el motivo costo un filtro.**
+ *
+ * El 2026-09-17, reparando un papelito, este guion devolvio `m.afs.enabled` a 1
+ * mientras un `afplay` huerfano seguia tocando el tono de 4 kHz de la corrida que
+ * se habia muerto. El supresor volvio a encenderse **con tono sonando** y planto
+ * un filtro de -18 dB en 4000,03 Hz, en la consola del usuario.
+ *
+ * **Ninguna guarda podia verlo.** Las corridas normales matan su reproductor en el
+ * `finally` de `conRestauracion`, pero este guion corre en OTRO proceso y no tiene
+ * ningun manejador del huerfano: para el, el tono es invisible.
+ *
+ * Asi que lo primero que hace es matar cualquier reproductor y cualquier grabador
+ * que hayan sobrevivido. Es tosco a proposito: no hay forma de distinguir «mi
+ * huerfano» de otro, y en una maquina de medicion no hay ninguno legitimo.
+ */
+console.log('=== PRIMERO, SILENCIO ===');
+for (const quien of ['afplay', 'tools/audio/bin/grabar']) {
+  try {
+    execFileSync('pkill', ['-f', quien], { stdio: 'ignore' });
+    console.log(`   se mato ${quien} (habia alguno vivo)`);
+  } catch {
+    console.log(`   ${quien}: ninguno vivo`);
+  }
+}
+await new Promise((r) => { setTimeout(r, 1500); });
+console.log('');
+
+/**
+ * **Y el supresor se devuelve ULTIMO.**
+ *
+ * Es el mismo principio que el `PREVIO` de los guiones aplica al fader --«no se
+ * devuelve el nivel antes de devolver lo que lo protege»--, y aca es mas fuerte:
+ * si algo quedara sonando pese al silencio de arriba, encender el supresor
+ * primero es plantar un filtro.
+ */
+const esSupresor = (k: string): boolean => /\.afs\.enabled$/.test(k);
+const ordenadas = [
+  ...p.pares.filter(([k]) => !esSupresor(k)),
+  ...p.pares.filter(([k]) => esSupresor(k)),
+];
+
 const t = new Ui24rTransport();
 await t.conectar(p.maquina);
 try {
-  await restaurarClaves(t, p.maquina, p.pares);
+  await restaurarClaves(t, p.maquina, ordenadas);
 } finally {
   await t.desconectar();
 }

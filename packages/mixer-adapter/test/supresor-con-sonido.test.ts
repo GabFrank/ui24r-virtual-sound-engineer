@@ -31,7 +31,19 @@ import { join } from 'node:path';
  * `m.afs.enabled` en 0 en algún lado. No verifica que lo restaure —de eso se
  * ocupa `restauracion-garantizada`— sino que lo haya mirado.
  */
-const SUENA = /\bafplay\b/;
+/**
+ * **Hacer sonar algo es LANZAR el reproductor, no nombrarlo.**
+ *
+ * Esto decia `/\bafplay\b/`, y el 2026-09-17 marco a `reparar-pendiente.ts`, que
+ * nombra `afplay` **para matarlo** --justo lo contrario de hacer ruido--. Ese
+ * guion habia tenido que aprender a callar todo antes de restaurar, porque
+ * encendio el supresor con un reproductor huerfano sonando y planto un filtro.
+ *
+ * Marcarlo por eso habria sido pedirle que apague el supresor a un guion cuyo
+ * trabajo es **devolverlo a como estaba**. El detector se afina: suena el que
+ * hace `spawn('afplay', ...)`.
+ */
+const SUENA = /spawn\(\s*['"]afplay['"]/;
 const APAGA = /m\.afs\.enabled['"]?\s*,\s*0\b|m\.afs\.enabled\^0/;
 
 /**
@@ -53,7 +65,7 @@ const SUENAN_SIN_APAGAR: ReadonlySet<string> = new Set([
   'auditoria/10-bloque-entrada.ts', 'auditoria/11-rta-sonda.ts',
   'auditoria/12-rta-escala.ts', 'auditoria/13-cola-vu2.ts',
   'auditoria/14-cola-final-y-gr.ts', 'auditoria/15-rta-balistica.ts',
-  'auditoria/16-final.ts', 'auditoria/17-main-bytes.ts', 'auditoria/wav.ts',
+  'auditoria/16-final.ts', 'auditoria/17-main-bytes.ts',
   'p0-10b-vu/aux-senal.ts', 'p0-10b-vu/balistica.ts',
   'p0-10b-vu/bytes-del-bus-de-efecto.ts', 'p0-10b-vu/cola-secciones.ts',
   'p0-10b-vu/cola-sub-fx.ts', 'p0-10b-vu/cola-vu2.ts',
@@ -151,7 +163,13 @@ test('ningun guion NUEVO hace sonar algo con el supresor del general encendido',
 });
 
 test('la lista tiene el tamaño que dice, y solo puede bajar', () => {
-  deepStrictEqual(SUENAN_SIN_APAGAR.size, 44,
+  // **Bajo de 44 a 43 el 2026-09-17, y no porque se arreglara un guion.** Al
+  // afinar el detector --suena el que LANZA `afplay`, no el que lo nombra--
+  // `auditoria/wav.ts` dejo de contar: solo lo menciona en un comentario, «para
+  // barridos sin re-lanzar afplay». Nunca hizo sonar nada. El trinquete pidio
+  // sacarlo, que es exactamente lo que tiene que pedir cuando algo deja de
+  // calificar.
+  deepStrictEqual(SUENAN_SIN_APAGAR.size, 43,
     'si sube, alguien agrego un guion que suena sin apagar el supresor; si baja, '
     + 'alguien lo arreglo y hay que actualizar el numero en el mismo commit');
 });
@@ -166,7 +184,8 @@ test('el trinquete no se afloja: lo arreglado sale de la lista', () => {
 
 test('el detector encuentra algo: no celebra el conjunto vacio', () => {
   const { suenan, sinApagar } = clasificar();
-  ok(suenan.length > 50, `solo ${suenan.length} guiones suenan; el detector se rompio`);
+  // El minimo bajo con el detector afinado: antes contaba menciones.
+  ok(suenan.length > 45, `solo ${suenan.length} guiones suenan; el detector se rompio`);
   ok(sinApagar.length > 0, 'si esto llega a cero, sacar la guarda y dejar la regla');
 });
 

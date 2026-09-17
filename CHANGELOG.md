@@ -6,6 +6,21 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Un filtro se plantó en tu consola y se borró en el acto.** Hay que contarlo
+  entero porque el daño fue real: una medición de la puerta se murió de golpe, y
+  la herramienta que repara ese tipo de accidente **volvió a encender tu supresor
+  mientras el tono de prueba seguía sonando** — el reproductor había sobrevivido a
+  la medición muerta. El supresor hizo lo suyo y plantó una banda de 4 kHz
+  atenuada 18 dB.
+
+  **Se detectó en la comparación de rutina** contra el retrato de tu consola de
+  anteanoche, que es lo que se hace después de cada medición, y se borró. Tu
+  consola quedó sin ningún filtro plantado.
+
+  **La herramienta está arreglada:** ahora calla todo antes de tocar nada, y
+  devuelve el supresor **último**. Y quedó escrito por qué ninguna de las
+  protecciones existentes podía verlo.
+
 - **Y la tabla completa de cuánto comprime, para cada posición del control.** Con
   el hallazgo de que no hay "una relación" hacía falta el dato entero, y ahí está:
   ocho posiciones del control por seis alturas de señal, medidas una por una.
