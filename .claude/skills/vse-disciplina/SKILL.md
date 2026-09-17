@@ -245,6 +245,53 @@ descubrieron tarde —el techo del medidor, la retención de picos, el respaldo 
 VU que no existía— se descubrieron leyendo, no ejecutando. Lo que no se puede
 leer con atención no se revisa.
 
+## Terminar una medición es más que archivarla
+
+**El usuario preguntó tres veces en un día si la documentación estaba bien, y las
+tres veces faltaba algo.** No es casualidad ni distracción: el trabajo de medir
+produce contrato y evidencia —que se hacen solos, porque son el trabajo— y deja
+atrás **los documentos que dicen qué se sabe**, que son otros.
+
+Su frase: *«se me hace costumbre preguntar porque de alguna manera es algo en
+donde siempre fallamos»*. Tenía razón las tres veces.
+
+### La lista, sacada de lo que falló de verdad el 2026-09-16
+
+Cuando una medición termina, estos son los que se quedan atrás. **Se recorren, no
+se recuerdan:**
+
+| Documento | Qué se le pudre |
+|---|---|
+| `docs/capability-matrix.md` | la **fila narrativa** de la familia: dice «desconocida / INFERIDO» de algo recién medido |
+| `docs/protocol-spec.md` §4.6 | la **tabla de constantes**: dice «sin probar» o «REFUTADA» de fórmulas que cambiaron de estado |
+| `README.md` | el resumen de qué falta medir |
+| `.claude/skills/vse-experto/SKILL.md` | la sección «Estado real, hoy», que **avisa de que se pudre** y se pudre igual |
+| `CHANGELOG.md` | lo que el usuario va a ver |
+| el contrato **anterior** | si esta medición contesta una pregunta que aquél dejó abierta, hay que decirlo **ahí** |
+
+### Lo que se puede comprobar solo, y lo que no
+
+`validate-rutas-medidas` cubre **la mitad mecanizable**: que ningún documento
+describa con una palabra de negación —«sin probar», «REFUTADA», «INFERIDO»,
+«desconocida»— una ruta que `RAW_MAP` declara `PROBADO`. Mira todos los `.md` del
+repositorio, no uno.
+
+**Lo que no puede cubrir es la prosa que describe una ley sin nombrar su ruta**, y
+ahí no hay guarda posible. Por eso la otra mitad de la regla:
+
+### Los documentos de estado APUNTAN, no repiten
+
+**Cada número repetido es un número que se pudre.** Un documento de estado dice
+*qué* se sabe y *dónde* está el detalle; el detalle vive en el contrato de la
+medición, que es el único sitio donde se actualiza cuando cambia.
+
+> **Lo que pasó.** La fila del compresor en la matriz repetía la ley completa con
+> sus cifras. Cuando la medición siguiente mostró que esa ley era el promedio de
+> una curva, hubo que corregirla **en cuatro lugares** — y dos se encontraron
+> recién cuando el usuario preguntó por tercera vez.
+
+---
+
 ## Una medición que no se archiva no se midió: se contó
 
 Pasó **tres veces en un día**, y la tercera casi cuesta caro.

@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { lectorDe, intentar, centinela, ProblemaDeLaGuarda } from './guarda.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const { leer, textoEjecutando } = lectorDe(RAIZ);
+const { leer, listar, textoEjecutando } = lectorDe(RAIZ);
 
 const MATRIZ = 'docs/capability-matrix.md';
 const TITULO = '## Las rutas crudas con ley medida';
@@ -128,6 +128,52 @@ const pudo = intentar(() => {
         + '  lo tiene que decir.');
     }
   }
+
+  // --- y la MISMA comprobacion en todos los documentos ---------------------
+  //
+  // **La matriz no era el unico que se quedaba atras, y se vio el mismo dia.** El
+  // 2026-09-16, con esta guarda ya extendida a las filas narrativas de la matriz,
+  // `protocol-spec.md` seguia diciendo «sin probar» de dos formulas medidas desde
+  // hacia tres dias y «REFUTADA» del umbral del compresor, que habia dejado de
+  // estarlo unas horas antes. La guarda estaba en verde porque solo miraba un
+  // archivo.
+  //
+  // Cualquier documento que nombre una ruta PROBADA y la describa con una palabra
+  // de negacion --«sin probar», «REFUTADA», «desconocida», «INFERIDO»-- esta
+  // mintiendo, salvo que en la misma linea diga tambien que esta medida: asi se
+  // permiten las lineas que cuentan la historia --«figuraba como REFUTADA y esta
+  // MEDIDA»--, que son las que este repositorio quiere que existan.
+  const NIEGA = /\bsin probar\b|\bREFUTAD[AO]\b|\bDESCONOCIDO\b|\bINFERIDO\b|desconocida/;
+  const AFIRMA = /\bMEDID[AO]\b|\bPROBADO\b|\bCONFIRMADA\b/;
+  const docs = listar('docs').filter((f) => f.endsWith('.md'));
+  let mirados = 0;
+  for (const rel of ['README.md', ...docs.map((f) => `docs/${f}`)]) {
+    let texto2;
+    try { texto2 = leer(rel); } catch { continue; }
+    mirados += 1;
+    for (const linea of texto2.split('\n')) {
+      if (!NIEGA.test(linea) || AFIRMA.test(linea)) continue;
+      for (const r of declaradas) {
+        // **La ruta con su indice concreto tambien cuenta.** `i.N.eq.b1.gain` e
+        // `i.9.eq.b1.gain` son la misma para esto, y la primera version sacaba el
+        // segmento en vez de generalizarlo: `i.gate.hold` no matchea nada y la
+        // guarda pasaba en verde sobre una linea que decia `i.9.gate.hold`
+        // DESCONOCIDO. Se vio probandola, que es para lo que se prueba.
+        const patron = new RegExp(r
+          .replace(/[.]/g, '\\.')
+          .replace(/\\\.[NMK](?=\\\.|$)/g, '\\.(?:[NMK]|\\d+)'));
+        if (!patron.test(linea)) continue;
+        problemas++;
+        console.error(
+          `${rel} describe ${r} --que esta PROBADO-- con una palabra de negacion.\n`
+          + `  Linea: ${linea.trim().slice(0, 110)}...\n`
+          + '  Si la ley esta medida, el documento lo tiene que decir. Si la linea\n'
+          + '  cuenta la historia --«figuraba como X y esta MEDIDA»-- alcanza con que\n'
+          + '  nombre tambien el estado nuevo en la misma linea.');
+      }
+    }
+  }
+  centinela(mirados, 20, 'documentos revisados por estado contradictorio');
 
   centinela(nombradas.size, 8, `filas de «${TITULO}»`);
   console.log(problemas === 0

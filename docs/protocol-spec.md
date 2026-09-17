@@ -716,12 +716,19 @@ que ve «no probado» supone que la fórmula es lo mejor que hay; con «refutado
 sabe que usarla es peor que no tener nada. Lo encontró una auditoría de
 coherencia.
 
+> **AL DÍA 2026-09-16.** Esta tabla decía «sin probar» de dos fórmulas que estaban
+> medidas desde el 2026-09-13, y «REFUTADA» del umbral, que no lo estaba. Las
+> cuatro filas se corrigen abajo, y **el detalle no se repite acá**: vive en el
+> contrato de cada medición, que es donde se actualiza cuando cambia. Esta tabla
+> dice el estado y adónde ir.
+
 | Parámetro | Rango | Función | Estado |
 |---|---|---|---|
-| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | sin probar |
-| Q | 0,05 … 15 | `0,05·300^V` | sin probar |
-| Umbral de compresor | −90 … +6 dB | lineal | **REFUTADA** por la medición 97 (2026-09-12). El rango de esta fila *es* la fórmula refutada evaluada en 0 y en 1, así que tampoco es un rango medido |
-| Relación de compresor | — | `1/V` | **REFUTADA** en su forma. El **sentido** sí está medido: el crudo 1 no comprime |
+| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | **MEDIDA** contra el filtro real, ítem 101. En `RAW_MAP` como `PROBADO` |
+| Q | 0,05 … 15 | `0,05·300^V` | **MEDIDA** contra el filtro real, ítem 101. En `RAW_MAP` como `PROBADO` |
+| Umbral de compresor | pendiente **96,4 dB por unidad de crudo**, medida | lineal | **Su PENDIENTE está medida** ([ítem 118](compromisos/118-el-umbral-del-compresor.md)): 96,4 contra los 96 del cliente, con residuos de 0,04 a 0,15 dB. **Ya NO está refutada** — la 97 refutó la conjunción y el culpable era la relación. Falta su **cero**, que este banco no puede anclar, así que no pasa a `PROBADO` |
+| Relación de compresor | — | `1/V` | **REFUTADA**, y sin reemplazo de una fórmula porque **no hay una relación**: hay una curva que afloja con el nivel ([ítem 118](compromisos/118-el-umbral-del-compresor.md)). Lo que la reemplaza es **una superficie medida** —ocho posiciones por seis excesos, [ítem 119](compromisos/119-la-superficie-del-compresor.md)—, usable en cualquier umbral porque la reducción depende sólo del exceso |
+| Sostenido de la puerta | 1 … 2000 ms | `2000^desqr(V)` | **MEDIDA y exacta** ([ítem 116](compromisos/116-los-tiempos-de-la-puerta.md)): errores de 0,7 a 0,0 ms. En `RAW_MAP` como `PROBADO` |
 
 ---
 
