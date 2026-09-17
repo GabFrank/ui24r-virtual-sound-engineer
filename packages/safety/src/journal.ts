@@ -26,11 +26,35 @@ export type EstadoEntrada =
 
 export interface CambioRegistrado {
   readonly path: string;
+  /** En qué unidad están las **magnitudes**: `dB`, `octavas`, `ms`. */
   readonly unidad: string;
-  /** Valor previo leído de la consola, nunca calculado (INV-002). */
+  /** Valor previo leído de la consola, nunca calculado (INV-002). **En crudo.** */
   readonly valorPrevio: number;
+  /** **En crudo.** */
   readonly valorEsperado: number;
+  /** Lo que se le mandó a la consola. **En crudo: es lo que fue al cable.** */
   readonly valorEnviado: number;
+  /**
+   * Los dos valores que importan, **en la unidad declarada arriba**.
+   *
+   * **El diario decía `dB` al lado de tres números que no eran decibeles**, y
+   * estuvo así desde el principio. Es el mismo error que este repositorio ya
+   * cazó y arregló **en el motor** —donde un tope de 3 dB dejaba pasar saltos de
+   * 61,9 dB porque comparaba decibeles contra el crudo del protocolo— y que
+   * **acá nunca se arregló**: `CambioPropuesto` ganó `magnitudPropuesta` y
+   * `magnitudEsperada`, el diario no.
+   *
+   * No era inofensivo. El historial de la sesión —cuánto se corrió cada ruta
+   * desde que empezó— **se reconstruye del diario**, y sumar crudos etiquetados
+   * en decibeles da una cuenta que no es de ninguna especie. Mientras el diario
+   * fue sólo un registro para leer después, el error no se cobraba; el día que
+   * alimenta al motor, sí.
+   *
+   * Los tres valores crudos se conservan: son lo que de verdad fue al cable, y
+   * son con lo que se revierte. Lo que se agrega es la otra mitad.
+   */
+  readonly magnitudEsperada: number;
+  readonly magnitudEnviada: number;
   readonly enviadoEl: string | null;
   /**
    * Cómo se confirmó el cambio.
@@ -137,6 +161,10 @@ export function entradaDesdeCambios(
       valorPrevio: valoresPrevios.get(c.path) ?? Number.NaN,
       valorEsperado: c.valorEsperado,
       valorEnviado: c.valorPropuesto,
+      // La otra mitad, en la unidad declarada. `CambioPropuesto` las trae desde
+      // que INV-004 empezó a aplicarse de verdad; el diario las ignoraba.
+      magnitudEsperada: c.magnitudEsperada,
+      magnitudEnviada: c.magnitudPropuesta,
       enviadoEl: null,
       confirmadoPor: null,
       verificado: false,

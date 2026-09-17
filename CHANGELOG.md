@@ -24,6 +24,13 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El registro de cambios anotaba «dB» al lado de números que no eran
+  decibeles.** Es el mismo error que este proyecto ya había cazado y arreglado en
+  el motor de seguridad —donde un tope de 3 dB dejaba pasar saltos de 61,9— y que
+  en el registro nunca se había arreglado. No se cobraba mientras el registro
+  fuera sólo para leer después; se cobraría ahora, que va a alimentar los frenos
+  de la aplicación.
+
 - **La pantalla del recorrido decía «sin medir» sobre dos etapas medidas** —el
   ecualizador y el monitor— durante cuatro días. Se corrigió y quedó una guarda
   que compara esa tabla con la de leyes cada vez que corren las pruebas.
