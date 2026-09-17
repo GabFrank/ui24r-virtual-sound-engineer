@@ -380,11 +380,56 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   // > `docs/compromisos/118-el-umbral-del-compresor.md`.
   { ...deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
     estado: 'INFERIDO' as const },
-  deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
+  /**
+   * **Cuánto atenúa la puerta cerrada. Medido contra el banco**, ítem 120 del
+   * 2026-09-17. La ley del cliente —`60a − 60`— acierta al décimo de dB:
+   * el crudo 1,00 no atenúa, el 0,85 da 9,0, el 0,70 da 18,0 y el 0,55 da 27,0.
+   *
+   * **El rango llega hasta 0,55 y ahí se corta a propósito.** Más abajo la
+   * medición se despega —35,0 dB donde la ley promete 36,0, y 39,9 donde promete
+   * 45,0— y eso **no es de la puerta: es el piso de nuestro banco**, plantado en
+   * unos −105,5 dBFS. Con ese piso metido en la cuenta, la ley predice los seis
+   * puntos dentro de 1,2 dB. Declarar `PROBADO` más abajo sería publicar el
+   * límite del instrumento como si fuera el del aparato.
+   *
+   * > **RETRACTA la conclusión del 2026-09-16**, que con la fuente 12 dB más baja
+   * > vio el techo en 29 dB y escribió que la profundidad «no llega adonde dicen
+   * > ni el cliente ni el manual». Lo que lo dirimió es la prueba que aquel mismo
+   * > contrato dejó declarada: **la fuente subió 12 dB y el techo no se movió**
+   * > —−106,6 dBFS entonces, −105,5 ahora—. Un límite de la puerta habría subido
+   * > con la fuente; uno del banco se queda donde está.
+   *
+   * **El extremo sigue sin resolverse, y no lo resuelve esta corrida.** El manual
+   * dice «Depth -inf to 0dB» y el cliente acota en −60: donde los dos discrepan
+   * está por debajo de lo que este banco ve.
+   *
+   * Evidencia:
+   * `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-de-la-puerta-2026-09-17.txt`.
+   * Contrato: `docs/compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md`.
+   */
+  medido(
+    'i.N.gate.depth', 'dB',
+    (a) => 60 * a - 60,
+    (db) => (db + 60) / 60,
+    0.55, 1, 'SPK-P0.10b-vu2',
+  ),
   // **La puerta usa la MISMA funcion que quedo refutada en el compresor**, y eso
   // hay que decirlo aunque no cambie su estado: la 97 midio el compresor, no la
   // puerta, asi que declararla refutada seria afirmar mas de lo medido. Pero
   // apoyarse en ella sabiendo que la misma recta fallo al lado seria peor.
+  //
+  // > **AL DIA 2026-09-17: la cota se aprieta y sigue sin alcanzar.** El item 120
+  // > repitio el barrido con la escalera fina de 1,5 dB y el ajuste dio 87,1
+  // > dB/unidad, **y ese numero NO se publica.** La puerta es un interruptor: la
+  // > transicion se completa en 0,8 escalones, asi que **el escalon de la escalera
+  // > ES la resolucion** y la apertura solo puede caer en su rejilla. Calculando
+  // > que pendientes son compatibles con los seis puntos medidos dada esa rejilla,
+  // > el resultado es un RANGO: **de 80 a 100 dB/unidad**, y los 96 del cliente
+  // > estan adentro. El 87,1 es un punto dentro de veinte, no una medicion.
+  // >
+  // > Mejora sobre la corrida del 2026-09-16, que con escalones de 3 dB acotaba
+  // > entre 60 y 100. Para cerrarla hace falta una escalera mas fina que la
+  // > histeresis, no mas puntos de umbral.
   deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
 
   /**

@@ -6,6 +6,34 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La puerta de ruido de tu consola cierra tanto como promete — y lo de anoche
+  era culpa de nuestro instrumento, no de ella.** Anteanoche se midió que la
+  puerta "se saturaba" a 29 dB de atenuación y se escribió que no llegaba a lo que
+  declara el fabricante. **Eso era falso y queda retractado.**
+
+  Repitiendo la medición con la señal 12 dB más arriba, el techo **no se movió de
+  su nivel absoluto**: −106,6 dBFS entonces, −105,5 ahora. Un límite de la puerta
+  habría subido con la señal; uno del banco de medición se queda donde está. Era
+  el banco.
+
+  Con eso, la ley de cuánto atenúa la puerta quedó **medida y confirmada al
+  décimo de decibel** —0, 9, 18 y 27 dB en los cuatro puntos que el banco alcanza
+  a ver—, y publicada con su límite escrito: comprobada hasta 27 dB de atenuación,
+  y de ahí para abajo nadie la vio todavía.
+
+- **La puerta abre y cierra en niveles casi iguales, y eso es una buena noticia.**
+  Una puerta que abre y cierra exactamente en el mismo punto castañetea con la
+  señal justo en el umbral. Ésta no: se comprobó que a un mismo nivel está cerrada
+  si venís subiendo y abierta si venís bajando. **Cuánta diferencia tiene todavía
+  no se puede decir** —es más chica que la resolución del instrumento—, pero el
+  chisporroteo no va a venir por ahí.
+
+- **A qué nivel abre la puerta sigue sin poder decirse**, y se dice. La medición
+  arrojó un número, y **no se publica**: la puerta abre de golpe, así que lo que se
+  mide es dónde cae el escalón de la escalera y no dónde está el umbral. Lo único
+  honesto es una franja, que esta corrida estrechó de "entre 60 y 100" a **entre 80
+  y 100**. La fórmula del fabricante cae adentro y sigue sin confirmarse.
+
 - **Un filtro se plantó en tu consola y se borró en el acto.** Hay que contarlo
   entero porque el daño fue real: una medición de la puerta se murió de golpe, y
   la herramienta que repara ese tipo de accidente **volvió a encender tu supresor

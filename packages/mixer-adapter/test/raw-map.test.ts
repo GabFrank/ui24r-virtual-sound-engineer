@@ -100,10 +100,33 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // exacta: errores de +0,7 a −0,1 ms sobre un recorrido de 28 a 2000. El motor
   // no la deja escribir --esta en ms y el tope de su `kind` esta en dB-- y entra
   // igual, porque la tabla registra lo medido, no solo lo escribible.
+  //
+  // **La decimotercera, `i.N.gate.depth`, es del item 120 del 2026-09-17**, y es
+  // la SEGUNDA de la puerta. `60a - 60` --la formula del cliente-- acerta al
+  // decimo de dB: 0,0 / 9,0 / 18,0 / 27,0 dB de atenuacion contra lo predicho.
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-de-la-puerta-2026-09-17.txt`.
+  //
+  // **Entra ACOTADA al crudo 0,55 … 1,00, y ese recorte es el hallazgo.** Mas
+  // abajo la medicion se despega de la ley, y la corrida anterior --la del
+  // 2026-09-16-- leyo ese despegue como un techo de la puerta y publico que la
+  // profundidad «no llega adonde dicen ni el cliente ni el manual». **Era el piso
+  // del banco.** Se dirimio subiendo la fuente 12 dB: el techo no se movio de su
+  // nivel absoluto --−106,6 dBFS contra −105,5--, y un limite de la puerta habria
+  // subido con la fuente. `medido()` existe justo para esto: declara hasta donde
+  // se comprobo, y `aRaw` rechaza el resto con FUERA_DE_RANGO.
+  //
+  // **Y a diferencia del sostenido, esta SI esta en dB**, como el tope de su
+  // `kind`. O sea que el motor puede convertirla: es la quinta que puede usar de
+  // verdad. Eso no la hace alcanzable --ningun servicio de produccion construye
+  // un `CambioPropuesto` para la puerta, y abrirle uno pediria su ADR-- pero deja
+  // de estar frenada por la unidad, que es donde se frenan `hold` y las de Hz y Q.
+  // Quien agregue ese camino tiene que decidirlo a proposito, no encontrarselo.
   assert.deepEqual([...rutasProbadas()].sort(),
     ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
       'i.N.eq.b1.q', 'i.N.eq.b2.gain', 'i.N.eq.b3.gain', 'i.N.eq.b4.gain',
-      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'i.N.gate.hold', 'm.eq.peak.l.K'],
+      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'i.N.gate.depth', 'i.N.gate.hold',
+      'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
   assert.equal(entrada('i.N.eq.b5.gain'), undefined,
     'la quinta banda se midió y no mueve el audio: una entrada acá le ofrecería al '

@@ -82,6 +82,15 @@ Con el crudo en 2/3, el cliente predice **−20,0 dB** y se midieron **−21,79*
 Cerca, y no igual. **Un punto no es una ley** y no se generaliza: para eso habría
 que barrerla.
 
+> **CONTESTADO el 2026-09-17 por el [ítem 120](120-el-umbral-y-la-profundidad-de-la-puerta.md):
+> la ley es la del cliente, y acierta al décimo de dB.** Barrida en seis
+> posiciones, `60a − 60` da 0,0 / 9,0 / 18,0 / 27,0 en las cuatro que el banco
+> alcanza a ver. Ya está en `RAW_MAP` como `PROBADO`, acotada al crudo 0,55 … 1,00.
+>
+> **Y explica de paso el 1,79 dB de diferencia de acá.** Aquella medición tomó un
+> solo punto al borde de lo que el banco ve: el piso del instrumento —unos
+> −105,5 dBFS— levanta la lectura justo donde la atenuación se acerca a él.
+
 ### Lo que queda establecido, y lo que no
 
 **Establecido:**
@@ -96,8 +105,8 @@ que barrerla.
 
 - **Qué ley sigue la relajación de la puerta.** Hace falta un modelo distinto, y
   esta corrida no propone ninguno.
-- **La ley de la profundidad**: un punto.
-- **La ley del umbral**: no se midió, se calibró. El crudo usado fue **0,46**.
+- ~~**La ley de la profundidad**: un punto.~~ **Cerrada** por el [ítem 120](120-el-umbral-y-la-profundidad-de-la-puerta.md) el 2026-09-17.
+- **La ley del umbral**: no se midió, se calibró. El crudo usado fue **0,46**. El [ítem 120](120-el-umbral-y-la-profundidad-de-la-puerta.md) lo **acotó** entre 80 y 100 dB por unidad el 2026-09-17, sin confirmar ni refutar los 96 del cliente.
 - **Qué convención usa el fabricante** para ataque y relajación.
 
 ---
