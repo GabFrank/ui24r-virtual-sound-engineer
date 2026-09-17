@@ -95,6 +95,34 @@ export interface EntradaDiario {
    * entera como JSON en `datos`, así que esto no necesita migración.
    */
   readonly medicionPosteriorId: string | null;
+  /**
+   * Las rutas cuyo **nivel de trabajo** quedó establecido al cerrar esta
+   * transacción.
+   *
+   * **Es el ancla de [ADR-034](../../../docs/adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md).**
+   * Poner el nivel de un monitor y retocarlo son dos operaciones con presupuestos
+   * distintos, y lo que las separa es si alguien ya fijó un nivel del que
+   * desviarse. Antes de eso la referencia es el piso del soundcheck, y proteger
+   * 4 dB alrededor del piso no protege a nadie.
+   *
+   * **Nace vacío y lo llena el usuario, no la aplicación.** La aplicación no
+   * puede saber cuándo el músico está conforme con su cuña: eso lo dice él, y lo
+   * anota la pantalla de monitor con `actualizar`, igual que `medicionPosteriorId`.
+   * Marcarlo solo —al llegar al techo, por ejemplo— sería la aplicación
+   * declarando terminada una operación cuyo criterio de terminado es de otro.
+   *
+   * **Una ruta se establece una vez y no se desestablece.** Volver atrás
+   * devolvería la ruta a la operación sin presupuesto, y con eso cualquiera
+   * podría recuperar la rampa entera diciendo que el nivel ya no vale. Si un
+   * músico quiere otro nivel de trabajo, eso es una decisión suya y es otra cosa
+   * que la que esta pieza resuelve.
+   *
+   * Se serializa dentro del JSON de `datos` en `transaction_journal`, así que no
+   * necesita migración —el mismo motivo por el que no la necesitó
+   * `medicionPosteriorId`—. **Una entrada vieja no lo trae**, y quien lo lea
+   * tiene que tratar la ausencia como «ninguna»: ver `historialDeLaSesion`.
+   */
+  readonly nivelEstablecidoEn: readonly string[];
   readonly cambios: readonly CambioRegistrado[];
 }
 
@@ -191,6 +219,9 @@ export function entradaDesdeCambios(
     // Se anota cuando la medición ocurra, con `actualizar`. Nace en null porque
     // al abrir la transacción todavía no se escribió nada que medir.
     medicionPosteriorId: null,
+    // Nace vacío por el mismo motivo: al abrir la transacción el músico todavía
+    // no escuchó nada, así que nadie puede haber dicho que así está bien.
+    nivelEstablecidoEn: [],
     cambios: cambios.map((c) => ({
       path: c.path,
       unidad: c.unidad,

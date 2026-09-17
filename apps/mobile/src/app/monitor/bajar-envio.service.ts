@@ -122,8 +122,10 @@ export class BajarEnvioService {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',
       // **El historial de la sesión, que hasta el 2026-09-17 iba vacío.** Estos
-      // tres llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron y
-      // si se escuchó después del último cambio. Pasarlos vacíos dejaba dos
+      // cuatro llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron,
+      // si se escuchó después del último cambio y **cuáles ya tienen un nivel de
+      // trabajo establecido**, que es lo que separa poner el nivel de una cuña de
+      // retocarla (ADR-034). Pasarlos vacíos dejaba dos
       // reglas del motor existiendo en el código y no en el comportamiento: el
       // presupuesto por sesión nunca se disparaba --el acumulado arrancaba
       // siempre en cero-- y «comprobá el efecto antes de volver a moverlo»

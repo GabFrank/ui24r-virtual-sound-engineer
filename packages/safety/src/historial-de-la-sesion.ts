@@ -39,19 +39,40 @@
  *
  * **Mira sólo la última transacción que tocó cada ruta**, no si alguna vez hubo
  * una medición. Haber escuchado hace tres pasos no autoriza el cuarto.
+ *
+ * ## La cuarta, que es el ancla de ADR-034
+ *
+ * `rutasConNivelEstablecido` contesta *«¿alguien fijó ya el nivel de trabajo de
+ * esta cuña?»*, y con eso el motor sabe si está poniendo el nivel o retocándolo.
+ * Sale de `EntradaDiario.nivelEstablecidoEn`, que nace con este cambio.
+ *
+ * **Y es lo que además rebasa el acumulado.** Establecer el nivel no sólo cambia
+ * qué reglas rigen: mueve la referencia desde la que se cuenta. Las dos cosas son
+ * la misma frase de ADR-034 —*«poner el nivel fija el ancla, y retocar se mide
+ * desde ahí»*— y separarlas dejaría al retoque naciendo con el presupuesto ya
+ * gastado por la rampa.
  */
 import type { EntradaDiario } from './journal.ts';
 
 /** Lo que el historial puede contestar hoy. */
 export interface HistorialDeLaSesion {
   /**
-   * Cuánto se corrió cada ruta respecto de donde estaba al empezar, **en la
-   * unidad declarada de cada cambio**.
+   * Cuánto se corrió cada ruta respecto de **la referencia vigente**, en la
+   * unidad declarada de cada cambio.
    *
    * Es una suma con signo, no de magnitudes: un cambio que devuelve la ruta
    * hacia donde estaba **descuenta**, que es lo que el motor espera —*«un
    * movimiento que acerca el parámetro a su valor inicial siempre es
    * admisible»*—.
+   *
+   * **La referencia es dónde estaba la ruta al empezar la sesión, salvo que
+   * alguien haya establecido un nivel de trabajo**; desde ese momento la
+   * referencia es ese nivel y la cuenta arranca de nuevo. Decirlo así --y no
+   * «respecto de donde estaba al empezar»-- es la mitad de ADR-034 que vive acá:
+   * *«poner el nivel fija el ancla, y retocar se mide desde ahí»*. Sin esto, una
+   * cuña levantada veinticinco decibeles desde el piso llegaría al primer retoque
+   * con el presupuesto de 4 dB agotado seis veces, y el motor la dejaría clavada
+   * justo cuando empieza el trabajo fino.
    */
   readonly acumuladoPorRuta: ReadonlyMap<string, number>;
   /** Las rutas que esta sesión ya movió al menos una vez. */
@@ -64,6 +85,14 @@ export interface HistorialDeLaSesion {
    * movió y nadie anotó haber escuchado.
    */
   readonly rutasConMedicionPosterior: ReadonlySet<string>;
+  /**
+   * Las rutas cuyo nivel de trabajo esta sesión ya estableció.
+   *
+   * El motor lo usa para saber en cuál de las dos operaciones de ADR-034 está
+   * cada ruta. Una que no está acá todavía se está poniendo: su presupuesto
+   * acumulado queda suspendido y lo que la acota es el techo de nominal.
+   */
+  readonly rutasConNivelEstablecido: ReadonlySet<string>;
 }
 
 /**
@@ -85,6 +114,7 @@ export function historialDeLaSesion(
 ): HistorialDeLaSesion {
   const acumulado = new Map<string, number>();
   const tocadas = new Set<string>();
+  const conNivel = new Set<string>();
   /** Por ruta, si la ÚLTIMA transacción que la movió tiene medición después. */
   const escuchadaAlFinal = new Map<string, boolean>();
 
@@ -108,6 +138,21 @@ export function historialDeLaSesion(
       if (!Number.isFinite(delta)) continue;
       acumulado.set(c.path, (acumulado.get(c.path) ?? 0) + delta);
     }
+
+    // **Después de contar los cambios de esta transacción, no antes.** La
+    // transacción que establece el nivel es la que lo alcanzó: sus decibeles son
+    // el último paso de la rampa y pertenecen a la rampa. Resetear primero los
+    // cobraría contra el presupuesto del retoque, que empieza recién acá.
+    //
+    // **`?? []` porque una entrada vieja no trae el campo.** El diario se
+    // serializa entero como JSON, así que las transacciones anteriores a esta
+    // pieza vuelven sin él, y `for…of undefined` estalla. La ausencia es
+    // «ninguna ruta», que además es lo cierto: cuando esas entradas se
+    // escribieron, establecer un nivel no existía.
+    for (const ruta of entrada.nivelEstablecidoEn ?? []) {
+      conNivel.add(ruta);
+      acumulado.set(ruta, 0);
+    }
   }
 
   const conMedicion = new Set<string>();
@@ -117,5 +162,6 @@ export function historialDeLaSesion(
     acumuladoPorRuta: acumulado,
     rutasYaTocadas: tocadas,
     rutasConMedicionPosterior: conMedicion,
+    rutasConNivelEstablecido: conNivel,
   };
 }

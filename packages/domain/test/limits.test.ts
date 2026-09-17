@@ -225,3 +225,89 @@ test('INV-004: un tope no se compara contra un numero de otra especie', () => {
   // vez de uno silencioso; atar la magnitud al crudo necesita las leyes de
   // conversion verificadas, y para el compresor la que habia quedo refutada.
 });
+
+/**
+ * El techo absoluto y la suspension del presupuesto, que son las dos mitades de
+ * ADR-034 que viven en el dominio.
+ *
+ * **Las dos van juntas y por eso se prueban juntas.** ADR-034 no saco un freno:
+ * cambio uno por otro. Probar la suspension sin probar el techo dejaria verde un
+ * envio a monitor sin ningun tope sobre el total.
+ */
+test('INV-010: el envio a monitor no pasa de nominal, tenga nivel o no', () => {
+  // Sin nivel establecido --poniendo el nivel-- y con nivel --retocando--: el
+  // techo es del parametro y no de la operacion. Es la decision del usuario del
+  // 2026-09-17, elegida entre tres opciones.
+  for (const nivelEstablecido of [false, true]) {
+    const enNominal = verificarLimite({
+      kind: 'MONITOR_AUX_SEND', deltaSolicitado: 2, acumuladoEnSesion: 0,
+      hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+      magnitudResultante: 0, nivelEstablecido,
+    });
+    assert.equal(enNominal.permitido, true, `llegar a nominal entra (nivel: ${nivelEstablecido})`);
+
+    const pasandose = verificarLimite({
+      kind: 'MONITOR_AUX_SEND', deltaSolicitado: 2, acumuladoEnSesion: 0,
+      hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+      magnitudResultante: 0.5, nivelEstablecido,
+    });
+    assert.equal(pasandose.permitido, false, `pasar de nominal no (nivel: ${nivelEstablecido})`);
+    assert.equal(pasandose.permitido === false && pasandose.codigo, 'TECHO_ABSOLUTO');
+  }
+});
+
+test('INV-010: sin nivel establecido el presupuesto acumulado se suspende', () => {
+  const rampa = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', deltaSolicitado: 2, acumuladoEnSesion: 20,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: false, unidad: 'dB',
+    magnitudResultante: -10, nivelEstablecido: false,
+  });
+  assert.equal(rampa.permitido, true,
+    'veintidos decibeles movidos y el tope es cuatro: poner el nivel no lo tiene');
+
+  const retoque = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', deltaSolicitado: 2, acumuladoEnSesion: 20,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: false, unidad: 'dB',
+    magnitudResultante: -10, nivelEstablecido: true,
+  });
+  assert.equal(retoque.permitido, false, 'retocar si lo tiene');
+  assert.equal(retoque.permitido === false && retoque.codigo, 'CUMULATIVE_CAP');
+});
+
+test('INV-004: la suspension del presupuesto no se concede sin un techo que la reemplace', () => {
+  // La ganancia del previo no declara techo. Aunque alguien diga que su nivel no
+  // esta establecido, el presupuesto sigue rigiendo: cambiar un freno por otro
+  // exige que el otro exista.
+  const r = verificarLimite({
+    kind: 'PREAMP_GAIN', deltaSolicitado: 3, acumuladoEnSesion: 6,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: false, unidad: 'dB',
+    magnitudResultante: -10, nivelEstablecido: false,
+  });
+  assert.equal(r.permitido, false);
+  assert.equal(r.permitido === false && r.codigo, 'CUMULATIVE_CAP');
+});
+
+test('INV-004: sin declarar a cuanto quedaria, un parametro con techo se rechaza', () => {
+  // Un techo no se comprueba contra un numero ausente. Dejarlo pasar seria tener
+  // el tope escrito y no corriendo, que es el defecto de `techoPorRuta` antes de
+  // tener productor y el de INV-034.
+  const r = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', deltaSolicitado: 2, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+  });
+  assert.equal(r.permitido, false);
+  assert.equal(r.permitido === false && r.codigo, 'SIN_MAGNITUD_RESULTANTE');
+});
+
+test('INV-004: sin nivel establecido, el tope POR TRANSACCION sigue corriendo', () => {
+  // Lo que ADR-034 suspende es el acumulado, no el salto. Los 2 dB por paso son
+  // lo que protege al musico de un susto, y son la razon por la que poner el
+  // nivel es necesariamente una rampa y no un salto.
+  const r = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', deltaSolicitado: 6, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+    magnitudResultante: -10, nivelEstablecido: false,
+  });
+  assert.equal(r.permitido, false);
+  assert.equal(r.permitido === false && r.codigo, 'DELTA_CAP');
+});

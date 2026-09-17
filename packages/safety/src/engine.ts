@@ -522,6 +522,17 @@ export class SafetyEngine {
       // La unidad que declara quien propone, para que `verificarLimite` pueda
       // comparar especies antes de comparar numeros.
       unidad: c.unidad,
+      // **A cuánto quedaría**, que es contra lo que se compara un techo. Es la
+      // misma magnitud que el motor usa unas líneas más arriba para `techoPorRuta`
+      // y para el realce de sala: los tres son topes sobre el destino.
+      magnitudResultante: c.magnitudPropuesta,
+      // **Sin `?.` y sin `?? true`, a propósito.** Un contexto sin este conjunto
+      // es un llamador que no se enteró de que existe, y lo que tiene que pasar
+      // ahí es un `TypeError` ruidoso y no una suspensión silenciosa del
+      // presupuesto acumulado. `techoPorRuta` eligió lo contrario --y con razón,
+      // porque ahí fallar cerrado es no tener techo-- pero acá el campo ausente
+      // AFLOJA, así que esconderlo sería abrir la puerta que ADR-034 acota.
+      nivelEstablecido: ctx.rutasConNivelEstablecido.has(c.path),
     });
 
     if (!limite.permitido) {
@@ -547,6 +558,15 @@ export class SafetyEngine {
         // el motor no puede juzgar, asi que se rechaza por la misma invariante
         // que exige que el tope exista.
         UNIDAD_NO_DECLARADA: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
+        // El techo de nominal del envío a monitor (ADR-034). **INV-010 y no
+        // INV-004**: los topes de INV-004 acotan el movimiento, y éste sale de la
+        // invariante que gobierna qué puede hacer la aplicación con la cuña de un
+        // músico. Hoy `MONITOR_AUX_SEND` es el único tipo que declara techo; si
+        // alguna vez lo declara otro, esta fila tiene que dejar de ser una sola.
+        TECHO_ABSOLUTO: { codigo: 'TECHO_ABSOLUTO', inv: 'INV-010' },
+        // No declarar a cuánto quedaría un parámetro que tiene techo es la misma
+        // especie de error que declarar mal la unidad: el motor no puede juzgar.
+        SIN_MAGNITUD_RESULTANTE: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
       };
       const m = mapa[limite.codigo];
       salida.push({

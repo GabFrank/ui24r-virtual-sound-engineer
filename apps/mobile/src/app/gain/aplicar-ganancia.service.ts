@@ -112,8 +112,10 @@ export class AplicarGananciaService {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',
       // **El historial de la sesión, que hasta el 2026-09-17 iba vacío.** Estos
-      // tres llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron y
-      // si se escuchó después del último cambio. Pasarlos vacíos dejaba dos
+      // cuatro llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron,
+      // si se escuchó después del último cambio y cuáles ya tienen un nivel de
+      // trabajo establecido --que es de monitores y acá no aplica: la ganancia no
+      // declara techo, así que su presupuesto rige siempre--. Pasarlos vacíos dejaba dos
       // reglas del motor existiendo en el código y no en el comportamiento: el
       // presupuesto por sesión nunca se disparaba --el acumulado arrancaba
       // siempre en cero-- y «comprobá el efecto antes de volver a moverlo»

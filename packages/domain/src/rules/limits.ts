@@ -15,6 +15,34 @@ export interface Limite {
   readonly porTransaccion: number;
   readonly acumuladoPorSesion: number;
   readonly unidad: string;
+  /**
+   * Tope sobre la magnitud **resultante**, no sobre el movimiento.
+   *
+   * Los otros dos topes acotan *cuánto se mueve* el parámetro; éste acota *dónde
+   * queda*. Son especies distintas y por eso convive con ellos en vez de
+   * reemplazarlos: un parámetro puede quedar dentro del techo y aun así haber
+   * dado un salto brusco para llegar.
+   *
+   * **Decisión del usuario, 2026-09-17**, eligiendo entre cuatro opciones sobre
+   * hasta dónde puede subir la aplicación la cuña de un músico
+   * ([ADR-034](../../../../docs/adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md)):
+   * hasta **nominal**, la posición 0 dB. El control llega a +10; pasar de nominal
+   * queda como decisión suya, no de la aplicación.
+   *
+   * **Y rige siempre, también al retocar**, que es una segunda decisión del
+   * usuario del mismo día. ADR-034 escribió el techo pensando en la subida desde
+   * el piso y dejó el retoque con «los topes de ADR-028 sin cambios», y así un
+   * nivel establecido apenas debajo de nominal se cruzaba con un retoque normal
+   * —sin que el usuario decidiera nada—. Preguntado entre tres opciones, eligió
+   * que el techo rija siempre: **el techo es del parámetro, no de la operación.**
+   * Lo que sí distingue a las dos operaciones es el presupuesto acumulado; ver
+   * `nivelEstablecido` en {@link ContextoCambio}.
+   *
+   * Sin declarar, el parámetro no tiene techo propio y se rige sólo por los otros
+   * dos topes. Declararlo tiene una consecuencia más, y está en
+   * `nivelEstablecido`: es lo único que autoriza a suspender el acumulado.
+   */
+  readonly techoAbsoluto?: number;
 }
 
 export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
@@ -86,7 +114,13 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * El techo de «hasta donde estaba» es una regla aparte y vive en el motor:
    * ver `techoPorRuta` en `ContextoSeguridad`.
    */
-  MONITOR_AUX_SEND: { porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB' },
+  MONITOR_AUX_SEND: {
+    porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB',
+    // Nominal. Ver `techoAbsoluto`: es el único tope de esta tabla que dice
+    // **dónde queda** el parámetro y no cuánto se movió, y es lo que hace
+    // posible la rampa de ADR-034 sin dejarla sin freno.
+    techoAbsoluto: 0,
+  },
 };
 
 /** Factor de calidad mínimo en salidas: filtros estrechos sin evidencia, no. */
@@ -215,7 +249,8 @@ export function pacingMs(
 export type ResultadoLimite =
   | { readonly permitido: true }
   | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP'
-    | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA';
+    | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA'
+    | 'TECHO_ABSOLUTO' | 'SIN_MAGNITUD_RESULTANTE';
     readonly mensaje: string };
 
 export interface ContextoCambio {
@@ -259,6 +294,47 @@ export interface ContextoCambio {
    * conversión verificadas, que para varios parámetros todavía no están.
    */
   readonly unidad: string;
+  /**
+   * A cuánto quedaría el parámetro si el cambio se aplica, en la unidad de arriba.
+   *
+   * Es lo que compara `techoAbsoluto`, y es un dato que el motor ya tiene
+   * —`CambioPropuesto.magnitudPropuesta`— pero que hasta hoy no le llegaba a esta
+   * función: los tres topes anteriores hablan de movimiento, y del movimiento
+   * alcanza con el delta.
+   *
+   * **Opcional, pero obligatorio cuando el tope existe.** Si el parámetro declara
+   * `techoAbsoluto` y esto viene sin declarar, el cambio se **rechaza**: no se
+   * puede comprobar un techo contra un número que nadie mandó, y dejarlo pasar
+   * sería tener el tope escrito y no corriendo, que es el defecto que este
+   * proyecto ya pagó con `techoPorRuta` y con INV-034.
+   */
+  readonly magnitudResultante?: number;
+  /**
+   * Si esta sesión ya estableció un nivel de trabajo para este parámetro.
+   *
+   * **Es lo que separa poner el nivel de retocarlo** (ADR-034). El presupuesto
+   * acumulado mide cuánto se corrió el parámetro respecto de una referencia, y
+   * esa referencia sólo significa algo si alguien la puso ahí a propósito. Con
+   * las cuñas de los monitores en el piso al empezar el soundcheck, la referencia
+   * es el piso, y proteger 4 dB alrededor del piso no protege a nadie: deja al
+   * músico sin monitor y al soundcheck sin terminar.
+   *
+   * Mientras el nivel **no** está establecido, el presupuesto acumulado se
+   * suspende y lo que acota es `techoAbsoluto`. Una vez establecido, el
+   * presupuesto vuelve entero y se mide **desde el nivel establecido**, que es
+   * trabajo de quien reconstruye el acumulado y no de acá.
+   *
+   * **Sin declarar significa «establecido», y falla cerrado a propósito.** Lo
+   * normal es que el presupuesto rija; suspenderlo es la excepción, y una
+   * excepción que se obtiene por omisión es una excepción que alguien va a
+   * obtener sin querer.
+   *
+   * **Y la suspensión sólo se concede si el parámetro declara `techoAbsoluto`.**
+   * Un presupuesto suspendido sin un techo que lo reemplace deja el parámetro sin
+   * ningún freno sobre el total, y eso no es lo que ADR-034 decidió: decidió
+   * cambiar un freno por otro, no sacar uno.
+   */
+  readonly nivelEstablecido?: boolean;
 }
 
 export function verificarLimite(c: ContextoCambio): ResultadoLimite {
@@ -286,10 +362,37 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
       mensaje: `${delta} ${lim.unidad} supera el máximo por transacción de ${lim.porTransaccion}`,
     };
   }
+  // **El techo va antes que el acumulado porque el acumulado puede no correr.**
+  // Mientras el nivel no está establecido, el techo es lo ÚNICO que acota el
+  // total: comprobarlo después de un `return` que no ocurre lo dejaría sin
+  // correr justo en el caso para el que se escribió.
+  if (lim.techoAbsoluto !== undefined) {
+    if (c.magnitudResultante === undefined) {
+      return {
+        permitido: false,
+        codigo: 'SIN_MAGNITUD_RESULTANTE',
+        mensaje: `${c.kind} tiene un techo de ${lim.techoAbsoluto} ${lim.unidad} y el cambio `
+          + 'no declara a cuánto quedaría: un techo no se comprueba contra un número ausente',
+      };
+    }
+    if (c.magnitudResultante > lim.techoAbsoluto) {
+      return {
+        permitido: false,
+        codigo: 'TECHO_ABSOLUTO',
+        mensaje:
+          `el parámetro quedaría en ${c.magnitudResultante.toFixed(1)} ${lim.unidad} y el `
+          + `techo es ${lim.techoAbsoluto}: pasar de ahí es decisión del usuario`,
+      };
+    }
+  }
+
+  // **El presupuesto acumulado se suspende mientras no haya un nivel del que
+  // desviarse**, y sólo si hay un techo que lo reemplace. Ver `nivelEstablecido`.
+  const presupuestoRige = c.nivelEstablecido !== false || lim.techoAbsoluto === undefined;
   // El desplazamiento resultante, no la suma de magnitudes: un movimiento que
   // acerca el parámetro a su valor inicial siempre es admisible.
   const resultante = c.acumuladoEnSesion + c.deltaSolicitado;
-  if (Math.abs(resultante) > lim.acumuladoPorSesion) {
+  if (presupuestoRige && Math.abs(resultante) > lim.acumuladoPorSesion) {
     return {
       permitido: false,
       codigo: 'CUMULATIVE_CAP',

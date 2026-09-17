@@ -34,7 +34,7 @@ Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ow
 | Reproductor: silencio, fader, envíos | Sistema | Solo dentro de la reserva, desde MVP1 |
 | Silencio de buses del perfil de amplificación durante medición | Sistema | Transacción de sistema con restauración, desde MVP3 |
 | Instantáneas con prefijo reservado | Sistema | Desde MVP0 |
-| **Envíos auxiliares de monitores** | **Solo del usuario** | La aplicación nunca escribe. Excepción única: envíos del reproductor hacia menos infinito dentro de la reserva |
+| **Envíos auxiliares de monitores** | **El nivel, del asistente de monitor; todo lo demás, solo del usuario** | **Esta fila decía «la aplicación nunca escribe» y quedó vieja el 2026-09-12**, cuando ADR-028 abrió el nivel del envío —`i.N.aux.M.value`, 240 rutas— con el usuario autorizándolo. La nota del pie ya lo corregía y la fila no. Lo que sigue cerrado: `mute`, `pan`, `post`, `postproc` y el fader del bus `a.N.mix`. Y nada durante el show. **Dos operaciones, desde el 2026-09-17** ([ADR-034](adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md)): **poner el nivel** —subir la cuña desde donde esté, de a 2 dB, escuchando entre paso y paso, sin presupuesto acumulado y con techo en **nominal, 0 dB**— y **retocar**, con los 2 dB por vez y 4 dB por sesión de ADR-028 medidos desde el nivel establecido, más el techo por ruta de «hasta donde estaba». El techo de nominal rige en las dos. Excepción anterior, en pie: envíos del reproductor hacia menos infinito dentro de la reserva |
 | **Fader general** | **Solo del usuario** | Nunca escrito en MVP0 a MVP3 |
 | **Silencio de entradas y general** | **Solo del usuario** | Nunca |
 | **Alimentación fantasma** | **Solo del usuario** | La aplicación solo lee |

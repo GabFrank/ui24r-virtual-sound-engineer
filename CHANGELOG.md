@@ -6,6 +6,29 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación ya puede levantar la cuña de un músico desde abajo, y sabe
+  dónde parar.** Hasta hoy tenía permitido moverla cuatro decibeles en todo el
+  soundcheck, y levantar un retorno desde el silencio son más de veinte: el paso
+  de tu soundcheck en que subís el auxiliar para que el músico tenga referencia
+  era, literalmente, imposible. Ahora son dos cosas distintas:
+  - **Poner el nivel.** Sube de a 2 dB con el músico tocando, escuchando entre
+    paso y paso, hasta donde haga falta. No tiene presupuesto porque lo que la
+    frena es el techo.
+  - **Retocar.** Una vez que decís que así está bien, vuelven los topes de
+    siempre —2 dB por vez, 4 en toda la sesión— pero contados **desde ese nivel**
+    y no desde donde estaba la cuña al empezar. Antes el retoque nacía con el
+    presupuesto ya gastado por la subida.
+
+  **El techo es nominal, 0 dB, y rige en las dos.** Pasar de ahí sigue siendo
+  decisión tuya. Lo elegiste vos, y también elegiste que valga también al
+  retocar: si no, una cuña que quedaba apenas debajo de nominal la cruzaba sola
+  con un retoque normal.
+
+  **Lo que todavía falta**, y conviene saberlo: quien marca «este es el nivel de
+  este músico» es la pantalla de monitor, que no existe todavía. Hasta que esté,
+  ninguna cuña llega a tener nivel establecido. Y arrancar desde el silencio
+  absoluto todavía no se puede: eso viene con el asistente que sabe subir.
+
 - **La hoja de ruta se rehízo desde tu soundcheck, no desde la consola.** Contaste
   paso por paso cómo hacés un soundcheck y se cruzó con lo que dicen las fuentes
   de oficio y con lo que la aplicación ya tiene. Tres cosas cambiaron:

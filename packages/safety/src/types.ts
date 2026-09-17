@@ -108,6 +108,37 @@ export interface ContextoSeguridad {
    * topes de {@link LIMITES}.
    */
   readonly techoPorRuta: ReadonlyMap<string, number>;
+  /**
+   * Las rutas cuyo **nivel de trabajo** esta sesión ya estableció.
+   *
+   * **Es lo que separa las dos operaciones de ADR-034**: poner el nivel de un
+   * monitor y retocarlo. Una ruta que no está acá está en la primera —la cuña
+   * todavía no tiene nivel, la aplicación la está subiendo con el músico
+   * escuchando entre paso y paso— y su presupuesto acumulado queda suspendido a
+   * cambio del techo de nominal. Una que sí está, está en la segunda: vuelven los
+   * 4 dB de ADR-028, medidos **desde el nivel establecido**.
+   *
+   * **No lo declara quien propone: sale del diario.** Es la diferencia entre este
+   * conjunto y una bandera en el cambio, y no es cosmética. Una etiqueta que
+   * suspende un presupuesto y que la pone quien quiere el permiso es pedir la
+   * exención diciendo que se la merece —el mismo defecto que
+   * `correspondeExencionDeSistema` tuvo que cerrar cruzando lo declarado contra
+   * lo que la transacción de verdad tocaba—. Acá lo que decide es el estado de la
+   * sesión, reconstruido de lo que ya pasó: ver `historialDeLaSesion`.
+   *
+   * **Vacío significa «ninguna cuña tiene nivel todavía», que es lo cierto al
+   * empezar un soundcheck** y lo que hace falta para que la aplicación pueda
+   * levantarlas. No es el caso permisivo por descuido: el techo de nominal sigue
+   * corriendo, el tope de 2 dB por paso sigue corriendo, y el motor sigue
+   * exigiendo una medición entre un paso y el siguiente.
+   *
+   * **Quién lo llena, y qué falta.** `EntradaDiario.nivelEstablecidoEn` lo
+   * registra y `historialDeLaSesion` lo reconstruye. Quien lo **marca** es la
+   * pantalla de monitor, cuando el músico dice que así está bien: esa pantalla no
+   * existe todavía, así que hoy ninguna ruta llega a establecerse. La
+   * consecuencia está dicha con todas las letras en ADR-034 y en el `CHANGELOG`.
+   */
+  readonly rutasConNivelEstablecido: ReadonlySet<string>;
   readonly hayTakeDeSoundcheckActivo: boolean;
   /**
    * Prefijos de los buses sobre los que el perfil permite ecualizar.
@@ -142,6 +173,16 @@ export type CodigoRechazo =
   | 'PARAMETRO_NO_ESCRIBIBLE'
   | 'DELTA_EXCEDIDO'
   | 'ACUMULADO_EXCEDIDO'
+  /**
+   * El parámetro quedaría por encima del techo que su tipo declara.
+   *
+   * **No es `DELTA_EXCEDIDO` y tiene código propio a propósito.** Los dos topes
+   * de INV-004 dicen *cuánto se movió*; éste dice *dónde quedó*. Con el mismo
+   * código, un test que compruebe el techo pasaría también si lo que frenó fue el
+   * salto —que es exactamente la confusión que `techo-por-ruta.test.ts` tuvo que
+   * desactivar a mano con un comentario.
+   */
+  | 'TECHO_ABSOLUTO'
   | 'SIN_MEDICION_INTERMEDIA'
   | 'DEMASIADOS_PARAMETROS'
   | 'ESTADO_DE_SESION'

@@ -17,12 +17,13 @@ function cambio(p: Partial<CambioRegistrado> & { path: string }): CambioRegistra
 function entrada(
   cambios: readonly CambioRegistrado[],
   medicionPosteriorId: string | null = null,
+  nivelEstablecidoEn: readonly string[] = [],
 ): EntradaDiario {
   return {
     id: 't1', sessionId: 's1', estado: 'APLICADA', snapshotRef: null,
     razon: 'prueba', nivelAutonomia: 'ASSISTED',
     creadoEl: '2026-09-17T10:00:00.000Z', cerradoEl: null,
-    medicionPosteriorId, cambios,
+    medicionPosteriorId, nivelEstablecidoEn, cambios,
   };
 }
 
@@ -144,4 +145,61 @@ test('cada ruta lleva su propia escucha dentro de la misma transaccion', () => {
   ]);
   assert.ok(h.rutasConMedicionPosterior.has(RUTA));
   assert.equal(h.rutasConMedicionPosterior.has(otra), false);
+});
+
+test('establecer el nivel mueve la referencia: el acumulado arranca de cero', () => {
+  // La rampa de ADR-034: veinticinco decibeles desde el piso. Si el acumulado
+  // siguiera contando desde donde estaba al empezar la sesion, el primer retoque
+  // llegaria con el presupuesto de 4 dB agotado seis veces.
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -32, magnitudEnviada: -30 })]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -30, magnitudEnviada: -28 })]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -28, magnitudEnviada: -26 })], null, [RUTA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 0, 'seis movidos y la cuenta vuelve a cero');
+  assert.ok(h.rutasConNivelEstablecido.has(RUTA));
+  assert.ok(h.rutasYaTocadas.has(RUTA), 'establecer el nivel no borra que se toco');
+});
+
+test('los decibeles de la transaccion que establece el nivel son de la rampa', () => {
+  // El reset va DESPUES de contar los cambios de esa transaccion: el ultimo paso
+  // es el que alcanzo el nivel, y cobrarselo al retoque le comeria la mitad del
+  // presupuesto antes de empezar.
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -4, magnitudEnviada: -2 })], null, [RUTA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 0);
+});
+
+test('despues del ancla el acumulado vuelve a contar', () => {
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [RUTA]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -8, magnitudEnviada: -6 })]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -6, magnitudEnviada: -4 })]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 4, 'cuatro decibeles desde el nivel establecido');
+});
+
+test('una entrada vieja sin el campo no rompe ni establece nada', () => {
+  // El diario se serializa entero como JSON: las transacciones anteriores a esta
+  // pieza vuelven de la base sin `nivelEstablecidoEn`. La ausencia es «ninguna».
+  const vieja = entrada([cambio({ path: RUTA })]);
+  const sinCampo = { ...vieja } as Record<string, unknown>;
+  delete sinCampo['nivelEstablecidoEn'];
+  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario]);
+  assert.equal(h.rutasConNivelEstablecido.has(RUTA), false);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 2, 'y el acumulado se cuenta igual');
+});
+
+test('establecer el nivel de una ruta no toca el de otra', () => {
+  const OTRA = 'i.4.aux.1.value';
+  const h = historialDeLaSesion([
+    entrada([
+      cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 }),
+      cambio({ path: OTRA, magnitudEsperada: -10, magnitudEnviada: -8 }),
+    ], null, [RUTA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 0);
+  assert.equal(h.acumuladoPorRuta.get(OTRA), 2, 'la otra cuña sigue sin nivel y sigue contando');
+  assert.equal(h.rutasConNivelEstablecido.has(OTRA), false);
 });

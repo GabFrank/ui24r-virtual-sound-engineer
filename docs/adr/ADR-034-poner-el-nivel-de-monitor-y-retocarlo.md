@@ -1,8 +1,12 @@
 # ADR-034 — Poner el nivel de un monitor y retocarlo son dos operaciones
 
 **Fecha:** 2026-09-17
-**Estado:** **decidida y sin implementar.** El asistente de monitor sólo sabe
-bajar, el motor no distingue las dos operaciones y no hay pantalla.
+**Estado:** **decidida, y el motor implementado el 2026-09-17.** El motor ya
+distingue las dos operaciones, suspende el presupuesto mientras la cuña no tiene
+nivel y frena en nominal. **Falta lo de arriba**: el asistente de monitor sólo
+sabe bajar y no hay pantalla, así que **nadie marca todavía un nivel como
+establecido** y en la práctica toda cuña vive en la primera operación. La
+consecuencia está dicha abajo, en «Lo que el motor hace hoy».
 **Origen:** **Decisión del usuario**, eligiendo entre opciones el 2026-09-17, al
 empezar la primera pieza de la hoja de ruta de
 [`pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md`](../pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
@@ -56,9 +60,27 @@ se detiene si aparece un lazo**, en vez de descubrirlo cuando ya suena.
 
 ### 2. Retocar — lo de siempre
 
-Una vez puesto el nivel, vuelven los topes de ADR-028 sin cambios: **2 dB por vez
-y 4 dB acumulados**, más el techo por ruta de «hasta donde estaba» cuando la
-aplicación bajó. Es el caso que el tope de 4 dB fue escrito para proteger.
+Una vez puesto el nivel, vuelven los topes de ADR-028: **2 dB por vez y 4 dB
+acumulados**, más el techo por ruta de «hasta donde estaba» cuando la aplicación
+bajó. Es el caso que el tope de 4 dB fue escrito para proteger.
+
+> **Corrección del mismo día, y es una segunda decisión del usuario.** Esta
+> sección decía «los topes de ADR-028 **sin cambios**», y con eso el techo de
+> nominal quedaba fuera del retoque. Al ir a implementarlo apareció la
+> consecuencia: una cuña establecida en −1 dB podía cruzar nominal con un retoque
+> normal de 2 dB, **sin que el usuario decidiera nada** — exactamente lo que el
+> techo existe para impedir. Preguntado entre tres opciones, eligió que **el techo
+> rija siempre**: es un tope del parámetro y no de la operación. Lo que distingue
+> a las dos operaciones es el presupuesto acumulado, no el techo.
+>
+> Descartadas: **que el techo rija sólo al poner el nivel** —al pie de la letra de
+> lo que decía esta ADR; más margen para el asistente, pero deja que la aplicación
+> pase de nominal sola— y **que además le avise cuando el techo lo frena** —«este
+> músico necesita más y estoy en nominal»—, que es mejor y **queda pendiente**
+> porque arrastra la pantalla, que es la tercera pieza de esta misma hoja de ruta.
+>
+> El efecto práctico: un nivel establecido cerca de nominal tiene menos margen
+> para arriba y los 4 dB completos para abajo.
 
 ## Cómo se separan sin debilitar nada: el ancla
 
@@ -94,6 +116,41 @@ tiene con qué compararse.
 Ese primer movimiento es un caso aparte y hay que tratarlo como tal en el código:
 no es una rampa de 2 dB, es **salir del silencio**. Lo que lo acota no es el
 delta sino el destino, que es el mínimo escribible.
+
+> **Y esto es lo único de esta ADR que el motor todavía NO hace.** Un salto desde
+> −∞ tiene delta infinito, así que el tope de 2 dB por transacción lo rechaza, que
+> es lo correcto mientras nada sepa proponerlo: falla cerrado. Se construye junto
+> con el asistente que sabe subir —la pieza siguiente—, porque es ahí donde nace
+> quien lo propone. `historialDeLaSesion` ya lo contempla por el otro lado: un
+> delta infinito no entra al acumulado, porque envenenaría la cuenta de esa ruta
+> para toda la sesión.
+
+## Lo que el motor hace hoy
+
+**Implementado el 2026-09-17**, y conviene leerlo junto con lo que falta, porque
+lo que falta afloja:
+
+| | |
+|---|---|
+| Las dos operaciones se distinguen | sí, por `rutasConNivelEstablecido`, que sale del diario y **no de lo que declare quien propone** |
+| Poner el nivel no gasta presupuesto acumulado | sí, y la suspensión **sólo se concede a un tipo que declare techo** |
+| Techo en nominal, 0 dB | sí, y **también al retocar** |
+| Retocar mide desde el ancla | sí: establecer el nivel pone el acumulado de esa ruta en cero |
+| 2 dB por paso, y escuchar entre pasos | sí, sin cambios: es lo que hace de esto una rampa |
+| Salir del silencio | **no**, ver arriba |
+| **Quién marca el nivel como establecido** | **nadie todavía** |
+
+**Esa última fila es la que hay que tener presente.** Marcar el nivel es un acto
+del usuario —la aplicación no puede saber cuándo el músico está conforme— y lo va
+a anotar la pantalla de monitor, que es la tercera pieza. Hasta entonces **ninguna
+ruta se establece**, así que el envío a monitor vive permanentemente en la primera
+operación: sin presupuesto acumulado, acotado por el techo de nominal, los 2 dB
+por paso y la escucha obligatoria entre uno y otro.
+
+**Que eso no esté expuesto hoy es cierto y no es una defensa.** El servicio de
+monitor no lo llama ninguna pantalla, así que nada de esto corre todavía en la
+tablet. Pero la pantalla es justamente lo que sigue, y llega con el acto de
+marcar el nivel o llega abriendo un hueco.
 
 ## Qué se descartó, y por qué importa que quede escrito
 
