@@ -263,7 +263,11 @@ test('cada etapa declara si su ley está medida, y hoy sólo lo está la gananci
   }
   strictEqual(LEY_MEDIDA.GANANCIA, true, 'la ganancia está medida: docs/protocol-spec.md');
   const sinMedir = ETAPAS_EN_ORDEN.filter((e: EtapaDeInstrumento) => !LEY_MEDIDA[e]);
-  strictEqual(sinMedir.length, 5, `al 2026-09-11 faltan cinco y quedan ${sinMedir.join(', ')}`);
+  // Cinco al 2026-09-11; tres desde el 2026-09-17, cuando se corrigió que el
+  // ecualizador (ítems 101/103/108/113) y el monitor (104) seguían en false.
+  // La correspondencia con RAW_MAP la vigila el adaptador, que sí puede verlo.
+  deepStrictEqual(sinMedir, ['PUERTA', 'COMPRESOR', 'ENVIO_A_EFECTOS'],
+    'las etapas sin ley son la puerta, el compresor y el envío a efectos');
 });
 
 // --- El recorrido completo, y lo que un auditor pidió comprobar ------------

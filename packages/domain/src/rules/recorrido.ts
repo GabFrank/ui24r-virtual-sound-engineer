@@ -71,18 +71,30 @@ export const ETAPAS_EN_ORDEN: readonly EtapaDeInstrumento[] = [
  * pantalla seguiría diciendo «sin medir» después de la medición, o peor, al
  * revés.
  *
- * Al 2026-09-11 sólo la ganancia está medida. Las otras cinco son tareas con el
- * usuario en la sala, y **el usuario decidió que se miden antes de la primera
- * entrega** —registrado en `docs/pedidos/2026-09-11-recorrido.md`—: el recorrido
- * no está pensado para convivir con etapas bloqueadas para siempre.
+ * Al 2026-09-11 sólo la ganancia estaba medida. **Y esta tabla mintió cuatro
+ * días**: el envío a monitor se midió el 2026-09-13 y el ecualizador entero el
+ * 2026-09-16, y acá siguieron en `false` hasta el 2026-09-17, así que la pantalla
+ * del recorrido le dijo «sin medir» al usuario sobre dos etapas medidas. El
+ * comentario de arriba prometía lo contrario. Ahora hay una guarda en
+ * `packages/mixer-adapter/test/ley-medida.test.ts` que compara esta tabla con
+ * `RAW_MAP`, que es donde vive la verdad, y falla si vuelven a separarse.
+ *
+ * **Qué significa «medida» acá, y por qué la puerta y el compresor siguen en
+ * `false` aunque tengan leyes.** Medida quiere decir que la ruta que la etapa
+ * necesita para ACTUAR está `PROBADO` en `RAW_MAP`. De la puerta está medida la
+ * profundidad y no el umbral; del compresor, la pendiente del umbral y no su
+ * cero. El 2026-09-17 el usuario decidió que las dos se ajustan **cerrando el
+ * lazo** sobre el indicador de puerta y el medidor de reducción —ADR-032—, así
+ * que el día que eso se construya, lo que esta tabla tiene que decir cambia de
+ * pregunta. Hasta entonces, `false` es lo honesto.
  */
 export const LEY_MEDIDA: Readonly<Record<EtapaDeInstrumento, boolean>> = {
   GANANCIA: true,
   PUERTA: false,
   COMPRESOR: false,
-  ECUALIZADOR: false,
+  ECUALIZADOR: true,
   ENVIO_A_EFECTOS: false,
-  ENVIO_A_MONITORES: false,
+  ENVIO_A_MONITORES: true,
 };
 
 /**
