@@ -127,7 +127,7 @@ mezcla cambia los monitores que ya quedaron bien.
 | Orden | Pieza | Herramientas | Necesita consola |
 |---|---|---|---|
 | 0 | **Arreglar lo que miente** — hecho el 2026-09-17: la tabla del recorrido, el alcance, la contradicción de los efectos | — | no |
-| 1 | **Pantalla de monitor**, y el techo para subir desde silencio | 9, 3 | no |
+| 1 | **Pantalla de monitor**. El techo desde silencio **ya estaba decidido** (ADR-028: si la app no bajó, no hay techo). Lo que apareció al empezar: el asistente sólo sabe bajar, el presupuesto de 4 dB por sesión hace imposible la rampa, y el silencio queda fuera del tramo medido. Decidido en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | 9, 3 | no |
 | 2 | **Ecualizador de canal**: decisión, asistente con criterio (espectro contra curva objetivo y banda útil del perfil), servicio, pantalla | 4 | para verificar |
 | 3 | **Puerta y compresor por lazo cerrado**: topes, servicio, pantalla | 5, 6 | para verificar |
 | 4 | **Preparar el show** y **nivel de referencia** | 1, 3 | no |

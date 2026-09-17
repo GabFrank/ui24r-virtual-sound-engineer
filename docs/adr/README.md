@@ -37,3 +37,4 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [031](ADR-031-la-mezcla-de-conjunto-entra.md) | La mezcla de conjunto entra al MVP, y la aplicación mueve faders de canal con tope | Decidida, sin implementar |
 | [032](ADR-032-puerta-y-compresor-por-lazo-cerrado.md) | La puerta y el compresor se ajustan cerrando el lazo sobre el indicador y el medidor de reducción, no por ley | Decidida, sin implementar |
 | [033](ADR-033-los-envios-a-efectos-entran.md) | Los envíos a efectos entran: cuánto manda cada canal, con tope; los parámetros internos siguen siendo del usuario | Decidida, sin implementar |
+| [034](ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | Poner el nivel de un monitor y retocarlo son dos operaciones: la rampa sube de a 2 dB con techo en nominal, retocar mantiene los 4 dB | Decidida, sin implementar |
