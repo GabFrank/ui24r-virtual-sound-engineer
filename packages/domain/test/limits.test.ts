@@ -311,3 +311,45 @@ test('INV-004: sin nivel establecido, el tope POR TRANSACCION sigue corriendo', 
   assert.equal(r.permitido, false);
   assert.equal(r.permitido === false && r.codigo, 'DELTA_CAP');
 });
+
+/**
+ * El agujero del numero que no es un numero, comprobado el 2026-09-17.
+ *
+ * Toda comparacion con `NaN` da `false`, asi que `Math.abs(NaN) > tope` es
+ * `false` y lo mismo el acumulado y el techo: **un cambio que declarara `NaN` en
+ * su magnitud pasaba INV-004 entera**. No estaba expuesto --los dos servicios de
+ * produccion calculan magnitudes finitas-- y el motor es justamente la pieza que
+ * no puede depender de que quien lo llama haga las cosas bien.
+ */
+test('INV-004: una magnitud que no es un numero no pasa ningun tope', () => {
+  const base = {
+    kind: 'PREAMP_GAIN', hayMedicionPosterior: true,
+    esPrimerCambioDelParametro: true, unidad: 'dB',
+  } as const;
+
+  const porElMovimiento = verificarLimite({ ...base, deltaSolicitado: NaN, acumuladoEnSesion: 0 });
+  assert.equal(porElMovimiento.permitido, false, 'un movimiento NaN pasaba el tope por transaccion');
+  assert.equal(porElMovimiento.permitido === false && porElMovimiento.codigo, 'MAGNITUD_NO_NUMERICA');
+
+  const porElAcumulado = verificarLimite({ ...base, deltaSolicitado: 1, acumuladoEnSesion: NaN });
+  assert.equal(porElAcumulado.permitido, false, 'un acumulado NaN pasaba el presupuesto');
+
+  const porElTecho = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
+    unidad: 'dB', deltaSolicitado: 1, acumuladoEnSesion: 0, magnitudResultante: NaN,
+  });
+  assert.equal(porElTecho.permitido, false, 'un destino NaN pasaba el techo de nominal');
+});
+
+test('INV-004: un movimiento infinito lo sigue frenando el tope, como antes', () => {
+  // Solo se tapo `NaN`. Un delta infinito ya lo rechazaba el tope por
+  // transaccion, y eso es lo correcto mientras nadie sepa proponer un salto
+  // desde el silencio: cuando ADR-034 lo construya, la excepcion va a ser
+  // deliberada y con su nombre, no un agujero heredado.
+  const r = verificarLimite({
+    kind: 'PREAMP_GAIN', deltaSolicitado: Infinity, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+  });
+  assert.equal(r.permitido, false);
+  assert.equal(r.permitido === false && r.codigo, 'DELTA_CAP');
+});

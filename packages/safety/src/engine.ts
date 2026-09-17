@@ -567,6 +567,9 @@ export class SafetyEngine {
         // No declarar a cuánto quedaría un parámetro que tiene techo es la misma
         // especie de error que declarar mal la unidad: el motor no puede juzgar.
         SIN_MAGNITUD_RESULTANTE: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
+        // Una magnitud que no es un número no es un cambio que el motor pueda
+        // juzgar, y antes las pasaba todas. Ver el comentario en `limits.ts`.
+        MAGNITUD_NO_NUMERICA: { codigo: 'MAGNITUD_NO_ATADA', inv: 'INV-004' },
       };
       const m = mapa[limite.codigo];
       salida.push({

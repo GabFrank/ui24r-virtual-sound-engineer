@@ -104,3 +104,21 @@ test('media ley tampoco ata: el umbral tiene la pendiente medida y el cero no', 
   assert.equal(r.atada === false && r.codigo, 'SIN_LEY_VERIFICADA');
   assert.match(r.atada === false ? r.motivo : '', /INFERIDO/);
 });
+
+/**
+ * La otra punta del mismo agujero, comprobada el 2026-09-17.
+ *
+ * `Math.abs(NaN - x) > holgura` da `false`, asi que el `return` del rechazo no
+ * se ejecutaba y esta funcion --cuyo unico trabajo es comprobar que el motor
+ * juzgue el mismo numero que va al cable-- devolvia `atada: true` para
+ * **cualquier crudo**, con tal de que la magnitud declarada no fuera un numero.
+ */
+test('una magnitud que no es un numero NO esta atada a ningun crudo', () => {
+  const r = verificarAtadura('i.3.aux.1.value', 0.5, NaN, 'dB');
+  assert.equal(r.atada, false, 'decia que si, y con cualquier crudo');
+  assert.equal(r.atada === false && r.codigo, 'MAGNITUD_NO_NUMERICA');
+
+  // Y el caso que si esta atado sigue estandolo: la guarda no rompe lo que andaba.
+  const bien = verificarAtadura('i.3.aux.1.value', 0.5, -11.616, 'dB');
+  assert.equal(bien.atada, true);
+});

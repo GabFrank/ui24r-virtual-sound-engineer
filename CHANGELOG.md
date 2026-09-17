@@ -47,6 +47,17 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Un número que no era un número pasaba todos los controles del motor de
+  seguridad.** Si algo le hubiera entregado al motor un nivel que no es un
+  número —una lectura que falló, un valor que nunca llegó de la consola— pasaban
+  el tope de cuánto se mueve un parámetro de una vez, el presupuesto de la
+  sesión, el techo nuevo de los monitores, **y** la guarda que existe para
+  comprobar que el número que el motor juzga sea el mismo que va al cable: esa
+  última decía «atado» y no lo estaba, con cualquier valor. No te afectó —las
+  dos pantallas que escriben calculan números de verdad— y se tapó igual, porque
+  el motor es justamente la pieza que no puede depender de que quien lo llama
+  haga las cosas bien.
+
 - **Los dos frenos que la aplicación tenía escritos y no aplicaba, ahora
   aplican.** El motor de seguridad sabe negarse a mover un parámetro más de lo
   presupuestado en una sesión, y a moverlo dos veces sin escuchar en el medio.

@@ -250,7 +250,7 @@ export type ResultadoLimite =
   | { readonly permitido: true }
   | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP'
     | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA'
-    | 'TECHO_ABSOLUTO' | 'SIN_MAGNITUD_RESULTANTE';
+    | 'TECHO_ABSOLUTO' | 'SIN_MAGNITUD_RESULTANTE' | 'MAGNITUD_NO_NUMERICA';
     readonly mensaje: string };
 
 export interface ContextoCambio {
@@ -354,6 +354,39 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
         + 'comparar los dos numeros seria comparar especies distintas',
     };
   }
+  // **Un número que no es un número pasaba TODOS los topes de esta función.**
+  // Toda comparación con `NaN` da `false`, así que `Math.abs(NaN) > tope` es
+  // `false`, `Math.abs(NaN) > acumulado` es `false` y `NaN > techo` también:
+  // un cambio que declarara `NaN` en su magnitud quedaba aprobado por INV-004
+  // entera. Y no se quedaba ahí: `verificarAtadura` --la guarda que comprueba
+  // que el motor juzgue el mismo número que va al cable-- devolvía `atada: true`
+  // por el mismo motivo, así que el `NaN` pasaba **con cualquier crudo**.
+  //
+  // No estaba expuesto --los dos servicios de producción calculan magnitudes
+  // finitas-- y el motor es justamente la pieza que no puede depender de que
+  // quien lo llama haga las cosas bien. Comprobado de las dos puntas el
+  // 2026-09-17 antes de taparlo.
+  //
+  // **Sólo `NaN`, y los infinitos se dejan como están, a propósito.** Un delta
+  // infinito ya lo rechaza el tope de abajo --`Infinity > 2`-- y eso es lo
+  // correcto mientras nadie sepa proponer un salto desde el silencio; cuando
+  // ADR-034 lo construya, la excepción va a ser deliberada y con su nombre, no
+  // un agujero heredado.
+  for (const [que, n] of [
+    ['el movimiento pedido', c.deltaSolicitado],
+    ['lo acumulado en la sesión', c.acumuladoEnSesion],
+    ['a cuánto quedaría', c.magnitudResultante ?? 0],
+  ] as const) {
+    if (Number.isNaN(n)) {
+      return {
+        permitido: false,
+        codigo: 'MAGNITUD_NO_NUMERICA',
+        mensaje: `${que} no es un número (${n}) en ${c.kind}: un tope no se comprueba `
+          + 'contra algo que no se puede comparar, y toda comparación con `NaN` es falsa',
+      };
+    }
+  }
+
   const delta = Math.abs(c.deltaSolicitado);
   if (delta > lim.porTransaccion) {
     return {

@@ -58,7 +58,7 @@ export type ResultadoAtadura =
     }
   | {
       readonly atada: false;
-      readonly codigo: 'MAGNITUD_NO_COINCIDE' | 'UNIDAD_NO_COINCIDE';
+      readonly codigo: 'MAGNITUD_NO_COINCIDE' | 'UNIDAD_NO_COINCIDE' | 'MAGNITUD_NO_NUMERICA';
       readonly motivo: string;
       readonly magnitudDelCrudo: number;
     };
@@ -105,6 +105,28 @@ export function verificarAtadura(
   const magnitudDelCrudo = e.fromRaw(valorPropuesto);
   const recorrido = Math.abs(e.fisicoMax - e.fisicoMin);
   const holgura = recorrido * TOLERANCIA_RELATIVA;
+  // **`NaN` decía «atada» y no lo estaba, que es justo lo contrario de para lo
+  // que existe esta función.** Toda comparación con `NaN` es falsa, así que
+  // `Math.abs(NaN - x) > holgura` da `false` y el `return` de abajo no se
+  // ejecuta: la guarda que comprueba que el motor juzgue el mismo número que va
+  // al cable aprobaba **cualquier crudo** con tal de que la magnitud declarada
+  // no fuera un número. Es la misma forma que el tope de INV-004 tenía en
+  // `verificarLimite` y se cerró el mismo día.
+  //
+  // **Va como su propio código y no como `MAGNITUD_NO_COINCIDE`**, porque no es
+  // que los dos números difieran: es que uno no es un número, y el mensaje que
+  // le sirve a quien lo lee es distinto.
+  if (!Number.isFinite(magnitudPropuesta)) {
+    return {
+      atada: false,
+      codigo: 'MAGNITUD_NO_NUMERICA',
+      motivo: `${path}: el cambio declara ${magnitudPropuesta} ${unidad}, que no es un `
+        + 'número finito. No se puede atar al crudo lo que no se puede comparar, y toda '
+        + `comparación con \`NaN\` es falsa: sin esta guarda el crudo ${valorPropuesto} `
+        + 'quedaba aprobado',
+      magnitudDelCrudo,
+    };
+  }
   if (Math.abs(magnitudDelCrudo - magnitudPropuesta) > holgura) {
     return {
       atada: false,
