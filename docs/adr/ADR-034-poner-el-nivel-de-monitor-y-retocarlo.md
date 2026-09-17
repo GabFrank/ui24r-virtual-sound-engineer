@@ -229,8 +229,13 @@ con el commit que se miró de cada uno, está en
 - **El borde del silencio, que es el único pedazo que sigue sin construir, tiene
   precedente y va en la dirección contraria.** `fmalcher` resuelve el silencio con
   una convención: `DBToFaderValue` devuelve crudo 0 para cualquier pedido de −200
-  dB o menos, `faderValueToDB` lee −∞ por debajo de una amplitud de 1e−10, y al
-  propagar un nivel enlazado pone piso en −100 dB. Es `INFERIDO` —leído de su
+  dB o menos —y 1 para +10 o más—, `faderValueToDB` lee −∞ por debajo de una
+  amplitud de 1e−10, y **`changeFaderLevelDB(offsetDB)` pone piso en −100 dB al
+  nivel actual antes de sumarle el ajuste**. Esa última es el precedente más
+  directo de todos —«subir un envío una cantidad de dB desde donde está, con
+  piso»— y **la primera versión de esta sección la llamó `linkTo`, que no existe
+  en ese repositorio**; lo marcó una auditoría de fidelidad el 2026-09-17, y el
+  nombre equivocado tapaba justamente el hallazgo. Es `INFERIDO` —leído de su
   código, no medido— y vale como hipótesis. **Ellos recortan; acá no se puede**,
   porque la regla 1 dice que no se escribe donde nadie midió y la ley del envío
   está medida entre el crudo 0,25 y el 1,0. Por eso la decisión de arrancar en

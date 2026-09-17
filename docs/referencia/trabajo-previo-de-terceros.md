@@ -11,13 +11,13 @@ veo que de alguna forma este paso siempre se "les olvida"»*. Tenía razón: al
 auditar la madrugada aparecieron **dos afirmaciones falsas** sobre estos
 repositorios, repetidas en cuatro documentos. Las dos tienen la misma forma —un
 `grep` negativo del parámetro del día, ampliado en silencio a una conclusión
-sobre todo el proyecto— y es la **tercera** vez que este repositorio la corrige.
+sobre todo el proyecto— y a la fecha de este documento era la **tercera** vez que este repositorio la corregía. **Hubo una cuarta el 2026-09-17**, sobre la rampa, y está más abajo.
 
 ## Los cuatro, con la versión que se miró
 
 | Proyecto | Commit mirado | Último cambio | Qué es |
 |---|---|---|---|
-| [`fmalcher/soundcraft-ui`](https://github.com/fmalcher/soundcraft-ui) | `7ba8065`, y **vuelto a mirar el 2026-09-17 en `2fc297f`** | 2026-09-09 | Biblioteca TypeScript del protocolo, con documentación propia. La más completa de las cuatro |
+| [`fmalcher/soundcraft-ui`](https://github.com/fmalcher/soundcraft-ui) | `7ba8065`, y **vuelto a mirar el 2026-09-17 en `2fc297f`** | **2026-09-17** | Biblioteca TypeScript del protocolo, con documentación propia. La más completa de las cuatro |
 | [`Dennion/ioBroker.soundcraft`](https://github.com/Dennion/ioBroker.soundcraft) | `bc2e0a9` | 2025-12-07 | Adaptador de domótica. **Usa la biblioteca de fmalcher**, no habla el protocolo por su cuenta |
 | [`ndikanov/ui24`](https://github.com/ndikanov/ui24) | `235fba1` | 2020-07-29 | Un `custom.min.js` de 40 KB que se inyecta en el cliente oficial |
 | [`NaturalDevCR/MyUiPro`](https://github.com/NaturalDevCR/MyUiPro) | `20ad8b1` | 2025-07-31 | Aplicación Quasar que abre varias ventanas del cliente a la vez, **más su propio control por MIDI** |
@@ -101,7 +101,8 @@ que este repositorio escribe la versión cómoda de un «no encontré».
 | | Rampa sobre un envío |
 |---|---|
 | `fmalcher/soundcraft-ui` | **Sí, y sobre este mismo parámetro.** `AuxChannel extends SendChannel extends Channel`, y `Channel` trae `fadeTo(destino, tiempoMs, curva, fps)` y `fadeToDB`. Cuatro curvas —lineal y tres suavizados— y 25 cuadros por segundo por omisión |
-| `ioBroker.soundcraft`, `ndikanov/ui24`, `NaturalDevCR/MyUiPro` | **No.** Cero coincidencias de `fadeTo`, `fadeTime`, `easing` o `ramp` en los tres árboles |
+| `ndikanov/ui24`, `NaturalDevCR/MyUiPro` | **No.** Cero coincidencias de `fadeTo`, `fadeTime`, `easing` o `ramp` en su código propio |
+| `ioBroker.soundcraft` | **No la llama, pero la tiene.** No hay coincidencias propias, y su `package.json` declara `soundcraft-ui-connection`: la rampa **está disponible** en ese proyecto. Poner «No» a secas acá habría sido la forma exacta de error que este documento existe para impedir —el grep del término del día ampliado a una conclusión sobre el proyecto— |
 
 **Qué clase de rampa es, que no es la misma que la nuestra.** La de fmalcher es
 una **transición automática y suave hacia un destino**, pensada para automatizar
@@ -118,6 +119,37 @@ progresivamente desde código es cosa hecha y probada por otro, y que lo que est
 proyecto agrega no es la mecánica de la rampa sino **cuándo parar y con permiso de
 quién**.
 
+### Y el precedente más directo de todos, que una etiqueta equivocada tapó
+
+**La primera versión de esta sección llamó `linkTo` a lo que se llama
+`changeFaderLevelDB`**, y lo describió como «al propagar un nivel enlazado». No
+existe ningún `linkTo` en el árbol de `fmalcher`: cero coincidencias. Lo encontró
+una auditoría de fidelidad el mismo día, en el documento escrito justamente para
+que esto no pase.
+
+Y la etiqueta equivocada tapaba el hallazgo: `changeFaderLevelDB(offsetDB)`
+—`facade/channel.ts`, heredado por `AuxChannel`— es **«subir o bajar un envío una
+cantidad de decibeles desde donde está, con piso»**, que es literalmente la
+operación de ADR-034. El piso de −100 dB se aplica al nivel actual antes de sumar
+el ajuste, o sea que resuelve el mismo problema del borde del silencio: cómo sumar
+decibeles a algo que está en −∞.
+
+### La propagación por enlace estéreo, que acá cuenta por ruta
+
+`Channel.setFaderLevelRaw` escribe el nivel **en todos los `linkedChannelIds`**, y
+`AuxChannel` arma esa lista con hasta **cuatro** rutas: el canal, su vecino
+enlazado en el bus, el mismo canal en el auxiliar estéreo-enlazado, y el vecino en
+ese auxiliar. Una sola llamada de «poner el nivel del envío» puede escribir cuatro
+`i.N.aux.M.value`.
+
+**Importa acá porque este proyecto cuenta por ruta**: el presupuesto acumulado, el
+techo por ruta y el máximo de cuatro parámetros por transacción de INV-005 se
+llevan por clave. Si alguna vez se implementa el enlace estéreo, una sola decisión
+de producto van a ser varias escrituras y varios presupuestos.
+
+(Del mismo tipo: `DBToFaderValue` **también recorta por arriba**, `if (dbValue >=
+10) return 1`, lo que refuerza el «ellos recortan» de más abajo.)
+
 ### El borde del silencio, que es el problema que falta resolver
 
 Y es el aporte más directo, porque fmalcher lo resolvió de una forma que la
@@ -127,7 +159,7 @@ nuestra descarta con motivo:
 |---|---|
 | `DBToFaderValue(db)` | `if (db <= -200) return 0` — por debajo de −200 dB, crudo cero |
 | `faderValueToDB(v)` | `if (lin < 1e-10) return -Infinity` — por debajo de una amplitud de 1e−10, lee silencio |
-| `linkTo` (nivel enlazado) | `Math.max(v, -100)` — al propagar un nivel, piso en −100 dB |
+| `changeFaderLevelDB(offsetDB)` | `Math.max(v, -100) + offsetDB` — antes de sumar un ajuste relativo, pone piso en −100 dB al nivel **actual del propio canal** |
 
 **Es una convención, no una medición.** Sale de leer su código, así que es
 `INFERIDO` y vale como hipótesis: `DigiMixer` recorta el medidor en 240 y está

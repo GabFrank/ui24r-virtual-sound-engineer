@@ -257,7 +257,15 @@ export interface ContextoCambio {
   readonly kind: ParameterKind;
   readonly deltaSolicitado: number;
   /**
-   * Desplazamiento **neto y con signo** respecto al valor inicial de la sesión.
+   * Desplazamiento **neto y con signo** respecto a la **referencia vigente**.
+   *
+   * **La referencia es el valor inicial de la sesión, salvo que alguien haya
+   * establecido un nivel de trabajo para ese parámetro**; desde ahí se cuenta
+   * desde el nivel establecido. Lo decide quien reconstruye el acumulado
+   * --`historialDeLaSesion`--, no esta función. Este docblock decía «respecto al
+   * valor inicial de la sesión» después de que el productor cambiara de
+   * definición, así que el productor y el consumidor describían dos referencias
+   * distintas; lo marcó una auditoría de fidelidad el 2026-09-17.
    *
    * Con signo, no en valor absoluto. La diferencia no es de estilo: INV-004
    * define el tope como «respecto al valor inicial», o sea que el parámetro

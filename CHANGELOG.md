@@ -6,8 +6,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
-- **La aplicación ya puede levantar la cuña de un músico desde abajo, y sabe
-  dónde parar.** Hasta hoy tenía permitido moverla cuatro decibeles en todo el
+- **Los topes que hacían imposible levantar la cuña de un músico ya no la
+  frenan, y hay un techo donde parar.** Es un cambio del motor de seguridad,
+  no una función que puedas usar todavía: **ninguna pantalla lo llama y el
+  asistente de monitor sigue sabiendo sólo bajar**, así que en la tablet no vas
+  a ver nada nuevo. Lo que cambió es que ahora *se puede* construir encima.
+  Antes no. Hasta hoy tenía permitido moverla cuatro decibeles en todo el
   soundcheck, y levantar un retorno desde el silencio son más de veinte: el paso
   de tu soundcheck en que subís el auxiliar para que el músico tenga referencia
   era, literalmente, imposible. Ahora son dos cosas distintas:
@@ -24,10 +28,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   retocar: si no, una cuña que quedaba apenas debajo de nominal la cruzaba sola
   con un retoque normal.
 
-  **Lo que todavía falta**, y conviene saberlo: quien marca «este es el nivel de
-  este músico» es la pantalla de monitor, que no existe todavía. Hasta que esté,
-  ninguna cuña llega a tener nivel establecido. Y arrancar desde el silencio
-  absoluto todavía no se puede: eso viene con el asistente que sabe subir.
+  **Lo que todavía falta, y es casi todo lo visible**: el asistente que sepa
+  subir —hoy sólo sabe bajar, porque nació para cazar acoples—, la pantalla por
+  músico, y quien marque «este es el nivel de este músico», que es esa misma
+  pantalla. Hasta que esté, ninguna cuña llega a tener nivel establecido.
+  Arrancar desde el silencio absoluto tampoco se puede todavía.
 
 - **La hoja de ruta se rehízo desde tu soundcheck, no desde la consola.** Contaste
   paso por paso cómo hacés un soundcheck y se cruzó con lo que dicen las fuentes

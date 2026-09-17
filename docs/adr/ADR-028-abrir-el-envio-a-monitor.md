@@ -181,7 +181,8 @@ convierte en autoridad de la app»*. Con ésta van tres.
 ## Los límites, y por qué son más apretados que los del fader
 
 ```
-MONITOR_AUX_SEND: { porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB' }
+MONITOR_AUX_SEND: { porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB',
+                    techoAbsoluto: 0 }   // el techo lo agrego ADR-034
 CHANNEL_FADER:    { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' }
 ```
 
@@ -237,9 +238,13 @@ Y con eso se destaparon dos cosas que hacían falta y nadie sabía:
   dueño natural de esa memoria es quien baja, y quien baja es ese servicio. El
   mapa vive ahí y se pasa lleno en cada transacción.
 
-**El hueco 3 sigue abierto**: `acumuladoPorRuta` y `rutasYaTocadas` siguen
-vacíos, así que `acumuladoPorSesion: 4` no acota nada y sólo funciona el
-`porTransaccion: 2`.
+**El hueco 3 se cerró el 2026-09-17** y esto decía que seguía abierto. El
+historial de la sesión existe, se reconstruye del diario y llega a los dos
+servicios de producción, así que `acumuladoPorRuta` y `rutasYaTocadas` ya no van
+vacíos. **Y el `acumuladoPorSesion: 4` cambió de forma el mismo día**: ADR-034 lo
+suspende mientras la cuña no tiene nivel establecido y lo reemplaza por un techo
+en nominal, porque con 4 dB por sesión levantar un retorno desde el piso era
+imposible.
 
 **Y lo que falta para que esto se vea: ninguna pantalla llama al servicio.**
 Existe el camino y está probado; falta quién lo dispare. Decirlo es la diferencia
@@ -247,16 +252,26 @@ entre una función y la promesa de una función.
 
 Ver `docs/backlog/hallazgo-la-guarda-de-magnitud-no-podia-disparar.md`.
 
-**2. El techo no se llena.** `techoPorRuta` llega vacío porque hace falta el
+**2. El techo no se llena.** ~~`techoPorRuta` llega vacío porque hace falta el
 historial de la sesión, que tampoco alimenta `acumuladoPorRuta` ni
-`rutasYaTocadas`.
+`rutasYaTocadas`.~~ **Retractado el 2026-09-17:** `registrarTecho` llena
+`techoPorRuta` desde `BajarEnvioService`, y el historial de la sesión llega a los
+dos servicios. Lo que sí sigue abierto de este punto es lo que el propio ADR
+declara más abajo: el techo se ancla en lo que bajó **la aplicación**, no en lo
+que bajó el usuario a mano.
 
 **3. Y de los dos límites que este ADR presenta como la guarda de magnitud, uno
-es inerte por el mismo motivo.** Con `acumuladoPorRuta` vacío, `acumuladoEnSesion`
-es siempre 0 y el `acumuladoPorSesion: 4` **no acota nada**. Sólo el
-`porTransaccion: 2` funciona. Por la misma razón, `esPrimerCambioDelParametro`
-es siempre verdadero y la cláusula `SIN_MEDICION_INTERMEDIA` de INV-004 nunca se
-dispara.
+es inerte por el mismo motivo.** ~~Con `acumuladoPorRuta` vacío,
+`acumuladoEnSesion` es siempre 0 y el `acumuladoPorSesion: 4` **no acota nada**.
+Sólo el `porTransaccion: 2` funciona. Por la misma razón,
+`esPrimerCambioDelParametro` es siempre verdadero y la cláusula
+`SIN_MEDICION_INTERMEDIA` de INV-004 nunca se dispara.~~
+
+**Retractado el 2026-09-17.** Las dos cláusulas se disparan: el historial las
+alimenta. Lo que cambió además es que el acumulado **se suspende a propósito**
+mientras la cuña no tiene nivel establecido (ADR-034), a cambio del techo de
+nominal; `SIN_MEDICION_INTERMEDIA` sigue rigiendo siempre, y es lo que convierte
+la subida en una rampa que escucha.
 
 Decirlo es la diferencia entre una guarda y la promesa de una guarda —y este
 proyecto ya tiene documentado un commit que dijo que la aplicación «lee» algo que

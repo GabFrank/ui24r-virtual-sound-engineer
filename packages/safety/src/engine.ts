@@ -523,8 +523,15 @@ export class SafetyEngine {
       // comparar especies antes de comparar numeros.
       unidad: c.unidad,
       // **A cuánto quedaría**, que es contra lo que se compara un techo. Es la
-      // misma magnitud que el motor usa unas líneas más arriba para `techoPorRuta`
-      // y para el realce de sala: los tres son topes sobre el destino.
+      // misma magnitud que el motor usa más arriba para `techoPorRuta`, que es el
+      // otro tope sobre el DESTINO.
+      //
+      // Este comentario decía «y para el realce de sala: los tres son topes sobre
+      // el destino», y es falso: el realce es `magnitudPropuesta -
+      // magnitudEsperada`, o sea un tope sobre el MOVIMIENTO. Se contradecía con
+      // la distinción que este mismo cambio introduce en `Limite.techoAbsoluto`
+      // --«unos acotan cuánto se mueve, éste acota dónde queda; son especies
+      // distintas»--. Lo marcó una auditoría de fidelidad el 2026-09-17.
       magnitudResultante: c.magnitudPropuesta,
       // **Sin `?.` y sin `?? true`, a propósito.** Un contexto sin este conjunto
       // es un llamador que no se enteró de que existe, y lo que tiene que pasar

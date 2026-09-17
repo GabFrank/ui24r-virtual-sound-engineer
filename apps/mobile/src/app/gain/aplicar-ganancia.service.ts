@@ -126,11 +126,18 @@ export class AplicarGananciaService {
       // un contador en memoria se perdería con el proceso, y lo que se perdería
       // es justamente el freno.
       ...historial,
-      // **Vacío, y por el mismo motivo que los tres de arriba.** El techo de
-      // «hasta donde estaba antes de que yo lo bajara» (ADR-028) se llena con el
-      // valor que la ruta tenía la primera vez que el asistente la tocó, y eso
-      // también sale del historial de la sesión, que todavía no existe. Este
-      // servicio además sólo aplica ganancia, que no tiene techo propio.
+      // **Vacío, y NO por el motivo que decía acá.** Este comentario afirmaba
+      // que el techo de ADR-028 «sale del historial de la sesión, que todavía no
+      // existe», cuatro líneas debajo del comentario que dice que el historial
+      // existe desde el 2026-09-17 y seis debajo de donde se lo construye: el
+      // mismo bloque afirmaba y negaba lo mismo. Lo marcó una auditoría de
+      // fidelidad el mismo día.
+      //
+      // El motivo verdadero es más simple: el techo de «hasta donde estaba antes
+      // de que yo lo bajara» lo anota `registrarTecho` cuando la aplicación BAJA
+      // un envío a monitor, y lo guarda `BajarEnvioService`. **Este servicio sólo
+      // aplica ganancia del previo**, que no tiene techo propio ni entra en ese
+      // mapa, así que acá va vacío y no se pierde nada.
       techoPorRuta: new Map(),
       hayTakeDeSoundcheckActivo: false,
       // **Vacío, y hay que decir por qué en vez de dejarlo pasar por obvio.**
