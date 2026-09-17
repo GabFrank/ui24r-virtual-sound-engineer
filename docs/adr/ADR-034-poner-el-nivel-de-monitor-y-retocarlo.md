@@ -204,10 +204,38 @@ con el commit que se miró de cada uno, está en
 - **`fmalcher/soundcraft-ui`** escribe envíos —la tabla lo registra entre lo que
   escribe— y **expone el crudo**: de las conversiones que publica, ninguna es la
   del envío. **Ninguno de los cuatro decide cuánto mandar a una cuña**, ni tiene
-  presupuesto, techo ni rampa: son bibliotecas de protocolo, no asistentes. Sobre
-  separar «poner el nivel» de «retocar» **no hay coincidencias en otros
-  proyectos**, y eso significa que esto no tiene precedente y hay que tener más
-  cuidado, no menos.
+  presupuesto ni techo: son bibliotecas de protocolo, no asistentes. Sobre separar
+  «poner el nivel» de «retocar» **no hay coincidencias en otros proyectos**, y eso
+  significa que esto no tiene precedente y hay que tener más cuidado, no menos.
+
+  > **Y acá esta sección dijo una cosa falsa, corregida el 2026-09-17 al ir a
+  > construir la pieza siguiente.** Decía «ni presupuesto, techo **ni rampa**», y
+  > `fmalcher` **sí tiene una rampa, y sobre este mismo parámetro**:
+  > `AuxChannel extends SendChannel extends Channel`, y `Channel` trae
+  > `fadeTo(destino, tiempoMs, curva, fps)` y `fadeToDB`, con cuatro curvas y 25
+  > cuadros por segundo. Los otros tres no tienen nada parecido. Es la cuarta vez
+  > que este repositorio escribe la versión cómoda de un «no encontré» —la que
+  > deja el hallazgo propio sin precedente— y por eso queda acá y no sólo en el
+  > inventario.
+  >
+  > **Lo que no cambia es la decisión.** Su rampa es una transición automática y
+  > suave hacia un destino, para automatizar un show: no escucha entre paso y
+  > paso, no tiene tope por paso, y **recorta** en vez de negarse cuando el pedido
+  > se va de rango. La de acá para a escuchar, y esa pausa es el punto. Lo que sí
+  > cambia es qué se puede afirmar: la mecánica de subir un envío progresivamente
+  > **ya está hecha y probada por otro**, y lo que este proyecto agrega es cuándo
+  > parar y con permiso de quién.
+
+- **El borde del silencio, que es el único pedazo que sigue sin construir, tiene
+  precedente y va en la dirección contraria.** `fmalcher` resuelve el silencio con
+  una convención: `DBToFaderValue` devuelve crudo 0 para cualquier pedido de −200
+  dB o menos, `faderValueToDB` lee −∞ por debajo de una amplitud de 1e−10, y al
+  propagar un nivel enlazado pone piso en −100 dB. Es `INFERIDO` —leído de su
+  código, no medido— y vale como hipótesis. **Ellos recortan; acá no se puede**,
+  porque la regla 1 dice que no se escribe donde nadie midió y la ley del envío
+  está medida entre el crudo 0,25 y el 1,0. Por eso la decisión de arrancar en
+  −32,14 dB en vez de elegir un piso convencional. Detalle y citas en
+  [`trabajo-previo-de-terceros.md`](../referencia/trabajo-previo-de-terceros.md).
 - **Fuentes de oficio**: construir las cuñas **desde silencio**, subiendo mientras
   el músico toca y empezando por su propio instrumento o voz, es lo que describen;
   citadas en
