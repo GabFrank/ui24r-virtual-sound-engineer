@@ -54,10 +54,15 @@ relación que este proyecto tiene.
 **Y tiene una deriva sistemática**, que hay que decir: el error es positivo en las
 relaciones suaves y negativo en las fuertes. Con `softknee = 0` —leído, no
 supuesto— la rodilla es dura, así que no se explica sola por el codo. **La
-sospecha es el recorrido**: por encima de la rodilla hay sólo **cuatro escalones**,
-o sea 12 dB de exceso, y las relaciones fuertes aplastan tanto que los últimos
-puntos se juntan. Lo que lo resolvería es **un umbral más profundo**, que es
-exactamente lo que el ítem 98 dejó pedido en su lista de «lo que sigue».
+~~sospecha es el recorrido: por encima de la rodilla hay sólo cuatro escalones, o
+sea 12 dB de exceso, y las relaciones fuertes aplastan tanto que los últimos
+puntos se juntan.~~
+
+**CONTESTADO el mismo día por el [ítem 118](118-el-umbral-del-compresor.md), y la
+sospecha era tibia.** No es que los puntos «se junten»: **la curva está doblada**.
+La pendiente por encima del codo sube con el nivel —de 0,05 pegada al codo hasta
+0,55 veinte decibeles más arriba— en los cinco umbrales que el 118 barrió. La
+deriva del 3 % es el promedio de una curva variable cambiando de ventana.
 
 ### Por qué el ítem 110 dio otra cosa, y no se contradicen
 

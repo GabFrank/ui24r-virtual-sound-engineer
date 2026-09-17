@@ -1,0 +1,100 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T23:57:04.009Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/umbral-del-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/umbral-del-compresor.ts sha256:18d7681716db9f46
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo curva-del-compresor.ts el 2026-09-16T23:53:23.872Z en 192.168.0.78
+     m.afs.enabled tiene que volver a 1
+     m.dyn.bypass tiene que volver a 0
+     i.9.dyn.ratio tiene que volver a 1
+     i.9.dyn.threshold tiene que volver a 0.875
+     i.9.dyn.bypass tiene que volver a 0
+     i.9.dyn.attack tiene que volver a 0.34375
+     i.9.dyn.release tiene que volver a 0.4887695312
+     i.9.dyn.outgain tiene que volver a 0.7186045126
+     i.9.gate.enabled tiene que volver a 1
+     i.9.deesser.enabled tiene que volver a 0
+     i.9.mix tiene que volver a 0.7451777309
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== 117 — LA CURVA DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 14 escalones: -48 a -9 dBFS de 3 en 3, 1.2 s cada uno
+   se barren 6 umbrales: 0.29, 0.32, 0.35, 0.38, 0.41, 0.44
+   relacion fija en 0.1 (el item 117 la midio en 5,85:1)
+   la rodilla sale del CRUCE de las dos rectas, no del escalon
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -48 dBFS -> salida   -77.53 dBFS
+   entrada  -45 dBFS -> salida   -74.49 dBFS
+   entrada  -42 dBFS -> salida   -71.53 dBFS
+   entrada  -39 dBFS -> salida   -68.50 dBFS
+   entrada  -36 dBFS -> salida   -65.50 dBFS
+   entrada  -33 dBFS -> salida   -62.52 dBFS
+   entrada  -30 dBFS -> salida   -59.54 dBFS
+   entrada  -27 dBFS -> salida   -56.55 dBFS
+   entrada  -24 dBFS -> salida   -53.56 dBFS
+   entrada  -21 dBFS -> salida   -50.57 dBFS
+   entrada  -18 dBFS -> salida   -47.58 dBFS
+   entrada  -15 dBFS -> salida   -44.60 dBFS
+   entrada  -12 dBFS -> salida   -41.62 dBFS
+   entrada   -9 dBFS -> salida   -38.61 dBFS
+   pendiente 0.9970 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -77.5 dBFS
+
+=== LA RODILLA, UMBRAL POR UMBRAL (relacion fija en 0.1) ===
+  crudo | pend. abajo | pend. arriba | RODILLA (cruce) | escalones a cada lado
+  0.29  |       0.984 |        0.325 |     -32.00 dBFS | 7 abajo / 7 arriba
+         entrada->salida: -48:-77.5  -45:-74.5  -42:-71.5  -39:-68.5  -36:-65.5  -33:-62.5  -30:-59.9  -27:-59.6  -24:-59.0  -21:-58.5  -18:-57.4  -15:-56.6  -12:-55.2  -9:-53.7
+  0.32  |       0.986 |        0.288 |     -28.45 dBFS | 8 abajo / 6 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-57.1  -24:-56.6  -21:-56.2  -18:-55.4  -15:-54.7  -12:-53.6  -9:-52.3
+  0.35  |       1.001 |        0.231 |     -25.04 dBFS | 8 abajo / 6 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.1  -21:-53.7  -18:-53.3  -15:-52.5  -12:-51.8  -9:-50.6
+  0.38  |       1.000 |        0.192 |     -21.88 dBFS | 9 abajo / 5 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-51.1  -18:-50.9  -15:-50.3  -12:-49.7  -9:-48.8
+  0.41  |       1.000 |        0.170 |     -18.92 dBFS | 10 abajo / 4 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-50.6  -18:-48.3  -15:-48.0  -12:-47.3  -9:-46.8
+  0.44  |       1.000 |        0.324 |     -17.29 dBFS | 10 abajo / 4 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-50.6  -18:-47.6  -15:-45.5  -12:-45.0  -9:-44.5
+
+C3 la rodilla cae dentro de la escalera: 6 de 6 umbrales utiles -> PASA
+C4 la relacion no se mueve: la pendiente de arriba varia 0.155 (tope 0.05) -> FALLA
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-del-compresor.ts:411
+      throw new Error('C4 FALLA: la pendiente de arriba cambia con el umbral, asi que la '
+            ^
+
+Error: C4 FALLA: la pendiente de arriba cambia con el umbral, asi que la rodilla no mide solo el umbral.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-del-compresor.ts:411:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/umbral-del-compresor.ts:318:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

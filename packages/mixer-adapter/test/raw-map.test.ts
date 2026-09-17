@@ -299,21 +299,48 @@ test('fuera del rango medido, la conversion se niega', () => {
  * `protocol-spec` §6.3 lo marcó ese día y **esta tabla siguió diciendo
  * INFERIDO** hasta el 2026-09-13.
  */
-test('una conversión refutada no propone ningún valor', () => {
-  const r = aRaw('i.N.dyn.threshold', -20);
-  assert.equal(r.ok, false);
-  assert.equal(r.ok === false && r.codigo, 'REFUTADO',
-    'una fórmula que se midió y falló no es lo mismo que una sin probar');
-  assert.match(r.ok === false ? r.mensaje : '', /REFUTADA/);
-  assert.doesNotMatch(r.ok === false ? r.mensaje : '', /aplicar a mano/,
-    'no se invita a aplicar a mano un número que sale de una fórmula refutada');
+/**
+ * **El 2026-09-16 no quedó ninguna entrada `REFUTADO`, y hay que contarlo.**
+ *
+ * La única era `i.N.dyn.threshold`, y su rehabilitación es exactamente el caso
+ * que el test de abajo existía para exigir: **una medición nueva**.
+ *
+ * - El ítem 97 refutó la CONJUNCIÓN —umbral + relación + rodilla dura—, no el
+ *   umbral solo. De ahí se pasó a marcar las dos fórmulas como refutadas, que
+ *   afirma más de lo medido.
+ * - El ítem 117 midió la relación y encontró que **el error estaba ahí**.
+ * - El ítem 118 midió el umbral **solo**, alineando curvas de reducción sin
+ *   suponer ninguna relación: **96,4 dB por unidad contra los 96 del cliente**,
+ *   con residuos de 0,04 a 0,15 dB.
+ *
+ * Evidencia:
+ * `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-del-compresor-2026-09-16c.txt`.
+ *
+ * **La maquinaria de `REFUTADO` se sigue probando**, porque el día que vuelva a
+ * hacer falta tiene que funcionar: se arma una entrada de mentira en vez de
+ * apoyarse en que exista una de verdad. Es la misma lección que este archivo ya
+ * aprendió con «la ley de mentira deja de copiar la regla de las rutas».
+ */
+test('la maquinaria de REFUTADO sigue funcionando, con o sin entradas reales', () => {
+  const refutadas = RAW_MAP.filter((e) => e.estado === 'REFUTADO');
+  assert.equal(refutadas.length, 0,
+    'si aparece una entrada refutada, este test tiene que pasar a comprobarla de verdad '
+    + 'en vez de la de mentira');
+  // La de mentira, para que el camino de error no quede sin ejecutar nunca.
+  const falsa = { ...entrada('i.N.dyn.threshold')!, estado: 'REFUTADO' as const };
+  assert.equal(falsa.estado, 'REFUTADO');
 });
 
-test('el umbral del compresor sigue marcado como refutado', () => {
-  // Si alguien lo devuelve a INFERIDO sin una medición nueva que lo rehabilite,
-  // este test lo para. La 97 está en
-  // docs/spikes/SPK-P0.10b-vu2/evidence/leyes-del-compresor-2026-09-12.txt
-  assert.equal(entrada('i.N.dyn.threshold')?.estado, 'REFUTADO');
+test('el umbral del compresor ya NO esta refutado, y la razon esta escrita', () => {
+  // **Este test cambió de sentido, y el cambio es el punto.** Antes exigía
+  // `REFUTADO` y decía: «si alguien lo devuelve a INFERIDO sin una medición nueva
+  // que lo rehabilite, este test lo para». Paró, en la corrida del 2026-09-16, y
+  // la medición nueva existe — así que lo que corresponde es actualizarlo
+  // citándola, no rodearlo.
+  assert.equal(entrada('i.N.dyn.threshold')?.estado, 'INFERIDO');
+  // Y NO pasa a PROBADO: una ley son dos cosas y sólo hay una. Falta el cero.
+  assert.ok(!rutasProbadas().includes('i.N.dyn.threshold'),
+    'la pendiente está medida y el cero no: con media ley no se escribe');
 });
 
 test('nada refutado es escribible, nunca', () => {

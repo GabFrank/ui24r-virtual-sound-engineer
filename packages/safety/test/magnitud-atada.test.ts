@@ -89,11 +89,18 @@ test('sin ley verificada se dice, y no se rechaza', () => {
   assert.equal(s.atada === false && s.codigo, 'SIN_LEY_VERIFICADA');
 });
 
-test('una ley REFUTADA tampoco ata: se midio y no dio', () => {
-  // El umbral del compresor cayó con la medición 97. Que exista una fórmula no la
-  // hace una ley: usarla para atar sería atar a un número que se sabe incorrecto.
+test('media ley tampoco ata: el umbral tiene la pendiente medida y el cero no', () => {
+  // **Este test decía «una ley REFUTADA tampoco ata», y el 2026-09-16 dejó de
+  // aplicar.** El umbral del compresor había caído con la medición 97, pero
+  // aquella refutó la CONJUNCIÓN --umbral + relación + rodilla dura--: el ítem
+  // 117 midió que el error estaba en la relación y el 118 midió el umbral solo,
+  // dando 96,4 dB por unidad contra los 96 del cliente.
+  //
+  // **Lo que el test protege no cambió, y por eso sigue existiendo**: con la
+  // pendiente medida y el cero sin anclar hay MEDIA ley, y con media ley no se
+  // ata una magnitud a un crudo. Cambia el motivo que se informa, no el veredicto.
   const r = verificarAtadura('i.N.dyn.threshold', 0.5, -42, 'dB');
   assert.equal(r.atada, false);
   assert.equal(r.atada === false && r.codigo, 'SIN_LEY_VERIFICADA');
-  assert.match(r.atada === false ? r.motivo : '', /REFUTADO/);
+  assert.match(r.atada === false ? r.motivo : '', /INFERIDO/);
 });

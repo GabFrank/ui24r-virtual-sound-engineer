@@ -360,8 +360,26 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   //
   // Y el rango tampoco es un rango medido: **es la formula refutada evaluada en
   // 0 y en 1**. Se deja escrito para que nadie lo cite como si fuera otra cosa.
+  // > **CORREGIDO el 2026-09-16: `REFUTADO` era falso, y decia mas de lo medido.**
+  // >
+  // > La 97 refuto la CONJUNCION --umbral + relacion + rodilla dura--, no el
+  // > umbral solo. El item 117 midio que el error estaba en la relacion, y el 118
+  // > midio el umbral SOLO, alineando las curvas de reduccion sin suponer ninguna
+  // > relacion: **96,4 dB por unidad de crudo contra los 96 del cliente**, con
+  // > residuos de 0,04 a 0,15 dB y 0,9 % de dispersion entre tres lecturas
+  // > distintas. La pendiente esta confirmada.
+  // >
+  // > **Y aun asi NO pasa a PROBADO, que seria el otro exceso.** Una ley son dos
+  // > cosas y aca hay una: falta el CERO. Para decir «el crudo 0,5 son -42 dB en
+  // > la consola» hay que anclar su escala interna contra el banco, y este banco
+  // > no tiene ese ancla --entre la interfaz y el canal hay un previo analogico
+  // > cuya ganancia se lee de la pantalla y no esta medida contra el audio--.
+  // >
+  // > Queda `INFERIDO`, que es lo que es: la forma esta leida del cliente, su
+  // > pendiente esta medida, y el cero no. Ver
+  // > `docs/compromisos/118-el-umbral-del-compresor.md`.
   { ...deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
-    estado: 'REFUTADO' as const },
+    estado: 'INFERIDO' as const },
   deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
   // **La puerta usa la MISMA funcion que quedo refutada en el compresor**, y eso
   // hay que decirlo aunque no cambie su estado: la 97 midio el compresor, no la

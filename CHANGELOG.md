@@ -6,6 +6,30 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **El umbral del compresor sí funciona como dice la consola** — y el proyecto lo
+  daba por roto desde hace días. Se midió aparte, sin suponer nada de la
+  compresión, y el control mueve **96,4 decibeles por vuelta completa** contra los
+  96 que declara el fabricante. La diferencia es medio por ciento.
+
+  Estaba marcado como "refutado" por un error de lectura nuestro: la medición
+  vieja había probado **tres cosas juntas** —umbral, relación y forma de la
+  rodilla— y al fallar el conjunto se culpó a dos. El culpable era la relación,
+  medida hoy.
+
+- **Y el compresor no tiene una relación: tiene una curva.** Éste es el hallazgo
+  grande del día, y cambia cómo hay que pensarlo.
+
+  Apenas la señal pasa el umbral, **aprieta fortísimo** —del orden de 20:1—. A
+  medida que la señal sigue subiendo, **va aflojando**, hasta menos de 2:1 unos
+  veinte decibeles más arriba. Pasa igual en las cinco posiciones de umbral que se
+  probaron.
+
+  En la práctica: una voz que arranca apenas por encima del umbral y termina
+  fuerte **no recibe una compresión: recibe dos**. Densa al principio, abierta al
+  final. No es necesariamente malo — muchos compresores queridos hacen esto — pero
+  **no es lo que dice la etiqueta**, y obliga a releer lo que se midió hace unas
+  horas: aquel "2,6 a 1" es el promedio de esa curva en un tramo, no una relación.
+
 - **Ya se sabe cuánto comprime de verdad el compresor.** Era el agujero más
   grande que quedaba: la cuenta del fabricante estaba refutada desde hace días y
   no había nada en su lugar.

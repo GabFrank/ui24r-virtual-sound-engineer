@@ -1,0 +1,164 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T00:03:35.720Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/umbral-del-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/umbral-del-compresor.ts sha256:7f6931e79f5705ad
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo curva-del-compresor.ts el 2026-09-16T23:57:10.225Z en 192.168.0.78
+     m.afs.enabled tiene que volver a 1
+     m.dyn.bypass tiene que volver a 0
+     i.9.dyn.ratio tiene que volver a 1
+     i.9.dyn.threshold tiene que volver a 0.875
+     i.9.dyn.bypass tiene que volver a 0
+     i.9.dyn.attack tiene que volver a 0.34375
+     i.9.dyn.release tiene que volver a 0.4887695312
+     i.9.dyn.outgain tiene que volver a 0.7186045126
+     i.9.gate.enabled tiene que volver a 1
+     i.9.deesser.enabled tiene que volver a 0
+     i.9.mix tiene que volver a 0.7451777309
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== 117 — LA CURVA DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 14 escalones: -48 a -9 dBFS de 3 en 3, 1.2 s cada uno
+   se barren 6 umbrales: 0.29, 0.32, 0.35, 0.38, 0.41, 0.44
+   relacion fija en 0.1 (el item 117 la midio en 5,85:1)
+   la rodilla sale del CRUCE de las dos rectas, no del escalon
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -48 dBFS -> salida   -77.51 dBFS
+   entrada  -45 dBFS -> salida   -74.50 dBFS
+   entrada  -42 dBFS -> salida   -71.51 dBFS
+   entrada  -39 dBFS -> salida   -68.51 dBFS
+   entrada  -36 dBFS -> salida   -65.50 dBFS
+   entrada  -33 dBFS -> salida   -62.52 dBFS
+   entrada  -30 dBFS -> salida   -59.54 dBFS
+   entrada  -27 dBFS -> salida   -56.55 dBFS
+   entrada  -24 dBFS -> salida   -53.55 dBFS
+   entrada  -21 dBFS -> salida   -50.56 dBFS
+   entrada  -18 dBFS -> salida   -47.57 dBFS
+   entrada  -15 dBFS -> salida   -44.59 dBFS
+   entrada  -12 dBFS -> salida   -41.61 dBFS
+   entrada   -9 dBFS -> salida   -38.61 dBFS
+   pendiente 0.9970 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -77.5 dBFS
+
+=== LA RODILLA, UMBRAL POR UMBRAL (relacion fija en 0.1) ===
+  crudo | pend. abajo | pend. arriba | RODILLA (cruce) | escalones a cada lado
+  0.29  |       0.984 |        0.326 |     -32.03 dBFS | 7 abajo / 7 arriba
+         entrada->salida: -48:-77.5  -45:-74.5  -42:-71.5  -39:-68.5  -36:-65.5  -33:-62.5  -30:-59.9  -27:-59.5  -24:-59.1  -21:-58.3  -18:-57.6  -15:-56.5  -12:-55.2  -9:-53.6
+  0.32  |       0.994 |        0.291 |     -28.65 dBFS | 8 abajo / 6 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.9  -24:-56.7  -21:-56.1  -18:-55.5  -15:-54.6  -12:-53.6  -9:-52.3
+  0.35  |       1.000 |        0.228 |     -25.03 dBFS | 8 abajo / 6 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.1  -21:-53.8  -18:-53.2  -15:-52.6  -12:-51.7  -9:-50.7
+  0.38  |       1.000 |        0.199 |     -21.95 dBFS | 9 abajo / 5 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-51.3  -18:-50.7  -15:-50.4  -12:-49.6  -9:-48.8
+  0.41  |       1.000 |        0.176 |     -18.97 dBFS | 10 abajo / 4 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-50.6  -18:-48.3  -15:-48.0  -12:-47.5  -9:-46.7
+  0.44  |       1.000 |        0.318 |     -17.21 dBFS | 10 abajo / 4 arriba
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.6  -21:-50.6  -18:-47.6  -15:-45.3  -12:-45.1  -9:-44.5
+
+C3 la rodilla cae dentro de la escalera: 6 de 6 umbrales utiles -> PASA
+
+=== LA CURVA NO SON DOS RECTAS, Y HAY QUE DECIRLO ===
+   pendiente LOCAL cada 3 dB, por encima del codo:
+   umbral 0.29: 0.13  0.15  0.25  0.23  0.38  0.41  0.55
+   umbral 0.32: 0.92  0.05  0.21  0.18  0.31  0.34  0.44
+   umbral 0.35: 1.00  0.83  0.12  0.20  0.17  0.32  0.33
+   umbral 0.38: 1.00  1.00  0.77  0.20  0.10  0.25  0.27
+   umbral 0.41: 1.00  1.00  1.00  0.76  0.12  0.16  0.25
+   umbral 0.44: 1.00  1.00  1.00  1.00  0.78  0.05  0.22
+   La pendiente SUBE con el nivel: comprime mas fuerte pegado al codo
+   y cada vez menos a medida que la señal crece. Por eso el ajuste por
+   dos rectas no aisla el umbral, y por eso se mide alineando.
+
+=== EL UMBRAL, ALINEANDO LAS CURVAS DE REDUCCION ===
+   --- el nivel al que la reduccion llega a 2 dB ---
+      crudo 0.29 -> -28.14 dBFS
+      crudo 0.32 -> -25.22 dBFS
+      crudo 0.35 -> -22.39 dBFS
+      crudo 0.38 -> -19.41 dBFS
+      crudo 0.41 -> -16.56 dBFS
+      crudo 0.44 -> -13.62 dBFS
+      pendiente 96.7 dB por unidad | residuo max 0.04 dB | 6 puntos | cociente contra el cliente 1.008
+   --- el nivel al que la reduccion llega a 3 dB ---
+      crudo 0.29 -> -26.99 dBFS
+      crudo 0.32 -> -24.17 dBFS
+      crudo 0.35 -> -21.25 dBFS
+      crudo 0.38 -> -18.15 dBFS
+      crudo 0.41 -> -15.41 dBFS
+      crudo 0.44 -> -12.56 dBFS
+      pendiente 96.7 dB por unidad | residuo max 0.15 dB | 6 puntos | cociente contra el cliente 1.007
+   --- el nivel al que la reduccion llega a 6 dB ---
+      crudo 0.29 -> -23.36 dBFS
+      crudo 0.32 -> -20.42 dBFS
+      crudo 0.35 -> -17.51 dBFS
+      crudo 0.38 -> -14.73 dBFS
+      crudo 0.41 -> -11.82 dBFS
+      pendiente 95.9 dB por unidad | residuo max 0.06 dB | 5 puntos | cociente contra el cliente 0.999
+
+C4 el metodo no depende de la lectura: las 3 pendientes van de 95.9 a 96.7, dispersion 0.9% (tope 3%) -> PASA
+
+=== LA PENDIENTE DEL UMBRAL ===
+   MEDIDA: 96.4 dB por unidad de crudo
+   el cliente dice 96 (VtoTHRESH = −90 + 96a)
+   cociente 1.005
+
+   L2 PASA: la pendiente del cliente queda CONFIRMADA.
+
+   Y conviene decir lo que eso significa. `VtoTHRESH` figura como
+   REFUTADA en la tabla de conversion, pero el item 97 refuto la
+   CONJUNCION --umbral + relacion + rodilla dura--, y el 117 midio que
+   el error estaba en la relacion. El umbral nunca se habia probado
+   solo. Esta corrida lo prueba solo, y aguanta.
+
+   Lo que NO se confirma es el CERO de la escala: este banco no tiene
+   con que anclar la escala interna de la consola, y el contrato lo
+   dice desde antes de medir.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.attack         esperado 0.34375  leido 0.34375
+   OK   i.9.dyn.release        esperado 0.4887695312  leido 0.4887695312
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, UNA relacion (0.1), un canal, un dia.
+   Se mide LA PENDIENTE del umbral, no su cero: este banco no tiene con
+   que anclar la escala interna de la consola, y el contrato lo dice desde
+   antes de medir. Nada de la rodilla blanda. Nada del umbral de la puerta,
+   que usa la misma funcion del cliente y no se prueba aca.
+
+
+# salida del proceso: 0
