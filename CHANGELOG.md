@@ -6,6 +6,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La hoja de ruta se rehízo desde tu soundcheck, no desde la consola.** Contaste
+  paso por paso cómo hacés un soundcheck y se cruzó con lo que dicen las fuentes
+  de oficio y con lo que la aplicación ya tiene. Tres cosas cambiaron:
+  - **La mezcla de conjunto entra al MVP** —levantar uno por uno, probar
+    combinaciones, equilibrar faders—. Es lo que hacés y no estaba.
+  - **La puerta y el compresor se van a ajustar como lo hace la ganancia**:
+    moviendo de a poco y mirando lo que la consola mide, sin esperar leyes que
+    demostraron no existir. No se miden más leyes de esos dos para el MVP.
+  - **Los envíos a efectos entran**: cuánto manda cada canal a cada efecto. Dos
+    documentos decían cosas distintas sobre esto y ahora dicen lo mismo.
+
+  Y quedó separado, medición por medición, qué va a usar alguna herramienta de
+  la aplicación y qué era un trofeo: el ecualizador de salida, los faders de bus
+  y del general, la superficie del compresor y el umbral de la puerta en dB
+  quedan congelados hasta después de la entrega.
+
+### Corregido
+
+- **La pantalla del recorrido decía «sin medir» sobre dos etapas medidas** —el
+  ecualizador y el monitor— durante cuatro días. Se corrigió y quedó una guarda
+  que compara esa tabla con la de leyes cada vez que corren las pruebas.
+
 - **Anotado por qué se perdió una madrugada de mediciones, para que no se repita.**
   El audio de la Mac se traba y el síntoma se lee igual que un permiso denegado: el
   grabador encuentra la interfaz, dice que graba, y no captura nada. La sesión que

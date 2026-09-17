@@ -25,8 +25,8 @@ Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ow
 | Parámetro | Dueño | Nivel máximo por versión |
 |---|---|---|
 | Ganancia de entrada | Asistente de canal | **ASSISTED desde el 2026-09-09** (ADR-026), solo en configuración de canal y sin toma de soundcheck activa. Aplica con confianza ALTA o MEDIA; BAJA y SIN DATOS no habilitan |
-| Filtro pasa altos, ecualizador de canal, compresor, puerta, deesser | Asistente de canal | SUGGEST |
-| Fader de canal | Asistente de mezcla | SUGGEST hasta MVP4a, ASSISTED desde MVP4a |
+| Filtro pasa altos, ecualizador de canal, compresor, puerta, deesser | Asistente de canal | SUGGEST. **Decidido el 2026-09-17 que los cuatro primeros llegan a ASSISTED en el MVP**: el ecualizador con sus leyes medidas, la puerta y el compresor cerrando el lazo sobre el indicador y el medidor de reducción ([ADR-032](adr/ADR-032-puerta-y-compresor-por-lazo-cerrado.md)). Cada uno necesita su ADR que lo abra, como ADR-026 abrió la ganancia; ninguno está abierto todavía |
+| Fader de canal | Asistente de mezcla | SUGGEST hasta MVP4a, ASSISTED desde MVP4a. **Decidido el 2026-09-17: ASSISTED en el MVP**, porque la mezcla de conjunto entró ([ADR-031](adr/ADR-031-la-mezcla-de-conjunto-entra.md)). Pide medir la ley del fader contra el audio antes de escribir |
 | Panorama de canal | Asistente de mezcla | SUGGEST |
 | Ecualización de salida sobre buses del perfil de amplificación | Asistente de sala | SUGGEST hasta MVP4b, ASSISTED y luego AUTO desde MVP4b, solo atenuaciones |
 | Retardo y polaridad de salida | Asistente de sala | OBSERVE hasta post-MVP |
@@ -39,7 +39,7 @@ Implementa ADR-010. El registro en código vive en `packages/domain/src/rules/ow
 | **Silencio de entradas y general** | **Solo del usuario** | Nunca |
 | **Alimentación fantasma** | **Solo del usuario** | La aplicación solo lee |
 | **Limitador de salida** | **Solo del usuario** | Protege el sistema, no se automatiza |
-| **Efectos, subgrupos, VCA** | **Solo del usuario** | Fuera de alcance |
+| **Efectos, subgrupos, VCA** | **Solo del usuario** para los parámetros internos, subgrupos y VCA. **El envío de cada canal a cada efecto (`i.N.fx.M.value`) pasa al asistente de canal**, con tope, decidido el 2026-09-17 ([ADR-033](adr/ADR-033-los-envios-a-efectos-entran.md)); `ownership.ts` todavía no lo refleja | Fuera de alcance los internos; el envío, ASSISTED en el MVP |
 | **Supresión de realimentación** | **Solo del usuario** | Procedimiento manual con lista de verificación |
 | Ganancia, alimentación y monitoreo directo de la interfaz de audio | Usuario, es hardware | La aplicación no puede leerlos ni escribirlos |
 

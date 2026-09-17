@@ -34,3 +34,6 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [028](ADR-028-abrir-el-envio-a-monitor.md) | Abrir el envío a monitor, sólo el nivel y con techo en donde estaba | Aceptada |
 | [029](ADR-029-bajar-los-buses-para-cazar-acoples.md) | Bajar el auxiliar y el general para cazar un acople: los dos sólo bajan, con techo en dónde estaban | Decidida, sin implementar |
 | [030](ADR-030-como-se-nombran-los-tiempos.md) | Los tiempos del compresor se muestran con los dos números: el de la consola y el medido | Decidida, sin implementar |
+| [031](ADR-031-la-mezcla-de-conjunto-entra.md) | La mezcla de conjunto entra al MVP, y la aplicación mueve faders de canal con tope | Decidida, sin implementar |
+| [032](ADR-032-puerta-y-compresor-por-lazo-cerrado.md) | La puerta y el compresor se ajustan cerrando el lazo sobre el indicador y el medidor de reducción, no por ley | Decidida, sin implementar |
+| [033](ADR-033-los-envios-a-efectos-entran.md) | Los envíos a efectos entran: cuánto manda cada canal, con tope; los parámetros internos siguen siendo del usuario | Decidida, sin implementar |

@@ -73,6 +73,9 @@ Es corto y explica por qué `reparar-pendiente.ts` ahora calla todo antes de toc
 
 ## La observación que el usuario todavía no accionó
 
+> **Accionada el 2026-09-17.** Pidió la recapitulación entera y decidió la hoja
+> de ruta con el cableado adelante: [`2026-09-17-recapitulacion-y-hoja-de-ruta.md`](2026-09-17-recapitulacion-y-hoja-de-ruta.md).
+
 **El cuello de botella dejó de ser la medición.** En el día se pasó de 7 a 12 leyes
 en la tabla de conversión, más la superficie del compresor, más los tiempos. **La
 aplicación sigue escribiendo una sola cosa desde una sola pantalla.** Se le señaló
