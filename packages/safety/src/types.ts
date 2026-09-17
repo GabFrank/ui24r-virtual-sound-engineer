@@ -118,13 +118,28 @@ export interface ContextoSeguridad {
    * cambio del techo de nominal. Una que sí está, está en la segunda: vuelven los
    * 4 dB de ADR-028, medidos **desde el nivel establecido**.
    *
-   * **No lo declara quien propone: sale del diario.** Es la diferencia entre este
-   * conjunto y una bandera en el cambio, y no es cosmética. Una etiqueta que
-   * suspende un presupuesto y que la pone quien quiere el permiso es pedir la
-   * exención diciendo que se la merece —el mismo defecto que
-   * `correspondeExencionDeSistema` tuvo que cerrar cruzando lo declarado contra
-   * lo que la transacción de verdad tocaba—. Acá lo que decide es el estado de la
-   * sesión, reconstruido de lo que ya pasó: ver `historialDeLaSesion`.
+   * **No lo declara quien propone: sale del diario, y se cruza.** Es la
+   * diferencia entre este conjunto y una bandera en el cambio, y no es cosmética.
+   * Una etiqueta que suspende un presupuesto y que la pone quien quiere el
+   * permiso es pedir la exención diciendo que se la merece —el defecto que
+   * `correspondeExencionDeSistema` cerró cruzando lo declarado contra lo que la
+   * transacción de verdad tocaba—.
+   *
+   * **Y esta frase estuvo escrita antes de ser cierta, que es peor que el
+   * agujero que describía.** La primera versión aceptaba la lista del diario tal
+   * cual: sin cruzarla contra las rutas que la transacción movió, sin exigir que
+   * el cambio se hubiera aplicado, y sin mirar de qué parámetro se trataba. Una
+   * auditoría adversarial del 2026-09-17 lo midió moviendo **30 dB de ganancia
+   * de previo** con el motor viendo el acumulado siempre en cero, marcando
+   * `hw.0.gain` en cada transacción. La autodeclaración no se había eliminado:
+   * se había mudado de quien propone la transacción a quien escribe el diario.
+   *
+   * Ahora `historialDeLaSesion` exige las tres cosas: que **esa** transacción
+   * haya movido la ruta **y que el cambio se haya verificado**, que el parámetro
+   * **declare techo** —porque suspender el presupuesto sin un techo que lo
+   * reemplace no es lo que ADR-034 decidió— y que la ruta **no estuviera ya
+   * establecida**, porque volver a marcarla devolvía el presupuesto entero tantas
+   * veces como uno quisiera.
    *
    * **Vacío significa «ninguna cuña tiene nivel todavía», que es lo cierto al
    * empezar un soundcheck** y lo que hace falta para que la aplicación pueda

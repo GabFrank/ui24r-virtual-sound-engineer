@@ -203,3 +203,73 @@ test('establecer el nivel de una ruta no toca el de otra', () => {
   assert.equal(h.acumuladoPorRuta.get(OTRA), 2, 'la otra cuña sigue sin nivel y sigue contando');
   assert.equal(h.rutasConNivelEstablecido.has(OTRA), false);
 });
+
+// --- El ancla no se cree lo que le dicen -----------------------------------
+//
+// Los cinco casos de abajo salen de una auditoria adversarial del 2026-09-17.
+// La primera version aceptaba `nivelEstablecidoEn` tal cual, y con eso el ancla
+// --que es de monitores-- le sacaba el presupuesto a cualquier parametro.
+
+test('el ancla no rebasa una ruta que esta transaccion no movio', () => {
+  // La marca nombra la ganancia del previo; la transaccion movio un monitor.
+  const GANANCIA = 'i.3.gain';
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [GANANCIA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(GANANCIA), 3, 'el presupuesto de la ganancia sigue gastado');
+  assert.equal(h.rutasConNivelEstablecido.has(GANANCIA), false);
+});
+
+test('el ancla no rebasa un parametro que no tiene techo declarado', () => {
+  // Aunque la transaccion SI la haya movido: suspender el presupuesto sin un
+  // techo que lo reemplace deja al parametro sin ningun tope sobre el total.
+  const GANANCIA = 'i.3.gain';
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })], null, [GANANCIA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(GANANCIA), 3, 'la ganancia no declara techo');
+  assert.equal(h.rutasConNivelEstablecido.has(GANANCIA), false);
+});
+
+test('el ancla no cuenta si el cambio no llego a la consola', () => {
+  // Una transaccion que dio conflicto, se revirtio o nunca salio no establece
+  // nada: es el mismo criterio que el acumulado, y antes no se le aplicaba.
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, verificado: false, confirmadoPor: 'TIMEOUT' })], null, [RUTA]),
+  ]);
+  assert.equal(h.rutasConNivelEstablecido.has(RUTA), false);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), undefined);
+});
+
+test('volver a establecer el nivel NO devuelve el presupuesto', () => {
+  // `journal.ts` razona que desestablecer seria peligroso porque devolveria la
+  // rampa entera. Volver a establecer hacia lo mismo y nadie lo impedia: marcar
+  // la ruta en cada transaccion devolvia los 4 dB enteros, sin limite.
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [RUTA]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -8, magnitudEnviada: -6 })]),
+    entrada([cambio({ path: RUTA, magnitudEsperada: -6, magnitudEnviada: -4 })], null, [RUTA]),
+  ]);
+  assert.equal(h.acumuladoPorRuta.get(RUTA), 4, 'los cuatro decibeles del retoque siguen gastados');
+});
+
+test('una ruta inventada en la marca no entra al conjunto', () => {
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null,
+      [RUTA, 'no.existe', '', 'i.03.aux.1.value']),
+  ]);
+  assert.equal(h.rutasConNivelEstablecido.size, 1, 'solo la que se movio de verdad');
+  assert.ok(h.rutasConNivelEstablecido.has(RUTA));
+});
+
+test('sin medicion anotada la ruta NO queda escuchada, ni con el campo ausente', () => {
+  // `undefined !== null` es `true`, asi que una entrada vieja del diario --que
+  // no trae el campo-- marcaba la ruta como escuchada y el paso siguiente
+  // pasaba sin que nadie hubiera escuchado. Fallaba ABIERTA.
+  const vieja = entrada([cambio({ path: RUTA })]);
+  const sinCampo = { ...vieja } as Record<string, unknown>;
+  delete sinCampo['medicionPosteriorId'];
+  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario]);
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});

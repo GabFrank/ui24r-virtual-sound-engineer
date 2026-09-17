@@ -372,17 +372,32 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
   // correcto mientras nadie sepa proponer un salto desde el silencio; cuando
   // ADR-034 lo construya, la excepción va a ser deliberada y con su nombre, no
   // un agujero heredado.
+  // **Y no alcanza con mirar `NaN`, que fue la primera versión de esta guarda.**
+  // Una auditoría del mismo día la midió: `null`, `[]` y `{}` pasaban el techo
+  // igual que `NaN` --`null > 0` es `false`, y `null ?? 0` ni siquiera llegaba a
+  // la comprobación--, y una cadena o un booleano hacían estallar el mensaje del
+  // rechazo con `TypeError: ….toFixed is not a function`, o sea fallando cerrado
+  // pero como caída, que es lo que `engine.ts` dice explícitamente que no quiere.
+  // Se tapó `NaN` y se dejó abierto al vecino de al lado.
+  //
+  // Se comprueba **el tipo y después el valor**: lo que no es un número no se
+  // compara con un tope, y lo que es `NaN` tampoco.
   for (const [que, n] of [
     ['el movimiento pedido', c.deltaSolicitado],
     ['lo acumulado en la sesión', c.acumuladoEnSesion],
-    ['a cuánto quedaría', c.magnitudResultante ?? 0],
+    // Sin `?? 0`: ese valor por omisión escondía el `null`. La ausencia de
+    // verdad --`undefined`-- la contesta `SIN_MAGNITUD_RESULTANTE` más abajo, y
+    // sólo para los tipos que declaran techo.
+    ...(c.magnitudResultante === undefined
+      ? [] : [['a cuánto quedaría', c.magnitudResultante] as const]),
   ] as const) {
-    if (Number.isNaN(n)) {
+    if (typeof n !== 'number' || Number.isNaN(n)) {
       return {
         permitido: false,
         codigo: 'MAGNITUD_NO_NUMERICA',
-        mensaje: `${que} no es un número (${n}) en ${c.kind}: un tope no se comprueba `
-          + 'contra algo que no se puede comparar, y toda comparación con `NaN` es falsa',
+        mensaje: `${que} no es un número (${String(n)}) en ${c.kind}: un tope no se `
+          + 'comprueba contra algo que no se puede comparar, y toda comparación con '
+          + '`NaN` --o con lo que no es un número-- es falsa',
       };
     }
   }

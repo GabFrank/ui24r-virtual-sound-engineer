@@ -52,6 +52,8 @@
  * desde ahí»*— y separarlas dejaría al retoque naciendo con el presupuesto ya
  * gastado por la rampa.
  */
+import { LIMITES } from '@vse/domain';
+import { clasificarRuta } from '@vse/mixer-adapter';
 import type { EntradaDiario } from './journal.ts';
 
 /** Lo que el historial puede contestar hoy. */
@@ -123,6 +125,8 @@ export function historialDeLaSesion(
   // que alguien llame con una lista suelta: que el orden sea del almacén está
   // escrito en la interfaz del diario, y es ahí donde tiene que sostenerse.
   for (const entrada of entradas) {
+    /** Las rutas que ESTA transacción movió de verdad, para cruzar el ancla. */
+    const movidasAca = new Set<string>();
     for (const c of entrada.cambios) {
       if (!c.verificado) continue;
       // **Un salto desde el silencio no se puede acumular, y no se inventa.**
@@ -132,9 +136,19 @@ export function historialDeLaSesion(
       // contarse desde donde el silencio quedó atrás.
       const delta = c.magnitudEnviada - c.magnitudEsperada;
       tocadas.add(c.path);
+      movidasAca.add(c.path);
       // Se pisa en cada vuelta a propósito: gana la última, que es la que el
       // motor tiene que mirar antes del próximo movimiento.
-      escuchadaAlFinal.set(c.path, entrada.medicionPosteriorId !== null);
+      //
+      // **`?? null` porque el campo ausente fallaba ABIERTA**, y es el caso
+      // gemelo del `?? []` de más abajo: una entrada vieja del diario vuelve sin
+      // `medicionPosteriorId`, y `undefined !== null` da `true`, así que la ruta
+      // quedaba marcada como «se escuchó después» y el paso siguiente pasaba sin
+      // que nadie hubiera escuchado. `journal.ts` lo pide explícito —*«que sea
+      // `null` no significa que no se midió: significa que nadie lo anotó, y el
+      // motor trata las dos igual a propósito»*— y `undefined` rompía esa
+      // promesa por el lado que afloja. Lo encontró la auditoría del 2026-09-17.
+      escuchadaAlFinal.set(c.path, (entrada.medicionPosteriorId ?? null) !== null);
       if (!Number.isFinite(delta)) continue;
       acumulado.set(c.path, (acumulado.get(c.path) ?? 0) + delta);
     }
@@ -149,7 +163,45 @@ export function historialDeLaSesion(
     // pieza vuelven sin él, y `for…of undefined` estalla. La ausencia es
     // «ninguna ruta», que además es lo cierto: cuando esas entradas se
     // escribieron, establecer un nivel no existía.
+    //
+    // ## Las tres condiciones, y por qué la primera versión no tenía ninguna
+    //
+    // **La primera versión aceptaba la lista tal cual**, y una auditoría del
+    // 2026-09-17 demostró qué costaba: con `nivelEstablecidoEn: ['hw.0.gain']`
+    // el acumulado de la **ganancia del previo** volvía a cero, y repitiendo la
+    // marca se movían 30 dB en pasos de 3 con el motor viendo cero. O sea que el
+    // ancla, que es de monitores, le sacaba el presupuesto a cualquier parámetro
+    // del aparato.
+    //
+    // **Y lo peor no era el agujero sino que estaba documentado al revés.**
+    // `ContextoSeguridad.rutasConNivelEstablecido` argumentaba que esto no es
+    // «pedir la exención diciendo que se la merece», citando de precedente a
+    // `correspondeExencionDeSistema` --que **sí** cruza lo declarado contra lo
+    // que la transacción de verdad toca--. La autodeclaración no se había
+    // eliminado: se había mudado de quien propone la transacción a quien escribe
+    // el diario, y se había quedado sin el cruce. Ahora lo tiene.
     for (const ruta of entrada.nivelEstablecidoEn ?? []) {
+      // **1. Que esta transacción haya movido esa ruta, y que haya sonado.** El
+      // nivel lo establece la transacción que lo alcanzó; marcar una ruta que
+      // esta transacción no tocó es hablar de otra cosa. Y `movidasAca` sólo
+      // tiene las verificadas, así que una transacción que dio conflicto, se
+      // revirtió o nunca salió no establece nada: es el mismo criterio que el
+      // acumulado --*«sólo cuenta lo que de verdad llegó a la consola»*-- que la
+      // primera versión aplicaba a los decibeles y no al ancla.
+      if (!movidasAca.has(ruta)) continue;
+      // **2. Que sea un parámetro con techo declarado.** Establecer el nivel
+      // suspende el presupuesto acumulado, y `verificarLimite` sólo concede esa
+      // suspensión a un tipo que declare `techoAbsoluto`. Rebasar el acumulado
+      // de un tipo sin techo le saca el único tope sobre el total sin darle
+      // nada a cambio, que es exactamente lo que ADR-034 **no** decidió.
+      const kind = clasificarRuta(ruta);
+      if (kind === null || LIMITES[kind]?.techoAbsoluto === undefined) continue;
+      // **3. Una sola vez.** `journal.ts` razona que desestablecer sería
+      // peligroso porque devolvería la rampa entera; volver a **establecer**
+      // hacía lo mismo y nadie lo impedía --marcar la ruta en cada transacción
+      // devolvía los 4 dB enteros, sin límite--. La garantía estaba escrita como
+      // si fuera del código y era del llamador que todavía no existe.
+      if (conNivel.has(ruta)) continue;
       conNivel.add(ruta);
       acumulado.set(ruta, 0);
     }

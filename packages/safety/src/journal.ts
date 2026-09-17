@@ -111,11 +111,21 @@ export interface EntradaDiario {
    * Marcarlo solo —al llegar al techo, por ejemplo— sería la aplicación
    * declarando terminada una operación cuyo criterio de terminado es de otro.
    *
-   * **Una ruta se establece una vez y no se desestablece.** Volver atrás
-   * devolvería la ruta a la operación sin presupuesto, y con eso cualquiera
-   * podría recuperar la rampa entera diciendo que el nivel ya no vale. Si un
-   * músico quiere otro nivel de trabajo, eso es una decisión suya y es otra cosa
-   * que la que esta pieza resuelve.
+   * **Una ruta se establece una vez, no se desestablece, y tampoco se vuelve a
+   * establecer.** Volver atrás devolvería la ruta a la operación sin presupuesto,
+   * y con eso cualquiera podría recuperar la rampa entera diciendo que el nivel ya
+   * no vale. Si un músico quiere otro nivel de trabajo, eso es una decisión suya y
+   * es otra cosa que la que esta pieza resuelve.
+   *
+   * **Y las dos últimas cláusulas se escribieron antes de ser ciertas.** Este
+   * párrafo razonaba por qué desestablecer sería peligroso y no impedía nada:
+   * `historialDeLaSesion` rebasaba el acumulado **por cada entrada** que listara
+   * la ruta, así que marcarla en cada transacción devolvía los 4 dB enteros sin
+   * límite —lo mismo que desestablecer, por la puerta de al lado—. Lo encontró una
+   * auditoría de fidelidad el 2026-09-17, junto con que este campo tampoco se
+   * cruzaba contra lo que la transacción de verdad tocaba. **Las garantías viven
+   * en `historialDeLaSesion`, que es quien lee esto**, y este campo es una lista
+   * sin validar: `Diario.actualizar` acepta lo que le den.
    *
    * Se serializa dentro del JSON de `datos` en `transaction_journal`, así que no
    * necesita migración —el mismo motivo por el que no la necesitó

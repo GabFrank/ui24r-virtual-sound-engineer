@@ -353,3 +353,26 @@ test('INV-004: un movimiento infinito lo sigue frenando el tope, como antes', ()
   assert.equal(r.permitido, false);
   assert.equal(r.permitido === false && r.codigo, 'DELTA_CAP');
 });
+
+test('INV-004: lo que no es un numero tampoco pasa, no solo NaN', () => {
+  // La primera version de esta guarda miraba solo `NaN`, y una auditoria del
+  // mismo dia midio que `null`, `[]` y `{}` pasaban el techo igual --`null > 0`
+  // es false-- y que una cadena hacia estallar el mensaje del rechazo con un
+  // `TypeError` desde `.toFixed`. Se tapo NaN y quedo abierto el vecino.
+  for (const raro of [null, [], {}, '5', true]) {
+    const r = verificarLimite({
+      kind: 'MONITOR_AUX_SEND', deltaSolicitado: 1, acumuladoEnSesion: 0,
+      hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+      magnitudResultante: raro as unknown as number,
+    });
+    assert.equal(r.permitido, false, `${JSON.stringify(raro)} tiene que rechazarse`);
+    assert.equal(r.permitido === false && r.codigo, 'MAGNITUD_NO_NUMERICA');
+  }
+
+  // Y sigue distinguiendo la AUSENCIA, que tiene su propio motivo.
+  const ausente = verificarLimite({
+    kind: 'MONITOR_AUX_SEND', deltaSolicitado: 1, acumuladoEnSesion: 0,
+    hayMedicionPosterior: true, esPrimerCambioDelParametro: true, unidad: 'dB',
+  });
+  assert.equal(ausente.permitido === false && ausente.codigo, 'SIN_MAGNITUD_RESULTANTE');
+});

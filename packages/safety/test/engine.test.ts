@@ -622,3 +622,38 @@ test('INV-004: el motor traduce TODO codigo de limite, sin estallar', () => {
   assert.equal(v.permitido, false);
   assert.ok(motivos(v).includes('INV-004'), motivos(v).join(', '));
 });
+
+/**
+ * El hueco de cobertura que marco la auditoria del 2026-09-17.
+ *
+ * Quitar la guarda de «esto no es un numero» de `verificarLimite` dejaba TODA la
+ * suite de `safety` en verde: solo la cazaban los tests del dominio. Ningun test
+ * le proponia al MOTOR un cambio con magnitud no numerica, que es exactamente la
+ * forma que este repositorio ya se cazo a si mismo dos veces --«ningun test
+ * proponia un cambio con la unidad mal declarada POR EL MOTOR, y la suite quedo
+ * verde»--.
+ *
+ * **Y va sobre una ruta SIN ley medida a proposito.** En una ruta `PROBADO` el
+ * rechazo lo produce `verificarAtadura` antes de llegar a los topes, asi que el
+ * test pasaria igual sin la guarda que quiere probar. `i.N.mute` no esta en la
+ * tabla de conversion, asi que la atadura contesta «no hay con que atar» --que
+ * no es un rechazo-- y el cambio llega hasta `verificarLimite`.
+ */
+test('INV-004: el MOTOR rechaza una magnitud que no es un numero, sin ley medida de por medio', () => {
+  for (const raro of [Number.NaN, null, {}]) {
+    const v = new SafetyEngine().evaluar(
+      [{
+        kind: 'CHANNEL_MUTE', path: 'i.3.mute', unidad: 'canales',
+        valorPropuesto: 1, valorEsperado: 0,
+        magnitudPropuesta: raro as unknown as number, magnitudEsperada: 0,
+      }],
+      contexto({ sessionState: 'CHANNEL_SETUP', aprobacionExplicita: true }),
+      ok,
+    );
+    assert.equal(v.permitido, false, `${String(raro)} tiene que rechazarse en el motor`);
+    assert.ok(
+      !v.permitido && v.rechazos.some((r) => r.codigo === 'MAGNITUD_NO_ATADA'),
+      'y el motivo tiene que ser que el motor no puede juzgar ese numero',
+    );
+  }
+});

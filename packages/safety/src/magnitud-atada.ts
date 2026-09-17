@@ -116,14 +116,21 @@ export function verificarAtadura(
   // **Va como su propio código y no como `MAGNITUD_NO_COINCIDE`**, porque no es
   // que los dos números difieran: es que uno no es un número, y el mensaje que
   // le sirve a quien lo lee es distinto.
-  if (!Number.isFinite(magnitudPropuesta)) {
+  //
+  // **Y cubre más que `NaN`, a diferencia de la guarda gemela de `limits.ts`.**
+  // Acá se pide un número **finito**, así que ±Infinity --que antes caía en
+  // `MAGNITUD_NO_COINCIDE`-- ahora cae en éste. Es un cambio de código de
+  // rechazo, no de veredicto: los dos rechazan. El commit que introdujo esta
+  // guarda dijo «sólo se tapó NaN» y para esta función no era exacto; lo marcó
+  // una auditoría de fidelidad el mismo día. La distinción importa para la pieza
+  // siguiente de ADR-034, que es justamente el borde de −∞: cuando llegue, va a
+  // tener que pasar por acá con su propio nombre.
+  if (typeof magnitudPropuesta !== 'number' || !Number.isFinite(magnitudPropuesta)) {
     return {
       atada: false,
       codigo: 'MAGNITUD_NO_NUMERICA',
-      motivo: `${path}: el cambio declara ${magnitudPropuesta} ${unidad}, que no es un `
-        + 'número finito. No se puede atar al crudo lo que no se puede comparar, y toda '
-        + `comparación con \`NaN\` es falsa: sin esta guarda el crudo ${valorPropuesto} `
-        + 'quedaba aprobado',
+      motivo: `${path}: el cambio declara ${String(magnitudPropuesta)} ${unidad}, que no es `
+        + 'un número finito. No se puede atar al crudo lo que no se puede comparar',
       magnitudDelCrudo,
     };
   }
