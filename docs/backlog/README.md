@@ -9,6 +9,7 @@
 | [auditorias/](auditorias/) | Los informes completos, con sus fuentes |
 | [auditorias/2026-09-15-auditoria-externa.md](auditorias/2026-09-15-auditoria-externa.md) | Auditoría externa del 2026-09-15: estado real de la rama, doce hallazgos, catálogo de trabajo previo publicado, quince hipótesis para corroborar con la consola y un plan para esa sesión |
 | [auditorias/2026-09-16-auditoria-de-la-madrugada.md](auditorias/2026-09-16-auditoria-de-la-madrugada.md) | Auditoría de la madrugada del 2026-09-16, pedida por el usuario: la consola comparada clave por clave contra su estado anterior, la matriz de capacidades atrasada respecto del código, y dos afirmaciones falsas sobre los proyectos de terceros |
+| [../pedidos/2026-09-16-donde-quedamos.md](../pedidos/2026-09-16-donde-quedamos.md) | Cierre del 2026-09-16: estado del equipo del usuario, qué quedó a medias y qué conviene leer antes de retomar |
 
 Las invariantes de seguridad viven en [docs/safety-invariants.md](../safety-invariants.md) porque son un documento vigente, no histórico.
 
