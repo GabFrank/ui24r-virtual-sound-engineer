@@ -29,14 +29,16 @@
  * con el proceso, y lo que se perdería es justamente el freno. Una sesión que se
  * reanuda después de una caída tiene que seguir sabiendo cuánto movió.
  *
- * ## Lo que este módulo NO hace todavía, y hay que decirlo
+ * ## La tercera, que es la que hace que una rampa sea una rampa
  *
- * **No calcula `rutasConMedicionPosterior`.** Esa es la tercera, la que
- * convierte una serie de cambios en una rampa que escucha. El dato existe en la
- * base —`transaction_journal` tiene `measurement_after_id`— pero **no está
- * expuesto en `EntradaDiario`**, así que plumbearlo toca el esquema y la
- * consulta, y va aparte. Hasta entonces el motor la sigue recibiendo vacía y
- * **esa regla sigue inerte**: se dice acá para que no parezca cerrada.
+ * `rutasConMedicionPosterior` contesta *«¿se escuchó después del último cambio
+ * de esta ruta?»*, y es lo que convierte una serie de escrituras en una rampa.
+ * Sale de `EntradaDiario.medicionPosteriorId`, que se agregó junto con este
+ * módulo: la columna estaba en la base desde el esquema inicial y **nunca tuvo
+ * quien la llenara**.
+ *
+ * **Mira sólo la última transacción que tocó cada ruta**, no si alguna vez hubo
+ * una medición. Haber escuchado hace tres pasos no autoriza el cuarto.
  */
 import type { EntradaDiario } from './journal.ts';
 
@@ -54,6 +56,14 @@ export interface HistorialDeLaSesion {
   readonly acumuladoPorRuta: ReadonlyMap<string, number>;
   /** Las rutas que esta sesión ya movió al menos una vez. */
   readonly rutasYaTocadas: ReadonlySet<string>;
+  /**
+   * Las rutas cuyo **último** cambio tiene una medición anotada después.
+   *
+   * El motor lo usa para negarse a mover dos veces sin escuchar en el medio. Una
+   * ruta que no está acá o no se tocó nunca —y entonces no hace falta— o se
+   * movió y nadie anotó haber escuchado.
+   */
+  readonly rutasConMedicionPosterior: ReadonlySet<string>;
 }
 
 /**
@@ -75,7 +85,13 @@ export function historialDeLaSesion(
 ): HistorialDeLaSesion {
   const acumulado = new Map<string, number>();
   const tocadas = new Set<string>();
+  /** Por ruta, si la ÚLTIMA transacción que la movió tiene medición después. */
+  const escuchadaAlFinal = new Map<string, boolean>();
 
+  // **El orden lo pone el almacén** --`deLaSesion` ordena por fecha de
+  // creación-- y acá se recorre tal cual. Reordenar de nuevo escondería el día
+  // que alguien llame con una lista suelta: que el orden sea del almacén está
+  // escrito en la interfaz del diario, y es ahí donde tiene que sostenerse.
   for (const entrada of entradas) {
     for (const c of entrada.cambios) {
       if (!c.verificado) continue;
@@ -86,10 +102,20 @@ export function historialDeLaSesion(
       // contarse desde donde el silencio quedó atrás.
       const delta = c.magnitudEnviada - c.magnitudEsperada;
       tocadas.add(c.path);
+      // Se pisa en cada vuelta a propósito: gana la última, que es la que el
+      // motor tiene que mirar antes del próximo movimiento.
+      escuchadaAlFinal.set(c.path, entrada.medicionPosteriorId !== null);
       if (!Number.isFinite(delta)) continue;
       acumulado.set(c.path, (acumulado.get(c.path) ?? 0) + delta);
     }
   }
 
-  return { acumuladoPorRuta: acumulado, rutasYaTocadas: tocadas };
+  const conMedicion = new Set<string>();
+  for (const [ruta, escuchada] of escuchadaAlFinal) if (escuchada) conMedicion.add(ruta);
+
+  return {
+    acumuladoPorRuta: acumulado,
+    rutasYaTocadas: tocadas,
+    rutasConMedicionPosterior: conMedicion,
+  };
 }

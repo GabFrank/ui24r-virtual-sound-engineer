@@ -5,6 +5,7 @@ import type { ContextoSeguridad } from '@vse/safety';
 import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
+import { historialDeLaSesion } from '@vse/safety';
 import { SessionStateService } from '../core/session.state';
 import { MixerService } from '../core/mixer.service';
 import { Logger } from '../core/logger';
@@ -115,16 +116,24 @@ export class BajarEnvioService {
     return v.puede ? { puede: true, motivo: null } : { puede: false, motivo: v.motivo };
   }
 
-  private contexto(): ContextoSeguridad {
+  private async contexto(sessionId: string): Promise<ContextoSeguridad> {
+    const historial = historialDeLaSesion(await this.diario.deLaSesion(sessionId));
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',
-      // Estos tres siguen vacíos por el motivo que ADR-028 declara: hace falta el
-      // historial de la sesión, que no existe. **El techo ya no**, y por eso se
-      // pasa lleno: se construye de los cambios de este servicio.
-      acumuladoPorRuta: new Map(),
-      rutasConMedicionPosterior: new Set(),
-      rutasYaTocadas: new Set(),
+      // **El historial de la sesión, que hasta el 2026-09-17 iba vacío.** Estos
+      // tres llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron y
+      // si se escuchó después del último cambio. Pasarlos vacíos dejaba dos
+      // reglas del motor existiendo en el código y no en el comportamiento: el
+      // presupuesto por sesión nunca se disparaba --el acumulado arrancaba
+      // siempre en cero-- y «comprobá el efecto antes de volver a moverlo»
+      // tampoco, porque sin rutas tocadas **cada cambio parecía el primero**.
+      // Esa segunda fallaba ABIERTA.
+      //
+      // Se reconstruyen del diario, que está en la base y sobrevive a una caída:
+      // un contador en memoria se perdería con el proceso, y lo que se perdería
+      // es justamente el freno.
+      ...historial,
       techoPorRuta: this.techos(),
       hayTakeDeSoundcheckActivo: false,
       // Vacío por el mismo motivo que en el servicio de ganancia: el puente de
@@ -191,7 +200,7 @@ export class BajarEnvioService {
       sessionId,
       `bajar ${e.bajarDb} dB el envío del canal ${e.canal} al monitor ${e.auxiliar}`,
       [cambio],
-      this.contexto(),
+      await this.contexto(sessionId),
       {
         conexionPermiteEscribir: true,
         snapshotRef: instantanea,

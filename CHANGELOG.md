@@ -24,6 +24,15 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Los dos frenos que la aplicación tenía escritos y no aplicaba, ahora
+  aplican.** El motor de seguridad sabe negarse a mover un parámetro más de lo
+  presupuestado en una sesión, y a moverlo dos veces sin escuchar en el medio.
+  Las dos reglas estaban en el código y **no llegaban a la consola**: la
+  aplicación le entregaba al motor un historial vacío, así que cada cambio
+  parecía el primero. No te afectó porque ninguna pantalla repite un cambio —la
+  de ganancia aplica una vez—, y habría sido lo primero que pasara al levantar
+  una cuña paso a paso.
+
 - **El registro de cambios anotaba «dB» al lado de números que no eran
   decibeles.** Es el mismo error que este proyecto ya había cazado y arreglado en
   el motor de seguridad —donde un tope de 3 dB dejaba pasar saltos de 61,9— y que

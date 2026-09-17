@@ -77,6 +77,24 @@ export interface EntradaDiario {
   readonly nivelAutonomia: string;
   readonly creadoEl: string;
   readonly cerradoEl: string | null;
+  /**
+   * La medición que se hizo **después** de aplicar esta transacción, si la hubo.
+   *
+   * **Es lo que separa una serie de cambios de una rampa que escucha.** El motor
+   * se niega a mover dos veces el mismo parámetro sin una medición en el medio
+   * —*«hay que comprobar el efecto antes de volver a moverlo»*, que es la regla 4
+   * del repositorio— y hasta hoy esa regla no podía aplicarse porque nadie
+   * registraba la medición posterior.
+   *
+   * `null` mientras no la haya. **Que sea `null` no significa que no se midió:
+   * significa que nadie lo anotó**, y el motor trata las dos igual a propósito —
+   * fallar cerrado es lo correcto cuando la duda es si se escuchó o no.
+   *
+   * La columna `measurement_after_id` existe en `transaction_journal` desde el
+   * esquema inicial y **nunca tuvo quien la llenara**; la entrada se serializa
+   * entera como JSON en `datos`, así que esto no necesita migración.
+   */
+  readonly medicionPosteriorId: string | null;
   readonly cambios: readonly CambioRegistrado[];
 }
 
@@ -97,6 +115,15 @@ export interface Diario {
   leer(id: string): Promise<EntradaDiario | undefined>;
   /** Transacciones que quedaron a medio aplicar tras una caída. */
   interrumpidas(): Promise<readonly EntradaDiario[]>;
+  /**
+   * Todas las transacciones de una sesión, **de la más vieja a la más nueva**.
+   *
+   * Es de donde sale el historial que el motor necesita para frenar: ver
+   * `historialDeLaSesion`. El orden importa —la última que tocó cada ruta es la
+   * que decide si hubo escucha después— y por eso lo garantiza el almacén y no
+   * el que llama.
+   */
+  deLaSesion(sessionId: string): Promise<readonly EntradaDiario[]>;
 }
 
 /** Implementación en memoria, para tests y para el simulador. */
@@ -123,6 +150,12 @@ export class DiarioEnMemoria implements Diario {
 
   async leer(id: string): Promise<EntradaDiario | undefined> {
     return this.datos.get(id);
+  }
+
+  async deLaSesion(sessionId: string): Promise<readonly EntradaDiario[]> {
+    return [...this.datos.values()]
+      .filter((e) => e.sessionId === sessionId)
+      .sort((a, b) => a.creadoEl.localeCompare(b.creadoEl));
   }
 
   async interrumpidas(): Promise<readonly EntradaDiario[]> {
@@ -155,6 +188,9 @@ export function entradaDesdeCambios(
     nivelAutonomia,
     creadoEl: new Date().toISOString(),
     cerradoEl: null,
+    // Se anota cuando la medición ocurra, con `actualizar`. Nace en null porque
+    // al abrir la transacción todavía no se escribió nada que medir.
+    medicionPosteriorId: null,
     cambios: cambios.map((c) => ({
       path: c.path,
       unidad: c.unidad,

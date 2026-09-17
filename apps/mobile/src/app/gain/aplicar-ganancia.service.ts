@@ -5,6 +5,7 @@ import type { Confidence } from '@vse/domain';
 import type { ContextoSeguridad } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
+import { historialDeLaSesion } from '@vse/safety';
 import { SessionStateService } from '../core/session.state';
 import { MixerService } from '../core/mixer.service';
 import { Logger } from '../core/logger';
@@ -105,17 +106,24 @@ export class AplicarGananciaService {
    * esta operación —qué confianza tiene, si el usuario la aprobó— y no de la
    * conexión. Lo poco que es de la sesión se pide a quien la tiene.
    */
-  private contexto(confianza: Confidence): ContextoSeguridad {
+  private async contexto(confianza: Confidence, sessionId: string): Promise<ContextoSeguridad> {
+    const historial = historialDeLaSesion(await this.diario.deLaSesion(sessionId));
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',
-      // Estos tres llevan la cuenta de cuánto se movió cada ruta en la sesión,
-      // y hoy la aplicación no la lleva: cada aplicación de ganancia es la
-      // primera. Van vacíos a propósito y no con datos inventados; cuando el
-      // historial de la sesión los alimente, entran acá sin tocar el motor.
-      acumuladoPorRuta: new Map(),
-      rutasConMedicionPosterior: new Set(),
-      rutasYaTocadas: new Set(),
+      // **El historial de la sesión, que hasta el 2026-09-17 iba vacío.** Estos
+      // tres llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron y
+      // si se escuchó después del último cambio. Pasarlos vacíos dejaba dos
+      // reglas del motor existiendo en el código y no en el comportamiento: el
+      // presupuesto por sesión nunca se disparaba --el acumulado arrancaba
+      // siempre en cero-- y «comprobá el efecto antes de volver a moverlo»
+      // tampoco, porque sin rutas tocadas **cada cambio parecía el primero**.
+      // Esa segunda fallaba ABIERTA.
+      //
+      // Se reconstruyen del diario, que está en la base y sobrevive a una caída:
+      // un contador en memoria se perdería con el proceso, y lo que se perdería
+      // es justamente el freno.
+      ...historial,
       // **Vacío, y por el mismo motivo que los tres de arriba.** El techo de
       // «hasta donde estaba antes de que yo lo bajara» (ADR-028) se llena con el
       // valor que la ruta tenía la primera vez que el asistente la tocó, y eso
@@ -205,7 +213,7 @@ export class AplicarGananciaService {
         magnitudPropuesta: quedoEnDb,
         magnitudEsperada: gananciaADb(p.crudoActual),
       }],
-      this.contexto(p.confianza),
+      await this.contexto(p.confianza, sessionId),
       {
         conexionPermiteEscribir: true,
         snapshotRef: instantanea,
