@@ -30,6 +30,16 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   **no es lo que dice la etiqueta**, y obliga a releer lo que se midió hace unas
   horas: aquel "2,6 a 1" es el promedio de esa curva en un tramo, no una relación.
 
+  **La curva quedó publicada entera**, no sólo la conclusión: la tabla de qué sale
+  por cada nivel que entra, en seis posiciones de umbral, y la misma tabla como
+  "cuánto baja". Con eso cualquiera puede mirar el dato sin creernos.
+
+  **Y hay un regalo adentro:** cuánto baja depende **sólo de cuánto se pasa del
+  umbral**, no de dónde esté puesto el umbral ni de qué tan fuerte venga la señal.
+  Eso quiere decir que la curva se escribe una vez y sirve para cualquier ajuste —
+  y es lo que permitió medir el umbral con un error de cuatro centésimas de
+  decibel.
+
 - **Ya se sabe cuánto comprime de verdad el compresor.** Era el agujero más
   grande que quedaba: la cuenta del fabricante estaba refutada desde hace días y
   no había nada en su lugar.

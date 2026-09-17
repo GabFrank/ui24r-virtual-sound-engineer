@@ -25,6 +25,89 @@ crudo 0,10:
 **Pasa en los cinco umbrales**, con la misma forma. No es ruido: la repetibilidad
 del instrumento en este banco está en el 1-6 %.
 
+## La curva medida, entera
+
+**Se publica el dato, no sólo la conclusión.** Salido de
+[la evidencia](../spikes/SPK-P0.10b-vu2/evidence/umbral-del-compresor-2026-09-16c.txt)
+con la relación fija en su crudo **0,10** —que el cliente llama 10:1— y el
+ecualizador, la puerta y el de-esser fuera del camino.
+
+**Nivel de salida, en dBFS del banco:**
+
+| entrada (dBFS) | sin compresor | umbral 0.29 | umbral 0.32 | umbral 0.35 | umbral 0.38 | umbral 0.41 | umbral 0.44 |
+|---|---|---|---|---|---|---|---|
+| -48 | -77.51 | -77.5 | -77.6 | -77.6 | -77.6 | -77.6 | -77.6 |
+| -45 | -74.50 | -74.5 | -74.6 | -74.6 | -74.6 | -74.6 | -74.6 |
+| -42 | -71.51 | -71.5 | -71.6 | -71.6 | -71.6 | -71.6 | -71.6 |
+| -39 | -68.51 | -68.5 | -68.6 | -68.6 | -68.6 | -68.6 | -68.6 |
+| -36 | -65.50 | -65.5 | -65.6 | -65.6 | -65.6 | -65.6 | -65.6 |
+| -33 | -62.52 | -62.5 | -62.6 | -62.6 | -62.6 | -62.6 | -62.6 |
+| -30 | -59.54 | -59.9 | -59.6 | -59.6 | -59.6 | -59.6 | -59.6 |
+| -27 | -56.55 | -59.5 | -56.9 | -56.6 | -56.6 | -56.6 | -56.6 |
+| -24 | -53.55 | -59.1 | -56.7 | -54.1 | -53.6 | -53.6 | -53.6 |
+| -21 | -50.56 | -58.3 | -56.1 | -53.8 | -51.3 | -50.6 | -50.6 |
+| -18 | -47.57 | -57.6 | -55.5 | -53.2 | -50.7 | -48.3 | -47.6 |
+| -15 | -44.59 | -56.5 | -54.6 | -52.6 | -50.4 | -48.0 | -45.3 |
+| -12 | -41.61 | -55.2 | -53.6 | -51.7 | -49.6 | -47.5 | -45.1 |
+| -9 | -38.61 | -53.6 | -52.3 | -50.7 | -48.8 | -46.7 | -44.5 |
+
+La columna «sin compresor» es el control C2 de esa corrida: pendiente **0,9970**
+sobre los catorce escalones, o sea que la cadena es lineal y lo que se dobla
+después es del compresor.
+
+**Y la misma tabla como REDUCCIÓN**, que es la forma en que se vuelve útil:
+
+| entrada (dBFS) | u = 0.29 | u = 0.32 | u = 0.35 | u = 0.38 | u = 0.41 | u = 0.44 |
+|---|---|---|---|---|---|---|
+| -48 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -45 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -42 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -39 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -36 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -33 | 0.0 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -30 | 0.4 | 0.1 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -27 | 3.0 | 0.4 | 0.1 | 0.1 | 0.1 | 0.1 |
+| -24 | 5.6 | 3.2 | 0.6 | 0.1 | 0.1 | 0.1 |
+| -21 | 7.7 | 5.5 | 3.2 | 0.7 | 0.0 | 0.0 |
+| -18 | 10.0 | 7.9 | 5.6 | 3.1 | 0.7 | 0.0 |
+| -15 | 11.9 | 10.0 | 8.0 | 5.8 | 3.4 | 0.7 |
+| -12 | 13.6 | 12.0 | 10.1 | 8.0 | 5.9 | 3.5 |
+| -9 | 15.0 | 13.7 | 12.1 | 10.2 | 8.1 | 5.9 |
+
+### Lo que salta a la vista en esa segunda tabla
+
+**Es la misma columna, corrida.** Cada 0,03 de umbral la mueve exactamente un
+escalón —3 dB—, y por eso el ítem 118 pudo medir la pendiente del umbral
+alineándolas, con residuos de **cuatro centésimas de decibel**.
+
+**Eso es un resultado en sí mismo: la reducción depende SÓLO del exceso sobre el
+umbral**, no del nivel absoluto ni de dónde esté puesto el umbral. Es lo que
+permite escribir la curva una vez y usarla en cualquier umbral.
+
+### La curva, en la forma que sirve
+
+Con la relación en 0,10, reducción como función del exceso:
+
+| exceso sobre el umbral (dB) | reducción (dB) | relación local |
+|---|---|---|
+| ~3 | 0.4 |  |
+| ~6 | 3.0 | 7.3:1 |
+| ~9 | 5.6 | 7.5:1 |
+| ~12 | 7.7 | 3.7:1 |
+| ~15 | 10.0 | 4.2:1 |
+| ~18 | 11.9 | 2.7:1 |
+| ~21 | 13.6 | 2.3:1 |
+| ~24 | 15.0 | 1.9:1 |
+
+**La relación local no es un número: recorre de 20:1 pegada al codo hasta menos de
+2:1 veinte decibeles más arriba.** La última columna es lo que un operador
+escucharía como «la relación» a cada nivel.
+
+**Esto es una columna de una superficie**, y conviene decirlo: falta el resto de
+las relaciones. Con las otras siete medidas, la aplicación podría interpolar en
+vez de usar una fórmula — y ésa, hoy, es la única forma honesta de que proponga
+compresión con números.
+
 ## Qué significa para quien opera
 
 **Que el número de la etiqueta no describe lo que hace el aparato con una señal
