@@ -6,6 +6,20 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Y la tabla completa de cuánto comprime, para cada posición del control.** Con
+  el hallazgo de que no hay "una relación" hacía falta el dato entero, y ahí está:
+  ocho posiciones del control por seis alturas de señal, medidas una por una.
+
+  Se lee directo: con el control en 0,25 y una voz **10 dB por encima del umbral**,
+  el compresor la baja **6,1 dB**. Eso es lo que hace el aparato.
+
+  **Y sirve para cualquier umbral**, no sólo el que se usó para medir: se comprobó
+  que cuánto baja depende **sólo de cuánto te pasás**, con tres umbrales separados
+  nueve decibeles entre sí y menos de tres décimas de diferencia.
+
+  Con esa tabla la app puede proponer compresión con números reales — interpolando
+  lo medido, en vez de una fórmula que ya sabemos que no describe tu consola.
+
 - **El umbral del compresor sí funciona como dice la consola** — y el proyecto lo
   daba por roto desde hace días. Se midió aparte, sin suponer nada de la
   compresión, y el control mueve **96,4 decibeles por vuelta completa** contra los

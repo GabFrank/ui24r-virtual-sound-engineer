@@ -1,0 +1,79 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T00:55:43.244Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts sha256:b7f19af9132fd9e7
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 117 — LA CURVA DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 14 escalones: -48 a -9 dBFS de 3 en 3, 1.2 s cada uno
+   se barren 8 relaciones: 1, 0.75, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05
+   umbral fijo en 0.35 para la superficie
+   y la invariancia se comprueba otra vez con la relacion 0.35 en 3 umbrales
+   el codo sale de donde la reduccion cruza 2 dB, no de ajustar rectas
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -48 dBFS -> salida   -77.52 dBFS
+   entrada  -45 dBFS -> salida   -74.50 dBFS
+   entrada  -42 dBFS -> salida   -71.52 dBFS
+   entrada  -39 dBFS -> salida   -68.51 dBFS
+   entrada  -36 dBFS -> salida   -65.52 dBFS
+   entrada  -33 dBFS -> salida   -62.53 dBFS
+   entrada  -30 dBFS -> salida   -59.55 dBFS
+   entrada  -27 dBFS -> salida   -56.55 dBFS
+   entrada  -24 dBFS -> salida   -53.56 dBFS
+   entrada  -21 dBFS -> salida   -50.57 dBFS
+   entrada  -18 dBFS -> salida   -47.58 dBFS
+   entrada  -15 dBFS -> salida   -44.60 dBFS
+   entrada  -12 dBFS -> salida   -41.62 dBFS
+   entrada   -9 dBFS -> salida   -38.62 dBFS
+   pendiente 0.9969 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -77.5 dBFS
+
+=== LA SUPERFICIE (umbral fijo en 0.35) ===
+   relacion 1.00 | codo(red=2dB)   fuera | reduccion: -48:0.0  -45:0.0  -42:0.0  -39:0.0  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.0  -21:0.0  -18:0.0  -15:0.0  -12:0.0  -9:0.0
+   relacion 0.75 | codo(red=2dB) -9.31 dBFS | reduccion: -48:0.0  -45:0.0  -42:0.0  -39:0.0  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.1  -21:0.8  -18:1.2  -15:1.6  -12:1.8  -9:2.0
+   relacion 0.50 | codo(red=2dB) -19.93 dBFS | reduccion: -48:0.0  -45:0.1  -42:0.0  -39:0.1  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.3  -21:1.6  -18:2.7  -15:3.5  -12:4.2  -9:4.7
+   relacion 0.35 | codo(red=2dB) -21.24 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.0  -33:0.1  -30:0.0  -27:0.0  -24:0.4  -21:2.1  -18:3.7  -15:4.9  -12:6.0  -9:6.8
+   relacion 0.25 | codo(red=2dB) -21.84 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.4  -21:2.6  -18:4.4  -15:6.1  -12:7.3  -9:8.5
+   relacion 0.15 | codo(red=2dB) -22.17 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.4  -21:3.0  -18:5.2  -15:7.3  -12:9.1  -9:10.7
+   relacion 0.10 | codo(red=2dB) -22.32 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.6  -21:3.1  -18:5.7  -15:7.9  -12:10.2  -9:11.9
+   relacion 0.05 | codo(red=2dB) -22.46 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.7  -21:3.3  -18:6.2  -15:8.7  -12:11.3  -9:13.6
+
+C3 el codo esta en el mismo sitio para todas: se movio 13.15 dB entre 7 relaciones (tope 1.5) -> FALLA
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts:441
+      throw new Error('C3 FALLA: el codo depende de la relacion, asi que el umbral y la '
+            ^
+
+Error: C3 FALLA: el codo depende de la relacion, asi que el umbral y la relacion no son dos ejes independientes y la superficie necesita otro.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts:441:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts:343:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1
