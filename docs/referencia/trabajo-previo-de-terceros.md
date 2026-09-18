@@ -195,6 +195,45 @@ Comprobado con `grep` sobre los cuatro árboles, la misma tarde:
   que así es como lo hace el cliente oficial — lo que corrobora la forma del
   hallazgo propio sobre `m.eq.linked`.
 
+## Comprobar que se escuchó entre un cambio y el siguiente: ninguno de los cuatro
+
+**Clonado y grepeado de nuevo la noche del 2026-09-17**, en los mismos commits de la tabla
+de arriba —`2fc297f`, `20ad8b1`, `235fba1`, `bc2e0a9`—, buscando
+`measurement`, `settling`, `settle`, `dwell`, `cooldown`, `debounceTime`,
+`throttleTime`, `minInterval`, `rateLimit`, `elapsed` y `lastChange` sobre los
+cuatro árboles enteros.
+
+| | Comprueba que se midió entre dos cambios |
+|---|---|
+| `fmalcher/soundcraft-ui` | **No.** Los 42 aciertos de `elapsed` son el tiempo transcurrido del **reproductor** y del grabador multipista (`selectPlayerElapsedTime`, `selectMtkElapsedTime`): un dato que la consola publica, nada que ver con espaciar escrituras. Los dos de `debounceTime` son uno solo, `race(store.state$.pipe(debounceTime(25)), timer(250))` en `utils.ts`, que espera a que el volcado de estado se aquiete **al conectar** |
+| `NaturalDevCR/MyUiPro` | **No.** Sus 10 aciertos de `elapsed` son el mismo tiempo del reproductor, leído de la biblioteca de `fmalcher` |
+| `ndikanov/ui24` | **No.** Cero aciertos de cualquiera de los once términos |
+| `Dennion/ioBroker.soundcraft` | **No.** Cero aciertos propios |
+
+**Y no es un descuido de ellos: es que hacen otra cosa.** Los cuatro son
+bibliotecas de protocolo y clientes, no asistentes. Un cliente escribe lo que el
+operador le pide en el momento en que se lo pide, y el operador es quien escucha;
+no hay nada entre la intención y la escritura que deba comprobar nada. La rampa
+de `fmalcher` —`fadeTo`, anotada más arriba— es lo más cerca que hay, y va en
+dirección contraria: interpola sola, sin escuchar en el medio, porque su motivo
+es que la transición no se note.
+
+**Y se estresó la afirmación negativa con términos que el primer grep no traía**
+—`throttle`, `debounce`, `setInterval`, `pollInterval`, `lastUpdate`, `backoff`,
+`since`, `ramp`, `fadeTo`—, que es el paso que las cuatro veces anteriores faltó.
+Lo único que aparece es el `debounce(handleRetry, 1000)` de **reconexión** de
+MyUiPro y el `pollInterval` de **lectura** de ioBroker. Ninguno condiciona una
+escritura a que se haya medido.
+
+**Que no haya precedente es un dato, y pide más cuidado, no menos.** La guarda
+que este proyecto puso el 2026-09-18 —que la escucha resuelva a una medición
+real, de esta sesión, con señal de una lista blanca, de duración mínima por clase
+de parámetro, no anterior a la escritura y **con su ventana terminada**— **no
+tiene con qué contrastarse**. No hay una implementación ajena que diga si diez
+segundos son muchos o pocos, ni si exigir señal deja fuera un caso legítimo. Y se
+vio lo que cuesta: la primera versión de esa guarda tenía cinco condiciones y no
+cerraba el agujero, y lo encontró una auditoría, no un precedente.
+
 ## Cómo se usa este documento
 
 **Antes de escribir «ninguno de los cuatro hace X», buscá X acá.** Si no está,

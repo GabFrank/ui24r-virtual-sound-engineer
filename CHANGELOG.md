@@ -52,6 +52,49 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **«Ya escuché» era una palabra, no una comprobación: la cuña se podía subir
+  32 dB sin que pasara nada de tiempo.** El motor tiene una regla vieja y buena
+  —no se mueve una cuña dos veces sin que el músico haya escuchado en el medio—
+  y la cumplía mirando un casillero: si algo dejaba ahí cualquier cosa escrita,
+  daba por hecho que se había escuchado. No comprobaba que esa escucha
+  existiera, ni que fuera de este show, ni que hubiera pasado *después* del
+  cambio, ni que hubiera habido sonido, ni cuánto había durado.
+  **Medido: dieciséis pasos honestos de 2 dB levantaron una cuña desde el piso
+  hasta nominal —32 dB— sin una sola espera**, con dieciséis escuchas que no
+  existían. Lo único que la frenó fue llegar arriba de todo.
+
+  **Hoy no te podía pasar**, porque ninguna pantalla llena ese casillero
+  todavía. Pero la pantalla de monitor —la que sigue— es justo la que lo va a
+  llenar, y el día que lo hiciera, esos 32 dB entraban solos.
+
+  Ahora, para que un paso autorice al siguiente, la escucha tiene que ser real:
+  existir de verdad, ser de este show, haber empezado después de que el cambio
+  llegara a la consola, **haber tenido sonido** —una medición hecha en silencio
+  no cuenta— y **haber terminado**. Lo elegiste vos entre varias opciones,
+  incluida la de frenar sólo con un cronómetro, que descartaste con el argumento
+  correcto: un cronómetro no es una escucha.
+
+  **Cuánto tiene que durar lo decide cada ajuste, y también lo elegiste vos.**
+  Para la cuña de monitor son diez segundos, que es el mismo tiempo que la
+  aplicación ya usa hoy para decidir si una medición de ganancia alcanzó. Para
+  silenciar un canal cuando estás cazando un acople son cero: eso se oye en el
+  momento, y pedirte diez segundos ahí sería frenarte justo cuando la sala está
+  acoplando. Las demás llevan diez por ahora, porque no hay ninguna medición que
+  diga otra cosa.
+
+  **La misma rampa que movía 32 dB ahora se frena en el segundo paso: 2 dB.**
+  Y lo que no cambió: con escuchas de verdad la rampa avanza igual, paso a paso,
+  como tiene que ser.
+
+  **Dos cosas que hay que decir, porque la primera versión de este arreglo no
+  las cumplía y lo encontró una auditoría el mismo día.** La primera: comprobaba
+  que la escucha *dijera* durar diez segundos, no que esos diez segundos
+  hubieran pasado, así que con mediciones bien escritas la ráfaga volvía entera.
+  Ahora se exige que la ventana haya terminado de verdad. La segunda: la
+  aplicación sabe que **hubo sonido**, no que **eras vos tocando**. Un barrido de
+  prueba con la banda en el bar también cuenta. Distinguir una cosa de la otra
+  necesita cruzar la medición con el canal, y eso todavía no está.
+
 - **Pedir cuatro pasos de 2 dB juntos movía la cuña 8 dB.** El freno de «no más
   de 2 dB por vez» se cobraba una vez por cada paso, y nadie sumaba la cadena: si
   algo mandaba cuatro pasos en una sola tanda, los cuatro pasaban —cada uno cabía

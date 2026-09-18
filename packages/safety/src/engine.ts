@@ -206,16 +206,22 @@ export class SafetyEngine {
     // parecido a lo que ADR-034 describe. Lo único que *queda* es el último;
     // los otros se oyen.
     //
-    // **Lo que esta guarda NO convierte en escucha, y hay que decirlo porque el
-    // argumento se apoya ahí.** Rechazar la ráfaga obliga a partirla en
-    // transacciones, y **hoy nada comprueba que entre transacción y transacción
-    // se haya escuchado de verdad**: `historialDeLaSesion` sólo mira que
-    // `medicionPosteriorId` no sea nulo, sin fecha, sin cruzarlo contra una
-    // `Measurement` real y sin ningún espaciado de reloj entre transacciones.
-    // Medido: anotando la medición, quince transacciones mueven **28,5 dB en 19
-    // ms**, y lo que corta no es ningún freno de INV-004 sino el techo de
-    // nominal. No está expuesto porque en producción nadie llena ese campo
-    // todavía; queda como tarea, y es la que le da sentido a ésta.
+    // **Lo que esta guarda apoyaba en otra que no existía, y se construyó el
+    // 2026-09-18.** Rechazar la ráfaga obliga a partirla en transacciones, y el
+    // argumento entero depende de que entre una transacción y la siguiente se
+    // haya escuchado. Eso **no se comprobaba**: `historialDeLaSesion` miraba sólo
+    // que `medicionPosteriorId` no fuera nulo, sin resolverlo, sin fecha y sin
+    // ningún espaciado de reloj. Medido con el motor: dieciséis transacciones
+    // honestas de 2 dB levantaban la cuña **32 dB, de −32 a nominal**, anotando
+    // dieciséis mediciones inventadas, y lo que cortaba era el techo.
+    //
+    // Hoy lo comprueba `escuchaComprobada`: la medición tiene que resolver, ser
+    // de esta sesión, traer una señal de la lista blanca, durar lo que su clase
+    // pide, no empezar antes de que la escritura llegara al cable y **haber
+    // terminado su ventana**. Esa última es la que convierte una duración
+    // declarada en tiempo transcurrido, y sin ella la ráfaga volvía entera con
+    // mediciones bien formadas. Partir en transacciones ahora sí obliga a
+    // esperar.
     //
     // **Es la misma forma que el silencio de acá arriba** —una regla sobre la
     // COMPOSICIÓN de la transacción, que la tabla de límites no puede expresar

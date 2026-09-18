@@ -43,15 +43,40 @@ export interface Limite {
    * `nivelEstablecido`: es lo único que autoriza a suspender el acumulado.
    */
   readonly techoAbsoluto?: number;
+  /**
+   * Cuántos segundos tiene que durar la medición posterior para que cuente como
+   * que se escuchó.
+   *
+   * **Es una tercera especie, y convive con las otras dos a propósito.** Los dos
+   * primeros topes acotan *cuánto se mueve* el parámetro, `techoAbsoluto` acota
+   * *dónde queda*, y éste acota *cuánto hay que esperar antes de volver a
+   * moverlo*. Están juntos porque los cuatro se preguntan por clase de
+   * parámetro y separarlos sería una segunda tabla que envejece aparte.
+   *
+   * **Decisión del usuario, 2026-09-18**, eligiendo entre cuatro opciones sobre
+   * cuánto tiene que durar la escucha entre un paso y el siguiente: *«que lo
+   * decida el tipo de parámetro»*. La alternativa era un solo número para toda
+   * la aplicación.
+   *
+   * **Obligatorio y no opcional, por la misma razón que `magnitudPropuesta` en
+   * `CambioPropuesto`:** así el compilador señala cada clase que se agregue a
+   * esta tabla. Un campo opcional dejaría que una clase nueva naciera sin
+   * criterio de escucha, y el que no lo declara es el que falla abierto.
+   *
+   * **Cero no es «sin criterio»**: es la decisión de que para ese parámetro el
+   * efecto es instantáneo y no hay ventana que esperar. La medición tiene que
+   * existir, ser de esta sesión, ser posterior y tener señal igual.
+   */
+  readonly escuchaMinimaS: number;
 }
 
 export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
-  CHANNEL_FADER: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  PREAMP_GAIN: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  CHANNEL_EQ: { porTransaccion: 4, acumuladoPorSesion: 6, unidad: 'dB' },
-  OUTPUT_EQ: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas' },
-  OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms' },
+  CHANNEL_FADER: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  PREAMP_GAIN: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  CHANNEL_EQ: { porTransaccion: 4, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  OUTPUT_EQ: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas', escuchaMinimaS: 10 },
+  OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms', escuchaMinimaS: 10 },
   // **Declarado y hoy inerte, a propósito y con su riesgo dicho.**
   // `MASTER_FADER` es `USER_ONLY` con `escribible: false` (INV-009), así que el
   // motor lo rechaza por propiedad antes de llegar acá y este tope no se evalúa
@@ -66,7 +91,7 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
   // aplicación pueda bajar el general para cazar un acople --«Los dos, con
   // techo»--, así que ese ADR está pendiente y no ausente. Ver
   // `docs/backlog/decision-bajar-buses-para-cazar-acoples.md`.
-  MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB' },
+  MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB', escuchaMinimaS: 10 },
   /**
    * **El silencio no tiene magnitud: es binario.** Un tope de «cuánto se mueve»
    * no significa nada acá, y por eso INV-004 lo rechazaba —con razón— hasta que
@@ -84,7 +109,17 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * alcanza para probar seis canales, que es más de los que suelen estar
    * abiertos cuando aparece un acople.
    */
-  CHANNEL_MUTE: { porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales' },
+  //
+  // **Y la escucha en cero, que es la única clase de esta tabla que lo lleva.**
+  // Un silencio es binario y su efecto es instantáneo: el acople que se está
+  // cazando o para o no para, y se oye en el momento. Exigir diez segundos de
+  // ventana acá frenaría el diagnóstico justo cuando la sala está acoplando, que
+  // es el momento en que nadie tiene diez segundos. Lo que sigue exigiéndose es
+  // lo demás: que la medición exista, sea de esta sesión, sea posterior a la
+  // escritura y tenga señal.
+  CHANNEL_MUTE: {
+    porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales', escuchaMinimaS: 0,
+  },
   /**
    * El envío a un monitor, en decibeles.
    *
@@ -116,6 +151,14 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    */
   MONITOR_AUX_SEND: {
     porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB',
+    // **Diez segundos, que es el número que la aplicación ya usa** para decidir
+    // si una medición de ganancia duró lo suficiente para significar algo
+    // (`DURACION_MINIMA_S` en `packages/assistants/src/gain.ts`). Reusarlo en vez
+    // de elegir otro mantiene un solo criterio de «esto se midió lo bastante» en
+    // toda la aplicación, y sobre todo **no inventa una cifra**: no hay ninguna
+    // medición acústica que diga cuánto necesita un músico para juzgar su cuña.
+    // El día que la haya, este número se cambia acá y el motor no se toca.
+    escuchaMinimaS: 10,
     // Nominal. Ver `techoAbsoluto`: es el único tope de esta tabla que dice
     // **dónde queda** el parámetro y no cuánto se movió, y es lo que hace
     // posible la rampa de ADR-034 sin dejarla sin freno.

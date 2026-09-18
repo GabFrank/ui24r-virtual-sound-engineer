@@ -107,7 +107,26 @@ export class AplicarGananciaService {
    * conexión. Lo poco que es de la sesión se pide a quien la tiene.
    */
   private async contexto(confianza: Confidence, sessionId: string): Promise<ContextoSeguridad> {
-    const historial = historialDeLaSesion(await this.diario.deLaSesion(sessionId));
+    // **Sin mediciones, y eso frena en vez de aflojar.** El historial resuelve
+    // `medicionPosteriorId` contra esta lista para decidir si entre un paso y el
+    // siguiente se escuchó de verdad; con la lista vacía ninguna ruta queda con
+    // escucha comprobada, así que un segundo cambio sobre el mismo parámetro se
+    // rechaza. Es lo correcto hoy: **nadie escribe en la tabla `measurement`**
+    // --está en el esquema desde el principio y sin quien la llene-- y ninguna
+    // transacción de producción anota una medición posterior. **No es un cambio
+    // de comportamiento**: antes el campo también era siempre nulo.
+    //
+    // **El día que esta pantalla mida después de aplicar y quiera que esa medición
+    // cuente, tiene que pasarla acá.** Hoy vuelve a medir --`capturar` justo
+    // después de aplicar, para contarte si sirvió-- y esa medición no llega al
+    // motor: el segundo ajuste sobre el mismo canal se rechaza igual. El
+    // compilador no caza una lista vacía, así que queda dicho donde se lee.
+    //
+    // `Date.now()` es el instante contra el que se comprueba que la ventana de
+    // escucha haya terminado.
+    const historial = historialDeLaSesion(
+      await this.diario.deLaSesion(sessionId), [], Date.now(),
+    );
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',

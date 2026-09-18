@@ -2,6 +2,47 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { historialDeLaSesion } from '../src/historial-de-la-sesion.ts';
 import type { CambioRegistrado, EntradaDiario } from '../src/journal.ts';
+import type { Measurement } from '@vse/domain';
+
+/**
+ * Una medicion que cuenta como escucha: de esta sesion, posterior a la
+ * escritura, con senal y de diez segundos.
+ *
+ * **Se construye entera y no a medias a proposito.** Las cinco condiciones de
+ * `escuchaComprobada` se prueban una por una apartandose de ESTA, asi que si el
+ * molde ya estuviera mal la suite probaria otra cosa.
+ */
+function medicion(p: Omit<Partial<Measurement>, 'id'> & { id: string }): Measurement {
+  // Los identificadores del dominio son tipos marcados; en la suite son cadenas.
+  const { id, ...resto } = p;
+  return {
+    sessionId: 's1',
+    // Despues del `enviadoEl` por omision de `cambio`, que es a las 10:00:00.
+    timestamp: '2026-09-17T10:00:30.000Z',
+    signalType: 'PERFORMANCE',
+    // Diez, que es lo que `LIMITES.MONITOR_AUX_SEND.escuchaMinimaS` pide.
+    duracionS: 10,
+    referenceMode: null, paComponent: null, channelId: null, posicion: null,
+    sceneId: null, buildState: null, micProfileId: null,
+    calibrationStateId: 'cal-1', snapshotRef: null,
+    sampleRate: 48000,
+    directRef: null, acousticRef: null, consoleTelemetry: null, archivoAudio: null,
+    ...resto,
+    id,
+  } as unknown as Measurement;
+}
+
+/**
+ * El instante en que los tests juzgan.
+ *
+ * La medicion por omision empieza a las 10:00:30 y dura diez segundos, asi que
+ * su ventana termina a las 10:00:40. El reloj va despues: si no, ninguna escucha
+ * contaria, porque desde el 2026-09-18 la ventana tiene que haber TERMINADO.
+ */
+const AHORA = Date.parse('2026-09-17T10:05:00.000Z');
+
+/** Las dos que los tests de abajo citan por nombre. */
+const MEDICIONES: readonly Measurement[] = [medicion({ id: 'm-1' }), medicion({ id: 'm-2' })];
 
 function cambio(p: Partial<CambioRegistrado> & { path: string }): CambioRegistrado {
   return {
@@ -36,7 +77,7 @@ test('suma el desplazamiento de cada ruta en su unidad, no en crudo', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, magnitudEsperada: -12, magnitudEnviada: -10 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 4);
   assert.ok(h.rutasYaTocadas.has(RUTA));
 });
@@ -48,7 +89,7 @@ test('volver hacia donde estaba DESCUENTA: es una suma con signo', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, magnitudEsperada: -12, magnitudEnviada: -10 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -12 })]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 0);
   assert.ok(h.rutasYaTocadas.has(RUTA), 'quedo en cero y la ruta SI se toco');
 });
@@ -56,7 +97,7 @@ test('volver hacia donde estaba DESCUENTA: es una suma con signo', () => {
 test('un cambio que no se confirmo no gasta presupuesto: no sono', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, verificado: false, confirmadoPor: 'TIMEOUT' })]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), undefined);
   assert.equal(h.rutasYaTocadas.has(RUTA), false);
 });
@@ -69,7 +110,7 @@ test('aplicar y revertir doce veces cuesta lo que sono, no cero', () => {
     entradas.push(entrada([cambio({ path: RUTA, magnitudEsperada: -12, magnitudEnviada: -10 })]));
     entradas.push(entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -11 })]));
   }
-  assert.equal(historialDeLaSesion(entradas).acumuladoPorRuta.get(RUTA), 12);
+  assert.equal(historialDeLaSesion(entradas, MEDICIONES, AHORA).acumuladoPorRuta.get(RUTA), 12);
 });
 
 test('salir del silencio no envenena el acumulado de la ruta', () => {
@@ -79,7 +120,7 @@ test('salir del silencio no envenena el acumulado de la ruta', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, magnitudEsperada: -Infinity, magnitudEnviada: -32.14 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -32.14, magnitudEnviada: -30.14 })]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 2, 'cuenta desde que dejo el silencio');
   assert.ok(h.rutasYaTocadas.has(RUTA), 'y la ruta quedo tocada igual');
 });
@@ -91,13 +132,13 @@ test('cada ruta lleva su propia cuenta', () => {
       cambio({ path: RUTA, magnitudEsperada: -12, magnitudEnviada: -10 }),
       cambio({ path: otra, magnitudEsperada: -20, magnitudEnviada: -21 }),
     ]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 2);
   assert.equal(h.acumuladoPorRuta.get(otra), -1);
 });
 
 test('sin entradas, el historial esta vacio y no finge', () => {
-  const h = historialDeLaSesion([]);
+  const h = historialDeLaSesion([], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.size, 0);
   assert.equal(h.rutasYaTocadas.size, 0);
 });
@@ -105,13 +146,13 @@ test('sin entradas, el historial esta vacio y no finge', () => {
 // --- La tercera: si se escucho entre paso y paso ---------------------------
 
 test('una ruta movida sin medicion despues NO esta en el conjunto', () => {
-  const h = historialDeLaSesion([entrada([cambio({ path: RUTA })])]);
+  const h = historialDeLaSesion([entrada([cambio({ path: RUTA })])], MEDICIONES, AHORA);
   assert.equal(h.rutasConMedicionPosterior.has(RUTA), false,
     'nadie anoto haber escuchado: el motor tiene que frenar el proximo paso');
 });
 
 test('con la medicion anotada, la ruta queda habilitada para el proximo paso', () => {
-  const h = historialDeLaSesion([entrada([cambio({ path: RUTA })], 'm-1')]);
+  const h = historialDeLaSesion([entrada([cambio({ path: RUTA })], 'm-1')], MEDICIONES, AHORA);
   assert.ok(h.rutasConMedicionPosterior.has(RUTA));
 });
 
@@ -122,7 +163,7 @@ test('haber escuchado hace tres pasos no autoriza el cuarto', () => {
     entrada([cambio({ path: RUTA, magnitudEsperada: -12, magnitudEnviada: -10 })], 'm-1'),
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], 'm-2'),
     entrada([cambio({ path: RUTA, magnitudEsperada: -8, magnitudEnviada: -6 })], null),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 6);
 });
@@ -132,7 +173,7 @@ test('un cambio que no sono no cuenta como escucha de esa ruta', () => {
   // ruta no se movio, asi que tampoco hay nada que haya sonado para escuchar.
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, verificado: false })], 'm-1'),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
   assert.equal(h.rutasYaTocadas.has(RUTA), false);
 });
@@ -142,7 +183,7 @@ test('cada ruta lleva su propia escucha dentro de la misma transaccion', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA })], 'm-1'),
     entrada([cambio({ path: otra })], null),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.ok(h.rutasConMedicionPosterior.has(RUTA));
   assert.equal(h.rutasConMedicionPosterior.has(otra), false);
 });
@@ -155,7 +196,7 @@ test('establecer el nivel mueve la referencia: el acumulado arranca de cero', ()
     entrada([cambio({ path: RUTA, magnitudEsperada: -32, magnitudEnviada: -30 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -30, magnitudEnviada: -28 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -28, magnitudEnviada: -26 })], null, [RUTA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 0, 'seis movidos y la cuenta vuelve a cero');
   assert.ok(h.rutasConNivelEstablecido.has(RUTA));
   assert.ok(h.rutasYaTocadas.has(RUTA), 'establecer el nivel no borra que se toco');
@@ -167,7 +208,7 @@ test('los decibeles de la transaccion que establece el nivel son de la rampa', (
   // presupuesto antes de empezar.
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, magnitudEsperada: -4, magnitudEnviada: -2 })], null, [RUTA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 0);
 });
 
@@ -176,7 +217,7 @@ test('despues del ancla el acumulado vuelve a contar', () => {
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [RUTA]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -8, magnitudEnviada: -6 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -6, magnitudEnviada: -4 })]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 4, 'cuatro decibeles desde el nivel establecido');
 });
 
@@ -186,7 +227,7 @@ test('una entrada vieja sin el campo no rompe ni establece nada', () => {
   const vieja = entrada([cambio({ path: RUTA })]);
   const sinCampo = { ...vieja } as Record<string, unknown>;
   delete sinCampo['nivelEstablecidoEn'];
-  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario]);
+  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario], MEDICIONES, AHORA);
   assert.equal(h.rutasConNivelEstablecido.has(RUTA), false);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 2, 'y el acumulado se cuenta igual');
 });
@@ -198,7 +239,7 @@ test('establecer el nivel de una ruta no toca el de otra', () => {
       cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 }),
       cambio({ path: OTRA, magnitudEsperada: -10, magnitudEnviada: -8 }),
     ], null, [RUTA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 0);
   assert.equal(h.acumuladoPorRuta.get(OTRA), 2, 'la otra cuña sigue sin nivel y sigue contando');
   assert.equal(h.rutasConNivelEstablecido.has(OTRA), false);
@@ -216,7 +257,7 @@ test('el ancla no rebasa una ruta que esta transaccion no movio', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [GANANCIA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(GANANCIA), 3, 'el presupuesto de la ganancia sigue gastado');
   assert.equal(h.rutasConNivelEstablecido.has(GANANCIA), false);
 });
@@ -227,7 +268,7 @@ test('el ancla no rebasa un parametro que no tiene techo declarado', () => {
   const GANANCIA = 'i.3.gain';
   const h = historialDeLaSesion([
     entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })], null, [GANANCIA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(GANANCIA), 3, 'la ganancia no declara techo');
   assert.equal(h.rutasConNivelEstablecido.has(GANANCIA), false);
 });
@@ -237,7 +278,7 @@ test('el ancla no cuenta si el cambio no llego a la consola', () => {
   // nada: es el mismo criterio que el acumulado, y antes no se le aplicaba.
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, verificado: false, confirmadoPor: 'TIMEOUT' })], null, [RUTA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.rutasConNivelEstablecido.has(RUTA), false);
   assert.equal(h.acumuladoPorRuta.get(RUTA), undefined);
 });
@@ -250,7 +291,7 @@ test('volver a establecer el nivel NO devuelve el presupuesto', () => {
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [RUTA]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -8, magnitudEnviada: -6 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -6, magnitudEnviada: -4 })], null, [RUTA]),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.acumuladoPorRuta.get(RUTA), 4, 'los cuatro decibeles del retoque siguen gastados');
 });
 
@@ -258,7 +299,7 @@ test('una ruta inventada en la marca no entra al conjunto', () => {
   const h = historialDeLaSesion([
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null,
       [RUTA, 'no.existe', '', 'i.03.aux.1.value']),
-  ]);
+  ], MEDICIONES, AHORA);
   assert.equal(h.rutasConNivelEstablecido.size, 1, 'solo la que se movio de verdad');
   assert.ok(h.rutasConNivelEstablecido.has(RUTA));
 });
@@ -270,6 +311,267 @@ test('sin medicion anotada la ruta NO queda escuchada, ni con el campo ausente',
   const vieja = entrada([cambio({ path: RUTA })]);
   const sinCampo = { ...vieja } as Record<string, unknown>;
   delete sinCampo['medicionPosteriorId'];
-  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario]);
+  const h = historialDeLaSesion([sinCampo as unknown as EntradaDiario], MEDICIONES, AHORA);
   assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+// --- Que la escucha sea una escucha, y no una cadena ------------------------
+//
+// **Hasta el 2026-09-18 el historial miraba solo que `medicionPosteriorId` no
+// fuera nulo.** Medido con el motor real ese dia: dieciseis transacciones
+// honestas de 2 dB, cada una atada al crudo y cada una dentro del tope por
+// paso, levantan una cuña **32 dB --de -32 a nominal-- en 24 ms**, anotando
+// dieciseis mediciones que no existen. Lo que corta no es ningun freno de
+// INV-004 sino el techo, o sea el final del recorrido.
+//
+// Decision del usuario, 2026-09-18, entre tres opciones: «una medicion real,
+// posterior, y con el musico sonando». Cada test de abajo se aparta de UNA sola
+// condicion del molde de `medicion()`, asi que si falla se sabe cual fallo.
+
+test('un identificador que no resuelve a ninguna medicion no es una escucha', () => {
+  // El caso exacto del agujero: la cadena esta, la medicion no.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'medicion-que-no-existe')], MEDICIONES, AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('sin mediciones que consultar, nada cuenta como escucha: falla cerrado', () => {
+  // Es lo que la aplicacion pasa hoy --una lista vacia-- y tiene que frenar, no
+  // aflojar: la duda sobre si se escucho se resuelve no moviendo.
+  const h = historialDeLaSesion([entrada([cambio({ path: RUTA })], 'm-1')], [], AHORA);
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('una medicion de otra sesion no dice nada de esta cuña', () => {
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'otra')],
+    [medicion({ id: 'otra', sessionId: 'otra-sesion' as unknown as Measurement['sessionId'] })], AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('una medicion ANTERIOR a la escritura es la escucha de lo de antes', () => {
+  // El cambio se envio a las 10:00:00 y la medicion es de las 09:59:00.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'vieja')],
+    [medicion({ id: 'vieja', timestamp: '2026-09-17T09:59:00.000Z' })], AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('una medicion tomada en el mismo instante de la escritura SI cuenta', () => {
+  // La frontera es «no anterior», no «estrictamente posterior»: el reloj de la
+  // aplicacion tiene resolucion de milisegundo y exigir mas seria inventar un
+  // margen. Va con su test para que el dia que alguien la endurezca sea a
+  // proposito.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'justo')],
+    [medicion({ id: 'justo', timestamp: '2026-09-17T10:00:00.000Z' })], AHORA,
+  );
+  assert.ok(h.rutasConMedicionPosterior.has(RUTA));
+});
+
+test('si nadie toco, nadie escucho la cuña: el silencio no cuenta', () => {
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'muda')],
+    [medicion({ id: 'muda', signalType: 'SILENCE' })], AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('la escucha tiene que durar lo que su clase de parametro pide', () => {
+  // El envio a monitor pide diez segundos, que es el mismo numero con que la
+  // aplicacion ya decide si una medicion de ganancia alcanzo.
+  const corta = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'corta')],
+    [medicion({ id: 'corta', duracionS: 9.9 })], AHORA,
+  );
+  assert.equal(corta.rutasConMedicionPosterior.has(RUTA), false,
+    'nueve segundos y pico no alcanzan para el envio a monitor');
+
+  const justa = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'justa')],
+    [medicion({ id: 'justa', duracionS: 10 })], AHORA,
+  );
+  assert.ok(justa.rutasConMedicionPosterior.has(RUTA), 'diez exactos SI alcanzan');
+});
+
+test('una duracion que no es un numero no concede: es el NaN de siempre', () => {
+  // `NaN < 10` da `false`, asi que sin la guarda de finitud la comparacion
+  // dejaria pasar. Es la misma forma que este repositorio ya pago en
+  // `verificarLimite`, en `atar` sobre la magnitud, en `atar` sobre el crudo y
+  // en `coincideConEsperado`.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'rara')],
+    [medicion({ id: 'rara', duracionS: Number.NaN })], AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('un cambio sin fecha de envio no se puede ordenar, asi que no concede', () => {
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA, enviadoEl: null })], 'm-1')], MEDICIONES, AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('una ruta sin clase de parametro no tiene criterio de escucha, y no concede', () => {
+  // Sin clase no hay `escuchaMinimaS` que consultar. Se rechaza en vez de
+  // conceder, que es como INV-004 trata a todo parametro sin limite declarado.
+  const INVENTADA = 'no.existe.esta.ruta';
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: INVENTADA })], 'm-1')], MEDICIONES, AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(INVENTADA), false);
+});
+
+test('la escucha se mide contra la ULTIMA escritura de la transaccion', () => {
+  // Dos cambios en la misma transaccion, el segundo mas tarde. Una medicion
+  // entre los dos escucho la cuña a medio mover.
+  const OTRA = 'i.3.aux.1.value';
+  const h = historialDeLaSesion(
+    [entrada([
+      cambio({ path: RUTA, enviadoEl: '2026-09-17T10:00:00.000Z' }),
+      cambio({ path: OTRA, enviadoEl: '2026-09-17T10:00:10.000Z' }),
+    ], 'entremedio')],
+    [medicion({ id: 'entremedio', timestamp: '2026-09-17T10:00:05.000Z' })], AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false,
+    'la transaccion siguio escribiendo despues de que se escuchara');
+  assert.equal(h.rutasConMedicionPosterior.has(OTRA), false);
+});
+
+// --- Lo que encontro la auditoria adversarial del 2026-09-18 ---------------
+//
+// La primera version de esta guarda tenia cinco condiciones y **no cerraba la
+// rafaga**: comprobaba que la medicion DIJERA durar diez segundos, no que esos
+// diez segundos hubieran pasado. Corriendo la misma rampa con mediciones que SI
+// existen, la cuña volvia a subir los 32 dB enteros. Estos tests son los que
+// faltaban.
+
+test('una medicion que dice durar diez segundos pero no termino todavia no cuenta', () => {
+  // **El hallazgo central.** `duracionS` lo declara quien escribe la fila, no el
+  // reloj. Una medicion creada en el mismo instante de la escritura, diciendo
+  // diez segundos, cumplia las otras seis condiciones.
+  const enCurso = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'en-curso')],
+    [medicion({ id: 'en-curso', timestamp: '2026-09-17T10:00:00.000Z', duracionS: 10 })],
+    // Un segundo despues de que empezara: la ventana termina a las 10:00:10.
+    Date.parse('2026-09-17T10:00:01.000Z'),
+  );
+  assert.equal(enCurso.rutasConMedicionPosterior.has(RUTA), false,
+    'la escucha esta empezada, no terminada');
+
+  const terminada = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'terminada')],
+    [medicion({ id: 'terminada', timestamp: '2026-09-17T10:00:00.000Z', duracionS: 10 })],
+    Date.parse('2026-09-17T10:00:10.000Z'),
+  );
+  assert.ok(terminada.rutasConMedicionPosterior.has(RUTA),
+    'justo cuando la ventana termina, si cuenta');
+});
+
+test('una sola medicion del futuro no autoriza la rampa entera', () => {
+  // Un reloj desfasado o una fila mal escrita ponia la medicion adelante de
+  // todo, y como nada acotaba por arriba, la misma medicion valia para los
+  // dieciseis pasos. Su ventana termina en el futuro, asi que ahora no pasa.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'futura')],
+    [medicion({ id: 'futura', timestamp: '2026-09-17T23:00:00.000Z' })],
+    AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('el tipo de señal se enumera por lista blanca: el campo ausente no concede', () => {
+  // Era `signalType === 'SILENCE'`, o sea lista negra, asi que TODO lo demas
+  // pasaba: `undefined`, `null`, `''`, `'UNKNOWN'` y hasta `'silence'` en
+  // minusculas. Es la quinta repeticion de la misma forma en este repositorio.
+  for (const raro of [undefined, null, '', 'UNKNOWN', 'NOISE', 'silence', 0]) {
+    const h = historialDeLaSesion(
+      [entrada([cambio({ path: RUTA })], 'rara')],
+      [medicion({ id: 'rara', signalType: raro as never })],
+      AHORA,
+    );
+    assert.equal(h.rutasConMedicionPosterior.has(RUTA), false,
+      `signalType ${String(raro)} no tendria que conceder`);
+  }
+  // Y las cinco de la lista blanca si cuentan.
+  for (const buena of ['PINK', 'SWEEP', 'SINE', 'BURST', 'PERFORMANCE'] as const) {
+    const h = historialDeLaSesion(
+      [entrada([cambio({ path: RUTA })], 'buena')],
+      [medicion({ id: 'buena', signalType: buena })],
+      AHORA,
+    );
+    assert.ok(h.rutasConMedicionPosterior.has(RUTA), `${buena} tendria que contar`);
+  }
+});
+
+test('una fecha sin huso horario no se adivina: se rechaza', () => {
+  // `Date.parse` sin zona interpreta hora LOCAL, asi que una medicion de un
+  // minuto ANTES de la escritura quedaba horas despues segun donde corra el
+  // proceso. Medido por la auditoria en America/Asuncion: concedia.
+  const h = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'sinzona')],
+    [medicion({ id: 'sinzona', timestamp: '2026-09-17T09:59:00.000' })],
+    AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+
+  // Y un huso explicito distinto de Z si se entiende, porque es un instante.
+  const conOffset = historialDeLaSesion(
+    [entrada([cambio({ path: RUTA })], 'offset')],
+    [medicion({ id: 'offset', timestamp: '2026-09-17T07:00:30.000-03:00' })],
+    AHORA,
+  );
+  assert.ok(conOffset.rutasConMedicionPosterior.has(RUTA),
+    '07:00:30-03:00 son las 10:00:30Z, o sea despues de la escritura');
+});
+
+test('las fechas de envio se comparan como instantes, no como texto', () => {
+  // Con `09:00Z` y `07:00-05:00` --que son las 12:00Z, mas tarde-- la
+  // comparacion de cadenas elegia la primera, y una medicion de las 09:30Z
+  // pasaba aunque la cuña termino de moverse a las 12:00Z.
+  const OTRA = 'i.3.aux.1.value';
+  const h = historialDeLaSesion(
+    [entrada([
+      cambio({ path: RUTA, enviadoEl: '2026-09-17T09:00:00.000Z' }),
+      cambio({ path: OTRA, enviadoEl: '2026-09-17T07:00:00.000-05:00' }),
+    ], 'texto')],
+    [medicion({ id: 'texto', timestamp: '2026-09-17T09:30:00.000Z' })],
+    AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+});
+
+test('un cambio sin fecha no se lo presta un hermano de la misma transaccion', () => {
+  // La regla escrita era «un cambio sin fecha de envio no concede», y el test la
+  // probaba con un solo cambio. Con un segundo cambio fechado, la fecha del otro
+  // autorizaba al primero.
+  const OTRA = 'i.3.aux.1.value';
+  const h = historialDeLaSesion(
+    [entrada([
+      cambio({ path: RUTA, enviadoEl: null }),
+      cambio({ path: OTRA, enviadoEl: '2026-09-17T10:00:00.000Z' }),
+    ], 'm-1')],
+    MEDICIONES, AHORA,
+  );
+  assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+  assert.equal(h.rutasConMedicionPosterior.has(OTRA), false,
+    'sin saber cuando termino la rafaga, ninguna de las dos rutas tiene escucha');
+});
+
+test('un identificador repetido en la lista se descarta, no gana el ultimo', () => {
+  // `porId.set` pisaba en silencio, asi que el resultado dependia del orden:
+  // [buena, mala] negaba y [mala, buena] concedia. Una lista con ids repetidos
+  // es una lista corrupta, y ante eso no se concede.
+  const buena = medicion({ id: 'dup' });
+  const mala = medicion({ id: 'dup', signalType: 'SILENCE' });
+  for (const lista of [[buena, mala], [mala, buena]]) {
+    const h = historialDeLaSesion(
+      [entrada([cambio({ path: RUTA })], 'dup')], lista, AHORA,
+    );
+    assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
+  }
 });

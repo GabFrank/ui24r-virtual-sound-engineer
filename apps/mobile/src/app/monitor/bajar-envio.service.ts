@@ -117,7 +117,25 @@ export class BajarEnvioService {
   }
 
   private async contexto(sessionId: string): Promise<ContextoSeguridad> {
-    const historial = historialDeLaSesion(await this.diario.deLaSesion(sessionId));
+    // **Sin mediciones, y eso frena en vez de aflojar.** El historial resuelve
+    // `medicionPosteriorId` contra esta lista para decidir si entre un paso y el
+    // siguiente se escuchó de verdad; con la lista vacía ninguna ruta queda con
+    // escucha comprobada, así que un segundo cambio sobre el mismo parámetro se
+    // rechaza. Es lo correcto hoy: **nadie escribe en la tabla `measurement`**
+    // --está en el esquema desde el principio y sin quien la llene-- y ninguna
+    // transacción de producción anota una medición posterior. **No es un cambio
+    // de comportamiento**: antes el campo también era siempre nulo.
+    //
+    // **El día que la pantalla de monitor anote una, tiene que pasar las
+    // mediciones acá o la rampa se frena en el segundo paso.** El compilador no
+    // caza eso --una lista vacía es una lista válida-- así que queda dicho donde
+    // se lee.
+    //
+    // `Date.now()` es el instante contra el que se comprueba que la ventana de
+    // escucha haya terminado.
+    const historial = historialDeLaSesion(
+      await this.diario.deLaSesion(sessionId), [], Date.now(),
+    );
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',

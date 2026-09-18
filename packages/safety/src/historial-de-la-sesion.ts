@@ -53,6 +53,7 @@
  * gastado por la rampa.
  */
 import { LIMITES } from '@vse/domain';
+import type { Measurement } from '@vse/domain';
 import { clasificarRuta } from '@vse/mixer-adapter';
 import type { EntradaDiario } from './journal.ts';
 
@@ -80,11 +81,24 @@ export interface HistorialDeLaSesion {
   /** Las rutas que esta sesión ya movió al menos una vez. */
   readonly rutasYaTocadas: ReadonlySet<string>;
   /**
-   * Las rutas cuyo **último** cambio tiene una medición anotada después.
+   * Las rutas cuyo **último** cambio tiene una escucha **comprobada** después.
    *
    * El motor lo usa para negarse a mover dos veces sin escuchar en el medio. Una
    * ruta que no está acá o no se tocó nunca —y entonces no hace falta— o se
-   * movió y nadie anotó haber escuchado.
+   * movió y nadie escuchó de verdad.
+   *
+   * **«Comprobada» quiere decir siete cosas, y hasta el 2026-09-18 no quería
+   * decir ninguna.** El campo `medicionPosteriorId` del diario es una cadena, y
+   * acá se miraba sólo que no fuera nula: sin resolverla, sin fecha, sin
+   * cruzarla contra una medición real y sin ningún espaciado de reloj. Ver
+   * `escuchaComprobada`, que es donde viven las siete condiciones y por qué.
+   *
+   * **Y la primera versión de este arreglo tenía cinco y no alcanzaban**: le
+   * faltaba que la ventana de escucha hubiera terminado de verdad --sin eso
+   * `duracionS` es una promesa del que escribe la fila, y la ráfaga de 32 dB
+   * volvía entera con mediciones que sí existen-- y enumeraba la señal por lista
+   * negra, así que el campo ausente concedía. Las dos las midió una auditoría
+   * adversarial el mismo día, con la suite entera en verde.
    */
   readonly rutasConMedicionPosterior: ReadonlySet<string>;
   /**
@@ -111,14 +125,252 @@ export interface HistorialDeLaSesion {
  * con signo, no ignorarlas. Si se ignoraran, aplicar y revertir doce veces
  * costaría cero presupuesto habiendo movido la cuña veinticuatro.
  */
+
+/**
+ * ¿La medición que esta transacción anota como posterior es una escucha de
+ * verdad?
+ *
+ * ## El agujero que cierra, medido
+ *
+ * `EntradaDiario.medicionPosteriorId` es una cadena, y hasta el 2026-09-18 el
+ * historial miraba **sólo que no fuera nula**. Así que anotar cualquier texto
+ * —`'x'`, o el mismo identificador quince veces— contaba como haber escuchado.
+ *
+ * **Medido con el motor real el 2026-09-18**: dieciséis transacciones honestas
+ * de 2 dB, cada una atada al crudo por la ley medida y cada una dentro del tope
+ * por paso, levantan una cuña **32 dB —de −32 a nominal— en 24 ms**, anotando
+ * dieciséis mediciones que no existen. Lo que corta no es ningún freno de
+ * INV-004 sino el techo de nominal, o sea el final del recorrido.
+ *
+ * **No estaba expuesto, y esa es justamente la razón para arreglarlo ahora**:
+ * en producción nadie llena ese campo todavía. Quien lo va a llenar es la
+ * pantalla de monitor, que es la pieza que sigue de ADR-034 — y el día que lo
+ * llene, los 8 dB de la ráfaga vuelven como 32.
+ *
+ * ## Las cinco condiciones, y por qué cada una
+ *
+ * **Decisión del usuario, 2026-09-18**, entre tres opciones: *«una medición
+ * real, posterior, y con el músico sonando»*. Las descartadas eran aceptar una
+ * medición en silencio, y frenar sólo por reloj sin exigir medición — *«un
+ * cronómetro no es una escucha»*.
+ *
+ *  1. **Existe.** El identificador tiene que resolver a una medición de las que
+ *     se le pasan al historial. Una cadena que no resuelve no es una medición:
+ *     es una cadena.
+ *  2. **Es de esta sesión.** Una medición de otro soundcheck, en otra sala y con
+ *     otra banda, no dice nada de esta cuña.
+ *  3. **Empezó después de que la escritura llegara al cable.** Se compara contra
+ *     el `enviadoEl` más tardío de los cambios **verificados** de esa
+ *     transacción. Una medición anterior es la escucha de lo de antes, y contarla
+ *     es contar dos veces la misma escucha.
+ *  4. **Hubo señal.** `signalType` no puede ser `SILENCE`: si nadie tocó, nadie
+ *     oyó la cuña. Es lo más cerca que la aplicación puede llegar de «el músico
+ *     lo escuchó» sin preguntarle.
+ *  5. **Duró lo que su clase de parámetro pide.** `LIMITES[kind].escuchaMinimaS`,
+ *     que para el envío a monitor son diez segundos y para el silencio de canal
+ *     cero. Ver ahí por qué.
+ *
+ * ## Lo que NO comprueba, dicho con todas las letras
+ *
+ * **No comprueba que la medición sea del parlante que se movió.** `Measurement`
+ * trae `channelId`, y cruzarlo contra la ruta es la tarea de «el tope se cuenta
+ * por clave y el oído es por parlante», que es otra y está anotada. Hoy una
+ * medición del canal 5 autoriza el paso siguiente sobre la cuña del canal 3.
+ *
+ * **No comprueba que la medición sea confiable.** `medicionEsConfiable` cruza la
+ * calibración, y el historial no tiene el estado de calibración. Es otra tarea.
+ *
+ * **Falla cerrado.** Sin mediciones que consultar, ninguna ruta queda con
+ * escucha comprobada y el segundo paso se rechaza. Es lo correcto: la duda sobre
+ * si se escuchó se resuelve no moviendo.
+ */
+/**
+ * Las señales que cuentan como «el músico estaba sonando».
+ *
+ * **Lista blanca y no lista negra, y la primera versión fue lista negra.** Decía
+ * `if (m.signalType === 'SILENCE') return false`, así que **todo lo demás pasaba,
+ * incluido el campo ausente**: una fila vieja de la base, o un productor que no
+ * escriba esa columna, concedía la escucha. Una auditoría adversarial lo midió el
+ * 2026-09-18 y la ráfaga volvía entera —dieciséis pasos, 32 dB— con
+ * `signalType` en `undefined`, en `null`, en `''`, en `'UNKNOWN'` y hasta en
+ * `'silence'` en minúsculas.
+ *
+ * Es la quinta repetición de la misma forma en este repositorio —`NaN`,
+ * `undefined`, `Infinity`, el campo ausente comparado con `!== null`— y estaba
+ * **en la condición de al lado** de la que sí la evita. La regla que queda: una
+ * guarda enumera lo que acepta, no lo que rechaza.
+ */
+const SENALES_QUE_CUENTAN: ReadonlySet<string> = new Set([
+  'PINK', 'SWEEP', 'SINE', 'BURST', 'PERFORMANCE',
+]);
+
+/**
+ * Un instante, o nada, exigiendo que la fecha traiga su huso.
+ *
+ * **`Date.parse` a secas interpreta una fecha sin huso como hora LOCAL**, y eso
+ * hace fallar la guarda por el lado que afloja. Medido por una auditoría el
+ * 2026-09-18 en `America/Asuncion`: una medición de **un minuto antes** de la
+ * escritura, escrita sin la `Z`, quedaba **tres horas después** y autorizaba el
+ * paso siguiente. Con eso una medición de hacía una hora levantaba la cuña 32 dB.
+ *
+ * `enviadoEl` sale siempre de `toISOString()` y trae `Z`, pero
+ * `Measurement.timestamp` es un `string` sin validar que va a llenar una pantalla
+ * que todavía no existe. Mezclar los dos formatos es la condición exacta del
+ * fallo, así que la fecha sin huso se rechaza en vez de adivinarle una.
+ */
+function instante(texto: string | null): number | null {
+  if (texto === null) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/.test(texto)) {
+    return null;
+  }
+  const t = Date.parse(texto);
+  return Number.isFinite(t) ? t : null;
+}
+
+function escuchaComprobada(
+  entrada: EntradaDiario,
+  ruta: string,
+  porId: ReadonlyMap<string, Measurement>,
+  ahora: number,
+): boolean {
+  const id = entrada.medicionPosteriorId ?? null;
+  if (id === null) return false;
+
+  // 1. Existe.
+  const m = porId.get(id);
+  if (m === undefined) return false;
+
+  // 2. Es de esta sesión.
+  if (m.sessionId !== entrada.sessionId) return false;
+
+  // 3. Hubo señal. Lista blanca: ver `SENALES_QUE_CUENTAN`.
+  if (!SENALES_QUE_CUENTAN.has(m.signalType as string)) return false;
+
+  // 4. Duró lo que su clase de parámetro pide. Sin clase o sin límite declarado
+  // no hay criterio, y sin criterio no se concede: es el mismo fallar cerrado
+  // con que INV-004 rechaza todo parámetro sin límite declarado.
+  const kind = clasificarRuta(ruta);
+  const minimo = kind === null ? undefined : LIMITES[kind]?.escuchaMinimaS;
+  if (minimo === undefined) return false;
+  // **`Number.isFinite` antes de comparar, que es la trampa que este repositorio
+  // ya pagó cuatro veces.** Con `duracionS` en `NaN`, `NaN < minimo` da `false`
+  // y la guarda concede. Es la misma forma que `verificarLimite`, `atar` sobre
+  // la magnitud, `atar` sobre el crudo y `coincideConEsperado`.
+  if (!Number.isFinite(m.duracionS) || m.duracionS < minimo) return false;
+
+  // 5. Cuándo terminó de moverse la cuña: el `enviadoEl` más tardío de los
+  // cambios verificados de ESTA transacción. Escuchar antes de eso es escuchar
+  // otra cosa.
+  //
+  // **Por instante y no por texto, y la primera versión comparaba texto.** Con
+  // `09:00Z` y `07:00-05:00` --que es más tarde-- la comparación lexicográfica
+  // elegía la primera, y una medición de las 09:30Z pasaba aunque la cuña
+  // terminó de moverse a las 12:00Z. Lo midió la auditoría del 2026-09-18.
+  //
+  // **Y un cambio sin fecha no se lo presta un hermano.** La regla escrita era
+  // «un cambio sin fecha de envío no se puede ordenar, así que no concede», y el
+  // test la probaba con un solo cambio; con un segundo cambio en la misma
+  // transacción, la fecha del otro autorizaba al primero. Ahora basta con que
+  // **uno** de los verificados no tenga fecha utilizable para que no haya
+  // escucha: sin saber cuándo terminó la ráfaga no hay contra qué ordenar.
+  let ultimoEnvio: number | null = null;
+  for (const c of entrada.cambios) {
+    if (!c.verificado) continue;
+    const t = instante(c.enviadoEl);
+    if (t === null) return false;
+    if (ultimoEnvio === null || t > ultimoEnvio) ultimoEnvio = t;
+  }
+  if (ultimoEnvio === null) return false;
+
+  const empezo = instante(m.timestamp);
+  if (empezo === null) return false;
+
+  // 6. Empezó después de que la escritura llegara al cable.
+  //
+  // **La frontera es «no anterior» y no «estrictamente posterior»**: el reloj
+  // tiene resolución de milisegundo y exigir más sería inventar un margen.
+  if (empezo < ultimoEnvio) return false;
+
+  // 7. **Y la ventana de escucha TERMINÓ.** Es la condición que faltaba, y sin
+  // ella el arreglo no cerraba nada.
+  //
+  // `duracionS` es un campo que declara quien escribe la fila, no una medida del
+  // reloj. Una medición creada en el mismo milisegundo de la escritura,
+  // declarando diez segundos, cumplía las seis condiciones anteriores: una
+  // auditoría adversarial corrió el 2026-09-18 la misma ráfaga que este arreglo
+  // decía cerrar, pero con mediciones **que sí existen**, y la cuña volvió a
+  // subir **32 dB en 4 ms**. La cifra de «2 dB en vez de 32» valía sólo contra un
+  // identificador que no resuelve.
+  //
+  // Exigir que la ventana haya terminado convierte un campo declarado en tiempo
+  // transcurrido de verdad, y **de paso cierra la medición del futuro**: un
+  // timestamp adelantado --por un reloj desfasado o una fila mal escrita--
+  // autorizaba la rampa entera reusando la misma medición, porque nada acotaba
+  // por arriba. Su ventana termina en el futuro, así que ahora no pasa.
+  //
+  // `ahora` entra por parámetro y no se lee acá adentro: esta función es pura y
+  // el historial se reconstruye del diario, que sobrevive a una caída.
+  if (empezo + m.duracionS * 1000 > ahora) return false;
+
+  // **Acá había una octava condición y era código muerto, así que se sacó.**
+  // Decía `return rutasMovidas.has(ruta)`, cruzando contra las rutas que la
+  // transacción movió. La auditoría del 2026-09-18 instrumentó ese retorno y
+  // **nunca dio `false`**, ni en la suite entera ni contra su arnés adversarial,
+  // y la razón es estructural: `escuchadaAlFinal` sólo se escribe en la misma
+  // iteración en que se agrega la ruta a `movidasAca`, así que la transacción
+  // que quedó como última de una ruta siempre la movió. Su mutante sobrevivía
+  // con la suite verde, que es cómo se descubrió.
+  //
+  // **Se saca en vez de dejarla por las dudas** porque una guarda que se lee
+  // como defensa y no puede disparar es peor que no tenerla: manda al que
+  // audita a buscar protección donde no hay ninguna. El cruce sí hace falta en
+  // `nivelEstablecidoEn`, donde la lista viene del llamador y puede nombrar una
+  // ruta que la transacción no tocó; acá la ruta sale del propio recorrido.
+  return true;
+}
+
 export function historialDeLaSesion(
   entradas: readonly EntradaDiario[],
+  /**
+   * Las mediciones de esta sesión, para poder resolver `medicionPosteriorId`.
+   *
+   * **Obligatorio y sin valor por omisión, a propósito.** Un `= []` habría
+   * dejado los llamadores existentes compilando sin enterarse, que es
+   * exactamente el descuido que `magnitudPropuesta` evitó siendo obligatorio.
+   * Acá el compilador tiene que señalar cada sitio, porque **el que no las pase
+   * frena**: sin mediciones ninguna ruta queda con escucha comprobada.
+   */
+  mediciones: readonly Measurement[],
+  /**
+   * El instante en que se está juzgando, en milisegundos desde la época.
+   *
+   * **Hace falta para saber si la ventana de escucha terminó de verdad**, que es
+   * la condición sin la cual `duracionS` es una promesa y no un tiempo. Entra por
+   * parámetro --y no como `Date.now()` acá adentro-- para que esta función siga
+   * siendo pura y para que un test pueda fijar el reloj; es el mismo motivo por
+   * el que el ejecutor de transacciones recibe su `ahora`.
+   */
+  ahora: number,
 ): HistorialDeLaSesion {
+  // **Un identificador repetido no se queda con el último: se descarta.** La
+  // primera versión hacía `porId.set(m.id, m)` en el bucle, así que con el mismo
+  // id dos veces el resultado dependía del orden de la lista --`[buena, mala]`
+  // negaba la escucha y `[mala, buena]` la concedía-- y no avisaba. Una lista con
+  // ids repetidos es una lista corrupta, y ante una lista corrupta lo correcto es
+  // no conceder. Lo encontró la auditoría del 2026-09-18.
+  const porId = new Map<string, Measurement>();
+  const repetidos = new Set<string>();
+  for (const m of mediciones) {
+    if (porId.has(m.id)) repetidos.add(m.id);
+    porId.set(m.id, m);
+  }
+  for (const id of repetidos) porId.delete(id);
   const acumulado = new Map<string, number>();
   const tocadas = new Set<string>();
   const conNivel = new Set<string>();
-  /** Por ruta, si la ÚLTIMA transacción que la movió tiene medición después. */
-  const escuchadaAlFinal = new Map<string, boolean>();
+  /** Por ruta, la ÚLTIMA transacción que la movió. Gana la última: es la que el
+   * motor tiene que mirar antes del próximo movimiento. */
+  const escuchadaAlFinal = new Map<string, EntradaDiario>();
 
   // **El orden lo pone el almacén** --`deLaSesion` ordena por fecha de
   // creación-- y acá se recorre tal cual. Reordenar de nuevo escondería el día
@@ -137,18 +389,17 @@ export function historialDeLaSesion(
       const delta = c.magnitudEnviada - c.magnitudEsperada;
       tocadas.add(c.path);
       movidasAca.add(c.path);
-      // Se pisa en cada vuelta a propósito: gana la última, que es la que el
-      // motor tiene que mirar antes del próximo movimiento.
+      // **Se guarda la transacción, no un booleano, y se pisa en cada vuelta a
+      // propósito: gana la última**, que es la que el motor tiene que mirar
+      // antes del próximo movimiento.
       //
-      // **`?? null` porque el campo ausente fallaba ABIERTA**, y es el caso
-      // gemelo del `?? []` de más abajo: una entrada vieja del diario vuelve sin
-      // `medicionPosteriorId`, y `undefined !== null` da `true`, así que la ruta
-      // quedaba marcada como «se escuchó después» y el paso siguiente pasaba sin
-      // que nadie hubiera escuchado. `journal.ts` lo pide explícito —*«que sea
-      // `null` no significa que no se midió: significa que nadie lo anotó, y el
-      // motor trata las dos igual a propósito»*— y `undefined` rompía esa
-      // promesa por el lado que afloja. Lo encontró la auditoría del 2026-09-17.
-      escuchadaAlFinal.set(c.path, (entrada.medicionPosteriorId ?? null) !== null);
+      // Acá sólo se anota *cuál* fue; si esa transacción cuenta como escucha lo
+      // decide `escuchaComprobada` al final, porque necesita el cruce contra las
+      // rutas que la transacción movió de verdad, y ese conjunto recién está
+      // completo al salir de este bucle. La versión anterior resolvía la
+      // pregunta acá con `(entrada.medicionPosteriorId ?? null) !== null`, o sea
+      // mirando sólo que el campo no fuera nulo.
+      escuchadaAlFinal.set(c.path, entrada);
       if (!Number.isFinite(delta)) continue;
       acumulado.set(c.path, (acumulado.get(c.path) ?? 0) + delta);
     }
@@ -208,7 +459,9 @@ export function historialDeLaSesion(
   }
 
   const conMedicion = new Set<string>();
-  for (const [ruta, escuchada] of escuchadaAlFinal) if (escuchada) conMedicion.add(ruta);
+  for (const [ruta, ultima] of escuchadaAlFinal) {
+    if (escuchaComprobada(ultima, ruta, porId, ahora)) conMedicion.add(ruta);
+  }
 
   return {
     acumuladoPorRuta: acumulado,
