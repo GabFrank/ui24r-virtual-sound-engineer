@@ -14,7 +14,7 @@ servicio de audio de la Mac, y lo que el usuario pidió sobre cómo trabajar.
 | Claves del volcado | **6665 al abrir y 6665 al cerrar** |
 | Diferencias | **cero**, clave por clave |
 | Filtros plantados en el supresor | **0** — las doce ranuras con ganancia cero |
-| Supresor | **encendido** (`m.afs.enabled = 1`), seis fijos declarados, doce en total |
+| Supresor | **encendido**, y el 2026-09-18 se corrigió cómo se contaba: hay **once** instancias y **cuatro claves en 1** —la global, la de la mezcla y las de los auxiliares 1 y 2—. Los «seis fijos, doce en total» de esta fila eran **ranuras, no filtros** —`numfixed`/`numtotal` son capacidad y valen igual en las once, apagadas incluidas—. **Cero filtros plantados.** Ver [el cierre del 18](2026-09-18-donde-quedamos.md) |
 | Grabador y reproductor | ninguna sesión abierta |
 | Escrituras a la consola en toda la sesión | **ninguna**: sólo se le pidió el estado |
 | Procesos sueltos | ninguno |
@@ -326,7 +326,10 @@ queda **superado**: cita dos tareas que ya están hechas.
   [el hallazgo](../backlog/hallazgo-el-audio-de-la-mac-se-traba-y-parece-un-permiso.md).
 - **El usuario opera la MacBook a distancia**, por SSH y AnyDesk. No se puede mover
   ningún cable del banco ni tocar la perilla de la Scarlett hasta que vuelva.
-- **Antes de meter tonos sostenidos, mirar `m.afs.enabled`**, que hoy está en 1.
+- **Antes de meter tonos sostenidos, mirar las cuatro claves del supresor que
+  están en 1, no sólo `m.afs.enabled`**: la global, la de la mezcla y las de los
+  **auxiliares 1 y 2**, que son cuñas. Corregido el 2026-09-18: esta línea
+  mandaba al único sitio donde el riesgo no está.
 - **Nunca borrar los snapshots guardados.** Es la única prohibición absoluta.
 - **Cómo el usuario pide que se trabaje**: preguntas siempre interactivas,
   explicaciones en lenguaje de producto, trabajo previo buscado y dicho

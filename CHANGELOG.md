@@ -78,7 +78,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
   **Dos cosas que hay que decir, porque una revisión las corrigió.** La primera:
   se había escrito que el fader del canal también llega a la cuña, y **en tu
-  consola no**: los 240 envíos están puestos antes del fader. Por eso son 6 dB y
+  consola no**: los 320 envíos están puestos antes del fader. Por eso son 6 dB y
   no 9. La segunda: se había escrito que tu consola no tiene nada enlazado en
   estéreo, y **tiene dos pares** — las entradas de línea y el reproductor. O sea
   que el enlace no es un riesgo a futuro: está activo ahora.

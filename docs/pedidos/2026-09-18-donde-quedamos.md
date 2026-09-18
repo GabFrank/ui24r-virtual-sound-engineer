@@ -17,9 +17,9 @@ comparados línea por línea:
 |---|---|
 | Claves del volcado | **6665 al abrir y 6665 al cerrar** |
 | Diferencias | **cero**, clave por clave |
-| Filtros plantados en el supresor | **0**, en los 132 huecos de las doce instancias |
+| Filtros plantados en el supresor | **0**, en las 132 ranuras de las **once** instancias (11 × 12) |
 | Supresor | **encendido en cuatro sitios**: el global, la mezcla principal y **los auxiliares 1 y 2** (`afs.enabled`, `m.afs.enabled`, `a.0.afs.enabled`, `a.1.afs.enabled`). Los otros ocho auxiliares, apagados |
-| Escrituras a la consola en toda la sesión | **ninguna**: sólo se le pidió el estado, tres veces |
+| Escrituras a la consola en toda la sesión | **ninguna**: sólo se le pidió el estado, **cuatro** veces —la cuarta, al revisar el prompt al cierre— |
 | Procesos sueltos | ninguno |
 
 **El banco sigue como el 2026-09-16.** Esta sesión no midió nada con audio.
@@ -44,11 +44,25 @@ la sección denuncia.
   grupos son justo los cuatro `stereoIndex` activos del punto de arriba, así que
   los dos hallazgos del día se tocaban y se escribieron como si no.
 - **El supresor de acople está encendido en las cuñas 1 y 2, no sólo en la
-  mezcla.** Los dos tienen seis filtros fijos y doce huecos armados, con
-  sensibilidad 0,5 y 0,75, y **ningún filtro plantado hoy**. Que `a.N.afs.*`
-  existe ya estaba medido acá desde el ítem 94 —las mediciones eligen un auxiliar
-  con el supresor apagado—; lo que faltaba decir es **cuáles están encendidos en
-  este aparato**, y son las dos cuñas sobre las que trabaja la pieza que sigue.
+  mezcla.** De las **once** instancias —la mezcla y los diez auxiliares— hay
+  **cuatro claves en 1**: la global, la de la mezcla y las de `a.0` y `a.1`. Los
+  otros ocho auxiliares, apagados. **Cero filtros plantados**: las 132 ranuras
+  son byte por byte `1000, 116, 0, 0`, la ranura vacía de fábrica, y `var.afsdata`
+  no tiene un solo dígito. Lo único que separa a `a.0` y `a.1` del resto es
+  `enabled` y `fmode`. Que `a.N.afs.*` existe ya estaba medido acá desde el ítem
+  94 —las mediciones eligen un auxiliar con el supresor apagado—; lo que faltaba
+  decir es **cuáles están encendidos**, y son las dos cuñas sobre las que trabaja
+  la pieza que sigue.
+
+  > **Esta viñeta se escribió mal y la auditoría del mismo día la corrigió.**
+  > Decía «seis filtros fijos y doce huecos, con sensibilidad 0,5 y 0,75», y las
+  > dos mitades estaban mal. Los seis **no son filtros, son ranuras** —es
+  > exactamente el error que
+  > [`hallazgo-los-doce-no-eran-filtros-eran-ranuras`](../backlog/hallazgo-los-doce-no-eran-filtros-eran-ranuras.md)
+  > corrigió el 2026-09-16, repetido dos días después—. Y ni el seis ni la
+  > sensibilidad **distinguen nada**: `numfixed = 6` vale igual en las once
+  > instancias y 0,5 es la sensibilidad de las ocho apagadas. Se describió como
+  > rasgo de las encendidas lo que tiene toda la consola.
 
 ## Lo que se hizo: dos tareas, dos commits empujados
 

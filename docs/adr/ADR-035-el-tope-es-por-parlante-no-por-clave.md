@@ -103,8 +103,9 @@ los **320** envíos a auxiliar tienen `post = 0` —antes del fader— y
 `postproc = 1`. **Una primera redacción contó 240 y se quedó corta**: ésos son
 los de los canales de entrada, los que ADR-028 abrió. Los otros **80** son las
 entradas de línea (20), el reproductor (20) y los retornos de efecto (40), y
-están igual. Dejaba afuera justo los del reproductor, que INV-010 **sí** autoriza
-a escribir hacia −∞, y las entradas de línea, que son dos de los cuatro
+están igual. Dejaba afuera justo los del reproductor, cuya excepción INV-010
+**enuncia y no tiene implementada** --hoy se rechazan por `SIN_LIMITE_DECLARADO`,
+porque `PLAYER_SEND` no figura en `LIMITES`--, y las entradas de línea, que son dos de los cuatro
 `stereoIndex` activos del §2 de este mismo ADR. Para esa combinación la tabla del
 ítem 95 dice que el ecualizador
 mueve el auxiliar (+24 dB de recorrido) y **el fader no lo mueve**. Así que el

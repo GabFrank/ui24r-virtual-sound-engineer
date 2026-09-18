@@ -251,9 +251,15 @@ export class SafetyEngine {
     //   nivel del envío» escribe hasta cuatro `i.N.aux.M.value` distintos.
     //   Anotado desde antes en `docs/referencia/trabajo-previo-de-terceros.md`.
     // - **Familias distintas sobre el mismo parlante**: `i.3.mix` más
-    //   `i.3.eq.b1.gain` más `i.3.aux.1.value` pasan juntos, y con el envío
-    //   post-fader y post-proceso —lo que midió el ítem 95— eso son hasta 9 dB
-    //   en la cuña del músico en una transacción. **El tope es por clave y el
+    //   `i.3.eq.b1.gain` más `i.3.aux.1.value` pasan juntos, y sus tres topes
+    //   suman 9 dB. **Pero en esta consola el fader no llega a la cuña**: los
+    //   320 envíos a auxiliar tienen `post = 0` y `postproc = 1`, y para esa
+    //   combinación la tabla del ítem 95 dice que el ecualizador mueve el
+    //   auxiliar y el fader no, así que el movimiento real es de 6 dB. Esta
+    //   línea decía «post-fader y post-proceso —lo que midió el ítem 95—»: el
+    //   ítem 95 puso `post = 1` a mano durante aquella corrida y lo restauró,
+    //   o sea que citaba lo contrario de lo que el aparato tiene puesto.
+    //   Corregido el 2026-09-18. **El tope es por clave y el
     //   oído es por parlante**, y ésa es la forma general de los tres.
     //
     // Los tres quedan como tareas, medidos.
