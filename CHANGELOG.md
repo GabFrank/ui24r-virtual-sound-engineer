@@ -6,6 +6,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Las mediciones de la sesión ya llegan al motor de seguridad.** Es plomería,
+  no una función que puedas usar todavía, pero es la que destrababa la pieza que
+  sigue: el motor decide si se escuchó entre un paso y el siguiente mirando las
+  mediciones de la sesión, y hasta ahora **le llegaba una lista vacía**. Con la
+  lista vacía ninguna cuña quedaba nunca con escucha comprobada, así que
+  **el segundo paso de cualquier rampa se rechazaba**. Una cuña se levanta en
+  pasos de 2 dB escuchando entre uno y otro: el segundo no llegaba nunca.
+  **Hoy no cambia nada en la tablet**, porque todavía nadie guarda mediciones
+  —eso lo hace la pantalla de monitor, que no existe—; lo que cambia es que el
+  día que las guarde, la rampa avanza. Hay una guarda que corre con las pruebas
+  para que nadie vuelva a dejar la lista vacía sin enterarse.
+
 - **Los topes que hacían imposible levantar la cuña de un músico ya no la
   frenan, y hay un techo donde parar.** Es un cambio del motor de seguridad,
   no una función que puedas usar todavía: **ninguna pantalla lo llama y el

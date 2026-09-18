@@ -5,6 +5,7 @@ import type { ContextoSeguridad } from '@vse/safety';
 import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
+import { MedicionesService } from '../core/mediciones.service';
 import { historialDeLaSesion } from '@vse/safety';
 import { SessionStateService } from '../core/session.state';
 import { MixerService } from '../core/mixer.service';
@@ -72,6 +73,7 @@ export type ResultadoBajada =
 export class BajarEnvioService {
   private readonly seguridad = inject(SafetyService);
   private readonly diario = inject(DiarioService);
+  private readonly mediciones = inject(MedicionesService);
   private readonly sesion = inject(SessionStateService);
   private readonly mixer = inject(MixerService);
   private readonly log = inject(Logger);
@@ -117,24 +119,27 @@ export class BajarEnvioService {
   }
 
   private async contexto(sessionId: string): Promise<ContextoSeguridad> {
-    // **Sin mediciones, y eso frena en vez de aflojar.** El historial resuelve
-    // `medicionPosteriorId` contra esta lista para decidir si entre un paso y el
-    // siguiente se escuchó de verdad; con la lista vacía ninguna ruta queda con
-    // escucha comprobada, así que un segundo cambio sobre el mismo parámetro se
-    // rechaza. Es lo correcto hoy: **nadie escribe en la tabla `measurement`**
-    // --está en el esquema desde el principio y sin quien la llene-- y ninguna
-    // transacción de producción anota una medición posterior. **No es un cambio
-    // de comportamiento**: antes el campo también era siempre nulo.
+    // **Las mediciones de la sesión, que hasta el 2026-09-18 iban vacías.** El
+    // historial resuelve `medicionPosteriorId` contra esta lista para decidir si
+    // entre un paso y el siguiente se escuchó de verdad. Con la lista vacía
+    // ninguna ruta quedaba con escucha comprobada, así que **un segundo cambio
+    // sobre el mismo parámetro se rechazaba siempre**: frenaba, no aflojaba,
+    // pero frenaba la rampa que la pieza de monitor necesita, porque una cuña se
+    // levanta en varios pasos de 2 dB escuchando entre uno y otro.
     //
-    // **El día que la pantalla de monitor anote una, tiene que pasar las
-    // mediciones acá o la rampa se frena en el segundo paso.** El compilador no
-    // caza eso --una lista vacía es una lista válida-- así que queda dicho donde
-    // se lee.
+    // El compilador no lo cazaba: una lista vacía es una lista válida.
+    //
+    // **Sigue faltando quien escriba en `measurement`**, que es la pantalla de
+    // monitor. Hasta que exista, esto devuelve vacío y el comportamiento es el
+    // mismo; lo que cambia es que el día que la pantalla anote una medición, la
+    // rampa avanza sin tocar este archivo.
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.
     const historial = historialDeLaSesion(
-      await this.diario.deLaSesion(sessionId), [], Date.now(),
+      await this.diario.deLaSesion(sessionId),
+      await this.mediciones.deLaSesion(sessionId),
+      Date.now(),
     );
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',

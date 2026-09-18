@@ -5,6 +5,7 @@ import type { Confidence } from '@vse/domain';
 import type { ContextoSeguridad } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
+import { MedicionesService } from '../core/mediciones.service';
 import { historialDeLaSesion } from '@vse/safety';
 import { SessionStateService } from '../core/session.state';
 import { MixerService } from '../core/mixer.service';
@@ -56,6 +57,7 @@ const CONFIANZAS_QUE_APLICAN: readonly Confidence[] = ['HIGH', 'MEDIUM'];
 export class AplicarGananciaService {
   private readonly seguridad = inject(SafetyService);
   private readonly diario = inject(DiarioService);
+  private readonly mediciones = inject(MedicionesService);
   private readonly sesion = inject(SessionStateService);
   private readonly mixer = inject(MixerService);
   private readonly log = inject(Logger);
@@ -107,25 +109,25 @@ export class AplicarGananciaService {
    * conexión. Lo poco que es de la sesión se pide a quien la tiene.
    */
   private async contexto(confianza: Confidence, sessionId: string): Promise<ContextoSeguridad> {
-    // **Sin mediciones, y eso frena en vez de aflojar.** El historial resuelve
-    // `medicionPosteriorId` contra esta lista para decidir si entre un paso y el
-    // siguiente se escuchó de verdad; con la lista vacía ninguna ruta queda con
-    // escucha comprobada, así que un segundo cambio sobre el mismo parámetro se
-    // rechaza. Es lo correcto hoy: **nadie escribe en la tabla `measurement`**
-    // --está en el esquema desde el principio y sin quien la llene-- y ninguna
-    // transacción de producción anota una medición posterior. **No es un cambio
-    // de comportamiento**: antes el campo también era siempre nulo.
+    // **Las mediciones de la sesión, que hasta el 2026-09-18 iban vacías.** El
+    // historial resuelve `medicionPosteriorId` contra esta lista para decidir si
+    // entre un paso y el siguiente se escuchó de verdad. Con la lista vacía
+    // ninguna ruta quedaba con escucha comprobada, así que **un segundo ajuste
+    // sobre el mismo canal se rechazaba siempre**.
     //
-    // **El día que esta pantalla mida después de aplicar y quiera que esa medición
-    // cuente, tiene que pasarla acá.** Hoy vuelve a medir --`capturar` justo
-    // después de aplicar, para contarte si sirvió-- y esa medición no llega al
-    // motor: el segundo ajuste sobre el mismo canal se rechaza igual. El
-    // compilador no caza una lista vacía, así que queda dicho donde se lee.
+    // **Acá falta además el otro extremo, y es una tarea aparte.** Esta pantalla
+    // ya vuelve a medir después de aplicar --`capturar`, para contarte si
+    // sirvió-- y esa medición **no se guarda** en `measurement`, así que aunque
+    // ahora se lean, la que esta pantalla toma no está entre ellas. Guardarla, y
+    // anotar su identificador como `medicionPosteriorId` de la transacción, es lo
+    // que cierra el circuito.
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.
     const historial = historialDeLaSesion(
-      await this.diario.deLaSesion(sessionId), [], Date.now(),
+      await this.diario.deLaSesion(sessionId),
+      await this.mediciones.deLaSesion(sessionId),
+      Date.now(),
     );
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
