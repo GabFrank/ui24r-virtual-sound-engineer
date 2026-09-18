@@ -242,9 +242,18 @@ Los encontró la auditoría de fidelidad del 2026-09-18, y ninguno estaba dicho.
    depende del estado y hay que leerlo; una redacción anterior de este punto
    eligió el bus 2 para medir y no miró los valores de ese mismo bus.
 
-   **Y al remedirlo apareció que el bus de análisis no se puede aislar por
-   ningún camino, que es peor que un choque de reglas.** Van dos frenos, uno
-   debajo del otro:
+   **Y al remedirlo apareció que el bus de análisis no se puede aislar como
+   transacción de sistema por ningún camino, que es peor que un choque de
+   reglas.** Van dos frenos, uno debajo del otro:
+
+   **La frase hay que acotarla, y una redacción anterior no la acotó.** Lo que
+   está cerrado es **aislar el bus en una transacción**: un barrido de las 31
+   rutas por los seis tipos de operación de sistema y los cuatro niveles de
+   autonomía no deja pasar ninguna. Lo que **no** está cerrado son los envíos de
+   canal uno por uno: clasifican `MONITOR_AUX_SEND`, que ADR-028 abrió, es
+   escribible y tiene tope declarado, así que se mueven por el camino normal del
+   monitor con los topes de siempre. **El motor no sabe que ese bus es de
+   medición**, justamente porque nadie le pasa cuál es.
 
    - **`ANALYSIS_BUS_SEND` es inalcanzable dentro del motor.** `engine.ts` llama
      a `clasificarRuta(c.path)` **sin `busDeAnalisis`** —líneas 136, 160 y 296—,

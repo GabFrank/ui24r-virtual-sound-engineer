@@ -177,16 +177,24 @@ la auditoría de fidelidad:
 Y tres cosas sin definir: **cómo se calcula el destino audible** —hay que leer
 `post` y `postproc`—, **cuánto pesa cada camino**, y **cuándo dos bandas se pisan**.
 
-### Siete hallazgos que dejó la auditoría del censo, dos cerrados
+### Nueve hallazgos que dejó la auditoría del censo, uno cerrado
 
 Están en [`hallazgos-de-la-auditoria-del-censo-2026-09-18.md`](../backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md)
 y este documento no los repite. En una línea cada uno: **170 caminos `.mtx.` que
 no publican `post`**, que es justo lo que ADR-035 iba a leer; **el «veintitrés»
-del ADR subcontaba** igual que el 240 corregido —cerrado, y al cerrarlo apareció
-que el bus de análisis no se puede aislar—; **el general tiene el ecualizador
-y el compresor enlazados**, que es el patrón de ADR-035 §2 y el ADR no lo dice;
-**dos disparadores del supresor del general están en 1**; y **la matriz dice 19
-fuentes donde el aparato muestra 17**.
+del ADR subcontaba** igual que el 240 corregido —el único cerrado, y al cerrarlo
+apareció que el bus de análisis no se puede aislar—; **el general tiene el
+ecualizador y el compresor enlazados**, que es el patrón de ADR-035 §2 y el ADR
+no lo dice; **dos disparadores del supresor del general están en 1**; **la matriz
+dice 19 fuentes donde el aparato muestra 17**; **`ANALYSIS_BUS_SEND` es la única
+clase que ninguna clave del aparato produce**; **cuatro de cada cinco claves de
+envío del reproductor no se clasifican**; **la exención de sistema anula el
+máximo de parámetros también en los dos niveles donde no se escribe nada**; y
+**1324 de las 6665 claves del aparato no se clasifican**, con el compresor y la
+puerta de los auxiliares —190— rechazándose con un motivo que no es el real.
+
+**Los cuatro últimos salieron de auditar las correcciones de los anteriores**, y
+cada ronda encontró más que la previa.
 
 ### Tareas nuevas que dejó la escucha
 

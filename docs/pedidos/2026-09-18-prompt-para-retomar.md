@@ -106,7 +106,7 @@ escucha entre transacciones quedó CERRADA, y el alias con ceros, el enlace
 estéreo y las familias distintas dejaron de ser tres tareas para ser UNA sola,
 decidida en ADR-035 y sin implementar.
 
-Y hay siete hallazgos nuevos, del 2026-09-18, dos ya cerrados, en
+Y hay nueve hallazgos nuevos, del 2026-09-18, UNO solo cerrado, en
 docs/backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md. Dos pegan
 directo en ADR-035: hay 170 caminos más a los buses que NO publican la clave que
 el ADR iba a leer para decidir; y el "veintitrés" del choque 2 subcontaba igual

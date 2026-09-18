@@ -1,4 +1,4 @@
-# Siete hallazgos que dejó la auditoría del censo de envíos
+# Nueve hallazgos que dejó la auditoría del censo de envíos
 
 **2026-09-18.** Salieron de auditar `9d1063f` —el commit que corrigió «240
 envíos» por «320»— y ninguno cabía en esa tarea. Se anotan acá en vez de meterse
@@ -129,11 +129,21 @@ superficie escribible», y **es falso**. Esa tabla se usa en **dos** sitios,
 las **entradas de línea y los retornos de efecto pasen a ser escribibles**, y hoy
 son `USER_ONLY`. Eso vive en `OWNERSHIP` y es **del usuario**, no de oficio.
 
-## 6. `ANALYSIS_BUS_SEND` es inalcanzable, y es el único routing que INV-008 admite
+## 6. `ANALYSIS_BUS_SEND` es inalcanzable: ninguna clave del aparato lo produce
 
-**MEDIDO.** `ownership.ts` declara `ANALYSIS_BUS_SEND` como `SYSTEM` y
-`escribible: true`: es el único routing que la aplicación puede escribir. Pero
-**ningún camino puede producir esa clase**, porque `engine.ts` llama a
+> **Este título decía «y es el único routing que INV-008 admite», y es FALSO.**
+> Medido: los routings escribibles son **tres** —`ANALYSIS_BUS_SEND`,
+> `PLAYER_SEND` y `MONITOR_AUX_SEND`—, y el tercero lo abrió **ADR-028**, que
+> este mismo día se citó cinco veces. La frase salió de la `nota` vieja de
+> `ownership.ts` —«único routing que la aplicación escribe»— repetida como
+> **MEDIDO** sin cruzarla contra `ownership.test.ts`, que declara los tres. Es
+> exactamente el error de método que estos hallazgos denuncian, cometido al
+> escribirlos.
+
+**MEDIDO, y lo que sí es único:** de todas las clases de `OWNERSHIP`,
+`ANALYSIS_BUS_SEND` es **la única que ninguna de las 6665 claves del aparato
+produce**. Está declarada `SYSTEM` y `escribible: true`, y **ningún camino puede
+producirla**, porque `engine.ts` llama a
 `clasificarRuta(c.path)` sin `busDeAnalisis` en sus tres usos. Un solo cambio
 bien formado sobre `i.0.aux.2.value` declarado `ANALYSIS_BUS_SEND` se rechaza por
 `RUTA_INCONSISTENTE`.
@@ -143,9 +153,11 @@ docblock de `clasificar-ruta.ts` ya avisaba que «nadie en producción pasa este
 dato», y lo enmarcaba como un riesgo para el envío de monitor; **la otra mitad de
 la consecuencia —que la clase queda inalcanzable— no estaba dicha**.
 
-## 7. Cuatro de cada cinco claves del reproductor no se clasifican
+## 7. Cuatro de cada cinco claves de envío del reproductor no se clasifican
 
-**MEDIDO.** `clasificar-ruta.ts` sólo tiene el patrón
+**MEDIDO.** Es de los **envíos** del reproductor, no de sus claves en general:
+de las 228 del reproductor hay 200 sin clasificar, que es otra cuenta y está en
+el hallazgo 9. `clasificar-ruta.ts` sólo tiene el patrón
 `/^p\.\d+\.aux\.\d+\.value$/`. Las otras cuatro subclaves —`mute`, `pan`,
 `post`, `postproc`— dan **`null`**, o sea `RUTA_DESCONOCIDA`: son **80 claves del
 volcado**. Para los canales, en cambio, las cinco están cubiertas.
@@ -195,20 +207,65 @@ que los dos canales aparezcan sólo bajo una configuración que hoy no está pue
 
 ---
 
+## 8. La exención de sistema anula el máximo también en OBSERVE y SUGGEST
+
+**MEDIDO** llamando a `maximoDeParametros`:
+
+| Nivel | Máximo declarado | Con operación de sistema |
+|---|---|---|
+| OBSERVE | **0** | **Infinito** |
+| SUGGEST | **0** | **Infinito** |
+| ASSISTED | 4 | Infinito |
+| AUTO | 1 | Infinito |
+
+En los dos niveles donde la aplicación **no debe escribir nada**, una transacción
+de sistema queda sin cota de parámetros. **Hoy no muerde** porque ninguna clase de
+operación de sistema tiene entrada en `LIMITES` y todas caen antes por falta de
+tope declarado. Muerde **el día que se declare el primer tope**, que es
+justamente lo que hay que hacer para desbloquear el hallazgo 2.
+
+Misma forma que el 6 y el 7: una pieza que nadie conectó, que ningún test caza
+porque no hay nada roto que probar.
+
+## 9. Una de cada cinco claves del aparato no se clasifica, y la mayor no es la del reproductor
+
+**MEDIDO** pasando las 6665 claves del volcado por `clasificarRuta` sin opciones,
+que es como la llama el motor: **1324 dan `null`**, o sea `RUTA_DESCONOCIDA`.
+
+| Familia | Clasificadas | Sin clasificar |
+|---|---|---|
+| `i` (canales) | 2712 | **540** |
+| `a` (auxiliares) | 1050 | **280** |
+| `p` (reproductor) | 28 | **200** |
+| `l`, `s`, `f`, `v` | 246 / 612 / 452 / 36 | **0** |
+
+**La asimetría con más forma de defecto: `a.N.dyn.*` y `a.N.gate.*`, 190 claves,
+todas sin clasificar** —el compresor y la puerta de cada auxiliar—, mientras los
+canales, las líneas, los subgrupos y los efectos sí clasifican los suyos, y
+`m.dyn.*` clasifica como `OUTPUT_LIMITER`. INV-008 nombra explícitamente el
+limitador de esos buses como de sólo lectura: hoy se rechaza **citando que la
+ruta no se conoce**, cuando sí se conoce.
+
+**Falla cerrado, que es el lado bueno.** Pero el motivo del rechazo es falso, y
+un rechazo que miente sobre su causa es el que nadie investiga. El hallazgo 7 es
+un caso particular de éste.
+
 ## Lo que tienen en común
 
-Empezaron siendo cinco. Los dos últimos **los encontró la auditoría de cerrar el
-segundo**, que es el patrón del que este repositorio ya no se sorprende.
+Empezaron siendo cinco. El 6 y el 7 los encontró la auditoría de cerrar el
+segundo; el 8 y el 9, la auditoría de esa corrección. **Cada ronda de auditoría
+encontró más que la anterior**, y las dos últimas encontraron afirmaciones falsas
+en los documentos que las anteriores habían escrito.
 
-Cuatro de los siete son **la misma forma de error**: un conteo hecho sobre una
+Cuatro de los nueve son **la misma forma de error**: un conteo hecho sobre una
 familia de claves y escrito como si fuera el censo entero. El 240 que se corrigió
 ese día, el veintitrés del ADR, el 19 de la matriz, y los caminos `.mtx.` que
 nadie contó. La regla que dejan, que es la de leer el volcado entero dicha de
 otro modo: **antes de escribir un número de claves, contar todas las familias que
 pueden tenerlas, no la que se está mirando.**
 
-Y los dos nuevos —el 6 y el 7— tienen **otra** forma en común, que es la que más
-caro salió este día: **una pieza correcta que nadie conecta**.
+Y el 6, el 7, el 8 y el 9 tienen **otra** forma en común, que es la que más caro
+salió este día: **una pieza correcta que nadie conecta**.
 `ANALYSIS_BUS_SEND` está declarado, tiene dueño y es escribible, y ningún camino
 lo produce. Los cuatro patrones del reproductor faltan y nada se queja. Ninguno
 de los dos lo caza un test, porque **no hay nada roto que probar: hay algo que no
