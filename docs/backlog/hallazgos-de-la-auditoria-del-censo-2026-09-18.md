@@ -1,4 +1,4 @@
-# Cinco hallazgos que dejó la auditoría del censo de envíos
+# Siete hallazgos que dejó la auditoría del censo de envíos
 
 **2026-09-18.** Salieron de auditar `9d1063f` —el commit que corrigió «240
 envíos» por «320»— y ninguno cabía en esa tarea. Se anotan acá en vez de meterse
@@ -42,15 +42,17 @@ Hoy los 170 están en `value = 0` y `mute = 0`, así que **no suenan y nada urge
 **Qué haría falta para cerrarlo:** medir qué significa `a.N.matrix` y a dónde
 sale un `mtx`, que es una medición con audio y no una lectura del volcado.
 
-## 2. El «veintitrés» de ADR-035 subcuenta igual que el 240 que se corrigió
+## 2. El «veintitrés» de ADR-035 subcontaba igual que el 240 que se corrigió
 
-> **CERRADO el 2026-09-18**, y al cerrarlo apareció algo peor que el número:
-> aislar el bus de análisis **pierde la exención de sistema entera**. Ver el
-> final de este punto. El número quedó corregido en ADR-035 choque 2, en el
-> docblock de `maximoDeParametros` y en la fila de INV-004 de
-> `safety-invariants.md`.
+> **CERRADO el 2026-09-18**, en dos pases. El primero corrigió el número y
+> escribió una explicación **falsa** de lo que pasaba; una auditoría adversarial
+> la derribó y el segundo la reescribió. Lo que quedó: **el bus de análisis no se
+> puede aislar por ningún camino**, que es peor que el choque de reglas que se
+> había descrito. Ver el final de este punto. El número está corregido en ADR-035
+> choque 2, en el docblock de `maximoDeParametros`, en el comentario de
+> `PACING_MS` y en las filas de INV-004 e INV-005.
 
-**MEDIDO.** El choque 2 de ADR-035 dice que seleccionar el bus de análisis
+**MEDIDO.** El choque 2 de ADR-035 **decía** que seleccionar el bus de análisis
 escribe «**veintitrés** envíos al mismo destino» y que hay que dejarlo exento.
 
 Al bus auxiliar 1 le entran **32** envíos `.aux.`
@@ -66,32 +68,92 @@ en su línea de impacto, «los sends de FX/player/line también alimentan el AUX
 El 23 se propagó desde ahí hasta el ADR y hasta el docblock de
 `maximoDeParametros` **sin la salvedad que venía al lado**.
 
-### Lo que apareció al corregirlo, y es una decisión pendiente
+### 31 son rutas, no escrituras
 
-**MEDIDO llamando a las funciones del motor**, con el bus de análisis en 2:
+Un envío en `value = 0` **ya está en menos infinito**, así que no hay que
+callarlo. Medido en el volcado del 2026-09-18:
 
-| Ruta | Clase |
+| bus | envíos con nivel ≠ 0 |
 |---|---|
-| `i.3.aux.2.value` | `ANALYSIS_BUS_SEND` |
-| `l.0.aux.2.value` | `LINE_INPUT` |
-| `p.0.aux.2.value` | `PLAYER_SEND` |
-| `f.0.aux.2.value` | `FX` |
+| 0 | 9 |
+| 1 | 11 |
+| 2 | 3 |
+| 3 a 9 | **0** |
 
-`PARAMETROS_DE_OPERACION_DE_SISTEMA.ANALYSIS_BUS_SELECT` admite **una sola
-clase**, `ANALYSIS_BUS_SEND`, y `correspondeExencionDeSistema` exige que
-**todas** las clases de la transacción estén permitidas. Resultado medido: con
-las clases de los 24 canales devuelve `true`; agregándole una de línea, una del
-reproductor y una de efectos, **`false`**.
+Cuántas escrituras hace falta **depende del estado y hay que leerlo**. Una
+redacción anterior eligió el bus 2 para medir y no miró los valores de ese mismo
+bus.
 
-**O sea que la transacción que hace lo correcto —callar los 31— pierde la
-exención y vuelve a caer bajo el límite de cuatro de INV-005, que la rechaza
-entera.** La que pasa es la que calla sólo 23 y deja ocho fuentes sonando en el
-bus de medición, que es justo lo que el anexo A-06 advertía.
+### Lo que apareció al corregirlo: el bus de análisis no se puede aislar
 
-**Hoy no muerde**, porque ningún camino de la aplicación propone todavía estos
-cambios. **Qué clases debe admitir `ANALYSIS_BUS_SELECT` es decisión del
-usuario**, no de oficio: ensancha la superficie escribible hacia el reproductor,
-las entradas de línea y los retornos.
+**MEDIDO, y son dos frenos encadenados.**
+
+**Primero: `ANALYSIS_BUS_SEND` es inalcanzable dentro del motor.**
+`clasificarRuta` sólo devuelve esa clase si se le pasa `busDeAnalisis`, y
+**`engine.ts` la llama sin opciones** —líneas 136, 160 y 296—. Medido:
+
+| Ruta | Con `busDeAnalisis` | **Como la ve el motor** |
+|---|---|---|
+| `i.3.aux.2.value` | `ANALYSIS_BUS_SEND` | **`MONITOR_AUX_SEND`** |
+| `l.0.aux.2.value` | `LINE_INPUT` | `LINE_INPUT` |
+| `p.0.aux.2.value` | `PLAYER_SEND` | `PLAYER_SEND` |
+| `f.0.aux.2.value` | `FX` | `FX` |
+
+Y por lo mismo, `correspondeExencionDeSistema('ANALYSIS_BUS_SELECT', …)` con
+**sólo los 24 de canal**: `true` con `busDeAnalisis`, **`false` como lo ve el
+motor**. La exención se pierde **con los ocho envíos que no son de canal y sin
+ellos**. Un cambio declarado `ANALYSIS_BUS_SEND` muere antes, por
+`RUTA_INCONSISTENTE`.
+
+**Segundo, y sobrevive a cualquier arreglo del primero: `ANALYSIS_BUS_SEND` no
+tiene entrada en `LIMITES`.** INV-004 la rechaza por no tener tope declarado.
+`packages/safety/test/runner.test.ts` ya lo decía: «ninguna transacción de
+sistema puede pasar el motor todavía».
+
+> **Lo que se escribió mal en el primer pase, y lo cazó una auditoría
+> adversarial.** Se dijo que la exención se perdía **por** los ocho envíos que no
+> son de canal, y que «la que pasa es la que calla sólo 23». Lo primero es cierto
+> de las dos funciones **aisladas** y falso **dentro del motor**; lo segundo es
+> falso a secas: **no pasa ninguna**. El error de método es el de siempre acá:
+> se midieron las piezas y se concluyó sobre el sistema.
+
+### La decisión pendiente, que tampoco era la que se escribió
+
+Se había escrito que ensanchar `PARAMETROS_DE_OPERACION_DE_SISTEMA` «ensancha la
+superficie escribible», y **es falso**. Esa tabla se usa en **dos** sitios,
+`maximoDeParametros` y el pacing, y **quién puede escribir lo decide
+`OWNERSHIP`**. Medido: `esEscribible` da lo mismo antes y después —`LINE_INPUT` y
+`FX` siguen en `false`—.
+
+**La decisión real es otra y es más grande:** aislar el bus de verdad exige que
+las **entradas de línea y los retornos de efecto pasen a ser escribibles**, y hoy
+son `USER_ONLY`. Eso vive en `OWNERSHIP` y es **del usuario**, no de oficio.
+
+## 6. `ANALYSIS_BUS_SEND` es inalcanzable, y es el único routing que INV-008 admite
+
+**MEDIDO.** `ownership.ts` declara `ANALYSIS_BUS_SEND` como `SYSTEM` y
+`escribible: true`: es el único routing que la aplicación puede escribir. Pero
+**ningún camino puede producir esa clase**, porque `engine.ts` llama a
+`clasificarRuta(c.path)` sin `busDeAnalisis` en sus tres usos. Un solo cambio
+bien formado sobre `i.0.aux.2.value` declarado `ANALYSIS_BUS_SEND` se rechaza por
+`RUTA_INCONSISTENTE`.
+
+No es una guarda que falla cerrada por diseño: es un dato que nadie pasa. El
+docblock de `clasificar-ruta.ts` ya avisaba que «nadie en producción pasa este
+dato», y lo enmarcaba como un riesgo para el envío de monitor; **la otra mitad de
+la consecuencia —que la clase queda inalcanzable— no estaba dicha**.
+
+## 7. Cuatro de cada cinco claves del reproductor no se clasifican
+
+**MEDIDO.** `clasificar-ruta.ts` sólo tiene el patrón
+`/^p\.\d+\.aux\.\d+\.value$/`. Las otras cuatro subclaves —`mute`, `pan`,
+`post`, `postproc`— dan **`null`**, o sea `RUTA_DESCONOCIDA`: son **80 claves del
+volcado**. Para los canales, en cambio, las cinco están cubiertas.
+
+**Importa por el anexo A-06**, que nombra **dos** mecanismos para aislar el bus:
+«poner a −∞ **o mute**». Si se implementa por mute, el reproductor no se puede ni
+nombrar. Falla cerrado, que es el lado bueno, pero no por decisión sino por
+omisión del patrón.
 
 ## 3. El general tiene el ecualizador y el compresor enlazados
 
@@ -133,11 +195,23 @@ que los dos canales aparezcan sólo bajo una configuración que hoy no está pue
 
 ---
 
-## Lo que estos cinco tienen en común
+## Lo que tienen en común
 
-Cuatro de los cinco son **la misma forma de error**: un conteo hecho sobre una
+Empezaron siendo cinco. Los dos últimos **los encontró la auditoría de cerrar el
+segundo**, que es el patrón del que este repositorio ya no se sorprende.
+
+Cuatro de los siete son **la misma forma de error**: un conteo hecho sobre una
 familia de claves y escrito como si fuera el censo entero. El 240 que se corrigió
 ese día, el veintitrés del ADR, el 19 de la matriz, y los caminos `.mtx.` que
 nadie contó. La regla que dejan, que es la de leer el volcado entero dicha de
 otro modo: **antes de escribir un número de claves, contar todas las familias que
 pueden tenerlas, no la que se está mirando.**
+
+Y los dos nuevos —el 6 y el 7— tienen **otra** forma en común, que es la que más
+caro salió este día: **una pieza correcta que nadie conecta**.
+`ANALYSIS_BUS_SEND` está declarado, tiene dueño y es escribible, y ningún camino
+lo produce. Los cuatro patrones del reproductor faltan y nada se queja. Ninguno
+de los dos lo caza un test, porque **no hay nada roto que probar: hay algo que no
+existe**. Es la misma lección del arreglo que no arreglaba nada, del mismo día:
+**mutar prueba que los tests cazan lo que hay; sólo atacar prueba que lo que hay
+alcanza.**

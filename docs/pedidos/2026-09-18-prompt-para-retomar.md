@@ -106,15 +106,17 @@ escucha entre transacciones quedó CERRADA, y el alias con ceros, el enlace
 estéreo y las familias distintas dejaron de ser tres tareas para ser UNA sola,
 decidida en ADR-035 y sin implementar.
 
-Y hay cinco hallazgos nuevos sin tocar, del 2026-09-18, en
+Y hay siete hallazgos nuevos, del 2026-09-18, dos ya cerrados, en
 docs/backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md. Dos pegan
 directo en ADR-035: hay 170 caminos más a los buses que NO publican la clave que
-el ADR iba a leer para decidir, y el "veintitrés" del choque 2 subcuenta igual
-que el 240 que se corrigió ese día.
+el ADR iba a leer para decidir; y el "veintitrés" del choque 2 subcontaba igual
+que el 240, que ya se corrigió —y al corregirlo apareció que HOY EL BUS DE
+ANÁLISIS NO SE PUEDE AISLAR por ningún camino, con dos frenos encadenados en el
+motor y una fila de invariantes que prometía lo contrario—.
 
 ADR-035 dejó tres choques anotados que hay que resolver al implementarlo: con
-INV-005, con las transacciones de sistema —seleccionar el bus de análisis escribe
-veintitrés envíos al mismo destino y tiene que quedar exento— y con ADR-031. Y
+INV-005, con las transacciones de sistema —seleccionar el bus de análisis toca 31
+rutas al mismo destino y tiene que quedar exento— y con ADR-031. Y
 tres cosas sin definir: cómo se calcula el destino audible, cuánto pesa cada
 camino, y cuándo dos bandas del ecualizador se pisan.
 

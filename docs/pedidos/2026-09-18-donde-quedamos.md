@@ -166,21 +166,24 @@ Tres choques con reglas que ya existen, ninguno estaba dicho antes, y los encont
 la auditoría de fidelidad:
 
 1. **Con INV-005**, el límite de cuatro parámetros por transacción.
-2. **Con las transacciones de sistema**: seleccionar el bus de análisis escribe
-   **veintitrés envíos al mismo destino**. Tiene que quedar exento, y hay que
-   escribirlo.
+2. **Con las transacciones de sistema**: seleccionar el bus de análisis toca
+   **31 rutas al mismo destino**, no veintitrés —a un bus le entran 32 contando
+   línea, reproductor y retornos—. Tiene que quedar exento, y hay que escribirlo.
+   **Y al remedirlo el 2026-09-18 apareció que hoy no se puede aislar el bus por
+   ningún camino**, por dos frenos encadenados en el motor. Está en el ADR.
 3. **Con [ADR-031](../adr/ADR-031-la-mezcla-de-conjunto-entra.md)**, la mezcla de
    conjunto, si el destino audible incluye el general.
 
 Y tres cosas sin definir: **cómo se calcula el destino audible** —hay que leer
 `post` y `postproc`—, **cuánto pesa cada camino**, y **cuándo dos bandas se pisan**.
 
-### Cinco hallazgos que dejó la auditoría del censo, sin tocar
+### Siete hallazgos que dejó la auditoría del censo, dos cerrados
 
 Están en [`hallazgos-de-la-auditoria-del-censo-2026-09-18.md`](../backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md)
 y este documento no los repite. En una línea cada uno: **170 caminos `.mtx.` que
 no publican `post`**, que es justo lo que ADR-035 iba a leer; **el «veintitrés»
-del ADR subcuenta** igual que el 240 corregido; **el general tiene el ecualizador
+del ADR subcontaba** igual que el 240 corregido —cerrado, y al cerrarlo apareció
+que el bus de análisis no se puede aislar—; **el general tiene el ecualizador
 y el compresor enlazados**, que es el patrón de ADR-035 §2 y el ADR no lo dice;
 **dos disparadores del supresor del general están en 1**; y **la matriz dice 19
 fuentes donde el aparato muestra 17**.

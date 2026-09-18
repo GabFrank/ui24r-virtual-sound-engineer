@@ -236,17 +236,44 @@ Los encontró la auditoría de fidelidad del 2026-09-18, y ninguno estaba dicho.
    AUX», y el número se propagó sin esa salvedad hasta acá y hasta el docblock de
    `maximoDeParametros`.
 
-   **Y al remedirlo apareció algo peor que el número, que es una decisión
-   pendiente y no una errata.** La exención se concede por clase de parámetro, y
-   `ANALYSIS_BUS_SELECT` sólo admite `ANALYSIS_BUS_SEND`. Pero `clasificarRuta`
-   devuelve `ANALYSIS_BUS_SEND` **únicamente** para `i.N.aux.<bus>.value`: los
-   ocho envíos restantes dan `LINE_INPUT`, `PLAYER_SEND` y `FX`. Como
-   `correspondeExencionDeSistema` exige que **todas** las clases estén
-   permitidas, la transacción que hace lo correcto —callar los 31— **pierde la
-   exención entera** y vuelve a caer bajo el límite de cuatro de INV-005, o sea
-   que se rechaza. Medido llamando a las dos funciones: con las clases de los 24
-   canales devuelve `true`; agregándole una de línea, una del reproductor y una
-   de efectos, `false`.
+   **Y 31 son rutas, no escrituras.** Un envío en `value = 0` ya está en menos
+   infinito. En el volcado del 2026-09-18, del bus 2 sólo **3 de los 32** tienen
+   nivel, y de los buses 3 al 9, **ninguno**. Cuántas escrituras hace falta
+   depende del estado y hay que leerlo; una redacción anterior de este punto
+   eligió el bus 2 para medir y no miró los valores de ese mismo bus.
+
+   **Y al remedirlo apareció que el bus de análisis no se puede aislar por
+   ningún camino, que es peor que un choque de reglas.** Van dos frenos, uno
+   debajo del otro:
+
+   - **`ANALYSIS_BUS_SEND` es inalcanzable dentro del motor.** `engine.ts` llama
+     a `clasificarRuta(c.path)` **sin `busDeAnalisis`** —líneas 136, 160 y 296—,
+     y sin ese dato `i.N.aux.<bus>.value` clasifica como `MONITOR_AUX_SEND`. O
+     sea que un cambio declarado `ANALYSIS_BUS_SEND` muere por
+     `RUTA_INCONSISTENTE`, y la exención devuelve `false` **con los ocho envíos
+     que no son de canal y sin ellos**. El docblock de `clasificar-ruta.ts` ya
+     avisaba que nadie pasa ese dato en producción.
+   - **`ANALYSIS_BUS_SEND` no tiene entrada en `LIMITES`.** Aunque se arreglara
+     lo anterior, INV-004 la rechaza por no tener tope declarado.
+     `runner.test.ts` ya lo decía: «ninguna transacción de sistema puede pasar el
+     motor todavía».
+
+   > **Una redacción anterior de este punto, del 2026-09-18, contaba otra cosa y
+   > era falsa.** Decía que la exención se perdía **por** los ocho envíos que no
+   > son de canal, y que «la que pasa es la que calla sólo 23». Lo primero es
+   > cierto de las funciones aisladas y falso dentro del motor; lo segundo es
+   > falso a secas: **no pasa ninguna**. Lo cazó una auditoría adversarial,
+   > atacando la afirmación con transacciones bien formadas en vez de con las dos
+   > funciones sueltas. Es la misma lección del 2026-09-18 por tercera vez:
+   > medir la pieza no es medir el sistema.
+
+   **La decisión del usuario existe, pero no es la que se escribió acá.**
+   Ensanchar `PARAMETROS_DE_OPERACION_DE_SISTEMA` **no ensancha la superficie
+   escribible**: esa tabla sólo alimenta `maximoDeParametros` y el pacing, y
+   quién puede escribir lo decide `OWNERSHIP`. Medido: `esEscribible` da lo mismo
+   antes y después. Lo que **sí** es decisión suya es que las **entradas de línea
+   y los retornos de efecto pasen a ser escribibles** —hoy son `USER_ONLY`—,
+   porque aislar el bus de verdad lo necesita, y eso vive en `OWNERSHIP`.
 
    Los 17 caminos `.mtx.` hacia el mismo número de destino quedan **fuera de esta
    cuenta a propósito**: clasifican como `MATRIX_SEND` y **no está medido** que

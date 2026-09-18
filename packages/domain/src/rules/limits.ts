@@ -185,8 +185,14 @@ export const PACING_MS: Readonly<Record<'ASSISTED' | 'AUTO' | 'SYSTEM', number>>
   AUTO: 100,
   // Las transacciones de sistema quedan exentas del límite de cuatro
   // parámetros: seleccionar un canal en el bus de análisis exige poner a menos
-  // infinito los otros veintitrés envíos. A cien milisegundos cada uno serían
-  // más de dos segundos, incompatible con el tiempo de conmutación exigido.
+  // infinito los otros **31** envíos --32 por bus: 24 canales, 2 de línea, 2 del
+  // reproductor, 4 de retornos--. A cien milisegundos cada uno serían más de
+  // tres segundos, incompatible con el tiempo de conmutación exigido.
+  //
+  // Decía «veintitrés» y se corrigió el 2026-09-18, en un segundo pase: el
+  // primero corrigió el docblock de `maximoDeParametros` y dejó esta línea, 76
+  // más arriba y en el mismo archivo, diciendo lo mismo mal. Lo cazó una
+  // auditoría. Que 31 sean **rutas** y no escrituras se explica en ese docblock.
   SYSTEM: 20,
 };
 
@@ -241,6 +247,13 @@ export const PARAMETROS_DE_OPERACION_DE_SISTEMA:
  * Se exige que la operación esté declarada **y** que cada cambio toque un
  * parámetro que esa operación puede tocar. Una transacción vacía no la obtiene:
  * no hay nada que la justifique.
+ *
+ * **«Cada cambio» es cada cambio clasificable.** Las rutas que `clasificarRuta`
+ * no reconoce no llegan acá --quien llama filtra los `null`--, así que **no
+ * rompen la exención**: medido, 24 rutas de bus más `p.0.aux.2.mute`, que
+ * clasifica `null`, siguen dando `true`. Hoy no es explotable porque esa ruta
+ * cae antes por `RUTA_DESCONOCIDA`, pero la frase «todas las clases» que estuvo
+ * acá el 2026-09-18 prometía más de lo que esta función comprueba.
  */
 export function correspondeExencionDeSistema(
   tipoDeOperacion: string | undefined,
@@ -267,15 +280,35 @@ export function correspondeExencionDeSistema(
  * decía --«los sends de FX/player/line también alimentan el AUX»-- y el 23 se
  * propagó igual. Corregido el 2026-09-18.
  *
- * **Y la exención no alcanza para los ocho que faltan.**
- * `PARAMETROS_DE_OPERACION_DE_SISTEMA.ANALYSIS_BUS_SELECT` sólo admite
- * `ANALYSIS_BUS_SEND`, y `clasificarRuta` devuelve esa clase **sólo** para
- * `i.N.aux.<bus>.value`; los otros ocho dan `LINE_INPUT`, `PLAYER_SEND` y `FX`.
- * Como `correspondeExencionDeSistema` exige que **todas** las clases estén
- * permitidas, la transacción que calla los 31 pierde la exención entera y la
- * rechaza INV-005. Hoy no muerde porque nadie propone todavía estos cambios;
- * qué clases debe admitir la operación es **decisión del usuario**, porque
- * ensancha la superficie escribible. Queda anotado en ADR-035, choque 2.
+ * **Y 31 son rutas, no escrituras.** Un envío en `value = 0` ya está en menos
+ * infinito, así que no hay que callarlo: en el volcado del 2026-09-18, del bus 2
+ * sólo 3 de los 32 tienen nivel, y de los buses 3 al 9, ninguno. Cuántas
+ * escrituras hace falta depende del estado, y hay que leerlo.
+ *
+ * **La exención no se pierde por los ocho que no son de canal. Se pierde
+ * antes.** Una primera redacción de este docblock, del 2026-09-18, dijo que
+ * `clasificarRuta` da `ANALYSIS_BUS_SEND` para los 24 de canal y que los ocho
+ * restantes --`LINE_INPUT`, `PLAYER_SEND`, `FX`-- rompían la exención. Es cierto
+ * de las funciones **aisladas** y falso **dentro del motor**, que es lo que
+ * importa: `engine.ts` llama a `clasificarRuta(c.path)` **sin `busDeAnalisis`**
+ * --líneas 136, 160 y 296--, así que los 24 de canal también dan
+ * `MONITOR_AUX_SEND` y la exención devuelve `false` **con los ocho y sin ellos**.
+ * Medido las dos veces. La conclusión que se sacó de ahí --«la que pasa es la
+ * que calla sólo 23»-- **también era falsa: no pasa ninguna**.
+ *
+ * **Y hay un segundo freno debajo, que sobrevive a cualquier arreglo del
+ * primero: `ANALYSIS_BUS_SEND` no tiene entrada en `LIMITES`**, así que INV-004
+ * la rechaza por no tener tope declarado. `runner.test.ts` ya lo decía --«ninguna
+ * transacción de sistema puede pasar el motor todavía»-- y el primer pase no lo
+ * cruzó.
+ *
+ * **La decisión del usuario existe, pero no es la que se escribió.** Ensanchar
+ * esta tabla **no ensancha la superficie escribible**: sólo la usan
+ * `maximoDeParametros` y el pacing, y quién puede escribir lo decide `OWNERSHIP`.
+ * Medido: `esEscribible` da lo mismo antes y después. Lo que sí sería una
+ * decisión suya es hacer **escribibles las entradas de línea y los retornos**,
+ * hoy `USER_ONLY`, que es lo que aislar el bus de verdad necesita, y vive en
+ * `OWNERSHIP`, no acá. Queda anotado en ADR-035, choque 2.
  */
 export function maximoDeParametros(
   nivel: AutonomyLevel,
