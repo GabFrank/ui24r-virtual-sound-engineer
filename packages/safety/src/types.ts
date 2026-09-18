@@ -222,6 +222,20 @@ export type CodigoRechazo =
    */
   | 'TECHO_ABSOLUTO'
   | 'SIN_MEDICION_INTERMEDIA'
+  /**
+   * La misma ruta aparece más de una vez en la misma transacción.
+   *
+   * **Código propio y no `DEMASIADOS_PARAMETROS`**, que cuenta cuántos
+   * parámetros distintos se tocan: acá el problema no es la cantidad sino que
+   * los topes se cobran por cambio y el movimiento real es la cadena. Con el
+   * mismo código, un test de esto pasaría por el techo de cantidad de INV-005.
+   *
+   * Lo midió una auditoría adversarial el 2026-09-17b: **cuatro pasos honestos
+   * de 2 dB en una transacción mueven la cuña 8 dB**, con el tope en 2, sin
+   * mentir ningún número. Ver el comentario en `engine.ts`, que explica por qué
+   * se rechaza en vez de acumular.
+   */
+  | 'RUTA_REPETIDA'
   | 'DEMASIADOS_PARAMETROS'
   | 'ESTADO_DE_SESION'
   | 'TAKE_ACTIVO'

@@ -758,3 +758,86 @@ test('INV-004: un valor de partida que no es numero no pasa el motor', () => {
   assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
     JSON.stringify(v.rechazos));
 });
+
+test('INV-004: la misma ruta dos veces en una transaccion no multiplica el tope', () => {
+  // **Medido por una auditoría adversarial el 2026-09-17b.** El motor juzga cada
+  // cambio contra un contexto que no se actualiza entre uno y otro, así que
+  // cuatro pasos HONESTOS de 2 dB encadenados sobre la misma cuña pasaban los
+  // cuatro: cada uno cabía en su tope, cada uno era «el primero» de esa ruta —así
+  // que nadie exigía escuchar en el medio— y el movimiento real era de 8 dB con
+  // el tope por transacción en 2. No hace falta mentir ningún número.
+  const cambios = [];
+  let db = -30;
+  for (let i = 0; i < 4; i++) {
+    cambios.push({
+      kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(db + 2), valorEsperado: crudoDeEnvio(db),
+      magnitudPropuesta: db + 2, magnitudEsperada: db,
+    });
+    db += 2;
+  }
+  const v = new SafetyEngine().evaluar(cambios, contexto(), ok);
+  assert.equal(v.permitido, false, '8 dB reales no pueden pasar con el tope en 2');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'),
+    `tiene que frenar por la ruta repetida: ${JSON.stringify(v.rechazos)}`);
+
+  // **DOS es la frontera, y probar cuatro no la fija.** Una auditoría mutó la
+  // guarda a «tolerá hasta dos» y a «tolerá hasta tres» y **las dos mutaciones
+  // sobrevivieron con la suite entera en verde**, porque este test ejercía el
+  // caso del hallazgo —cuatro— y no el mínimo. Con dos repeticiones el tope ya
+  // se duplica. Es la trampa que este repositorio tiene escrita: copiá el número
+  // de la regla, no uno parecido; y es la misma forma que INV-005 ya pagó con el
+  // `porTransaccion: 1` que contaba sin contar.
+  const dos = new SafetyEngine().evaluar(cambios.slice(0, 2), contexto(), ok);
+  assert.equal(dos.permitido, false, 'con dos ya se duplica el tope');
+  assert.ok(dos.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'),
+    JSON.stringify(dos.rechazos));
+
+  // El rechazo dice DE QUÉ CUÑA habla: una pantalla que no puede nombrar la ruta
+  // obliga al usuario a adivinar cuál de los cambios fue.
+  assert.equal(dos.rechazos.find((r) => r.codigo === 'RUTA_REPETIDA')?.path,
+    'i.3.aux.1.value');
+
+  // **Y no corta la evaluación**, que es lo que `evaluar` promete: devuelve todos
+  // los motivos y no el primero. Con pasos que además exceden el tope tienen que
+  // salir los dos diagnósticos, y con dos rutas repetidas distintas, las dos.
+  const conExceso = new SafetyEngine().evaluar([
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-25), valorEsperado: crudoDeEnvio(-30),
+      magnitudPropuesta: -25, magnitudEsperada: -30 },
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-20), valorEsperado: crudoDeEnvio(-25),
+      magnitudPropuesta: -20, magnitudEsperada: -25 },
+  ], contexto(), ok);
+  assert.equal(conExceso.permitido, false);
+  assert.ok(conExceso.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'));
+  assert.ok(conExceso.rechazos.some((r) => r.codigo === 'DELTA_EXCEDIDO'),
+    `la guarda no puede tapar los demás motivos: ${JSON.stringify(conExceso.rechazos)}`);
+
+  const dosRutas = new SafetyEngine().evaluar([
+    ...cambios.slice(0, 2),
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.5.aux.2.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+      magnitudPropuesta: -6, magnitudEsperada: -7 },
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.5.aux.2.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-5), valorEsperado: crudoDeEnvio(-6),
+      magnitudPropuesta: -5, magnitudEsperada: -6 },
+  ], contexto(), ok);
+  assert.equal(dosRutas.permitido, false);
+  assert.equal(dosRutas.rechazos.filter((r) => r.codigo === 'RUTA_REPETIDA').length, 2,
+    `se informan TODAS las rutas repetidas: ${JSON.stringify(dosRutas.rechazos)}`);
+
+  // Y dos rutas DISTINTAS en la misma transacción siguen pasando: la guarda es
+  // sobre repetir una ruta, no sobre tocar varias. Dos cuñas de dos músicos es
+  // exactamente lo que el producto tiene que poder hacer.
+  const dosCunias = new SafetyEngine().evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }, {
+    kind: 'MONITOR_AUX_SEND', path: 'i.5.aux.2.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }], contexto(), ok);
+  assert.equal(dosCunias.permitido, true, motivos(dosCunias).join(', '));
+});

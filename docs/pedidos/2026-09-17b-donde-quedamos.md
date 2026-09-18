@@ -230,14 +230,24 @@ el hueco.
 Las cuatro son **anteriores a esa tarea** y ninguna la bloqueaba, así que fueron
 tarea nueva y no se metieron en el commit. Las cuatro están medidas.
 
-- **La misma ruta repetida en una transacción multiplica el tope por paso.** El
-  motor recorre los cambios contra un contexto que no se actualiza entre uno y
-  otro, así que N cambios encadenados sobre la misma ruta cobran cada uno el
-  presupuesto entero, y ninguno dispara la exigencia de medición intermedia. Hay
-  una regla para «un solo silencio por transacción» y ninguna para esto.
-  **Medido: cuatro pasos honestos de 2 dB en una sola transacción mueven la cuña
-  8 dB, con el tope por transacción en 2.** Es el hallazgo más grave de los
-  cuatro, porque no necesita mentir nada.
+- ~~**La misma ruta repetida en una transacción multiplica el tope por paso.**~~
+  **Arreglado el 2026-09-17b**, elegido por el usuario como lo más grave de los
+  cuatro. El motor recorría los cambios contra un contexto que no se actualiza
+  entre uno y otro, así que N cambios encadenados sobre la misma ruta cobraban
+  cada uno el presupuesto entero y ninguno disparaba la exigencia de medición
+  intermedia. **Medido: cuatro pasos honestos de 2 dB en una sola transacción
+  movían la cuña 8 dB, con el tope en 2, sin mentir ningún número.** Ahora se
+  rechaza con `RUTA_REPETIDA`. **Se rechaza en vez de acumular** porque dentro de
+  una transacción no hay dónde escuchar, y la escucha entre paso y paso es lo que
+  hace de la subida una rampa y no una corrida. **Y los pasos intermedios sí
+  suenan**: el ejecutor escribe todos, separados por ~101 ms, así que el hallazgo
+  no era un salto de 8 dB sino una rampa de 312 ms sin ninguna escucha — una
+  primera redacción dijo lo contrario y lo corrigió la auditoría de la tarea.
+
+  **Lo que dejó abierto, medido y anotado abajo**: el tope se cuenta por clave y
+  el oído es por parlante, así que dos claves distintas que llegan al mismo
+  parlante se le escapan, en tres formas; y partir la ráfaga en transacciones no
+  garantiza que se haya escuchado entre una y otra.
 - **`coincideConEsperado` se cae abierta con un valor que no es número**, que es
   la misma forma de `NaN` que INV-004 ya tapó tres veces: `Math.abs(e.valor −
   esperado) > tolerancia` con `NaN` da `false` y contesta que coincide. Es
@@ -253,6 +263,35 @@ tarea nueva y no se metieron en el commit. Las cuatro están medidas.
   antes de que yo lo bajara, y ni un paso más» del usuario se cumple con **0,84
   dB de más**, medido. Es la misma familia que el ítem 2 de la lista de arriba
   —el techo de nominal y su holgura— y conviene resolverlos juntos.
+
+### Y tres más que dejó la auditoría de la ruta repetida, el 2026-09-17b
+
+Las tres tienen **la misma forma, y conviene leerlas juntas: el tope se cuenta
+por clave y el oído es por parlante.** Ninguna la cierra la guarda de la ruta
+repetida, y las tres están medidas.
+
+- **Que se haya escuchado entre transacción y transacción no lo comprueba nadie**,
+  y es la que le da sentido a la guarda recién puesta. `historialDeLaSesion` sólo
+  mira que el identificador de la medición no sea nulo: sin fecha, sin cruzarlo
+  contra una medición real y sin ningún espaciado de reloj. **Medido: anotando la
+  medición, quince transacciones mueven 28,5 dB en 19 ms**, y lo que corta no es
+  ningún freno de INV-004 sino el techo de nominal. Hoy no está expuesto porque en
+  producción nadie llena ese campo; **el día que la pantalla de monitor lo llene,
+  los 8 dB vuelven como 28,5**. Es la más urgente de las tres.
+- **El alias con ceros multiplica el tope sobre la ganancia del previo.** El
+  estado por ruta se indexa por la cadena cruda, así que `hw.0.gain`, `hw.00.gain`
+  y `hw.000.gain` son tres presupuestos distintos para la misma perilla. **Medido:
+  12 dB en una transacción con el tope en 3, y 36 dB en ráfaga con el acumulado
+  por sesión en 6.** Para el envío a monitor esto ya lo cierra la forma canónica;
+  para la ganancia no, y la ganancia es el único parámetro que la aplicación mueve
+  hoy de punta a punta. **Lo que lo tapa hoy no es una guarda sino un accidente**:
+  el alias no tiene valor confirmado y el ejecutor lo rechaza por INV-002.
+- **Familias distintas sobre el mismo parlante se suman y nadie las suma.** El
+  fader del canal, la ganancia de una banda del ecualizador y el envío a monitor
+  son tres rutas distintas y pasan juntas: con el envío post-fader y post-proceso
+  —lo que midió el ítem 95— eso es **hasta 9 dB en la cuña del músico en una
+  transacción**. Y las cuatro bandas del ecualizador sobre el mismo centro suman
+  **16 dB con el tope por banda en 4**.
 - **Archivar un retrato de la consola en el repositorio.** Hoy la comparación se
   hizo contra un archivo temporal de otra sesión, que podría no estar la próxima
   vez. Es corto y no toca el equipo del usuario. Ver la corrección de arriba.

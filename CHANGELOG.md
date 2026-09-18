@@ -52,6 +52,30 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Pedir cuatro pasos de 2 dB juntos movía la cuña 8 dB.** El freno de «no más
+  de 2 dB por vez» se cobraba una vez por cada paso, y nadie sumaba la cadena: si
+  algo mandaba cuatro pasos en una sola tanda, los cuatro pasaban —cada uno cabía
+  en su freno— y la cuña se movía cuatro veces más de lo permitido. **Sin mentir
+  ningún número**: los cuatro pasos eran honestos. Y como para el motor cada uno
+  era «el primero» de esa cuña, tampoco se exigía volver a escuchar en el medio,
+  que es justamente lo que convierte una subida en una rampa y no en una corrida.
+
+  Y los pasos intermedios **se oían**: no era un salto de 8 dB, era una rampa de
+  tres décimas de segundo en la cuña del músico sin una sola escucha en el medio.
+
+  Ahora una tanda no puede tocar dos veces la misma cuña. Va de a un paso.
+  Tocar **varias cuñas distintas** en una misma tanda sigue permitido: eso es lo
+  que el producto tiene que poder hacer.
+
+  **Lo que esto todavía no garantiza**: que entre un paso y el siguiente hayas
+  escuchado de verdad. Hoy alcanza con que algo deje anotado que se midió, sin
+  comprobar cuándo ni contra qué. Queda anotado como lo próximo a cerrar, porque
+  es lo que le da sentido a este freno.
+
+  **No te afectó**, porque hoy ninguna pantalla manda tandas de varios pasos. Se
+  tapó antes de construir el asistente que sube, que es justamente quien iba a
+  empezar a mandarlas.
+
 - **El freno de «no más de 2 dB por vez» se podía correr diciéndole al motor que
   la cuña venía de más arriba de donde venía.** El motor no mira a qué nivel
   queda un parámetro: mira **cuánto se movió**, o sea a dónde va menos de dónde

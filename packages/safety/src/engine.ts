@@ -167,6 +167,99 @@ export class SafetyEngine {
       });
     }
 
+    // **La misma ruta dos veces en una transacción multiplica todos los topes.**
+    //
+    // `evaluarCambio` juzga cada cambio contra un `ctx` que **no se actualiza
+    // entre uno y otro**: el acumulado, las rutas ya tocadas y las que tienen
+    // medición posterior son las de antes de empezar. Así que N cambios
+    // encadenados sobre la misma ruta cobran cada uno el presupuesto entero:
+    // **ni el tope por paso ni el acumulado acotan lo que de verdad se mueve.**
+    // Y si esa ruta no venía tocada en la sesión, `esPrimerCambioDelParametro`
+    // es verdadero para todos y tampoco se exige escuchar en el medio. (Esa
+    // última cláusula vale sólo para ese caso: con la ruta ya tocada y sin
+    // medición anotada, los cambios se rechazan por `SIN_MEDICION_INTERMEDIA`.
+    // La conclusión se sostiene por los dos caminos, pero la primera redacción
+    // enunció el mecanismo de más y lo corrigió una auditoría.)
+    //
+    // **Medido por una auditoría adversarial el 2026-09-17b: cuatro pasos
+    // honestos de 2 dB en una sola transacción mueven la cuña 8 dB, con el tope
+    // por transacción en 2.** No hace falta mentir ningún número: los cuatro
+    // cambios son coherentes con el crudo, cada uno pasa la atadura de los dos
+    // extremos y cada uno cabe en su tope. Lo que nadie sumaba era la cadena.
+    //
+    // **Se rechaza en vez de acumular, y la razón no es la comodidad.** INV-004
+    // exige una medición entre un cambio y el siguiente sobre el mismo
+    // parámetro, y **dentro de una transacción no hay dónde medir**: es una
+    // ráfaga de escrituras, y la escucha del músico ocurre entre transacciones.
+    // Acumular dejaría pasar una rampa entera sin escuchar, con la suma dentro
+    // del tope, que es exactamente lo que ADR-034 no quiere: lo que hace de la
+    // subida una rampa y no una corrida es la escucha, no el tamaño del paso.
+    //
+    // **Y los cambios intermedios SÍ suenan, que es lo que vuelve real el
+    // argumento.** La primera redacción de este comentario decía que «lo único
+    // que llega al aire es el último, así que el intermedio es una escritura
+    // que no se justifica», y una auditoría lo midió con el ejecutor real: el
+    // ejecutor escribe **todos** los cambios, en orden, con su espera entre uno
+    // y otro. Los cuatro llegaron a la consola, separados por ~101 ms. O sea
+    // que el hallazgo no era un salto de 8 dB sino **una rampa de 312 ms en la
+    // cuña de un músico sin una sola escucha en el medio** — peor, y mucho más
+    // parecido a lo que ADR-034 describe. Lo único que *queda* es el último;
+    // los otros se oyen.
+    //
+    // **Lo que esta guarda NO convierte en escucha, y hay que decirlo porque el
+    // argumento se apoya ahí.** Rechazar la ráfaga obliga a partirla en
+    // transacciones, y **hoy nada comprueba que entre transacción y transacción
+    // se haya escuchado de verdad**: `historialDeLaSesion` sólo mira que
+    // `medicionPosteriorId` no sea nulo, sin fecha, sin cruzarlo contra una
+    // `Measurement` real y sin ningún espaciado de reloj entre transacciones.
+    // Medido: anotando la medición, quince transacciones mueven **28,5 dB en 19
+    // ms**, y lo que corta no es ningún freno de INV-004 sino el techo de
+    // nominal. No está expuesto porque en producción nadie llena ese campo
+    // todavía; queda como tarea, y es la que le da sentido a ésta.
+    //
+    // **Es la misma forma que el silencio de acá arriba** —una regla sobre la
+    // COMPOSICIÓN de la transacción, que la tabla de límites no puede expresar
+    // porque mira un cambio por vez— y por eso vive al lado.
+    //
+    // **Lo que esta guarda NO cierra, con todas las letras y con los números.**
+    // Cuenta por la cadena de la ruta, igual que `acumuladoPorRuta`,
+    // `techoPorRuta` y `rutasYaTocadas`. Así que **dos claves distintas que
+    // llegan al mismo parlante se le escapan**, y hay tres casos conocidos:
+    //
+    // - **El alias con ceros**, que para el envío a monitor ya cierra la forma
+    //   canónica de `esNivelDeEnvioAMonitor` y para otras familias no. Medido:
+    //   `hw.0.gain` más sus alias `hw.00.gain`, `hw.000.gain` y `hw.0000.gain`,
+    //   3 dB cada uno, pasan en **una** transacción —12 dB con el tope en 3— y
+    //   en ráfaga llegan a **36 dB con el acumulado por sesión en 6**. Es la
+    //   ganancia del previo, o sea **el único parámetro que la aplicación mueve
+    //   hoy de punta a punta**. Lo que lo tapa no es una guarda sino un
+    //   accidente: el alias no tiene valor confirmado y el ejecutor lo rechaza
+    //   por INV-002.
+    // - **El enlace estéreo de `fmalcher`**, donde una sola llamada de «poner el
+    //   nivel del envío» escribe hasta cuatro `i.N.aux.M.value` distintos.
+    //   Anotado desde antes en `docs/referencia/trabajo-previo-de-terceros.md`.
+    // - **Familias distintas sobre el mismo parlante**: `i.3.mix` más
+    //   `i.3.eq.b1.gain` más `i.3.aux.1.value` pasan juntos, y con el envío
+    //   post-fader y post-proceso —lo que midió el ítem 95— eso son hasta 9 dB
+    //   en la cuña del músico en una transacción. **El tope es por clave y el
+    //   oído es por parlante**, y ésa es la forma general de los tres.
+    //
+    // Los tres quedan como tareas, medidos.
+    const vecesPorRuta = new Map<string, number>();
+    for (const c of cambios) vecesPorRuta.set(c.path, (vecesPorRuta.get(c.path) ?? 0) + 1);
+    for (const [ruta, veces] of vecesPorRuta) {
+      if (veces <= 1) continue;
+      rechazos.push({
+        codigo: 'RUTA_REPETIDA',
+        invariante: 'INV-004',
+        mensaje: `${ruta} aparece ${veces} veces en la misma transacción: cada una `
+          + 'cobraría el tope entero y ninguna exigiría escuchar en el medio, así que '
+          + 'el movimiento real no quedaría acotado por nada. Va de a un cambio por '
+          + 'ruta, y se vuelve a escuchar antes del siguiente',
+        path: ruta,
+      });
+    }
+
     for (const c of cambios) rechazos.push(...this.evaluarCambio(c, ctx));
 
     return rechazos.length === 0 ? { permitido: true } : { permitido: false, rechazos };
