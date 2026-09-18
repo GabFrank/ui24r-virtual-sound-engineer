@@ -236,7 +236,13 @@ export class SafetyEngine {
     //   canónica de `esNivelDeEnvioAMonitor` y para otras familias no. Medido:
     //   `hw.0.gain` más sus alias `hw.00.gain`, `hw.000.gain` y `hw.0000.gain`,
     //   3 dB cada uno, pasan en **una** transacción —12 dB con el tope en 3— y
-    //   en ráfaga llegan a **36 dB con el acumulado por sesión en 6**. Es la
+    //   en ráfaga **24 dB, no 36**: el acumulado son 6 dB por ruta y cuatro
+    //   rutas dan 24, medido --dos transacciones y la tercera cae con
+    //   `ACUMULADO_EXCEDIDO`--. El 36 corresponde a SEIS alias, y seis no
+    //   entran, porque INV-005 acota a cuatro parámetros por transacción. La
+    //   cifra estuvo acá desde el 2026-09-17b y la corrigió una auditoría de
+    //   fidelidad el 18. **Y el número honesto no es 24: el patrón del alias no
+    //   tiene cota, así que partiendo en tandas de cuatro no hay techo.** Es la
     //   ganancia del previo, o sea **el único parámetro que la aplicación mueve
     //   hoy de punta a punta**. Lo que lo tapa no es una guarda sino un
     //   accidente: el alias no tiene valor confirmado y el ejecutor lo rechaza

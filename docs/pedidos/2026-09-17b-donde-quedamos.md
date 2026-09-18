@@ -281,7 +281,11 @@ repetida, y las tres están medidas.
 - **El alias con ceros multiplica el tope sobre la ganancia del previo.** El
   estado por ruta se indexa por la cadena cruda, así que `hw.0.gain`, `hw.00.gain`
   y `hw.000.gain` son tres presupuestos distintos para la misma perilla. **Medido:
-  12 dB en una transacción con el tope en 3, y 36 dB en ráfaga con el acumulado
+  12 dB en una transacción con el tope en 3, y ~~36 dB~~ **24 dB** en ráfaga
+  --corregido el 2026-09-18 por una auditoría de fidelidad: el acumulado son 6 dB
+  por ruta y cuatro rutas dan 24; el 36 corresponde a seis alias y seis no entran
+  por INV-005. Y el número honesto es que **no hay techo**, porque el patrón del
+  alias no tiene cota-- con el acumulado
   por sesión en 6.** Para el envío a monitor esto ya lo cierra la forma canónica;
   para la ganancia no, y la ganancia es el único parámetro que la aplicación mueve
   hoy de punta a punta. **Lo que lo tapa hoy no es una guarda sino un accidente**:

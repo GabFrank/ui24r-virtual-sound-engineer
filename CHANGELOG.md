@@ -50,6 +50,39 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   y del general, la superficie del compresor y el umbral de la puerta en dB
   quedan congelados hasta después de la entrega.
 
+- **Decidido: el freno va a contar por parlante, no por perilla.** Es una
+  decisión escrita, todavía no código. El motor cuenta cuánto se movió cada
+  perilla por separado, y vos no escuchás perillas: escuchás una cuña. A la cuña
+  de un músico le llegan varias cosas —el ecualizador del canal, el envío— y hoy
+  cada una tiene su propio freno, así que **pasan juntas**.
+
+  **Medido, con el motor:** el ecualizador y el envío se mueven juntos y son
+  **6 dB de golpe en la cuña**, sin pasar ningún freno. Cuatro bandas del
+  ecualizador sobre el mismo punto son **16 dB**, con el freno por banda en 4. Y
+  la ganancia de entrada tiene un problema aparte: la misma perilla escrita de
+  cuatro maneras distintas son **cuatro presupuestos** — **12 dB con el freno en
+  3** de una sola vez, y en tandas **no hay techo**, porque las maneras de
+  escribirla son infinitas.
+
+  Esto había aparecido cuatro veces en revisiones distintas. **Es uno solo.**
+  Elegiste la opción completa —que todo lo que llega a la misma cuña comparta un
+  solo presupuesto— y que si dos de esas cosas se mueven en la misma tanda, la
+  tanda se rechace: adentro de una tanda no hay dónde escuchar, y si se mueven
+  dos juntas no sabés cuál fue.
+
+  **Y elegiste algo que te ahorra el soundcheck.** Cuatro bandas del ecualizador
+  no son cuatro caminos a la cuña: una en 100 Hz y otra en 5 kHz son partes
+  distintas del sonido. Sólo chocan si **pisan la misma zona**. Así seguís
+  ecualizando un canal de una sola vez, como hacés hoy, en vez de cuatro veces
+  con diez segundos de espera entre cada una.
+
+  **Dos cosas que hay que decir, porque una revisión las corrigió.** La primera:
+  se había escrito que el fader del canal también llega a la cuña, y **en tu
+  consola no**: los 240 envíos están puestos antes del fader. Por eso son 6 dB y
+  no 9. La segunda: se había escrito que tu consola no tiene nada enlazado en
+  estéreo, y **tiene dos pares** — las entradas de línea y el reproductor. O sea
+  que el enlace no es un riesgo a futuro: está activo ahora.
+
 ### Corregido
 
 - **«Ya escuché» era una palabra, no una comprobación: la cuña se podía subir
