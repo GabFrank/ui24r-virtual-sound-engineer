@@ -44,6 +44,12 @@ sale un `mtx`, que es una medición con audio y no una lectura del volcado.
 
 ## 2. El «veintitrés» de ADR-035 subcuenta igual que el 240 que se corrigió
 
+> **CERRADO el 2026-09-18**, y al cerrarlo apareció algo peor que el número:
+> aislar el bus de análisis **pierde la exención de sistema entera**. Ver el
+> final de este punto. El número quedó corregido en ADR-035 choque 2, en el
+> docblock de `maximoDeParametros` y en la fila de INV-004 de
+> `safety-invariants.md`.
+
 **MEDIDO.** El choque 2 de ADR-035 dice que seleccionar el bus de análisis
 escribe «**veintitrés** envíos al mismo destino» y que hay que dejarlo exento.
 
@@ -53,8 +59,39 @@ retornos), o sea **31 otros**, más **17** caminos `.mtx.`.
 
 El veintitrés cuenta sólo los canales de entrada: **es el mismo error que
 `9d1063f` vino a corregir, dejado en pie tres secciones más abajo del mismo
-archivo**. La exención hay que escribirla sobre el número real, o la transacción
-de sistema sigue chocando.
+archivo**.
+
+**Y no era información nueva.** El anexo A-06 de la auditoría técnica ya decía,
+en su línea de impacto, «los sends de FX/player/line también alimentan el AUX».
+El 23 se propagó desde ahí hasta el ADR y hasta el docblock de
+`maximoDeParametros` **sin la salvedad que venía al lado**.
+
+### Lo que apareció al corregirlo, y es una decisión pendiente
+
+**MEDIDO llamando a las funciones del motor**, con el bus de análisis en 2:
+
+| Ruta | Clase |
+|---|---|
+| `i.3.aux.2.value` | `ANALYSIS_BUS_SEND` |
+| `l.0.aux.2.value` | `LINE_INPUT` |
+| `p.0.aux.2.value` | `PLAYER_SEND` |
+| `f.0.aux.2.value` | `FX` |
+
+`PARAMETROS_DE_OPERACION_DE_SISTEMA.ANALYSIS_BUS_SELECT` admite **una sola
+clase**, `ANALYSIS_BUS_SEND`, y `correspondeExencionDeSistema` exige que
+**todas** las clases de la transacción estén permitidas. Resultado medido: con
+las clases de los 24 canales devuelve `true`; agregándole una de línea, una del
+reproductor y una de efectos, **`false`**.
+
+**O sea que la transacción que hace lo correcto —callar los 31— pierde la
+exención y vuelve a caer bajo el límite de cuatro de INV-005, que la rechaza
+entera.** La que pasa es la que calla sólo 23 y deja ocho fuentes sonando en el
+bus de medición, que es justo lo que el anexo A-06 advertía.
+
+**Hoy no muerde**, porque ningún camino de la aplicación propone todavía estos
+cambios. **Qué clases debe admitir `ANALYSIS_BUS_SELECT` es decisión del
+usuario**, no de oficio: ensancha la superficie escribible hacia el reproductor,
+las entradas de línea y los retornos.
 
 ## 3. El general tiene el ecualizador y el compresor enlazados
 

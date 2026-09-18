@@ -256,10 +256,26 @@ export function correspondeExencionDeSistema(
  * Cuántos parámetros admite una transacción.
  *
  * Las de sistema están exentas del límite de cuatro (INV-005): seleccionar un
- * canal en el bus de análisis exige poner a menos infinito los otros veintitrés
- * envíos, y con el límite de ASSISTED esa operación se rechazaría entera. La
- * exención estaba enunciada en la invariante y **no se podía ni expresar**,
- * porque el máximo se resolvía solo por nivel de autonomía.
+ * canal en el bus de análisis exige poner a menos infinito los otros envíos, y
+ * con el límite de ASSISTED esa operación se rechazaría entera. La exención
+ * estaba enunciada en la invariante y **no se podía ni expresar**, porque el
+ * máximo se resolvía solo por nivel de autonomía.
+ *
+ * **Esta línea decía «los otros veintitrés» y subcontaba.** A un bus auxiliar le
+ * entran 32 envíos `.aux.` --24 canales, 2 de línea, 2 del reproductor, 4 de
+ * retornos--, así que son **31**. El anexo A-06 de la auditoría técnica ya lo
+ * decía --«los sends de FX/player/line también alimentan el AUX»-- y el 23 se
+ * propagó igual. Corregido el 2026-09-18.
+ *
+ * **Y la exención no alcanza para los ocho que faltan.**
+ * `PARAMETROS_DE_OPERACION_DE_SISTEMA.ANALYSIS_BUS_SELECT` sólo admite
+ * `ANALYSIS_BUS_SEND`, y `clasificarRuta` devuelve esa clase **sólo** para
+ * `i.N.aux.<bus>.value`; los otros ocho dan `LINE_INPUT`, `PLAYER_SEND` y `FX`.
+ * Como `correspondeExencionDeSistema` exige que **todas** las clases estén
+ * permitidas, la transacción que calla los 31 pierde la exención entera y la
+ * rechaza INV-005. Hoy no muerde porque nadie propone todavía estos cambios;
+ * qué clases debe admitir la operación es **decisión del usuario**, porque
+ * ensancha la superficie escribible. Queda anotado en ADR-035, choque 2.
  */
 export function maximoDeParametros(
   nivel: AutonomyLevel,

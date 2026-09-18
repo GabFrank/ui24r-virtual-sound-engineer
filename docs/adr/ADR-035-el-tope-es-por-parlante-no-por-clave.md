@@ -222,10 +222,36 @@ Los encontró la auditoría de fidelidad del 2026-09-18, y ninguno estaba dicho.
    permitir mover varias cosas juntas. La decisión 3 salva el caso del
    ecualizador, pero cualquier otro grupo al mismo destino sigue chocando.
 2. **Con las transacciones de sistema.** Seleccionar un canal en el bus de
-   análisis pone a menos infinito **los otros veintitrés envíos al mismo bus**:
-   veintitrés caminos al mismo destino en una transacción. **Tiene que quedar
-   exenta**, como ya lo está del límite de parámetros —`correspondeExencionDeSistema`
-   es el sitio—, y eso hay que escribirlo, no suponerlo.
+   análisis pone a menos infinito los otros envíos al mismo bus: muchos caminos
+   al mismo destino en una transacción. **Tiene que quedar exenta**, como ya lo
+   está del límite de parámetros —`correspondeExencionDeSistema` es el sitio—, y
+   eso hay que escribirlo, no suponerlo.
+
+   **Este punto decía «veintitrés» y subcontaba igual que el 240 que este mismo
+   ADR corrigió tres secciones más arriba.** A un bus auxiliar le entran **32**
+   envíos `.aux.` —24 canales, 2 de línea, 2 del reproductor, 4 de retornos de
+   efecto—, así que elegir uno deja **31** a callar, no 23. El veintitrés contaba
+   sólo los canales. **Y no era información nueva:** el anexo A-06 de la
+   auditoría técnica ya decía «los sends de FX/player/line también alimentan el
+   AUX», y el número se propagó sin esa salvedad hasta acá y hasta el docblock de
+   `maximoDeParametros`.
+
+   **Y al remedirlo apareció algo peor que el número, que es una decisión
+   pendiente y no una errata.** La exención se concede por clase de parámetro, y
+   `ANALYSIS_BUS_SELECT` sólo admite `ANALYSIS_BUS_SEND`. Pero `clasificarRuta`
+   devuelve `ANALYSIS_BUS_SEND` **únicamente** para `i.N.aux.<bus>.value`: los
+   ocho envíos restantes dan `LINE_INPUT`, `PLAYER_SEND` y `FX`. Como
+   `correspondeExencionDeSistema` exige que **todas** las clases estén
+   permitidas, la transacción que hace lo correcto —callar los 31— **pierde la
+   exención entera** y vuelve a caer bajo el límite de cuatro de INV-005, o sea
+   que se rechaza. Medido llamando a las dos funciones: con las clases de los 24
+   canales devuelve `true`; agregándole una de línea, una del reproductor y una
+   de efectos, `false`.
+
+   Los 17 caminos `.mtx.` hacia el mismo número de destino quedan **fuera de esta
+   cuenta a propósito**: clasifican como `MATRIX_SEND` y **no está medido** que
+   lleguen al mismo parlante. Ver
+   [los hallazgos del censo](../backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md).
 3. **Con [ADR-031](ADR-031-la-mezcla-de-conjunto-entra.md).** Equilibrar faders de
    varios canales es, por definición, varios caminos al mismo destino si el
    destino incluye el general. Depende enteramente de la granularidad de arriba.
