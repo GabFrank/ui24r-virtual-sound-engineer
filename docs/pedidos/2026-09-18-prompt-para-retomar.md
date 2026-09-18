@@ -49,10 +49,14 @@ DETALLES PRÁCTICOS DE ESTA MÁQUINA:
   estado entero; sale con código 28 y hay que tolerarlo. Ese volcado NO se
   commitea: trae los valores enteros y el identificador de la unidad, y el
   repositorio es público.
-- LEÉ EL VOLCADO ENTERO, NO SU PRINCIPIO. El 2026-09-18 se afirmó dos veces algo
-  falso sobre mi consola por mirar las primeras líneas y generalizar. Es la misma
+- LEÉ EL VOLCADO ENTERO, NO SU PRINCIPIO. El 2026-09-18 se afirmó TRES veces algo
+  falso o corto sobre mi consola por mirar una parte del volcado y generalizar:
+  que las 38 claves de enlace estaban en "nada", que los envíos antes del fader
+  eran 240, y que el supresor estaba encendido en un solo sitio. Es la misma
   forma de error que el repositorio corrige con los proyectos ajenos, cometida
-  sobre el propio aparato, y las dos veces la afirmación cómoda era la falsa.
+  sobre el propio aparato, y las tres veces la afirmación cómoda era la falsa.
+  Las dos últimas se encontraron RELEYENDO el cierre del mismo día, o sea que el
+  documento que te avisa de este error lo tenía dentro.
 - NO tengo acceso físico a la MacBook: entro por SSH y AnyDesk (ID 287825547).
   Vos podés medir igual porque corrés dentro de ella, en iTerm, que es el que
   tiene permiso de micrófono. Lo que NO se puede hasta que vuelva: mover cables
@@ -61,14 +65,22 @@ DETALLES PRÁCTICOS DE ESTA MÁQUINA:
 - Si el grabador no arranca la captura, NO asumas que es el permiso: leé
   docs/backlog/hallazgo-el-audio-de-la-mac-se-traba-y-parece-un-permiso.md. Se
   cura con sudo killall coreaudiod, que lo corro yo por SSH.
-- Antes de meter tonos sostenidos, mirá m.afs.enabled — está en 1. Y nunca borres
-  los snapshots guardados: es la única prohibición absoluta.
+- Antes de meter tonos sostenidos, mirá el supresor de las CUATRO instancias
+  encendidas y no sólo la de la mezcla: el global, m.afs.enabled, y los
+  auxiliares 1 y 2, que son las cuñas. Y nunca borres los snapshots guardados:
+  es la única prohibición absoluta.
 
-DOS COSAS DE MI CONSOLA QUE SE DESCUBRIERON EL 2026-09-18 Y CAMBIAN SUPUESTOS:
+TRES COSAS DE MI CONSOLA QUE SE DESCUBRIERON EL 2026-09-18 Y CAMBIAN SUPUESTOS:
 - Tengo DOS PARES ESTÉREO ACTIVOS ahora mismo: las entradas de línea y el
   reproductor. De las 38 claves de enlace, 34 están en "nada" y cuatro no.
-- EL FADER DEL CANAL NO LLEGA A LAS CUÑAS: los 240 envíos a auxiliar están
-  puestos ANTES del fader. Lo que sí llega es el ecualizador.
+- EL FADER DEL CANAL NO LLEGA A LAS CUÑAS: los 320 envíos a auxiliar están
+  puestos ANTES del fader. Lo que sí llega es el ecualizador. Son 320 y no 240:
+  los 240 son los de los canales de entrada, y faltaban los de las entradas de
+  línea, el reproductor y los retornos de efecto, que son justo los dos pares
+  estéreo del punto de arriba.
+- EL SUPRESOR DE ACOPLE ESTÁ ENCENDIDO EN LAS CUÑAS 1 Y 2, no sólo en la mezcla
+  principal. Sin ningún filtro plantado hoy, pero con los doce huecos armados.
+  Son las dos cuñas sobre las que trabaja la pieza que sigue.
 
 DÓNDE ESTAMOS:
 Pieza 1 de la hoja de ruta, la pantalla de monitor. La decisión está escrita

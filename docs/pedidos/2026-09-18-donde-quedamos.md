@@ -17,24 +17,38 @@ comparados línea por línea:
 |---|---|
 | Claves del volcado | **6665 al abrir y 6665 al cerrar** |
 | Diferencias | **cero**, clave por clave |
-| Filtros plantados en el supresor | **0** |
-| Supresor | **encendido** (`m.afs.enabled = 1`) |
+| Filtros plantados en el supresor | **0**, en los 132 huecos de las doce instancias |
+| Supresor | **encendido en cuatro sitios**: el global, la mezcla principal y **los auxiliares 1 y 2** (`afs.enabled`, `m.afs.enabled`, `a.0.afs.enabled`, `a.1.afs.enabled`). Los otros ocho auxiliares, apagados |
 | Escrituras a la consola en toda la sesión | **ninguna**: sólo se le pidió el estado, tres veces |
 | Procesos sueltos | ninguno |
 
 **El banco sigue como el 2026-09-16.** Esta sesión no midió nada con audio.
 
-### Dos cosas del aparato que esta sesión descubrió y conviene tener presentes
+### Tres cosas del aparato que este día descubrió y conviene tener presentes
 
-Las dos salieron de leer el volcado entero en vez de su principio, y las dos
-corrigen afirmaciones que se habían escrito el mismo día.
+Las tres salieron de leer el volcado entero en vez de su principio, y las tres
+corrigen afirmaciones que se habían escrito el mismo día. **La tercera, y el
+recuento de la segunda, salieron de releer este documento al final del día**, o
+sea que las dos primeras versiones de esta misma sección tenían el defecto que
+la sección denuncia.
 
 - **Hay dos pares estéreo activos ahora mismo.** De las 38 claves `stereoIndex`,
   **34 valen −1 y cuatro no**: `l.0 = 0`, `l.1 = 1`, `p.0 = 0`, `p.1 = 1` — las
   entradas de línea y el reproductor. El enlace estéreo no es un riesgo a futuro.
-- **El fader del canal no llega a las cuñas.** Los **240** envíos a auxiliar
+- **El fader del canal no llega a las cuñas.** Los **320** envíos a auxiliar
   tienen `post = 0` —antes del fader— y `postproc = 1`. Para esa combinación, la
   tabla del ítem 95 dice que el ecualizador mueve el auxiliar y el fader no.
+  **Esta línea decía 240 y se quedaba corta, corregido el 2026-09-18 al releer el
+  volcado:** 240 son los de los canales de entrada, y faltaban 20 de las entradas
+  de línea, 20 del reproductor y 40 de los retornos de efecto. Los dos primeros
+  grupos son justo los cuatro `stereoIndex` activos del punto de arriba, así que
+  los dos hallazgos del día se tocaban y se escribieron como si no.
+- **El supresor de acople está encendido en las cuñas 1 y 2, no sólo en la
+  mezcla.** Los dos tienen seis filtros fijos y doce huecos armados, con
+  sensibilidad 0,5 y 0,75, y **ningún filtro plantado hoy**. Que `a.N.afs.*`
+  existe ya estaba medido acá desde el ítem 94 —las mediciones eligen un auxiliar
+  con el supresor apagado—; lo que faltaba decir es **cuáles están encendidos en
+  este aparato**, y son las dos cuñas sobre las que trabaja la pieza que sigue.
 
 ## Lo que se hizo: dos tareas, dos commits empujados
 
@@ -114,10 +128,12 @@ entradas bien formadas** en vez de con entradas rotas.
 La regla que deja: **mutar prueba que los tests cazan lo que hay; sólo atacar
 prueba que lo que hay alcanza.**
 
-Y la otra, que se repitió dos veces en el día sobre el propio aparato: **leer el
-principio de un volcado y generalizar al resto es la misma forma de error que el
-repositorio corrige con los proyectos ajenos.** Las dos veces la afirmación
-cómoda era la falsa.
+Y la otra, que se repitió **tres** veces en el día sobre el propio aparato:
+**leer una parte de un volcado y generalizar al resto es la misma forma de error
+que el repositorio corrige con los proyectos ajenos.** Las tres veces la
+afirmación cómoda era la falsa. Y las dos últimas aparecieron **releyendo este
+mismo documento al final del día**: la sección que avisa del error lo tenía
+dentro, contado dos veces.
 
 ## Lo que queda abierto
 
@@ -180,7 +196,9 @@ El prompt para pegar después de un `/clear` está en
   [el hallazgo](../backlog/hallazgo-el-audio-de-la-mac-se-traba-y-parece-un-permiso.md).
 - **El usuario opera la MacBook a distancia**, por SSH y AnyDesk. No se puede mover
   ningún cable del banco ni tocar la perilla de la Scarlett hasta que vuelva.
-- **Antes de meter tonos sostenidos, mirar `m.afs.enabled`**, que hoy está en 1.
+- **Antes de meter tonos sostenidos, mirar el supresor de las cuatro instancias
+  encendidas, no sólo `m.afs.enabled`.** Hoy están en 1 el global, la mezcla y
+  **los auxiliares 1 y 2**, que son las cuñas.
 - **Nunca borrar los snapshots guardados.** Es la única prohibición absoluta.
 - **Cómo el usuario pide que se trabaje**: preguntas siempre interactivas,
   explicaciones en lenguaje de producto, trabajo previo buscado y dicho

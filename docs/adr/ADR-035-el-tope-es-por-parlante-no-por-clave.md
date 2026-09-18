@@ -99,8 +99,14 @@ juntas**: verificado con el motor, `PERMITIDO`, 3 + 4 + 2 = 9 dB, que son
 exactamente sus tres `porTransaccion`.
 
 **Pero en esta consola, hoy, el fader no llega a la cuña.** Medido en el volcado:
-los **240** envíos a auxiliar tienen `post = 0` —antes del fader— y
-`postproc = 1`. Para esa combinación la tabla del ítem 95 dice que el ecualizador
+los **320** envíos a auxiliar tienen `post = 0` —antes del fader— y
+`postproc = 1`. **Una primera redacción contó 240 y se quedó corta**: ésos son
+los de los canales de entrada, los que ADR-028 abrió. Los otros **80** son las
+entradas de línea (20), el reproductor (20) y los retornos de efecto (40), y
+están igual. Dejaba afuera justo los del reproductor, que INV-010 **sí** autoriza
+a escribir hacia −∞, y las entradas de línea, que son dos de los cuatro
+`stereoIndex` activos del §2 de este mismo ADR. Para esa combinación la tabla del
+ítem 95 dice que el ecualizador
 mueve el auxiliar (+24 dB de recorrido) y **el fader no lo mueve**. Así que el
 movimiento real en la cuña es **6 dB** —ecualizador más envío—, no 9.
 
