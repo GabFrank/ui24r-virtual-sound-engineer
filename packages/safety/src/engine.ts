@@ -4,7 +4,7 @@ import {
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
-import { verificarAtadura } from './magnitud-atada.ts';
+import { verificarAtadura, verificarAtaduraDelOrigen } from './magnitud-atada.ts';
 import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
@@ -256,6 +256,64 @@ export class SafetyEngine {
           path: c.path,
         });
         return salida; // Sin sentido juzgar topes sobre un número que no es el que se escribe.
+      }
+    }
+
+    // **Y de dónde venía, que es la otra mitad y faltaba.**
+    //
+    // Los topes de INV-004 no acotan el destino: acotan el **movimiento**, que
+    // es `magnitudPropuesta - magnitudEsperada`. Atar sólo el destino deja esa
+    // resta apoyada en un número que nadie comprueba, y la auditoría del
+    // 2026-09-17 lo midió: **un salto de 31 dB en la cuña de un músico pasa el
+    // tope de 2 dB por paso declarando que venía de un decibel más abajo.**
+    //
+    // **Lo que esto ata es el puente, y hay que decir dónde cierra la cadena,
+    // porque no es acá.** Los dos números que se comparan --`valorEsperado` y
+    // `magnitudEsperada`-- **los declara el mismo llamador**: el motor no lee la
+    // consola en ningún punto de `evaluar`. Así que un llamador que mienta los
+    // dos de forma coherente sigue sacando `permitido: true`, medido.
+    //
+    // Quien ata el crudo a la realidad es el **adaptador, y después**: compara
+    // `valorEsperado` contra el estado confirmado justo antes de enviar y
+    // devuelve `CONFLICT` sin escribir (INV-011, `coincideConEsperado`). De ahí
+    // sale la garantía que sí se sostiene, y conviene enunciarla sobre el cable
+    // y no sobre el veredicto: **ninguna escritura sale de acá con el movimiento
+    // mal medido.** O el origen declarado es el de verdad --y entonces esta
+    // guarda comprueba sus decibeles-- o no lo es, y la escritura no sale.
+    //
+    // **Lo que cerró este paso, entonces, es el hueco entre las dos:** declarar
+    // el crudo de partida verdadero, para que el adaptador lo acepte, y los
+    // decibeles de partida falsos, para que el motor mida mal. Eso pasaba
+    // entero, con la escritura saliendo al cable.
+    //
+    // Una auditoría de fidelidad corrigió esta frase el mismo día que se
+    // escribió: decía «la cadena queda entera» y presentaba como propiedad del
+    // motor algo que es del adaptador, dos pasos más abajo. Es la forma de error
+    // que este proyecto repite --escribir la garantía antes de que exista-- y
+    // acá lo que faltaba no era la garantía sino la precisión sobre quién la da.
+    //
+    // **Y hoy es más urgente que cuando se encontró.** ADR-034 suspende el
+    // presupuesto acumulado mientras la cuña no tiene nivel establecido, así
+    // que durante toda la subida el tope por paso es el **único** freno sobre
+    // la brusquedad. Es además lo que el `CHANGELOG` le promete al usuario.
+    //
+    // **Va con código propio y no con `MAGNITUD_NO_ATADA`.** Son dos defectos
+    // distintos —uno escribe un número que el motor no juzgó, el otro juzga un
+    // movimiento que no es el que ocurre— y con el mismo código un test del
+    // origen pasaría por lo que frenó el destino. Es la misma razón por la que
+    // `TECHO_ABSOLUTO` no es `DELTA_EXCEDIDO`.
+    {
+      const origen = verificarAtaduraDelOrigen(
+        c.path, c.valorEsperado, c.magnitudEsperada, c.unidad,
+      );
+      if (!origen.atada && origen.codigo !== 'SIN_LEY_VERIFICADA') {
+        salida.push({
+          codigo: 'ORIGEN_NO_ATADO',
+          invariante: 'INV-004',
+          mensaje: origen.motivo,
+          path: c.path,
+        });
+        return salida; // Sin sentido juzgar topes sobre un movimiento que no es el real.
       }
     }
 

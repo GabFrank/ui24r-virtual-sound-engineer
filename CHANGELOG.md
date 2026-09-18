@@ -52,6 +52,52 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **El freno de «no más de 2 dB por vez» se podía correr diciéndole al motor que
+  la cuña venía de más arriba de donde venía.** El motor no mira a qué nivel
+  queda un parámetro: mira **cuánto se movió**, o sea a dónde va menos de dónde
+  venía. Lo primero estaba comprobado desde hace días; lo segundo no lo
+  comprobaba nadie. Así que un salto de treinta y pico de decibeles en la cuña
+  de un músico pasaba el freno de 2 dB con sólo declarar que arrancaba un
+  decibel más abajo, **y la escritura salía al cable**. Ahora el punto de
+  partida tiene que ser coherente con el valor de partida, y si no lo es el
+  cambio se rechaza.
+
+  **Por qué importa justo ahora y no era urgente antes.** Desde el cambio de
+  arriba, mientras una cuña todavía no tiene su nivel marcado el presupuesto de
+  la sesión queda suspendido —si no, no se puede levantar un retorno desde el
+  silencio—. Con el presupuesto suspendido, **el freno por paso es el único que
+  queda** sobre lo brusco que puede ser un movimiento. Un freno que se corre
+  declarando de dónde venía no es un freno.
+
+  **Y ese freno no es de 2 dB exactos, sino de 2,84.** Comparar niveles con la
+  conversión medida tiene una tolerancia, y acá son 0,42 dB en cada extremo del
+  movimiento: los dos suman. Un paso de 2,84 dB puede pasar por uno de 2; uno de
+  2,85 ya no. Está medido. Es inaudible como salto suelto y vale decirlo igual,
+  porque el freno se presenta como exacto y no lo es — y conviene la comparación
+  honesta: **antes de este arreglo ese margen no era de 0,84 dB, era ilimitado**,
+  porque el punto de partida no se comparaba contra nada. Esto no deja el freno
+  exacto; lo deja acotado.
+
+  **No te afectó**, y conviene decir por qué exactamente: la única pantalla que
+  escribe hoy es la de ganancia, y saca el punto de partida del valor que la
+  consola informa, así que nunca mintió. El ajuste de monitores todavía no
+  tiene pantalla que lo llame. Se tapó igual, porque el motor es la pieza que no
+  puede depender de que quien lo llama haga las cosas bien.
+
+  **Y lo que sigue sin cubrir, dicho con todas las letras**: esto sólo se puede
+  comprobar en los parámetros cuya conversión está medida contra tu consola. La
+  **ganancia de entrada no lo está**, y es justamente el único que la aplicación
+  mueve hoy de punta a punta: ahí el motor sigue creyéndole a lo que le
+  declaran. Se arregla midiendo esa conversión, no escribiendo más código.
+
+  **Un efecto de borde que conviene que sepas**: una cuña en silencio absoluto
+  ya no admite ningún movimiento, ni chico. El silencio no es un nivel del que
+  se pueda medir una distancia, así que no hay desde dónde contar el paso. Antes
+  un pasito declarado desde el silencio pasaba, y lo que se escribía de verdad
+  era un salto desde el silencio disfrazado de pasito. Arrancar una cuña desde
+  cero sigue siendo lo que falta construir, y ahora el freno lo dice con todas
+  las letras en vez de dejarlo pasar disfrazado.
+
 - **Un número que no era un número pasaba todos los controles del motor de
   seguridad.** Si algo le hubiera entregado al motor un nivel que no es un
   número —una lectura que falló, un valor que nunca llegó de la consola— pasaban

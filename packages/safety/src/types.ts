@@ -181,6 +181,29 @@ export type CodigoRechazo =
    * ninguna, y por eso este código no podía existir.
    */
   | 'MAGNITUD_NO_ATADA'
+  /**
+   * Los decibeles de partida declarados no son los que produce el crudo de partida.
+   *
+   * **Dice eso y no «no es donde la consola tiene el parámetro»**, que es lo que
+   * decía la primera versión de este comentario y una auditoría de fidelidad
+   * corrigió el mismo día. El motor no lee la consola: compara dos números que
+   * declara el mismo llamador. Quien compara contra la consola es el adaptador,
+   * después, y devuelve `CONFLICT`. Entre las dos guardas **ninguna escritura
+   * sale con el movimiento mal medido**, que es la garantía que se sostiene.
+   *
+   * **No es `MAGNITUD_NO_ATADA` y tiene código propio a propósito**, por la
+   * misma razón que `TECHO_ABSOLUTO` no es `DELTA_EXCEDIDO`: son dos defectos
+   * distintos y con un solo código un test de uno pasaría por el otro. El
+   * destino mal declarado escribe en el cable un número que el motor no juzgó;
+   * el origen mal declarado escribe el número correcto, y hace que el motor
+   * mida el salto desde un punto donde el parámetro no está.
+   *
+   * Lo encontró una auditoría el 2026-09-17: **31 dB en la cuña de un músico
+   * pasando el tope de 2 dB por paso con sólo declarar que venía de un decibel
+   * más abajo.** Ver `verificarAtaduraDelOrigen` en `magnitud-atada.ts`, que
+   * explica por qué el crudo de partida sí estaba atado y los decibeles no.
+   */
+  | 'ORIGEN_NO_ATADO'
   | 'RUTA_DESCONOCIDA'
   | 'Q_DEMASIADO_ESTRECHO'
   | 'REALCE_EXCESIVO'

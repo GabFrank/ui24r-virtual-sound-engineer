@@ -64,10 +64,12 @@ Faltan dos cosas, en este orden:
 2. La pantalla por músico, que es además la que marca "así está bien" y cierra el
    hueco de que hoy ninguna cuña llega a tener nivel establecido.
 
-Y hay tres tareas que dejaron las auditorías, en "Tres cosas que las auditorías
-encontraron y NO se arreglaron". La primera —que el tope de 2 dB por paso es
-evadible mintiendo de dónde venía— toca al asistente que sigue, así que decime si
-conviene hacerla antes.
+De las tareas que dejaron las auditorías quedan DOS abiertas, en "Tres cosas que
+las auditorías encontraron: una arreglada, dos abiertas", más una nueva: medir la
+ley de la ganancia del previo contra el aparato. La primera de las tres —que el
+tope de 2 dB por paso era evadible mintiendo de dónde venía— YA SE ARREGLÓ, y su
+arreglo le cambió el trabajo al asistente que sigue: leé el punto 1 de "Lo que
+falta de la pieza 1" antes de empezarlo.
 
 Preguntame por dónde arrancar antes de empezar, y si al leer encontrás que algo de
 lo que dice la documentación ya no es cierto, decímelo primero.

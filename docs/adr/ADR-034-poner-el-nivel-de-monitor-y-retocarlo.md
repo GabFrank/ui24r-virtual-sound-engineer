@@ -117,11 +117,22 @@ Ese primer movimiento es un caso aparte y hay que tratarlo como tal en el códig
 no es una rampa de 2 dB, es **salir del silencio**. Lo que lo acota no es el
 delta sino el destino, que es el mínimo escribible.
 
-> **Y esto es lo único de esta ADR que el motor todavía NO hace.** Un salto desde
-> −∞ tiene delta infinito, así que el tope de 2 dB por transacción lo rechaza, que
-> es lo correcto mientras nada sepa proponerlo: falla cerrado. Se construye junto
-> con el asistente que sabe subir —la pieza siguiente—, porque es ahí donde nace
-> quien lo propone. `historialDeLaSesion` ya lo contempla por el otro lado: un
+> **Y esto es lo único de esta ADR que el motor todavía NO hace.** Falla cerrado,
+> que es lo correcto mientras nada sepa proponerlo. Se construye junto con el
+> asistente que sabe subir —la pieza siguiente—, porque es ahí donde nace quien lo
+> propone.
+>
+> **Desde el 2026-09-17b hay DOS guardas en el camino y no una, y la segunda no se
+> puede satisfacer.** Esta ADR decía que lo rechazaba el tope de 2 dB por
+> transacción, por el delta infinito. Sigue siendo cierto que ese tope lo
+> rechazaría, pero ya no llega: `verificarAtaduraDelOrigen` —la guarda que ata el
+> punto de partida al crudo de partida, agregada al cerrar el agujero del tope
+> evadible— rechaza primero, y **desde el crudo 0 no hay ningún valor declarado
+> que acepte**: un número finito no coincide con −∞ y −∞ no es un número. Así que
+> el destino que esta ADR eligió —arrancar en −32,14 dB, el mínimo escribible— ya
+> no se puede ni expresar con la forma actual de `CambioPropuesto`. Construir esta
+> pieza es ahora **abrir un caso con nombre propio dentro de la atadura**, no sólo
+> hacerle una excepción al delta. `historialDeLaSesion` ya lo contempla por el otro lado: un
 > delta infinito no entra al acumulado, porque envenenaría la cuenta de esa ruta
 > para toda la sesión.
 

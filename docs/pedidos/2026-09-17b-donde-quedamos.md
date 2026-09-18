@@ -144,17 +144,34 @@ una, y **las nueve quedaron cazadas**. No hay ninguna prueba que pasaría igual 
 su corrección. Lo único que encontró fue un hueco de cobertura —ningún test le
 proponía al motor una magnitud no numérica— y se cerró.
 
-## Tres cosas que las auditorías encontraron y NO se arreglaron
+## Tres cosas que las auditorías encontraron: una arreglada, dos abiertas
 
-Están acá porque son reales, medidas, y quedan como tareas:
+Están acá porque son reales, medidas, y quedan como tareas.
 
-1. **El tope de 2 dB por paso es evadible mintiendo de dónde venía.** El motor
-   calcula el movimiento como «a dónde va menos de dónde venía», y **de dónde
-   venía no está atado a nada**: ni al crudo, ni a lo que la consola tiene. Un
-   salto de 31 dB en la cuña de un músico, declarando que venía de un decibel más
-   abajo, pasa. **Es anterior a esta sesión** y hoy importa más, porque con el
-   presupuesto suspendido durante la rampa **los 2 dB por paso son el único freno
-   sobre la brusquedad**, y es lo que el `CHANGELOG` le promete al usuario.
+1. ~~**El tope de 2 dB por paso es evadible mintiendo de dónde venía.**~~
+   **Arreglado el 2026-09-17**, y fue lo primero de la sesión siguiente porque
+   toca al asistente que sigue. El motor calcula el movimiento como «a dónde va
+   menos de dónde venía», y **de dónde venía no estaba atado a nada**: un salto
+   de 31 dB en la cuña de un músico, declarando que venía de un decibel más
+   abajo, pasaba. Ahora el punto de partida se ata al crudo por la ley medida,
+   igual que el destino, y rechaza con código propio. **La cadena queda entera**
+   porque el crudo de partida ya estaba atado: el adaptador lo compara contra el
+   estado confirmado antes de escribir y devuelve conflicto si no coincide, así
+   que lo suelto era sólo el puente entre ese crudo y los decibeles.
+
+   **Lo que este arreglo NO cubre, y es lo que hay que tener presente:** sólo
+   ata las rutas con la ley medida contra el aparato. **La ganancia del previo no
+   la tiene** —no figura en `rutasProbadas()`—, así que para el único parámetro
+   que la aplicación mueve hoy de punta a punta el motor sigue juzgando los dos
+   extremos que el llamador declara. Se cierra midiendo esa ley, no escribiendo
+   más código, y **queda como tarea nueva**, abajo.
+
+   **Y dejó un efecto secundario que quedó como tarea y no como arreglo:** el
+   silencio de una cuña es el crudo 0, y por la ley medida son −∞ dB. Una cuña en
+   el piso **no tiene punto de partida en decibeles que se pueda declarar**, así
+   que el cambio se rechaza. Es el mismo veredicto que ya daba el tope por paso
+   ante un movimiento infinito —dicho ahora donde se entiende— y es exactamente
+   el borde que le toca resolver a la pieza que sigue de ADR-034.
 2. **El techo de nominal es, en el cable, 0,42 dB.** La holgura con que se ata la
    magnitud al crudo es el 1 % del recorrido —42,14 dB—, así que un crudo que vale
    0,41 dB declarado como 0,0 pasa. Es más que el escalón del medidor. Inaudible,
@@ -171,10 +188,19 @@ Están acá porque son reales, medidas, y quedan como tareas:
 1. **El asistente que sepa subir.** Hoy `puedeBajarEnvioAMonitor` rechaza de plano
    cualquier pedido de subir, y el nombre lo dice. Hay que decidir si se extiende o
    si convive con uno nuevo. **Incluye el primer paso desde el silencio**, que es
-   el único pedazo de ADR-034 que el motor todavía no hace: un salto desde −∞ tiene
-   delta infinito y el tope de 2 dB lo rechaza, que es lo correcto mientras nadie
-   sepa proponerlo. El destino tiene que ser el mínimo escribible de la ley medida,
-   leído de la ley y **no escrito a mano**.
+   el único pedazo de ADR-034 que el motor todavía no hace. El destino tiene que
+   ser el mínimo escribible de la ley medida, leído de la ley y **no escrito a
+   mano**.
+
+   **Y desde el arreglo del origen, ese pedazo cuesta más que antes, así que hay
+   que saberlo al empezar.** Antes lo frenaba el tope de 2 dB, porque un salto
+   desde −∞ tiene delta infinito, y alcanzaba con hacerle una excepción a ese
+   tope. Ahora lo frena **antes** la guarda del origen, y de una forma que no se
+   puede satisfacer: desde el crudo 0 no hay ningún punto de partida en decibeles
+   que la guarda acepte, ni un número finito ni −∞. O sea que salir del silencio
+   necesita **un caso con nombre propio dentro de la atadura**, no sólo una
+   excepción al delta. Falla cerrado, que es lo correcto mientras nadie sepa
+   proponerlo, pero es un borde que hay que abrir a propósito.
 2. **La pantalla, por músico** —decisión del usuario—: se elige a alguien y se ve
    su cuña con todo lo que le llega, su propio instrumento primero. **Y es la que
    trae el acto de marcar «así está bien»**, que es lo que hoy no existe.
@@ -192,7 +218,41 @@ el hueco.
 
 ## Tareas nuevas que aparecieron y quedaron anotadas
 
-- **Las tres de las auditorías**, arriba.
+- **Las dos de las auditorías que siguen abiertas**, arriba.
+- **Medir la ley de la ganancia del previo contra el aparato.** Apareció al atar
+  el punto de partida, el 2026-09-17: es la única ruta que la aplicación mueve
+  hoy de punta a punta y la única de las dos escribibles **sin ley medida**, así
+  que las dos guardas que atan lo que el motor juzga a lo que va al cable se
+  apartan justo ahí. Con la ley medida se atan solas, sin tocar el motor.
+
+### Y cuatro que dejó la auditoría adversarial del 2026-09-17b
+
+Las cuatro son **anteriores a esa tarea** y ninguna la bloqueaba, así que fueron
+tarea nueva y no se metieron en el commit. Las cuatro están medidas.
+
+- **La misma ruta repetida en una transacción multiplica el tope por paso.** El
+  motor recorre los cambios contra un contexto que no se actualiza entre uno y
+  otro, así que N cambios encadenados sobre la misma ruta cobran cada uno el
+  presupuesto entero, y ninguno dispara la exigencia de medición intermedia. Hay
+  una regla para «un solo silencio por transacción» y ninguna para esto.
+  **Medido: cuatro pasos honestos de 2 dB en una sola transacción mueven la cuña
+  8 dB, con el tope por transacción en 2.** Es el hallazgo más grave de los
+  cuatro, porque no necesita mentir nada.
+- **`coincideConEsperado` se cae abierta con un valor que no es número**, que es
+  la misma forma de `NaN` que INV-004 ya tapó tres veces: `Math.abs(e.valor −
+  esperado) > tolerancia` con `NaN` da `false` y contesta que coincide. Es
+  INV-011 y otro paquete. **Hoy no está expuesto sólo porque nada llega al
+  adaptador sin pasar por el motor**, y el motor sí lo tapa desde el 2026-09-17b.
+  Depender de eso es depender de un orden, no de una guarda.
+- **El diario anota el movimiento declarado, no el atado.** El ejecutor copia las
+  magnitudes tal cual y el historial suma esa resta; el motor calcula la magnitud
+  real del crudo y la tira. Medido sobre una rampa de diez pasos: el movimiento
+  real fue de 28,42 dB y el acumulado que anota el diario, 19,99 — **8,43 dB que
+  el presupuesto de la sesión no ve nunca.**
+- **El ancla del techo usa el origen declarado**, así que el «hasta donde estaba
+  antes de que yo lo bajara, y ni un paso más» del usuario se cumple con **0,84
+  dB de más**, medido. Es la misma familia que el ítem 2 de la lista de arriba
+  —el techo de nominal y su holgura— y conviene resolverlos juntos.
 - **Archivar un retrato de la consola en el repositorio.** Hoy la comparación se
   hizo contra un archivo temporal de otra sesión, que podría no estar la próxima
   vez. Es corto y no toca el equipo del usuario. Ver la corrección de arriba.

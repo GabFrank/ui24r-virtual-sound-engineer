@@ -586,13 +586,73 @@ test('ADR-028: con todo abajo al empezar, la app puede levantar', () => {
   //
   // Ahora `techoPorRuta` sólo lleva las rutas que la aplicación bajó. Un envío
   // que nadie bajó no tiene techo.
+  //
+  // **El punto de partida se corrigió el 2026-09-17, y la corrección enseña
+  // algo.** Este test arrancaba en «−90 dB» usando `crudoDeEnvio(-90)`, que
+  // satura en el crudo 0 —el piso absoluto, el silencio—. Por la ley medida ese
+  // crudo no son −90 dB: es −∞. O sea que el test declaraba un punto de partida
+  // que la consola no puede tener, y pasaba porque **nada ataba la magnitud de
+  // partida al crudo de partida**. Al atarla, saltó.
+  //
+  // Lo que este test quiere probar —que una ruta que nadie bajó no tiene techo
+  // y se puede subir— no depende de arrancar en el piso absoluto, así que
+  // arranca **abajo dentro del tramo medido**. El borde del silencio tiene su
+  // propio test, abajo, y su propia tarea: es el pedazo de ADR-034 que el motor
+  // todavía no hace.
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: crudoDeEnvio(-88), valorEsperado: crudoDeEnvio(-90),
-    magnitudPropuesta: -88, magnitudEsperada: -90,
+    valorPropuesto: crudoDeEnvio(-30), valorEsperado: crudoDeEnvio(-32),
+    magnitudPropuesta: -30, magnitudEsperada: -32,
   }], contexto(), ok);
   assert.equal(v.permitido, true, motivos(v).join(', '));
+});
+
+test('INV-004: mentir de dónde venía ya no corre el tope por paso', () => {
+  // **El agujero que una auditoría midió el 2026-09-17, y el commit que lo
+  // cierra.** Los topes de INV-004 no acotan el destino: acotan el movimiento,
+  // que es `magnitudPropuesta - magnitudEsperada`. El destino estaba atado al
+  // crudo desde el 2026-09-13; el punto de partida no estaba atado a nada.
+  //
+  // Así que un salto enorme pasaba el tope de 2 dB por paso con sólo declarar
+  // que venía de un poco más abajo. Acá está medido: **un envío que la consola
+  // tiene en −32 dB, empujado a nominal —32 dB de un saque— declarando que
+  // venía de −2.** El crudo de partida es el real, así que el adaptador no lo
+  // vería como conflicto: el eslabón suelto eran los decibeles.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    // Lo que va al cable: de donde está de verdad, a nominal.
+    valorPropuesto: crudoDeEnvio(0), valorEsperado: crudoDeEnvio(-32),
+    // Lo que se le dice al motor: que es un pasito de 2 dB.
+    magnitudPropuesta: 0, magnitudEsperada: -2,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'un salto de 32 dB no puede pasar por uno de 2');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    `tiene que frenar por el origen, no de rebote: ${JSON.stringify(v.rechazos)}`);
+});
+
+test('INV-004: una cuña en silencio no tiene punto de partida que declarar', () => {
+  // **El borde de −∞, que ahora se alcanza por los dos lados.** El silencio de
+  // una cuña es el crudo 0, y por la ley medida del envío eso es −∞ decibeles:
+  // no hay un número de partida que declarar, y por lo tanto no hay movimiento
+  // que medir. Antes esto pasaba inadvertido —el motor le creía al número
+  // declarado— y ahora se rechaza con su nombre.
+  //
+  // **Rechazar es lo correcto hoy y no es el final de la historia.** El primer
+  // paso desde el silencio es el pedazo de ADR-034 que el motor todavía no
+  // hace, y cuando alguien lo construya va a tener que pasar por acá con su
+  // propio nombre. Hasta entonces, frenar es lo correcto: nadie sabe todavía
+  // proponer ese salto.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-30), valorEsperado: 0,
+    magnitudPropuesta: -30, magnitudEsperada: -90,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false);
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    JSON.stringify(v.rechazos));
 });
 
 test('INV-004: el motor traduce TODO codigo de limite, sin estallar', () => {
@@ -656,4 +716,45 @@ test('INV-004: el MOTOR rechaza una magnitud que no es un numero, sin ley medida
       'y el motivo tiene que ser que el motor no puede juzgar ese numero',
     );
   }
+});
+
+test('INV-004: el motor ata el DESTINO al crudo, sobre una ruta con ley medida', () => {
+  // **Este test existe porque una auditoría adversarial mutó la guarda vieja y
+  // la suite no se enteró.** Borrando entera la llamada a `verificarAtadura` del
+  // motor, las 136 pruebas de este paquete quedaban en verde: el caso
+  // fundacional —crudo 0 a 1 declarando −31 a −30 dB— volvía a pasar y nadie lo
+  // veía. El test que lo cubría era la cuenta de rutas escribibles, y dejó de
+  // cubrirlo cuando el ayudante empezó a armar el par crudo/magnitud coherente
+  // para las rutas con ley medida. El único test que nombraba `MAGNITUD_NO_ATADA`
+  // usaba una ruta SIN ley medida, así que llegaba por otro camino.
+  //
+  // **La asimetría es la lección**: al atar el origen se probó el eslabón nuevo
+  // y el viejo quedó sin probar. Una guarda sin un test que muera al romperla no
+  // protege de nada, y esa regla estaba escrita en la disciplina del proyecto.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    // Al cable, el recorrido entero hasta nominal. Al motor, un pasito de 1 dB
+    // con los dos extremos bien lejos de donde de verdad están.
+    valorPropuesto: 1.0, valorEsperado: crudoDeEnvio(-31),
+    magnitudPropuesta: -30, magnitudEsperada: -31,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'el destino inventado tiene que verse');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'MAGNITUD_NO_ATADA'),
+    `tiene que frenar por el destino: ${JSON.stringify(v.rechazos)}`);
+});
+
+test('INV-004: un valor de partida que no es numero no pasa el motor', () => {
+  // La otra mitad del agujero crítico, comprobada desde el motor y no sólo
+  // desde la función: con `valorEsperado: NaN` la atadura decía «atada», el
+  // motor aprobaba, y el salto entero salía al cable.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(0), valorEsperado: NaN,
+    magnitudPropuesta: 0, magnitudEsperada: -1,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'un crudo de partida NaN no puede aprobarse');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    JSON.stringify(v.rechazos));
 });
