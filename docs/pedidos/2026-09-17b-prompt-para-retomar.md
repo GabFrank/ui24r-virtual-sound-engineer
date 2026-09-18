@@ -1,5 +1,10 @@
 # Prompt para retomar, después de un `/clear`
 
+> **SUPERADO el 2026-09-17c. No pegar éste.** Cita como pendientes dos tareas que
+> ya están hechas —el tope evadible mintiendo de dónde venía, y la ruta repetida—.
+> El vigente es
+> [`2026-09-17c-prompt-para-retomar.md`](2026-09-17c-prompt-para-retomar.md).
+
 **Para pegar tal cual.** Sale del cierre del 2026-09-17 y reemplaza al que venía
 usándose, que citaba el documento anterior y una pieza que ya está hecha.
 

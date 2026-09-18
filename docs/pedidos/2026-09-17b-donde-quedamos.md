@@ -304,8 +304,15 @@ repetida, y las tres están medidas.
 
 ## Cómo arrancar la próxima sesión
 
-El prompt para pegar después de un `/clear` está en
-[`2026-09-17b-prompt-para-retomar.md`](2026-09-17b-prompt-para-retomar.md).
+**Este documento ya no es el último**, y lo que sigue vigente de él son **las
+listas de tareas**, que se mantienen acá y desde acá se apuntan. El estado del
+equipo, lo que se hizo después y qué conviene tomar primero está en
+[`2026-09-17c-donde-quedamos.md`](2026-09-17c-donde-quedamos.md), y el prompt para
+pegar después de un `/clear`, en
+[`2026-09-17c-prompt-para-retomar.md`](2026-09-17c-prompt-para-retomar.md).
+
+El prompt de esta jornada —[`2026-09-17b-prompt-para-retomar.md`](2026-09-17b-prompt-para-retomar.md)—
+queda **superado**: cita dos tareas que ya están hechas.
 
 ## Lo que sigue valiendo del cierre anterior
 
