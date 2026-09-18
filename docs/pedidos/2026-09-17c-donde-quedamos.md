@@ -158,10 +158,19 @@ no hay ningún punto de partida en decibeles que la guarda acepte —ni finito n
 escrito en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) y en
 el punto 1 de «Lo que falta de la pieza 1» del documento anterior.
 
-## Cómo arrancar la próxima sesión
+## Este documento ya no es el último
 
-El prompt para pegar después de un `/clear` está en
-[`2026-09-17c-prompt-para-retomar.md`](2026-09-17c-prompt-para-retomar.md).
+Lo reemplaza [`2026-09-18-donde-quedamos.md`](2026-09-18-donde-quedamos.md), y el
+prompt para pegar después de un `/clear`, [`2026-09-18-prompt-para-retomar.md`](2026-09-18-prompt-para-retomar.md).
+El prompt de esta jornada queda **superado**: cita como abierta la escucha entre
+transacciones, que se cerró el 2026-09-18, y da por tres tareas separadas las que
+ADR-035 unificó en una.
+
+**Y una cifra de este documento quedó corregida:** «quince transacciones mueven
+28,5 dB en 19 ms». Al medirlo de nuevo con el motor el 2026-09-18 son
+**dieciséis transacciones y 32 dB** —de −32 a nominal—, y **el tiempo de reloj no
+se cita más**: es lo que tarda en evaluarse la guarda, no en moverse la cuña.
+
 
 ## Lo que sigue valiendo de los cierres anteriores
 
