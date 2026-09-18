@@ -175,6 +175,16 @@ la auditoría de fidelidad:
 Y tres cosas sin definir: **cómo se calcula el destino audible** —hay que leer
 `post` y `postproc`—, **cuánto pesa cada camino**, y **cuándo dos bandas se pisan**.
 
+### Cinco hallazgos que dejó la auditoría del censo, sin tocar
+
+Están en [`hallazgos-de-la-auditoria-del-censo-2026-09-18.md`](../backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md)
+y este documento no los repite. En una línea cada uno: **170 caminos `.mtx.` que
+no publican `post`**, que es justo lo que ADR-035 iba a leer; **el «veintitrés»
+del ADR subcuenta** igual que el 240 corregido; **el general tiene el ecualizador
+y el compresor enlazados**, que es el patrón de ADR-035 §2 y el ADR no lo dice;
+**dos disparadores del supresor del general están en 1**; y **la matriz dice 19
+fuentes donde el aparato muestra 17**.
+
 ### Tareas nuevas que dejó la escucha
 
 - **`escuchaComprobada` no cruza `channelId`**, así que una medición del canal 5

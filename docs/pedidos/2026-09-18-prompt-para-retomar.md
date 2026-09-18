@@ -106,6 +106,12 @@ escucha entre transacciones quedó CERRADA, y el alias con ceros, el enlace
 estéreo y las familias distintas dejaron de ser tres tareas para ser UNA sola,
 decidida en ADR-035 y sin implementar.
 
+Y hay cinco hallazgos nuevos sin tocar, del 2026-09-18, en
+docs/backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md. Dos pegan
+directo en ADR-035: hay 170 caminos más a los buses que NO publican la clave que
+el ADR iba a leer para decidir, y el "veintitrés" del choque 2 subcuenta igual
+que el 240 que se corrigió ese día.
+
 ADR-035 dejó tres choques anotados que hay que resolver al implementarlo: con
 INV-005, con las transacciones de sistema —seleccionar el bus de análisis escribe
 veintitrés envíos al mismo destino y tiene que quedar exento— y con ADR-031. Y
