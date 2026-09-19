@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import {
-  Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoCanal,
+  Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoAuxiliar, type EstadoCanal,
   type MixerDomainAPI,
   type ConnectionState, type BulkExternalChange,
 } from '@vse/mixer-adapter';
@@ -81,6 +81,21 @@ export class MixerService {
   }
 
   readonly canales = signal<readonly EstadoCanal[]>([]);
+  /**
+   * Los medidores de las cuñas, uno por auxiliar.
+   *
+   * **Por qué hace falta aparte de `canales`.** La ganancia se puede escuchar
+   * sobre el medidor del canal porque está antes de él: moverla lo mueve. El
+   * envío a una cuña sale del canal hacia otro lado, así que subirlo **no mueve
+   * el medidor del canal ni un escalón**. Una escucha de monitor comprobada sólo
+   * sobre el canal probaría que el músico tocó y no diría nada de si su cuña
+   * sonó.
+   *
+   * **Vacía mientras no haya trama**, igual que `canales`, y por el mismo motivo
+   * que el adaptador explica: la cantidad de cuñas sale de la cabecera de la
+   * trama y no de una constante.
+   */
+  readonly auxiliares = signal<readonly EstadoAuxiliar[]>([]);
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);
   readonly cambioMasivo = signal<BulkExternalChange | null>(null);
   readonly conectando = signal(false);
@@ -203,6 +218,7 @@ export class MixerService {
 
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
+        this.auxiliares.set(adapter.auxiliares());
         for (const cb of this.oyentesTelemetria) cb();
       });
 
@@ -227,6 +243,7 @@ export class MixerService {
       await adapter.conectar(url);
       this.direccion.set(url);
       this.canales.set(adapter.canales());
+      this.auxiliares.set(adapter.auxiliares());
       this.detenerReintento();
     } catch (e) {
       this.ultimoError.set(String(e));
@@ -260,6 +277,15 @@ export class MixerService {
     await this.adapter?.desconectar();
     this.adapter = null;
     this.canales.set([]);
+    // **Las dos listas se vacían juntas, y hay que decir qué NO arregla eso.**
+    // Vaciar al desconectar a propósito es lo que este servicio ya hacía con los
+    // canales, y la auditoría del 2026-09-19 midió lo que deja afuera: cuando la
+    // conexión **se cae sola** nadie pasa por acá, así que los últimos niveles
+    // conocidos se quedan en la señal y una captura muestrea dieciocho segundos
+    // de un número muerto. Quien se protege de eso es la captura, mirando que la
+    // consola siga conectada y que el medidor se haya movido; esta línea sólo
+    // evita que una cuña apagada siga mostrando su último nivel en pantalla.
+    this.auxiliares.set([]);
   }
 
   /**
@@ -383,6 +409,7 @@ export class MixerService {
       }
       this.cambioMasivo.set(null);
       this.canales.set(adapter.canales());
+      this.auxiliares.set(adapter.auxiliares());
       this.log.info('mixer', 'estado_releido', {});
     } catch (e) {
       this.ultimoError.set(String(e));

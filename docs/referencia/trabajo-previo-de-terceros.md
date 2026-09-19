@@ -195,6 +195,35 @@ Comprobado con `grep` sobre los cuatro árboles, la misma tarde:
   que así es como lo hace el cliente oficial — lo que corrobora la forma del
   hallazgo propio sobre `m.eq.linked`.
 
+## El medidor del auxiliar en un cliente en marcha: DOS de los cuatro
+
+**Mirado el 2026-09-19**, al darle escucha al envío a monitor
+([ADR-036](../adr/ADR-036-la-escucha-de-una-cuna-se-comprueba-sobre-dos-medidores.md)).
+La pregunta es distinta de la de la fila del medidor de canal: no si convierten el
+byte a decibeles, sino si **publican el medidor de un auxiliar** en un cliente que
+está corriendo. Este proyecto lo decodificaba desde el 2026-09-09 y sólo lo leían
+los guiones de medición.
+
+| | Medidor del auxiliar en vivo |
+|---|---|
+| `fmalcher/soundcraft-ui` | **Sí.** `VuProcessor.aux(n)` da un flujo por auxiliar con `vuPost` y `vuPostFader`. Su `parseVuMessageArray` recorre la cola con las cuentas de la cabecera —`input, player, sub, fx, aux, master, line` de a 6, 6, 7, 7, 5, 5 y 6—, igual que `vu-buses.ts` |
+| `Dennion/ioBroker.soundcraft` | **Sí, y los publica como estados.** Bajo `enableVuMeter` suscribe el flujo de fmalcher y escribe `aux.N.vuPost` y `aux.N.vuPostFader`, más los del general, las entradas y los efectos |
+| `NaturalDevCR/MyUiPro` | **No.** Declara `soundcraft-ui-connection` en sus dependencias, así que **la rampa y el medidor están disponibles** en ese proyecto; lo que no hay es uso: cero coincidencias de `vuProcessor` o `vuData` en su código propio. Decir «no tiene» a secas sería el error que este documento existe para impedir |
+| `ndikanov/ui24` | **No.** Es un `custom.min.js` inyectado en el cliente oficial: el medidor lo dibuja el cliente y este proyecto no lo lee |
+
+**Y hay una corroboración independiente del reparto de los dos bytes, que es lo
+que más importa de esta fila.** fmalcher los nombra `vuPost` (`+0`) y
+`vuPostFader` (`+1`), o sea **el segundo después del fader del auxiliar**. Este
+repositorio llegó a lo mismo midiendo: el reconocimiento del 2026-09-13 los leyó
+iguales con ese fader en la unidad de ganancia, y el barrido de la 94 lo usó en
+0,45 como atenuador fijo porque mueve uno y deja el otro quieto. Dos caminos
+distintos —leer código ajeno y mover el aparato— y coinciden.
+
+**Lo que esto NO corrobora:** a cuántos decibeles equivale un escalón de esos
+bytes en el bloque de bus. fmalcher aplica al auxiliar la misma escala lineal de
+−80..0 que al canal, y eso en este repositorio sigue siendo lo que la 102 dejó
+abierto. Vale como hipótesis, que es lo que vale siempre el trabajo previo.
+
 ## Comprobar que se escuchó entre un cambio y el siguiente: ninguno de los cuatro
 
 **Clonado y grepeado de nuevo la noche del 2026-09-17**, en los mismos commits de la tabla

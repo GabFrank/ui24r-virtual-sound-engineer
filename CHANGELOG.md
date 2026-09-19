@@ -6,6 +6,21 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación ya mira el medidor de cada cuña, que es el paso previo a poder
+  levantarlas escuchando.** Todavía no lo vas a ver en ninguna pantalla: lo que
+  cambió es que la aplicación dejó de tirar esa parte de lo que la consola manda.
+  **Por qué hace falta, que es una cuestión de por dónde pasa la señal.** Cuando
+  la aplicación te ajusta la ganancia de un canal, el medidor de ese canal se
+  mueve, porque la ganancia está antes de él; así es como la aplicación comprueba
+  que se escuchó entre un ajuste y el siguiente. **Pero cuando suba la cuña de un
+  músico eso no va a servir**: el envío a la cuña sale del canal hacia otro lado,
+  así que subirlo no mueve el medidor del canal ni un escalón. Escuchar sólo ahí
+  probaría que el músico tocó, sin decir nada de si su cuña sonó.
+  **Se mira el medidor de después del fader del auxiliar**, que es lo que
+  realmente sale hacia el parlante del músico. Con eso, una cuña que recibe señal
+  pero tiene su propio nivel abajo se delata en vez de pasar por buena. Lo elegiste
+  vos entre tres opciones, y está en ADR-036.
+
 - **La pantalla de ganancia ya guarda lo que escucha, y con eso podés ajustar un
   canal dos veces.** Hasta ahora, cuando aplicabas una ganancia, la aplicación
   volvía a medir dieciocho segundos para contarte si había servido —y ahí tiraba
