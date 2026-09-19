@@ -5,6 +5,18 @@ import {
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
 import { verificarAtadura, verificarAtaduraDelOrigen } from './magnitud-atada.ts';
+
+/**
+ * Cuánto puede alejarse del mínimo escribible el destino de una salida del
+ * silencio.
+ *
+ * **Chica a propósito, y en decibeles.** El destino no es «por ahí abajo»: es
+ * **un punto**, el que ADR-034 eligió, y es lo único que acota ese movimiento
+ * porque el delta es infinito. Una décima de decibel cubre el redondeo de ir y
+ * volver por la ley --que se invierte por bisección-- sin dejar sitio para
+ * estirar el destino hacia arriba.
+ */
+const HOLGURA_MINIMO_ESCRIBIBLE = 0.1;
 import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
@@ -413,11 +425,53 @@ export class SafetyEngine {
     // movimiento que no es el que ocurre— y con el mismo código un test del
     // origen pasaría por lo que frenó el destino. Es la misma razón por la que
     // `TECHO_ABSOLUTO` no es `DELTA_EXCEDIDO`.
+    //
+    // **Y desde el 2026-09-19 hay una salida, una sola, para el borde del
+    // silencio**: el pedazo de ADR-034 que el motor no hacía. Ver
+    // `saleDelSilencio` justo abajo.
+    let saleDelSilencio = false;
     {
       const origen = verificarAtaduraDelOrigen(
         c.path, c.valorEsperado, c.magnitudEsperada, c.unidad,
       );
-      if (!origen.atada && origen.codigo !== 'SIN_LEY_VERIFICADA') {
+      if (!origen.atada && origen.codigo === 'ORIGEN_EN_SILENCIO') {
+        // **El primer paso desde el silencio, decisión del usuario en ADR-034
+        // entre tres opciones: arrancar en el mínimo escribible.**
+        //
+        // No es una rampa de 2 dB: es salir de la nada, y **lo que lo acota no
+        // es el delta sino el destino**. El delta es infinito y no hay tope que
+        // se le pueda aplicar; el destino, en cambio, es un único punto —el más
+        // bajo que la ley medida sabe escribir— así que pinchándolo el
+        // movimiento queda tan acotado como lo estaría por un tope.
+        //
+        // **Las dos condiciones, y por qué no alcanza con una.** El destino
+        // tiene que ser ese punto exacto, leído de la ley y no escrito a mano
+        // --ADR-034 lo pidió así--; y la clase tiene que ser la que el usuario
+        // autorizó, el envío a monitor. Sin lo segundo, esta puerta la cruzaría
+        // cualquier parámetro que tenga un silencio en su ley, y el usuario
+        // autorizó levantar cuñas, no salir del silencio en general.
+        //
+        // **Se repite una sola vez por cuña y se cierra sola**: después de este
+        // cambio la consola ya no está en el crudo del silencio, así que la
+        // próxima propuesta vuelve por el camino normal, con sus 2 dB por paso y
+        // su escucha entre uno y otro.
+        const permitido = c.kind === 'MONITOR_AUX_SEND'
+          && Number.isFinite(c.magnitudPropuesta)
+          && Math.abs(c.magnitudPropuesta - origen.minimoEscribible) <= HOLGURA_MINIMO_ESCRIBIBLE;
+        if (!permitido) {
+          salida.push({
+            codigo: 'SALIDA_DEL_SILENCIO_NO_PERMITIDA',
+            invariante: 'INV-004',
+            mensaje: `${c.path}: desde el silencio el único destino admitido es el mínimo `
+              + `escribible, ${origen.minimoEscribible.toFixed(2)} ${c.unidad}, y sólo para `
+              + `el envío a monitor. Este cambio pide ${String(c.magnitudPropuesta)} `
+              + `${c.unidad} sobre ${c.kind}`,
+            path: c.path,
+          });
+          return salida;
+        }
+        saleDelSilencio = true;
+      } else if (!origen.atada && origen.codigo !== 'SIN_LEY_VERIFICADA') {
         salida.push({
           codigo: 'ORIGEN_NO_ATADO',
           invariante: 'INV-004',
@@ -681,6 +735,22 @@ export class SafetyEngine {
     // `CambioPropuesto.magnitudPropuesta`: durante meses esto restaba crudos y
     // los comparaba contra decibeles, así que el tope de INV-004 dejaba pasar
     // el recorrido entero del previo.
+    // **La salida del silencio no pasa por acá, y es el único caso.** El delta
+    // es infinito --de −∞ al mínimo escribible-- así que no hay tope que se le
+    // pueda aplicar: `verificarLimite` lo rechazaría por no ser finito, que es
+    // lo correcto para todo lo demás. Lo que acota este movimiento es el
+    // destino, ya comprobado arriba contra la ley medida, y ADR-034 lo decidió
+    // así con todas las letras: «lo que lo acota no es el delta sino el destino».
+    //
+    // **Lo que NO se saltea:** la clase de parámetro, el estado de sesión, el
+    // techo por ruta, la atadura del destino y todo lo que corre antes de esta
+    // línea. Sólo se saltea el tope sobre la resta, porque la resta no existe.
+    //
+    // **Y no envenena la cuenta de la sesión:** `historialDeLaSesion` ya deja
+    // fuera del acumulado los deltas infinitos, por el mismo motivo y desde
+    // antes.
+    if (saleDelSilencio) return salida;
+
     const delta = c.magnitudPropuesta - c.magnitudEsperada;
     const limite = verificarLimite({
       kind: c.kind,

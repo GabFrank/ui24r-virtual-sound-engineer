@@ -156,17 +156,50 @@ test('el punto de partida de verdad pasa, y con la misma holgura', () => {
 
 test('una cuña en silencio no tiene punto de partida en decibeles', () => {
   // El crudo 0 es el piso absoluto y por la ley medida son −∞ dB. No hay número
-  // de partida que declarar, así que no hay movimiento que medir. Es el borde
-  // que le toca resolver a la pieza que sigue de ADR-034; hasta entonces frena.
+  // de partida que declarar, así que no hay movimiento que medir.
+  //
+  // **Mentir sobre el punto de partida sigue cayendo igual que antes.** Decir
+  // que se venía de −90 dB estando en silencio es exactamente la declaración
+  // falsa que la atadura del origen existe para cazar, y el borde que se abrió
+  // el 2026-09-19 no la exime: el caso con nombre propio pide que el llamador
+  // **diga la verdad**, o sea −∞.
   const r = verificarAtaduraDelOrigen('i.3.aux.1.value', 0, -90, 'dB');
   assert.equal(r.atada, false);
   assert.equal(r.atada === false && r.codigo, 'MAGNITUD_NO_COINCIDE');
+});
 
-  // Y declararlo como −∞ tampoco vale, pero con otro nombre: no es que los dos
-  // números difieran, es que uno no es un número.
+test('declarar el silencio con su nombre ya no es un rechazo ciego', () => {
+  // **Esta afirmación cambió el 2026-09-19 y hay que decirlo donde estaba.**
+  // Hasta entonces este caso daba `MAGNITUD_NO_NUMERICA` --«−∞ no es un
+  // número»-- y ése era el motivo por el que una cuña apagada no se podía
+  // levantar por ninguna vía: ni un número finito, que no coincide, ni −∞, que
+  // no era un número. Era el borde que ADR-034 dejó anotado y sin construir.
+  //
+  // Ahora tiene nombre propio. **Sigue siendo `atada: false`**, porque de verdad
+  // no hay nada que atar; lo que cambia es que el motor recibe el motivo y el
+  // mínimo escribible, y decide él. Quién concede y con qué condiciones está en
+  // `salir-del-silencio.test.ts`, que lo ataca por nueve lados.
   const menosInfinito = verificarAtaduraDelOrigen('i.3.aux.1.value', 0, -Infinity, 'dB');
   assert.equal(menosInfinito.atada, false);
-  assert.equal(menosInfinito.atada === false && menosInfinito.codigo, 'MAGNITUD_NO_NUMERICA');
+  assert.equal(menosInfinito.atada === false && menosInfinito.codigo, 'ORIGEN_EN_SILENCIO');
+
+  // El destino admisible viaja con el resultado, leído de la ley medida, para
+  // que el motor no lo escriba a mano. Es lo que ADR-034 pidió expresamente.
+  const e = entrada('i.3.aux.1.value');
+  assert.ok(e);
+  assert.equal(
+    menosInfinito.atada === false && menosInfinito.codigo === 'ORIGEN_EN_SILENCIO'
+      && menosInfinito.minimoEscribible,
+    e.fisicoMin,
+  );
+});
+
+test('en el DESTINO, −∞ sigue sin ser un número: la puerta es de salida', () => {
+  // Apagarle la cuña a un músico por la puerta de salir del silencio sería lo
+  // contrario de lo que esa puerta existe para hacer.
+  const r = verificarAtadura('i.3.aux.1.value', 0, -Infinity, 'dB');
+  assert.equal(r.atada, false);
+  assert.equal(r.atada === false && r.codigo, 'MAGNITUD_NO_NUMERICA');
 });
 
 test('sin ley medida el origen tampoco se ata, y se dice', () => {

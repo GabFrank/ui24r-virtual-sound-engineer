@@ -204,6 +204,28 @@ export type CodigoRechazo =
    * explica por qué el crudo de partida sí estaba atado y los decibeles no.
    */
   | 'ORIGEN_NO_ATADO'
+  /**
+   * Se pidió salir del silencio hacia un sitio que no es el mínimo escribible,
+   * o sobre un parámetro que el usuario no autorizó para eso.
+   *
+   * **Es el borde que ADR-034 nombró y que hasta el 2026-09-19 no tenía salida.**
+   * Desde el silencio la ley medida no da ningún punto de partida en decibeles
+   * --ni finito, que no coincide, ni −∞, que no es un número-- así que una cuña
+   * apagada no se podía levantar por ninguna vía. El caso con nombre propio la
+   * levanta hasta **un solo destino**, el más bajo que la ley sabe escribir, y
+   * este código es lo que sale cuando se pide cualquier otra cosa.
+   *
+   * **Código propio y no `ORIGEN_NO_ATADO`**, por la razón de siempre acá: son
+   * dos defectos distintos --uno es un punto de partida falso, el otro un
+   * destino no autorizado desde un punto de partida verdadero-- y con un solo
+   * código un test de uno pasaría por el otro.
+   *
+   * **Por qué el destino es lo único que acota este movimiento.** El delta es
+   * infinito y no hay tope que aplicarle; el destino, en cambio, es un punto
+   * único leído de la ley, así que pincharlo acota tanto como un tope. Lo
+   * decidió el usuario entre tres opciones.
+   */
+  | 'SALIDA_DEL_SILENCIO_NO_PERMITIDA'
   | 'RUTA_DESCONOCIDA'
   | 'Q_DEMASIADO_ESTRECHO'
   | 'REALCE_EXCESIVO'

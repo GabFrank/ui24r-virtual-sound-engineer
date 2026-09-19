@@ -71,6 +71,30 @@ export type ResultadoAtadura =
     }
   | {
       /**
+       * El parámetro está en el silencio de su ley y el cambio lo declara así.
+       *
+       * **`atada: false` no es un descuido: no hay nada que atar.** Desde el
+       * silencio no existe punto de partida en decibeles —ni un número finito,
+       * que no coincide, ni −∞, que no es un número—, y eso no cambia porque el
+       * llamador diga la verdad. Lo que cambia es **quién decide**: este código
+       * le dice al motor «acá no hay atadura posible, y el motivo es el borde
+       * que ADR-034 nombró», y el motor concede o no según sus propias
+       * condiciones. Conceder acá sería que la guarda se autorice a sí misma.
+       *
+       * Sólo aparece cuando el llamador declara `-Infinity`. Si la consola está
+       * en silencio y el cambio dice venir de un número finito, eso es una
+       * declaración falsa y sigue cayendo en `MAGNITUD_NO_COINCIDE`: el caso con
+       * nombre propio es para salir del silencio, no para disfrazarlo.
+       */
+      readonly atada: false;
+      readonly codigo: 'ORIGEN_EN_SILENCIO';
+      readonly motivo: string;
+      readonly magnitudDelCrudo: number;
+      /** El punto más bajo que la ley medida sabe escribir. */
+      readonly minimoEscribible: number;
+    }
+  | {
+      /**
        * El crudo no es un número finito, así que no hay de qué atar.
        *
        * **No trae `magnitudDelCrudo` a propósito**: no existe. Devolverlo como
@@ -243,6 +267,43 @@ function atar(
     };
   }
   const magnitudDelCrudo = e.fromRaw(crudo);
+
+  // **El borde del silencio, con nombre propio.** Es el pedazo de ADR-034 que
+  // el motor no hacía, y hasta acá llegaba como un rechazo sin salida: desde el
+  // crudo del silencio la ley da −∞, y entonces ningún punto de partida
+  // declarable pasa --un número finito no coincide, y −∞ no es un número--. La
+  // cuña apagada no se podía levantar por ninguna vía.
+  //
+  // **Las tres condiciones son estrechas a propósito:**
+  //
+  // 1. Es el **origen**. En el destino, −∞ sigue siendo `MAGNITUD_NO_NUMERICA`:
+  //    escribir hacia el silencio por esta puerta sería apagarle la cuña a un
+  //    músico con la guarda de salir del silencio, que es lo contrario.
+  // 2. La ley dice que el crudo de partida **es** silencio. No «está bajo»: es
+  //    `-Infinity` exacto, que para el envío a monitor ocurre sólo en el crudo 0
+  //    --`faderADb` devuelve −∞ únicamente para `valor <= 0`--.
+  // 3. El llamador **lo declara**. Si la consola está en silencio y el cambio
+  //    dice venir de −40 dB, eso es falso y cae donde caía antes. Que el motor
+  //    lo dedujera del crudo sería volver a dejar que el declarante se acomode
+  //    solo, que es el agujero que la atadura del origen vino a cerrar.
+  //
+  // **Y acá no se concede nada.** Esto informa; quien decide es el motor, que
+  // exige además la clase de parámetro y que el destino sea exactamente el
+  // mínimo escribible. `minimoEscribible` viaja para que ese destino salga de la
+  // ley medida y no de un número escrito a mano, que es lo que ADR-034 pidió.
+  if (extremo === 'origen' && magnitudDelCrudo === -Infinity && magnitud === -Infinity) {
+    return {
+      atada: false,
+      codigo: 'ORIGEN_EN_SILENCIO',
+      motivo: `${path}: la ley medida dice que el crudo de partida ${crudo} es silencio, `
+        + `y el cambio lo declara así. No hay punto de partida en decibeles que atar; `
+        + `el único destino que el motor admite desde acá es el mínimo escribible, `
+        + `${e.fisicoMin.toFixed(2)} ${e.unidad}`,
+      magnitudDelCrudo,
+      minimoEscribible: e.fisicoMin,
+    };
+  }
+
   const recorrido = Math.abs(e.fisicoMax - e.fisicoMin);
   const holgura = recorrido * TOLERANCIA_RELATIVA;
   // **`NaN` decía «atada» y no lo estaba, que es justo lo contrario de para lo

@@ -6,6 +6,17 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Una cuña apagada ya se puede levantar.** Hasta ahora, si el retorno de un
+  músico estaba en cero, la aplicación no podía moverlo: el motor necesita saber
+  de qué nivel sale para medir cuánto se mueve, y desde el silencio no hay nivel
+  del que salir. La cuña quedaba trabada abajo.
+  Ahora el primer paso desde el silencio es **un caso aparte**, como vos elegiste:
+  la aplicación la sube **al punto más bajo que sabe escribir** —apenas audible—
+  y de ahí en adelante sigue el camino normal, de a 2 dB y escuchando entre paso
+  y paso. **A ningún otro sitio**: pedir cualquier otro destino desde el silencio
+  se rechaza, y esto vale sólo para los retornos de monitor, no para el resto de
+  la consola. Tampoco durante el show.
+
 - **Las mediciones de la sesión ya llegan al motor de seguridad.** Es plomería,
   no una función que puedas usar todavía, pero es la que destrababa la pieza que
   sigue: el motor decide si se escuchó entre un paso y el siguiente mirando las
