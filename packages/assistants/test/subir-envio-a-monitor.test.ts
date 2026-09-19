@@ -146,3 +146,26 @@ test('sin ley medida no se propone nada, ni siquiera desde el silencio', () => {
   assert.equal(v.puede, false);
   assert.match(motivo(v), /no tiene ley medida/);
 });
+
+test('ATAQUE: desde el silencio, pedir BAJAR tampoco pasa', () => {
+  // **Este agujero existió y lo cazó una auditoría.** La rama del silencio se
+  // adelantaba a la comprobación de que lo pedido fuera subir, así que −5, 0,
+  // `NaN` y −∞ contestaban que sí. Inocuo para el producto —el destino es fijo—
+  // pero el nombre de la función mentía, y una función que miente sobre lo que
+  // hace es la forma de error que este repositorio corrige.
+  for (const subirDb of [-5, 0, Number.NaN, Number.NEGATIVE_INFINITY]) {
+    const v = decidir({ nivelActualDb: -Infinity, subirDb });
+    assert.equal(v.puede, false, `subirDb ${subirDb} desde el silencio no tendría que pasar`);
+    assert.match(motivo(v), /sólo sube/);
+  }
+});
+
+test('desde el silencio, un pedido de subir cualquiera sí pasa, y siempre al mismo sitio', () => {
+  // La otra mitad: que cerrar el agujero no haya cerrado el caso real. Cuánto se
+  // pide sigue sin importar; que se pida subir, sí.
+  for (const subirDb of [0.5, 2, 30]) {
+    const v = decidir({ nivelActualDb: -Infinity, subirDb });
+    assert.equal(v.puede, true, motivo(v));
+    assert.ok(v.puede && v.destinoDb === TRAMO.fisicoMin);
+  }
+});

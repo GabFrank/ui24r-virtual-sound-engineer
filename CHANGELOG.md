@@ -16,7 +16,10 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   que no sea un retorno de monitor de esta consola; y no anota techo al subir
   —el techo existe para devolver una cuña adonde estaba después de que la
   aplicación la bajó, no para autorizarse a seguir subiendo—.
-  **Sigue sin haber pantalla que lo llame**: eso es lo que viene.
+  **Sigue sin haber pantalla que lo llame**: eso es lo que viene. Y cuando venga,
+  va a tener que **pedir el último tramo a medida**: con pasos fijos de 2 dB la
+  cuña llega hasta 0,1 dB por debajo de nominal y ahí frena, porque el asistente
+  te avisa en vez de recortar por su cuenta.
 
 - **Una cuña apagada ya se puede levantar.** Hasta ahora, si el retorno de un
   músico estaba en cero, la aplicación no podía moverlo: el motor necesita saber

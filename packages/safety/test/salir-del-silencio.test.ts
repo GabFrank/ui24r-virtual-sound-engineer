@@ -43,7 +43,7 @@ function contexto(extra: Partial<ContextoSeguridad> = {}): ContextoSeguridad {
     rutasConNivelEstablecido: new Set(),
     techoPorRuta: new Map(),
     hayTakeDeSoundcheckActivo: false,
-    busesDePa: new Set(),
+    busesDeSalidaPermitidos: new Set(),
     ...extra,
   } as unknown as ContextoSeguridad;
 }
@@ -120,19 +120,56 @@ test('ATAQUE: −∞ como DESTINO no cruza: apagarle la cuña a alguien no es sa
   strictEqual(v.permitido, false, 'la puerta es de salida, no de entrada');
 });
 
-test('ATAQUE: la puerta se cierra sola, no se puede cruzar dos veces seguidas', () => {
-  // Después del primer paso la consola ya no está en el crudo del silencio, así
-  // que la segunda propuesta tiene que volver por el camino normal --y sin
-  // escucha comprobada, el camino normal la rechaza--.
-  const segundo = salirDelSilencio({
-    valorEsperado: LEY!.toRaw(MINIMO), magnitudEsperada: MINIMO,
-    magnitudPropuesta: MINIMO + 2, valorPropuesto: LEY!.toRaw(MINIMO + 2),
-  });
-  const v = evaluar([segundo], contexto({
+test('ATAQUE: la puerta se cierra sola — una SEGUNDA salida del silencio se rechaza', () => {
+  // **Este test afirmaba algo que no probaba, y lo cazó una auditoría.** La
+  // primera versión sobrescribía el origen con un valor finito, así que lo que
+  // evaluaba era un paso normal de 2 dB: el nombre decía «dos veces seguidas» y
+  // el cuerpo cruzaba la puerta una sola vez.
+  //
+  // Medido con el motor entonces: **veinticinco salidas del silencio seguidas,
+  // sin una sola escucha en el medio, las veinticinco permitidas.** Quien las
+  // frenaba era el adaptador, dos pasos más abajo y después del veredicto.
+  //
+  // Ahora la frena el motor, por la condición que faltaba: salir del silencio es
+  // el primer cambio de esa ruta en la sesión o no es nada.
+  const v = evaluar([salirDelSilencio()], contexto({
     rutasYaTocadas: new Set([RUTA]),
-    acumuladoPorRuta: new Map([[RUTA, 0]]),
   } as Partial<ContextoSeguridad>));
-  strictEqual(v.permitido, false, 'el segundo paso necesita escucha, como cualquier otro');
+  strictEqual(v.permitido, false, 'la segunda vez no puede pasar');
+  ok(v.rechazos.some((x) => x.codigo === 'SALIDA_DEL_SILENCIO_NO_PERMITIDA'));
+});
+
+test('ATAQUE: N salidas del silencio seguidas, ninguna pasa después de la primera', () => {
+  // La forma en que se midió el agujero: una ráfaga. Con la ruta ya tocada,
+  // ninguna tiene que pasar, y esto es lo que fallaría si alguien volviera a
+  // saltear el bloque entero.
+  for (let i = 0; i < 25; i++) {
+    const v = evaluar([salirDelSilencio()], contexto({
+      rutasYaTocadas: new Set([RUTA]),
+    } as Partial<ContextoSeguridad>));
+    strictEqual(v.permitido, false, `la salida número ${i + 2} no tendría que pasar`);
+  }
+});
+
+test('ATAQUE: la salida del silencio no esquiva el acumulado de la sesión', () => {
+  // Medido antes del arreglo: con el acumulado en el tope, un paso normal caía
+  // con ACUMULADO_EXCEDIDO y la salida del silencio pasaba. Hoy cae por ser la
+  // segunda vez, que es la condición que de verdad corresponde acá.
+  const v = evaluar([salirDelSilencio()], contexto({
+    rutasYaTocadas: new Set([RUTA]),
+    rutasConNivelEstablecido: new Set([RUTA]),
+    acumuladoPorRuta: new Map([[RUTA, 4]]),
+    rutasConMedicionPosterior: new Set([RUTA]),
+  } as Partial<ContextoSeguridad>));
+  strictEqual(v.permitido, false);
+});
+
+test('el PRIMER paso sigue pasando: la condición nueva no cerró el caso principal', () => {
+  // Un arreglo que cierra el agujero cerrando también lo que había que abrir no
+  // sirve. Con la ruta sin tocar, que es el caso real al empezar un soundcheck,
+  // tiene que pasar.
+  const v = evaluar([salirDelSilencio()]);
+  strictEqual(v.permitido, true, JSON.stringify((v as { rechazos?: unknown }).rechazos ?? []));
 });
 
 test('ATAQUE: dos salidas del silencio en la misma transacción se rechazan', () => {

@@ -1,5 +1,5 @@
 import {
-  ownership, esEscribible, verificarLimite,
+  ownership, esEscribible, verificarLimite, LIMITES,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
@@ -735,21 +735,70 @@ export class SafetyEngine {
     // `CambioPropuesto.magnitudPropuesta`: durante meses esto restaba crudos y
     // los comparaba contra decibeles, así que el tope de INV-004 dejaba pasar
     // el recorrido entero del previo.
-    // **La salida del silencio no pasa por acá, y es el único caso.** El delta
-    // es infinito --de −∞ al mínimo escribible-- así que no hay tope que se le
-    // pueda aplicar: `verificarLimite` lo rechazaría por no ser finito, que es
-    // lo correcto para todo lo demás. Lo que acota este movimiento es el
-    // destino, ya comprobado arriba contra la ley medida, y ADR-034 lo decidió
-    // así con todas las letras: «lo que lo acota no es el delta sino el destino».
+    // **La salida del silencio no pasa por `verificarLimite`.** El delta es
+    // infinito --de −∞ al mínimo escribible-- así que no hay tope que se le
+    // pueda aplicar: esa función lo rechazaría por no ser finito, que es lo
+    // correcto para todo lo demás. Lo que acota este movimiento es el destino,
+    // ya comprobado arriba contra la ley medida, y ADR-034 lo decidió así: «lo
+    // que lo acota no es el delta sino el destino».
     //
-    // **Lo que NO se saltea:** la clase de parámetro, el estado de sesión, el
-    // techo por ruta, la atadura del destino y todo lo que corre antes de esta
-    // línea. Sólo se saltea el tope sobre la resta, porque la resta no existe.
+    // **Pero saltearla entera dejaba fuera tres cosas más, y eso era un
+    // agujero.** Una auditoría adversarial del 2026-09-19 lo midió con el motor
+    // real: con la ruta ya tocada y sin escucha, un paso normal caía con
+    // `SIN_MEDICION_INTERMEDIA` y la salida del silencio pasaba; con el
+    // acumulado en el tope, el paso normal caía con `ACUMULADO_EXCEDIDO` y la
+    // salida del silencio pasaba. **Veinticinco salidas del silencio seguidas
+    // sin una sola escucha en el medio.** Y el commit que la introdujo afirmaba
+    // que no se salteaba nada más, igual que ADR-034: las dos frases eran
+    // falsas.
     //
-    // **Y no envenena la cuenta de la sesión:** `historialDeLaSesion` ya deja
-    // fuera del acumulado los deltas infinitos, por el mismo motivo y desde
-    // antes.
-    if (saleDelSilencio) return salida;
+    // No escalaba el nivel --el destino es siempre el mínimo escribible, el
+    // punto más bajo audible-- pero convertía una puerta de un solo uso en una
+    // que se podía empujar indefinidamente, y el freno de verdad quedaba en el
+    // adaptador, dos pasos más abajo y después del veredicto.
+    //
+    // **Las dos condiciones que faltaban, y por qué éstas y no un `verificarLimite`
+    // con un delta inventado:**
+    if (saleDelSilencio) {
+      // 1. **Es el primer cambio de esta ruta en la sesión.** Salir del silencio
+      //    se hace una vez por cuña: si la aplicación ya la tocó, o no estaba en
+      //    silencio, o ya salió. Esto es lo que hace verdadera la frase «la
+      //    puerta se cierra sola» **en el motor**, que es donde tiene que ser
+      //    verdadera; antes dependía de que el adaptador comparara con la
+      //    consola, y eso ocurre después de que el motor ya dijo que sí.
+      //
+      //    Sale de `ctx.rutasYaTocadas`, que es el mismo dato que
+      //    `verificarLimite` usa para `esPrimerCambioDelParametro`: no es una
+      //    segunda copia de la regla, es la misma entrada leída acá.
+      if (ctx.rutasYaTocadas.has(c.path)) {
+        salida.push({
+          codigo: 'SALIDA_DEL_SILENCIO_NO_PERMITIDA',
+          invariante: 'INV-004',
+          mensaje: `${c.path}: esta ruta ya se movió en esta sesión, así que no está `
+            + 'en silencio. Salir del silencio es una sola vez por cuña; de acá en '
+            + 'adelante se sube de a pasos, escuchando entre uno y otro',
+          path: c.path,
+        });
+        return salida;
+      }
+      // 2. **El techo absoluto sigue rigiendo.** Hoy no muerde --el mínimo
+      //    escribible de esta ley está muy por debajo de nominal-- pero que no
+      //    muerda por el valor de una constante no es lo mismo que comprobarlo.
+      //    Es un tope sobre el DESTINO, y el destino es justamente lo único que
+      //    acota este movimiento.
+      const techoAbs = LIMITES[c.kind]?.techoAbsoluto;
+      if (techoAbs !== undefined && c.magnitudPropuesta > techoAbs) {
+        salida.push({
+          codigo: 'TECHO_ABSOLUTO',
+          invariante: 'INV-004',
+          mensaje: `${c.path}: salir del silencio dejaría el envío en `
+            + `${c.magnitudPropuesta} ${c.unidad}, por encima del techo de ${techoAbs}`,
+          path: c.path,
+        });
+        return salida;
+      }
+      return salida;
+    }
 
     const delta = c.magnitudPropuesta - c.magnitudEsperada;
     const limite = verificarLimite({

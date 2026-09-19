@@ -136,6 +136,23 @@ export function puedeSubirEnvioAMonitor(
     };
   }
 
+  // **Que lo pedido sea subir se comprueba ANTES del silencio, y la primera
+  // versión no lo hacía.** Una auditoría adversarial del 2026-09-19 lo midió:
+  // con la cuña apagada, `subirDb` de −5, 0, `NaN` y −∞ **contestaban que sí**,
+  // porque la rama del silencio se adelantaba a esta comprobación. Inocuo para
+  // el producto --el destino es fijo-- pero una función llamada
+  // `puedeSubirEnvioAMonitor`, cuyo docblock dice «esta función sólo sube»,
+  // contestaba que sí a un pedido de bajar. El nombre mentía.
+  //
+  // **Cuánto se pide sigue sin importar desde el silencio; que se pida subir,
+  // sí.** Son dos cosas distintas y sólo una se ignora.
+  if (!(e.subirDb > 0)) {
+    return {
+      puede: false,
+      motivo: 'esta función sólo sube: para bajar está puedeBajarEnvioAMonitor',
+    };
+  }
+
   // **El borde del silencio, antes que nada de lo que mira decibeles.** Con la
   // cuña apagada no hay nivel actual del que restar ni al que sumar, así que
   // cualquier cuenta de más abajo daría `NaN` o infinito. El destino no lo elige
@@ -162,13 +179,6 @@ export function puedeSubirEnvioAMonitor(
     return {
       puede: false,
       motivo: 'no se sabe dónde está el envío ahora, así que no hay desde dónde subir',
-    };
-  }
-
-  if (!(e.subirDb > 0)) {
-    return {
-      puede: false,
-      motivo: 'esta función sólo sube: para bajar está puedeBajarEnvioAMonitor',
     };
   }
 

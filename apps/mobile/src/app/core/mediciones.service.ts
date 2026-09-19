@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { Measurement } from '@vse/domain';
 import { DatabaseService } from './database.service';
+import { CONSULTA_DE_MEDICIONES } from './consulta-de-mediciones.ts';
 
 /**
  * Las mediciones de una sesión, leídas de la base.
@@ -48,10 +49,29 @@ export class MedicionesService {
    * autoridad es la guarda; esto es una lectura.
    */
   async deLaSesion(sessionId: string): Promise<readonly Measurement[]> {
-    const filas = await this.db.consultar<{ datos: string }>(
-      `SELECT datos FROM measurement WHERE session_id = ?`,
-      [sessionId],
-    );
-    return filas.map((f) => JSON.parse(f.datos) as Measurement);
+    const filas = await this.db.consultar<{ datos: string }>(CONSULTA_DE_MEDICIONES, [sessionId]);
+    const salida: Measurement[] = [];
+    for (const f of filas) {
+      // **Una fila ilegible se descarta, no tira la pantalla.** El patrón del
+      // diario hace `JSON.parse` sin capturar, y acá se copió; una auditoría del
+      // 2026-09-19 midió la diferencia: con una fila truncada o con `datos` en
+      // `'null'`, la excepción sube por `contexto()` y **rechaza la promesa de
+      // subir, bajar Y aplicar ganancia**. Antes de esta clase esa fila no se
+      // leía nunca, así que el patrón heredado no traía el riesgo heredado.
+      //
+      // **Descartar es lo seguro y no lo cómodo.** Una medición que no se puede
+      // leer es una escucha que no se puede comprobar, y sin escucha comprobada
+      // el motor rechaza el paso siguiente: se falla hacia el lado de frenar,
+      // que es el mismo lado al que fallaba la lista vacía.
+      let m: Measurement | null = null;
+      try {
+        const leido: unknown = JSON.parse(f.datos);
+        if (leido !== null && typeof leido === 'object') m = leido as Measurement;
+      } catch {
+        m = null;
+      }
+      if (m !== null) salida.push(m);
+    }
+    return salida;
   }
 }

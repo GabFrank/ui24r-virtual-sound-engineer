@@ -226,7 +226,7 @@ Y con eso se destaparon dos cosas que hacían falta y nadie sabía:
 
 **Actualización de la misma fecha: los huecos 1 y 2 están cerrados.**
 
-- **El hueco 1**, con `apps/mobile/src/app/monitor/bajar-envio.service.ts` y la
+- **El hueco 1**, con `apps/mobile/src/app/monitor/envio-a-monitor.service.ts` y la
   regla `puedeBajarEnvioAMonitor` en `@vse/assistants`, donde se prueba. Es el
   segundo sitio de producción del repositorio que construye un
   `CambioPropuesto`, y el centinela que contaba «exactamente uno» lo comprobó el
@@ -255,7 +255,7 @@ Ver `docs/backlog/hallazgo-la-guarda-de-magnitud-no-podia-disparar.md`.
 **2. El techo no se llena.** ~~`techoPorRuta` llega vacío porque hace falta el
 historial de la sesión, que tampoco alimenta `acumuladoPorRuta` ni
 `rutasYaTocadas`.~~ **Retractado el 2026-09-17:** `registrarTecho` llena
-`techoPorRuta` desde `BajarEnvioService`, y el historial de la sesión llega a los
+`techoPorRuta` desde `EnvioAMonitorService`, y el historial de la sesión llega a los
 dos servicios. Lo que sí sigue abierto de este punto es lo que el propio ADR
 declara más abajo: el techo se ancla en lo que bajó **la aplicación**, no en lo
 que bajó el usuario a mano.

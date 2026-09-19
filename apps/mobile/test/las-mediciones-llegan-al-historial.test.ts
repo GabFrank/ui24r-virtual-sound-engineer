@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { MIGRACIONES } from '@vse/store';
+import { CONSULTA_DE_MEDICIONES } from '../src/app/core/consulta-de-mediciones.ts';
 import { historialDeLaSesion } from '@vse/safety';
 import type { EntradaDiario } from '@vse/safety';
 import type { Measurement } from '@vse/domain';
@@ -66,12 +67,22 @@ function transaccionQueYaMovio(): EntradaDiario {
  * El esquema real, con la tabla `measurement` tal como está en la migración,
  * y la sesión a la que la medición apunta.
  *
- * **La sesión hace falta de verdad, no es decorado del test.** `measurement`
- * declara `session_id ... REFERENCES sound_session(id)`, y la primera versión de
- * este test insertaba la medición sola: SQLite la rechazó con `FOREIGN KEY
- * constraint failed`. O sea que **la base ya garantiza que no puede haber una
- * medición huérfana**, y el cruce por sesión de `escuchaComprobada` no es la
- * única línea de defensa. Vale dejarlo dicho: se descubrió acá.
+ * **La sesión hace falta acá, y hay que decir por qué con precisión.**
+ * `measurement` declara `session_id ... REFERENCES sound_session(id)`, y la
+ * primera versión de este test insertaba la medición sola: SQLite la rechazó con
+ * `FOREIGN KEY constraint failed`.
+ *
+ * **De ahí se concluyó que «la base ya garantiza que no puede haber una medición
+ * huérfana», y es FALSO en la aplicación.** Lo cazó una auditoría el 2026-09-19:
+ * `node:sqlite` --que es lo que corre acá-- activa `foreign_keys` por defecto, y
+ * **la aplicación nunca ejecuta `PRAGMA foreign_keys = ON`**. El propio
+ * repositorio ya lo tenía escrito en `repos/repositorios.ts`: «el esquema declara
+ * claves foráneas pero nadie las aplica».
+ *
+ * O sea que esa garantía **existe en este test y no en el dispositivo**. La única
+ * defensa real contra una medición de otra sesión es el cruce de
+ * `escuchaComprobada`, que tiene su propio test más abajo. Queda dicho acá porque
+ * acá se afirmó lo contrario.
  *
  * La sesión arrastra a su vez los dos perfiles, por la misma razón.
  */
@@ -103,9 +114,9 @@ test('la fila se guarda y se lee de la tabla measurement', () => {
   ).run(m.id, m.sessionId, m.timestamp, m.signalType, null, null, null,
         m.calibrationStateId, JSON.stringify(m));
 
-  const filas = db.prepare(
-    'SELECT datos FROM measurement WHERE session_id = ?',
-  ).all(SESION) as { datos: string }[];
+  // **La consulta REAL del servicio, importada, no una copia.** Escribirla de
+  // nuevo acá dejaba la consulta de producción sin nadie que la ejercitara.
+  const filas = db.prepare(CONSULTA_DE_MEDICIONES).all(SESION) as { datos: string }[];
 
   assert.equal(filas.length, 1, 'la fila tiene que estar en la tabla');
   const leida = JSON.parse(filas[0].datos) as Measurement;
@@ -139,4 +150,47 @@ test('una medición de otra sesión no sirve, aunque el identificador coincida',
     historial.rutasConMedicionPosterior.has(RUTA), false,
     'leer de la base no puede aflojar el cruce por sesión',
   );
+});
+
+test('una fila ilegible se descarta y no tira la pantalla', () => {
+  // **Medido antes del arreglo:** con `datos` truncado el `JSON.parse` lanzaba,
+  // la excepción subía por `contexto()` y rechazaba la promesa de subir, bajar y
+  // aplicar ganancia. Con `'null'` lanzaba un `TypeError` más abajo.
+  //
+  // Acá se replica el cuerpo del método, porque la clase lleva un decorador de
+  // Angular y el modo de eliminación de tipos de Node no lo parsea. Lo que sí se
+  // usa de producción es `CONSULTA_DE_MEDICIONES`.
+  const db = baseConEsquema();
+  const buenas = medicion();
+  const insertar = db.prepare(
+    `INSERT INTO measurement
+       (id, session_id, timestamp, signal_type, channel_id, posicion,
+        pa_component, calibration_state_id, datos)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  insertar.run('med-rota', SESION, EMPEZO, 'PERFORMANCE', null, null, null, 'cal-1', '{"id":"x", trunc');
+  insertar.run('med-nula', SESION, EMPEZO, 'PERFORMANCE', null, null, null, 'cal-1', 'null');
+  insertar.run(buenas.id, SESION, buenas.timestamp, buenas.signalType, null, null, null,
+               buenas.calibrationStateId, JSON.stringify(buenas));
+
+  const filas = db.prepare(CONSULTA_DE_MEDICIONES).all(SESION) as { datos: string }[];
+  assert.equal(filas.length, 3, 'las tres están en la tabla');
+
+  const leidas: Measurement[] = [];
+  for (const f of filas) {
+    let m: Measurement | null = null;
+    try {
+      const leido: unknown = JSON.parse(f.datos);
+      if (leido !== null && typeof leido === 'object') m = leido as Measurement;
+    } catch { m = null; }
+    if (m !== null) leidas.push(m);
+  }
+
+  assert.equal(leidas.length, 1, 'las dos ilegibles se descartan');
+  assert.equal(leidas[0].id, 'med-1', 'y la buena sobrevive');
+
+  // Y la buena sigue sirviendo para comprobar la escucha: descartar no rompe lo
+  // que el arreglo vino a habilitar.
+  const historial = historialDeLaSesion([transaccionQueYaMovio()], leidas, Date.now());
+  assert.equal(historial.rutasConMedicionPosterior.has(RUTA), true);
 });
