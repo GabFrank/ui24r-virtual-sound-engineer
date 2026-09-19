@@ -135,6 +135,46 @@ const CAMPO = 'medicionPosteriorId';
  */
 const GUARDA_DE_CONEXION = /\.\s*permiteEscribir\s*\(/;
 
+/**
+ * Y la quinta: **la cuña se escucha sobre su propio medidor, no sólo sobre el del
+ * músico.**
+ *
+ * **El defecto que cierra, y es específico del envío a monitor.** Las cuatro
+ * reglas de arriba se cumplen enteras con una escucha copiada de la ganancia:
+ * hay quien guarda, hay quien anota, se escribe el campo y se mira la conexión.
+ * Y sin embargo la garantía sería falsa, porque el medidor del canal **no se
+ * entera del envío**: la ganancia está aguas arriba de él, el envío a una cuña
+ * deriva del canal hacia el bus y está antes del fader. Con ese solo medidor la
+ * aplicación podría afirmar «acá se escuchó» sobre una cuña muda, paso tras paso,
+ * hasta el techo de nominal.
+ *
+ * Por eso se vigila que producción siga pasando la serie de la cuña. Es la
+ * decisión del usuario del 2026-09-19, ADR-036, y **ningún test la puede
+ * proteger**: los tests prueban que el mapeo decide bien cuando le dan las dos
+ * series, y siguen pasando enteros si el servicio deja de darle la segunda.
+ *
+ * **Y esta guarda se comió su propio agujero al escribirse, por cuarta vez en el
+ * repositorio.** La primera versión buscaba `muestrasDeLaCuna\s*:` en el archivo
+ * entero y contaba archivos: con eso, **borrar la línea que la pasa dejaba la
+ * guarda en verde**, porque el mismo servicio declara un campo privado con ese
+ * nombre y el archivo seguía coincidiendo. Es exactamente la forma que ya tuvo
+ * contando la definición de `anotarEscucha` como llamada. Se probó mutando, que es
+ * lo único que lo muestra.
+ *
+ * Lo que las distingue es la palabra de adelante: una declaración de campo lleva
+ * `private`, `readonly` o similar; **pasarlo en un objeto, no**.
+ *
+ * **Lo que esta regla NO caza**, por lo mismo que las otras: mira texto, así que
+ * una llamada que pase la serie de la cuña **vacía**, o la misma serie del canal
+ * dos veces, la satisface. La segunda es la regresión plausible, porque parece un
+ * arreglo; y lo que la caza es leer `recolectar` en el servicio de la cuña, que
+ * empuja las dos en el mismo tic.
+ */
+const SERIE_DE_LA_CUNA = /\bmuestrasDeLaCuna\s*\??\s*:/;
+
+/** Lo que convierte una coincidencia en una declaración y no en un pase. */
+const ES_DECLARACION = /\b(?:private|public|protected|readonly|declare)\b/;
+
 /** Los `.ts` de una carpeta, recursivo, sin `node_modules` ni tests. */
 function archivos(dir) {
   const salida = [];
@@ -195,6 +235,7 @@ const ok = intentar(() => {
   const encontrados = new Map(MITADES.map((m) => [m.que, 0]));
   let campoEscrito = 0;
   let guardanEscucha = 0;
+  let pasanLaSerieDeLaCuna = 0;
   const sinMirarLaConexion = [];
 
   for (const zona of ZONAS) {
@@ -213,6 +254,18 @@ const ok = intentar(() => {
       // El campo, escrito y no sólo declarado. `packages/safety` lo declara y lo
       // nace en nulo: lo que hace falta es que **la aplicación** lo escriba.
       if (zona === 'apps' && texto.includes(CAMPO)) campoEscrito++;
+
+      // **La serie de la cuña: se busca PASARLA, línea por línea.** Mirar el
+      // archivo entero contaba la declaración del campo privado del propio
+      // servicio, así que borrar el pase dejaba la guarda en verde. Se acota a
+      // `apps` porque quien captura es la aplicación.
+      if (zona === 'apps') {
+        for (const linea of texto.split('\n')) {
+          if (SERIE_DE_LA_CUNA.test(linea) && !ES_DECLARACION.test(linea)) {
+            pasanLaSerieDeLaCuna++;
+          }
+        }
+      }
 
       // Y la convivencia: quien guarda una escucha mira la conexión.
       if (MITADES[0].patron.test(texto)) {
@@ -249,6 +302,18 @@ const ok = intentar(() => {
       'ningún archivo de producción guarda una escucha, así que la regla de mirar la ' +
       'conexión no se comprobó en ninguno. O se renombró la función, o se movió el ' +
       'código: en los dos casos hay que decidir quién protege eso ahora.',
+    );
+  }
+
+  // Con cero, lo que puede quedar es la declaración del tipo y nadie que la use:
+  // exactamente el estado del que esta pieza salió.
+  if (pasanLaSerieDeLaCuna === 0) {
+    problemas.push(
+      'ningún archivo de la aplicación le pasa a una escucha el medidor de la cuña. ' +
+      'El medidor del canal NO se entera del envío a monitor --está aguas arriba, y ' +
+      'el envío deriva hacia el bus antes del fader--, así que con ese solo medidor ' +
+      'la aplicación puede afirmar que escuchó sobre una cuña muda, paso tras paso, ' +
+      'hasta el techo de nominal. Es la decisión del usuario del 2026-09-19, ADR-036.',
     );
   }
 

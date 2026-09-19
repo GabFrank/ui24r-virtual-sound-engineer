@@ -21,6 +21,22 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   pero tiene su propio nivel abajo se delata en vez de pasar por buena. Lo elegiste
   vos entre tres opciones, y está en ADR-036.
 
+- **Y la cuña ya se escucha: la aplicación mide lo que pasó después de moverla y
+  lo deja anotado.** Es lo que le faltaba al envío a monitor para poder subirse
+  **en varios pasos**. El motor no deja tocar dos veces el mismo mando sin haber
+  escuchado en el medio, y hasta ahora nadie escuchaba después de mover una cuña:
+  el segundo paso se habría rechazado siempre, igual que pasaba con la ganancia.
+  Ahora la aplicación escucha dieciocho segundos con los dos medidores a la vez y
+  guarda esa ventana como la escucha de ese paso.
+  **Lo que cuenta como escucha de una cuña son cuatro cosas y las cuatro tienen
+  que darse**: que el músico haya tocado —su medidor se movió y estuvo por encima
+  del piso de ruido— y que su cuña haya sonado —lo mismo, sobre lo que sale hacia
+  el parlante—. Y se cruzan **por instante**: si el músico toca los primeros nueve
+  segundos y la cuña suena los últimos nueve, eso es **cero** segundos de escucha,
+  no nueve.
+  **Todavía no lo vas a ver**, porque falta la pantalla por músico, que es la que
+  va a encadenar subir, escuchar y anotar.
+
 - **La pantalla de ganancia ya guarda lo que escucha, y con eso podés ajustar un
   canal dos veces.** Hasta ahora, cuando aplicabas una ganancia, la aplicación
   volvía a medir dieciocho segundos para contarte si había servido —y ahí tiraba

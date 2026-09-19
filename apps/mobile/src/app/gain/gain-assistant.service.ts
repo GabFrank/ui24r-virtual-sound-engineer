@@ -10,7 +10,9 @@ import { BandService } from '../core/band.service';
 import { MedicionesService } from '../core/mediciones.service';
 import { SesionService } from '../core/sesion.service';
 import { ConnectionStateService } from '../core/connection.state';
-import { medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS } from '../core/medicion-de-la-captura.ts';
+import {
+  medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS, DURACION_CAPTURA_S, CUENTA_REGRESIVA_S,
+} from '../core/medicion-de-la-captura.ts';
 
 export type EstadoCaptura = 'INACTIVA' | 'CUENTA_REGRESIVA' | 'CAPTURANDO' | 'LISTA';
 
@@ -37,9 +39,15 @@ export interface ResultadoCaptura {
   readonly medicionId: string | null;
 }
 
-/** Duración de la ventana de captura, en segundos. */
-export const DURACION_CAPTURA_S = 18;
-const CUENTA_REGRESIVA_S = 3;
+/**
+ * Se reexporta porque la pantalla de ganancia la lee de acá desde antes.
+ *
+ * **La definición se mudó a `medicion-de-la-captura.ts`** el 2026-09-19, cuando
+ * el envío a monitor empezó a escuchar también: una duración de ventana definida
+ * dentro del módulo de una herramienta y copiada en la otra es exactamente cómo
+ * una constante y su copia se separan.
+ */
+export { DURACION_CAPTURA_S };
 
 /**
  * Conduce la captura de una ventana por canal y produce la recomendación.

@@ -118,6 +118,50 @@ export class EnvioAMonitorService {
    */
   private readonly techos = signal<ReadonlyMap<string, number>>(new Map());
 
+  /**
+   * Anota en la transacción que después de ella hubo una escucha.
+   *
+   * **Es la otra mitad de guardar la medición, y sin ella guardarla no sirve de
+   * nada:** el motor no busca «alguna medición posterior», resuelve exactamente
+   * el identificador que la transacción declara. Una tabla llena de mediciones y
+   * un `medicionPosteriorId` en nulo dan el mismo veredicto que la tabla vacía.
+   *
+   * **Se llama después de escuchar y no al aplicar**, porque la escucha ocurre
+   * después: al cerrar la transacción todavía no hay nada que oír.
+   *
+   * **Sin identificador no se anota nada.** La escucha devuelve `null` cuando no
+   * hubo dónde guardarla, y anotar un identificador inventado sería exactamente
+   * el agujero que el motor cerró el 2026-09-18: anotar cualquier texto contaba
+   * como haber escuchado, y una auditoría midió dieciséis pasos y 32 dB con
+   * identificadores que no existían.
+   *
+   * **Que esa medición sea de verdad una escucha no lo decide esto**: el motor
+   * comprueba siete cosas sobre ella. Acá sólo se dice cuál fue.
+   *
+   * Es gemela de la de `AplicarGananciaService` a propósito y **no se comparte**:
+   * las dos son tres líneas sobre servicios distintos, y el día que el envío a
+   * monitor necesite anotar algo más que el identificador, un ayudante común
+   * obligaría a cambiar los dos caminos para tocar uno solo.
+   */
+  async anotarEscucha(idTransaccion: string, medicionId: string | null): Promise<void> {
+    if (medicionId === null) {
+      this.log.info('transaction', 'escucha_sin_anotar', { transaccion: idTransaccion });
+      return;
+    }
+    try {
+      await this.diario.actualizar(idTransaccion, { medicionPosteriorId: medicionId });
+    } catch (e) {
+      // **No propaga.** El cambio ya se aplicó y se verificó; lo que se pierde es
+      // el permiso para el paso siguiente, que el motor va a negar diciendo que
+      // falta la medición intermedia. Hacer fallar la pantalla acá convertiría un
+      // freno correcto en un error para el usuario.
+      this.log.warn('transaction', 'escucha_no_anotada', {
+        transaccion: idTransaccion, medicion: medicionId,
+        motivo: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   /** Hasta dónde puede volver a subir esta ruta, o `null` si nunca se bajó. */
   techoDe(ruta: string): number | null {
     return this.techos().get(ruta) ?? null;
@@ -167,11 +211,18 @@ export class EnvioAMonitorService {
     // después de aplicar-- así que en una sesión donde se midió ganancia esta
     // lista **ya trae filas**.
     //
-    // Lo que sí sigue en pie es el comportamiento de ESTE camino, y por otro
-    // motivo: `EnvioAMonitorService` **no mide**, así que nadie anota
-    // `medicionPosteriorId` en una transacción de monitor y ninguna cuña queda con
-    // escucha comprobada. Quien va a capturar acá es la pantalla por músico, y
-    // cuando lo haga la rampa avanza sin tocar este archivo.
+    // **Y la frase que seguía acá dejó de ser cierta el 2026-09-19, más tarde el
+    // mismo día.** Decía que `EnvioAMonitorService` no mide, que por eso nadie
+    // anota `medicionPosteriorId` en una transacción de monitor, y que quien iba a
+    // capturar sería la pantalla por músico. Las tres se cayeron juntas: quien
+    // captura es `EscuchaDeLaCunaService` —un servicio, no la pantalla, igual que
+    // en el camino de la ganancia— y este archivo **sí** anota, con
+    // `anotarEscucha`, unas líneas más arriba.
+    //
+    // Lo que sigue en pie, y es lo que hay que saber para leer esta lista: **hasta
+    // que una pantalla llame a subir o bajar, nadie dispara nada**, así que en la
+    // práctica esta lista trae hoy sólo las mediciones de la pantalla de ganancia.
+    // No es lo mismo que «el camino no existe».
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.

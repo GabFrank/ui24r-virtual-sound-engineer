@@ -50,6 +50,33 @@ import type { Measurement, MeasurementMetrics, SignalType } from '@vse/domain';
 export const INTERVALO_DE_MUESTREO_MS = 50;
 
 /**
+ * Cuánto dura una ventana de escucha, en segundos.
+ *
+ * **Vive acá, con el resto de lo que define una captura, y no en la pantalla que
+ * la usa.** Nació dentro del asistente de ganancia porque era el único que
+ * capturaba; desde que el envío a monitor también escucha, dejarla ahí sería
+ * tener la duración de la ventana definida en el módulo de otra herramienta —o,
+ * peor, copiada—. Es la misma razón por la que `INTERVALO_DE_MUESTREO_MS` vive
+ * acá: de estos dos números salen campos de la medición que el motor juzga, y
+ * una copia que se separa de su original es un motor juzgando una ventana que no
+ * ocurrió.
+ *
+ * **Dieciocho y no diez, con diez de mínimo.** El motor exige diez segundos de
+ * música para conceder el paso siguiente; la ventana es más larga porque el
+ * músico no toca los dieciocho de corrido, y desde el 2026-09-19 lo que se
+ * declara es **cuánto sonó**, no cuánto duró la ventana.
+ */
+export const DURACION_CAPTURA_S = 18;
+
+/**
+ * Los segundos de aviso antes de empezar a escuchar.
+ *
+ * No es decoración: el músico está del otro lado del escenario con un instrumento
+ * en la mano y necesita saber cuándo empezar.
+ */
+export const CUENTA_REGRESIVA_S = 3;
+
+/**
  * La calibración de una medición que no tiene calibración.
  *
  * **`calibrationStateId` es obligatorio en el esquema y no hay tabla de
@@ -86,8 +113,30 @@ export interface CapturaParaGuardar {
   /** El canal medido, para poder decir de quién es esta escucha. */
   readonly channelId: string | null;
   readonly analisis: AnalisisDeGanancia;
-  /** Las tramas del medidor, para lo que el análisis no cuenta. */
+  /** Las tramas del medidor **del canal**, para lo que el análisis no cuenta. */
   readonly muestras: readonly MuestraVu[];
+  /**
+   * Las tramas del medidor **de la cuña**, cuando lo que se escucha es un monitor.
+   *
+   * **Ausente para la ganancia, y no por comodidad.** La ganancia está aguas
+   * arriba del medidor del canal, así que moverla lo mueve y ese medidor solo
+   * prueba lo que hay que probar. El envío a una cuña deriva del canal hacia el
+   * bus y está antes del fader, de modo que subirlo **no mueve el medidor del
+   * canal ni un escalón**: ahí hace falta el segundo, o la escucha diría que el
+   * músico tocó sin decir nada de si su cuña sonó. Decisión del usuario del
+   * 2026-09-19 entre tres opciones, [ADR-036](../../../../../docs/adr/ADR-036-la-escucha-de-una-cuna-se-comprueba-sobre-dos-medidores.md).
+   *
+   * **Va alineada por índice con `muestras`**: las dos se empujan en el mismo
+   * tic del muestreo, así que la posición `i` de las dos describe el mismo
+   * instante. Pareadas es como se puede preguntar «¿sonaron **a la vez**?», que
+   * es lo que hay que preguntar: un músico que toca los últimos diez segundos y
+   * una cuña que suena los primeros diez no son veinte segundos de escucha ni
+   * diez, son cero.
+   *
+   * Lo que se lee de la cuña es lo que **sale hacia el parlante**, después del
+   * fader del auxiliar. Ver `EstadoAuxiliar.nivelDb`.
+   */
+  readonly muestrasDeLaCuna?: readonly MuestraVu[];
 }
 
 /**
@@ -168,9 +217,49 @@ function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
  * **Es `PERFORMANCE` y no `SINE` ni `PINK`** porque lo que suena es el
  * instrumento de alguien, no un generador: la aplicación no reproduce audio
  * todavía.
+ *
+ * **Y cuando lo que se escucha es una cuña son CUATRO preguntas y no dos.** A
+ * las dos del canal —que probaron que el músico tocó— se suman las mismas dos
+ * sobre el medidor de la cuña, que prueban que le llegó. Decisión del usuario del
+ * 2026-09-19: ninguna de las dos mitades implica la otra, porque en una cuña
+ * entran varios instrumentos y verla moverse no dice que se haya movido **por
+ * este músico**. Con una sola de las dos, la aplicación podría afirmar que
+ * escuchó sobre una cuña muda, paso tras paso, hasta el techo de nominal.
  */
-function senal(sonando: readonly MuestraVu[]): SignalType {
-  return elMedidorSeMovio(sonando) ? 'PERFORMANCE' : 'SILENCE';
+function senal(
+  sonandoCanal: readonly MuestraVu[],
+  sonandoCuna: readonly MuestraVu[] | undefined,
+): SignalType {
+  if (!elMedidorSeMovio(sonandoCanal)) return 'SILENCE';
+  if (sonandoCuna !== undefined && !elMedidorSeMovio(sonandoCuna)) return 'SILENCE';
+  return 'PERFORMANCE';
+}
+
+/**
+ * Los instantes en que **los dos** medidores tenían algo.
+ *
+ * **Se cruzan por índice y no se cuentan por separado**, y ésa es la parte que
+ * importa: las dos series se empujan en el mismo tic, así que la posición `i` de
+ * una y de la otra describen el mismo momento. Contar por separado y quedarse con
+ * el menor de los dos totales diría que hubo diez segundos de escucha cuando el
+ * músico tocó los últimos diez y la cuña sonó los primeros diez —que son cero—.
+ *
+ * Devuelve las muestras **del canal**, porque son las que describen a quién se
+ * estaba escuchando; lo que aporta la cuña es el permiso, no el número.
+ *
+ * Si una serie es más corta que la otra, los índices que le faltan no cuentan:
+ * un instante del que no hay dato de la cuña no es un instante en que se sepa que
+ * la cuña sonó.
+ */
+export function sonaronALaVez(
+  canal: readonly MuestraVu[],
+  cuna: readonly MuestraVu[],
+): readonly MuestraVu[] {
+  const conSonidoLaCuna = (m: MuestraVu | undefined): boolean =>
+    m !== undefined && Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB;
+  return canal.filter(
+    (m, i) => Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB && conSonidoLaCuna(cuna[i]),
+  );
 }
 
 /**
@@ -196,7 +285,7 @@ function senal(sonando: readonly MuestraVu[]): SignalType {
  * `duracionS` es la comprobación de escucha; el día que alguien necesite saber
  * cuánto duró la captura, eso pide un campo propio y no reinterpretar éste.
  */
-function cuantoSono(sonando: readonly MuestraVu[]): number {
+export function cuantoSono(sonando: readonly MuestraVu[]): number {
   return (sonando.length * INTERVALO_DE_MUESTREO_MS) / 1000;
 }
 
@@ -263,12 +352,24 @@ function metricas(c: CapturaParaGuardar): MeasurementMetrics | null {
 }
 
 export function medicionDeLaCaptura(c: CapturaParaGuardar): Measurement {
-  const sonando = conSonido(c.muestras);
+  // **Tres series y no una, y conviene tener claro qué decide cada una.**
+  // `sonandoCanal` prueba que el músico tocó; `sonandoCuna`, que a su parlante le
+  // llegó algo; y `sonando` son los instantes en que las dos cosas pasaron **a la
+  // vez**, que es lo único que se puede declarar como escucha. Para la ganancia
+  // no hay cuña y las tres colapsan en la primera, que es exactamente el
+  // comportamiento anterior.
+  const sonandoCanal = conSonido(c.muestras);
+  const sonandoCuna = c.muestrasDeLaCuna === undefined
+    ? undefined
+    : conSonido(c.muestrasDeLaCuna);
+  const sonando = c.muestrasDeLaCuna === undefined
+    ? sonandoCanal
+    : sonaronALaVez(c.muestras, c.muestrasDeLaCuna);
   return {
     id: c.id,
     sessionId: c.sessionId,
     timestamp: c.empezoEl,
-    signalType: senal(sonando),
+    signalType: senal(sonandoCanal, sonandoCuna),
     // **En nulo, y el motivo que estaba escrito acá era FALSO.** Decía que
     // «dónde cae el medidor respecto del fader no se midió», y está medido desde
     // el 2026-09-09: el fader está **aguas abajo** del byte que esta captura lee

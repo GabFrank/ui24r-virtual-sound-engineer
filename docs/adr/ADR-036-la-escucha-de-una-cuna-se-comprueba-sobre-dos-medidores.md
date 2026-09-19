@@ -1,10 +1,12 @@
 # ADR-036 — La escucha de una cuña se comprueba sobre dos medidores
 
 **Fecha:** 2026-09-19
-**Estado:** **decidida, a medio implementar.** El medidor de la cuña ya llega a
-la aplicación en marcha —`Ui24rMixerAdapter.auxiliares()` y la señal del mismo
-nombre en `MixerService`—; lo que todavía no existe es la captura que los use y
-escriba la medición. Ver «Qué falta».
+**Estado:** **decidida e implementada, sin quien la dispare.** El medidor de la
+cuña llega a la aplicación en marcha, `EscuchaDeLaCunaService` muestrea los dos y
+guarda la medición, y `EnvioAMonitorService.anotarEscucha` la anota en la
+transacción. Lo que falta es **la pantalla por músico, que es quien encadena los
+tres pasos**: mientras no exista, nadie llama a subir ni a bajar una cuña, así que
+no hay cambio de comportamiento observable. Ver «Qué falta».
 **Origen:** **Decisión del usuario**, eligiendo entre tres opciones el
 2026-09-19, al empezar la pieza que le da escucha al envío a monitor.
 
@@ -88,17 +90,30 @@ es lo único que puede explicarle a alguien una cuña que recibe señal y no sue
 
 ## Qué falta, dicho con todas las letras
 
-**Esta decisión está implementada a medias, y la mitad que falta es la que
-cambia el comportamiento.**
+**La mecánica está entera; lo que falta es quien la use.** No es lo mismo que
+«está a medias», y la distinción importa porque este repositorio ya se comió una
+vez la de «abierto» contra «alcanzable».
 
 - **Hecho:** la cola de la trama se decodifica en la aplicación en marcha y los
-  medidores de las diez cuñas llegan hasta el servicio que las expone. Hasta hoy
-  esos bytes los leían sólo los guiones de medición, y la aplicación los tiraba.
-- **Falta:** la captura que muestree los dos medidores durante la ventana, la
-  guarde como medición y anote su identificador en la transacción de monitor.
-  Mientras no exista, **`EnvioAMonitorService` sigue sin medir** y ninguna cuña
-  queda con escucha comprobada — que es donde estaba antes de esta decisión, así
-  que no hay cambio de comportamiento todavía.
+  medidores de las diez cuñas llegan hasta el servicio que los expone —hasta hoy
+  esos bytes los leían sólo los guiones de medición, y la aplicación los tiraba—;
+  `EscuchaDeLaCunaService` muestrea los dos en el mismo tic y guarda la ventana
+  como medición; y `EnvioAMonitorService.anotarEscucha` la anota en su
+  transacción.
+- **Falta quien los encadene, que es la pantalla por músico.** Subir, escuchar y
+  anotar son tres llamadas, y la orquestación vive afuera **a propósito**: es lo
+  que hace el camino de la ganancia, y el motivo es que el músico tiene que ver la
+  cuenta regresiva y poder cancelar, cosa que un `subir()` que se bloquea veintiún
+  segundos no permite. Mientras esa pantalla no exista, **nadie llama a subir ni a
+  bajar una cuña**, así que ninguna queda con escucha comprobada — que es donde
+  estaba antes de esta decisión, y por eso no hay cambio de comportamiento
+  observable todavía.
+- **Y ese encadenado es lo que ningún test puede cubrir**, porque los tres pasos
+  viven en servicios con decorador de Angular y este repositorio no monta el
+  inyector en ningún test. Lo que sí se comprueba es que producción siga pasando
+  las dos series: `validate-escucha-anotada.mjs` tiene una regla nueva para eso,
+  y **su primera versión no cazaba su propio caso** —contaba la declaración del
+  campo privado como si fuera el pase— hasta que se la probó mutando.
 
 **Y lo que esta decisión NO resuelve**, para que nadie lo lea de más:
 
