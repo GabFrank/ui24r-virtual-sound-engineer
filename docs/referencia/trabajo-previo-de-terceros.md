@@ -214,10 +214,14 @@ los guiones de medición.
 **Y hay una corroboración independiente del reparto de los dos bytes, que es lo
 que más importa de esta fila.** fmalcher los nombra `vuPost` (`+0`) y
 `vuPostFader` (`+1`), o sea **el segundo después del fader del auxiliar**. Este
-repositorio llegó a lo mismo midiendo: el reconocimiento del 2026-09-13 los leyó
-iguales con ese fader en la unidad de ganancia, y el barrido de la 94 lo usó en
-0,45 como atenuador fijo porque mueve uno y deja el otro quieto. Dos caminos
-distintos —leer código ajeno y mover el aparato— y coinciden.
+repositorio llegó a lo mismo midiendo, el 2026-09-09: moviendo `a.0.mix`, **el
+`+1` siguió al fader y el `+0` no** —docblock de `busMono` en `vu-buses.ts`—. Dos
+caminos distintos, leer código ajeno y mover el aparato, y coinciden.
+
+*Una redacción del 2026-09-19 apoyaba esto en «el barrido de la 94 puso ese fader
+en 0,45», y era falso: el 0,45 es de la 102 y la 104, sobre el auxiliar 5, y la 94
+midió el auxiliar 3 sin tocar su fader. Lo corrigió una auditoría de fidelidad. La
+conclusión no cambia; la evidencia verdadera es la del `a.0.mix`, y es más fuerte.*
 
 **Lo que esto NO corrobora:** a cuántos decibeles equivale un escalón de esos
 bytes en el bloque de bus. fmalcher aplica al auxiliar la misma escala lineal de

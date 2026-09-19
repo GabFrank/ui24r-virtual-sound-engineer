@@ -91,9 +91,14 @@ export class MixerService {
    * sobre el canal probaría que el músico tocó y no diría nada de si su cuña
    * sonó.
    *
-   * **Vacía mientras no haya trama**, igual que `canales`, y por el mismo motivo
-   * que el adaptador explica: la cantidad de cuñas sale de la cabecera de la
-   * trama y no de una constante.
+   * **Vacía mientras no haya trama, a DIFERENCIA de `canales`.** La cantidad de
+   * cuñas sale de la cabecera de la trama y no de una constante, mientras que los
+   * canales arrancan en `CANALES_HASTA_SABER` —doce— para poder dibujar una tira
+   * antes de la primera trama.
+   *
+   * *Esto decía «igual que `canales`», que es falso y además contradecía el
+   * docblock que el mismo commit puso en el adaptador. Lo cazó una auditoría de
+   * fidelidad el 2026-09-19.*
    */
   readonly auxiliares = signal<readonly EstadoAuxiliar[]>([]);
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);

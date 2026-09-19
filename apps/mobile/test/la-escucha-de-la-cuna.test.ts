@@ -31,6 +31,12 @@ import {
  * que es justo lo que una escucha copiada de la ganancia dejaría pasar.
  *
  * Decisión del usuario del 2026-09-19 entre tres opciones, ADR-036.
+ *
+ * **Ocho de los nueve recorren la cadena entera; el noveno no, y hay que decirlo.**
+ * El último —«la ganancia sigue escuchando sobre un solo medidor»— es una guarda de
+ * regresión sobre el mapeo y no abre la base ni llega al motor. El mensaje del
+ * commit `7ab9c59` dijo «los nueve», y era falso: lo cazó una auditoría de
+ * fidelidad el mismo día.
  */
 
 const SESION = 'ses-cuna';

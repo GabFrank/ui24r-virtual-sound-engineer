@@ -56,10 +56,16 @@ export const INTERVALO_DE_MUESTREO_MS = 50;
  * la usa.** Nació dentro del asistente de ganancia porque era el único que
  * capturaba; desde que el envío a monitor también escucha, dejarla ahí sería
  * tener la duración de la ventana definida en el módulo de otra herramienta —o,
- * peor, copiada—. Es la misma razón por la que `INTERVALO_DE_MUESTREO_MS` vive
- * acá: de estos dos números salen campos de la medición que el motor juzga, y
- * una copia que se separa de su original es un motor juzgando una ventana que no
- * ocurrió.
+ * peor, copiada—.
+ *
+ * **Y el motivo que estaba escrito acá era más fuerte que el verdadero.** Decía
+ * que «de estos dos números salen campos de la medición que el motor juzga»: de
+ * `INTERVALO_DE_MUESTREO_MS` sí sale uno —`duracionS` es muestras por intervalo—,
+ * pero **`DURACION_CAPTURA_S` no entra en `medicionDeLaCaptura` en absoluto**;
+ * sólo acota cuántas muestras puede haber, a través del bucle que recolecta. La
+ * mudanza sigue estando bien por el motivo simple: dos herramientas escuchan, y la
+ * duración de la ventana no puede vivir dentro del módulo de una de ellas. Lo
+ * corrigió una auditoría de fidelidad el 2026-09-19.
  *
  * **Dieciocho y no diez, con diez de mínimo.** El motor exige diez segundos de
  * música para conceder el paso siguiente; la ventana es más larga porque el

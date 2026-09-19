@@ -73,16 +73,37 @@ analogía.** Importa decirlo porque la analogía estaba disponible y habría sid
 razonable: el bus de efectos tiene el mismo reparto pre/post y la medición 96a lo
 comprobó ahí. Pero un bus de efectos tiene un procesador adentro y un auxiliar no,
 y este repositorio ya pagó una vez extender al bus de efectos un resultado medido
-sobre un subgrupo. Lo que hay para el auxiliar es propio:
+sobre un subgrupo.
 
-- El reconocimiento del 2026-09-13 leyó `pre` y `post` **iguales, los dos en
-  −47,33 dB**, con el fader del auxiliar en la unidad de ganancia.
-- El barrido de la 94 puso ese mismo fader en 0,45 **como atenuador fijo,
-  precisamente porque mueve `post` y deja `pre` quieto**.
+**La medición que lo establece, y es directa:** el 2026-09-09, moviendo `a.0.mix`
+—el fader de un auxiliar— **el `+1` siguió al fader y el `+0` no**. Está en el
+docblock de `busMono`, en `packages/mixer-adapter/src/vu-buses.ts`, y la cita
+también la tabla de la
+[`94`](../compromisos/94-ley-del-envio-a-auxiliar.md) al justificar qué byte lee.
+Es exactamente la pregunta de esta ADR, contestada moviendo el mando que la
+separa.
 
-Los dos están en
-[`102-la-escala-del-bloque-de-bus.md`](../compromisos/102-la-escala-del-bloque-de-bus.md),
-con su evidencia archivada.
+De apoyo, consistente aunque no decisiva por sí sola: el reconocimiento del
+2026-09-13 leyó `pre` y `post` **iguales, los dos en −47,33 dB**, con el fader del
+auxiliar en la unidad de ganancia —que es lo que tienen que dar si la diferencia
+entre los dos es ese fader—. Está en
+[`102-la-escala-del-bloque-de-bus.md`](../compromisos/102-la-escala-del-bloque-de-bus.md).
+
+> **Corrección del 2026-09-19, y es de la clase que este repositorio persigue.**
+> La primera redacción de esta sección, y el mensaje del commit `56eaf6e`,
+> escribieron que *«el barrido de la 94 puso ese mismo fader en 0,45 como atenuador
+> fijo, precisamente porque mueve `post` y deja `pre` quieto»*. **Es falso, y lo
+> encontró una auditoría de fidelidad.** El 0,45 es de los barridos de la **102** y
+> la **104**, sobre el auxiliar **5**; la 94 midió el auxiliar **3** y dice
+> explícitamente que *no hace falta tocar `a.2.mix`* porque está en 0. Cero
+> coincidencias de «0,45» en la 94 y su evidencia.
+>
+> **La conclusión no cambia: cambia por qué se sostiene.** Y lo instructivo es que
+> la evidencia verdadera —la del `a.0.mix`— es **más fuerte** que la inventada, y
+> estaba en el mismo archivo que se estaba leyendo para escribir esto. Es la forma
+> de defecto que el 2026-09-19 apareció once veces en un solo commit: un motivo
+> convincente al lado de una decisión correcta. La frase falsa llegó a estar en
+> **cinco** lugares.
 
 **Se expone también el `+0`**, junto al otro y nombrado como lo que es. No es de
 adorno: la diferencia entre los dos **es el fader del auxiliar**, y esa diferencia
@@ -116,6 +137,23 @@ vez la de «abierto» contra «alcanzable».
   campo privado como si fuera el pase— hasta que se la probó mutando.
 
 **Y lo que esta decisión NO resuelve**, para que nadie lo lea de más:
+
+- **No prueba que la cuña haya sonado POR ESTE MÚSICO**, y la prosa de este
+  documento lo prometió más fuerte de lo que es. El medidor del auxiliar es **la
+  suma del bus**: no distingue la voz del cantante de una guitarra que no suena.
+  Que las dos cosas pasen *a la vez* no dice que una haya causado la otra, y en una
+  cuña con una voz adentro pasan a la vez siempre. La tabla de arriba ya lo dice en
+  su fila del medio; la frase «el de la cuña prueba que le llegó» hay que leerla
+  como **«algo llegó al parlante»**. Lo midió una auditoría adversarial el
+  2026-09-19, junto con el otro lado del mismo problema: que «el medidor se movió»
+  se satisface con **un escalón de 0,3334 dB** en cualquier instante de los
+  dieciocho segundos, y que el resto de la ventana cuenta como escucha con sólo
+  estar por encima del piso de ruido — así que **dos segundos de música con
+  ambiente alrededor declaran dieciocho**. Las dos mitades son **heredadas de la
+  escucha de ganancia**, comprobado: la misma ventana por ese camino da lo mismo.
+  Está en
+  [`hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`](../backlog/hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md),
+  con los números.
 
 - **No cruza el canal de la medición contra la ruta que se movió.** Ése es un
   hallazgo abierto del 2026-09-19 y la misma tarea que ADR-035 nombra como «el

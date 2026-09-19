@@ -203,9 +203,27 @@ export class EscuchaDeLaCunaService {
     // captura de ganancia, y acá vale igual porque el mecanismo es el mismo.
     //
     // **Lo que esto alcanza, exacto:** la ventana que TERMINA con la consola
-    // caída. Una caída que empieza y termina adentro no la ve ni ésta ni la
-    // prueba del medidor quieto; para eso hay que mirar la frescura de las
-    // tramas, y es una tarea aparte, anotada.
+    // caída. Una caída que empieza y termina adentro no la ve ni ésta ni la prueba
+    // del medidor quieto.
+    //
+    // **Y lo que decía acá sobre cerrar ese caso era FALSO.** Decía que «para eso
+    // hay que mirar la frescura de las tramas, y es una tarea aparte», o sea que
+    // presentaba como caro algo que no lo es. Una auditoría adversarial lo midió el
+    // 2026-09-19: `ConnectionStateService` **ya ve la caída** --`fijarEstado` pone
+    // el estado confirmado en inválido con cualquier estado que no sea `CONNECTED`,
+    // y no vuelve hasta un volcado completo--, así que `permiteEscribir()` es falso
+    // durante toda la caída. Lo que falla no es que falte el dato: es que **esto lo
+    // consulta una sola vez, al final**, mientras `recolectar` ya corre cada 50 ms y
+    // podría consultarlo en cada muestra. No hace falta ningún mecanismo de frescura
+    // de tramas.
+    //
+    // **Medido cuánto cuesta el agujero mientras tanto:** con el enlace caído casi
+    // toda la ventana y vuelto antes de terminar, **una sola muestra viva --0,05 s
+    // de música-- compra el paso de 2 dB y declara 18,00 segundos de escucha.**
+    //
+    // Queda como tarea y no se arregla acá porque cambia el comportamiento y no es
+    // la tarea en curso; lo que no queda es el motivo inventado que la hacía parecer
+    // grande.
     if (!this.conexion.permiteEscribir()) {
       this.log.info('audio', 'escucha_de_cuna_sin_consola', {
         auxiliar: c.auxiliar, estado: this.conexion.estado(),

@@ -250,23 +250,27 @@ export interface EstadoAuxiliar {
   /**
    * Lo que **sale hacia la cuña**, después del fader del auxiliar.
    *
-   * **Es el byte `+1` y es el que hay que mirar para afirmar que al músico le
-   * llegó algo**, porque incluye el mando que puede dejar la cuña muda sin que
-   * ningún envío lo delate. La distinción está **medida en este aparato**, no
-   * heredada por analogía del bus de efectos: el reconocimiento del 2026-09-13
-   * leyó `pre` y `post` iguales —los dos en −47,33 dB— con el fader del auxiliar
-   * en la unidad de ganancia, y el barrido de la 94 lo usó en 0,45 como
-   * atenuador fijo justamente porque mueve éste y deja el otro quieto. Ver
-   * [`102-la-escala-del-bloque-de-bus.md`](../../../docs/compromisos/102-la-escala-del-bloque-de-bus.md).
+   * **Es el byte `+1` y es el que hay que mirar para afirmar que al parlante del
+   * músico le llegó algo**, porque incluye el mando que puede dejar la cuña muda
+   * sin que ningún envío lo delate. La distinción está **medida en este aparato**,
+   * no heredada por analogía del bus de efectos: el 2026-09-09, moviendo
+   * `a.0.mix`, **el `+1` siguió al fader y el `+0` no** —ver el docblock de
+   * `busMono` en [`vu-buses.ts`](./vu-buses.ts), donde está la medición—.
+   *
+   * *Una redacción anterior apoyaba esto en «el barrido de la 94 usó ese fader en
+   * 0,45», y era falso: ese 0,45 es de la 102 y la 104. Lo corrigió una auditoría
+   * de fidelidad el 2026-09-19.*
    */
   readonly nivelDb: number;
   /**
    * Lo que llega al auxiliar **antes** de su fader, el byte `+0`.
    *
-   * Es el que responde al envío del canal, y es el que la 94 barrió para medir
-   * la ley del envío a monitor. Se expone junto al otro porque la diferencia
-   * entre los dos **es el fader del auxiliar**, y esa diferencia es la que
-   * explica una cuña que recibe señal y no suena.
+   * Es el que responde al envío del canal, y es el que barrieron las mediciones
+   * de esa ley: la **94** lo intentó y **se declaró indecidible**, y quien
+   * estableció la ley fue la
+   * [`104`](../../../docs/compromisos/104-la-ley-del-envio-a-monitor.md). Se expone
+   * junto al otro porque la diferencia entre los dos **es el fader del auxiliar**,
+   * y esa diferencia es la que explica una cuña que recibe señal y no suena.
    */
   readonly nivelAntesDelFaderDb: number;
   /** El mayor `nivelDb` visto, sin la balística de caída del medidor de canal. */
@@ -1374,13 +1378,18 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // describen el mismo instante. Ver `EstadoAuxiliar` para por qué hace falta.
     //
     // **Se decodifica siempre y no sólo cuando alguien mira**, al revés que el
-    // analizador de espectro. El motivo es la cadencia: el espectro son treinta
-    // tramas por segundo con 31 bandas cada una, y esto son diez bloques de cinco
-    // bytes sobre una trama que ya se está recorriendo entera. Y el motivo
-    // verdadero es otro: quien va a mirar esto es una captura de dieciocho
-    // segundos que empieza **después** de que la consola ya venía emitiendo, así
-    // que un decodificador que arranca cuando alguien se suscribe llegaría tarde
-    // a su propia ventana.
+    // analizador de espectro. El motivo es la cadencia y el tamaño: el espectro son
+    // treinta tramas por segundo con **122** bandas cada una --`RTA_BANDAS`; una
+    // redacción anterior decía 31, que son las del ecualizador gráfico de salida y
+    // no las del analizador, y lo corrigió una auditoría de fidelidad-- y esto son
+    // diez bloques de cinco bytes sobre una trama que ya se está recorriendo
+    // entera.
+    //
+    // **Y la segunda mitad de este comentario decía otra cosa que no se sostiene**:
+    // que un decodificador perezoso «llegaría tarde a su propia ventana». No es
+    // cierto —una captura se suscribiría al empezar su ventana, o sea en el primer
+    // instante que le interesa— y no hay ninguna latencia de arranque medida que le
+    // dé contenido. Se retira: el argumento de tamaño alcanza solo.
     const buses = decodificarVuBuses(base64);
     this.auxiliaresDetectados = Math.max(this.auxiliaresDetectados, buses.auxiliares.length);
     for (let i = 0; i < buses.auxiliares.length; i++) {

@@ -161,8 +161,19 @@ const GUARDA_DE_CONEXION = /\.\s*permiteEscribir\s*\(/;
  * contando la definición de `anotarEscucha` como llamada. Se probó mutando, que es
  * lo único que lo muestra.
  *
- * Lo que las distingue es la palabra de adelante: una declaración de campo lleva
- * `private`, `readonly` o similar; **pasarlo en un objeto, no**.
+ * **Y la segunda versión seguía teniendo el mismo agujero, más fino.** Distinguía
+ * la declaración por la palabra de adelante —`private`, `readonly`—, así que la
+ * declaración del tipo se salvaba **por casualidad**: dice `readonly` dos veces.
+ * Escrita como `muestrasDeLaCuna?: MuestraVu[];`, que es forma perfectamente
+ * normal, volvía a contar como pase. Y además bastaba **un literal con esa clave
+ * en cualquier archivo de `apps/`** —una línea de registro, un archivo muerto—
+ * para satisfacerla con el pase borrado. Las dos las midió una auditoría
+ * adversarial el 2026-09-19.
+ *
+ * Hoy se distingue por dos cosas que no dependen de ningún modificador: **una
+ * declaración termina en `;` y un pase en `,`**, y el archivo **tiene que llamar
+ * además a `medicionDeLaCaptura`**, que es adonde la serie tiene que llegar para
+ * que sirva de algo. Un literal suelto en otro archivo ya no alcanza.
  *
  * **Lo que esta regla NO caza**, por lo mismo que las otras: mira texto, así que
  * una llamada que pase la serie de la cuña **vacía**, o la misma serie del canal
@@ -172,8 +183,18 @@ const GUARDA_DE_CONEXION = /\.\s*permiteEscribir\s*\(/;
  */
 const SERIE_DE_LA_CUNA = /\bmuestrasDeLaCuna\s*\??\s*:/;
 
-/** Lo que convierte una coincidencia en una declaración y no en un pase. */
-const ES_DECLARACION = /\b(?:private|public|protected|readonly|declare)\b/;
+/**
+ * Lo que convierte una coincidencia en una declaración y no en un pase.
+ *
+ * **El punto y coma, y no la palabra de adelante.** Un miembro de interfaz y un
+ * campo de clase terminan en `;`; una propiedad de objeto literal, en `,`. No
+ * depende de que nadie conserve un `readonly`, y **no produce el falso positivo**
+ * que la versión anterior daba con un pase escrito `… as readonly MuestraVu[],`.
+ */
+const ES_DECLARACION = /;\s*$/;
+
+/** Adonde la serie tiene que llegar para que pasarla signifique algo. */
+const DESTINO_DE_LA_SERIE = /\bmedicionDeLaCaptura\s*\(/;
 
 /** Los `.ts` de una carpeta, recursivo, sin `node_modules` ni tests. */
 function archivos(dir) {
@@ -259,7 +280,7 @@ const ok = intentar(() => {
       // archivo entero contaba la declaración del campo privado del propio
       // servicio, así que borrar el pase dejaba la guarda en verde. Se acota a
       // `apps` porque quien captura es la aplicación.
-      if (zona === 'apps') {
+      if (zona === 'apps' && DESTINO_DE_LA_SERIE.test(texto)) {
         for (const linea of texto.split('\n')) {
           if (SERIE_DE_LA_CUNA.test(linea) && !ES_DECLARACION.test(linea)) {
             pasanLaSerieDeLaCuna++;
@@ -329,7 +350,12 @@ const ok = intentar(() => {
     `guarda de la escucha: ${mirados} archivo(s) de producción, ` +
     MITADES.map((m) => `${m.que}: ${encontrados.get(m.que)} llamada(s)`).join(', ') +
     `, ${CAMPO} en ${campoEscrito} archivo(s) de la aplicación`
-    + `, ${guardanEscucha} que guarda(n) escucha y mira(n) la conexión.`,
+    + `, ${guardanEscucha} que guarda(n) escucha y mira(n) la conexión`
+    // **Se imprime, y antes no.** Sin este número, quien lee la salida no puede
+    // saber si la regla de la cuña vio un pase o cuarenta: sólo se enteraría al
+    // llegar a cero, que es tarde. Lo marcó una auditoría adversarial el
+    // 2026-09-19.
+    + `, ${pasanLaSerieDeLaCuna} que pasa(n) el medidor de la cuña.`,
   );
 }, (e) => problemas.push(e.message));
 

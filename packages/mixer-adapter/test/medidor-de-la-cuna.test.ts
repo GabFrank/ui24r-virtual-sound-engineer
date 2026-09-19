@@ -99,9 +99,10 @@ test('subir el envío mueve la cuña y NO mueve el canal: es el motivo de todo e
 test('una cuña que recibe señal y no suena se distingue de una que suena', async () => {
   // **El caso que decide qué byte se mira.** El fader del auxiliar está entre los
   // dos: el de adelante responde al envío, el de atrás a lo que sale hacia el
-  // parlante. Medido el 2026-09-13 —con ese fader en la unidad de ganancia los
-  // dos dieron −47,33 dB— y usado en 0,45 como atenuador fijo en el barrido de
-  // la 94, justamente porque mueve uno y deja el otro quieto.
+  // parlante. Medido el 2026-09-09 moviendo `a.0.mix`: el de atrás siguió al fader
+  // y el de adelante no. (Una redacción anterior de este comentario lo apoyaba en
+  // «el barrido de la 94 usó ese fader en 0,45», que es falso —ese 0,45 es de la
+  // 102 y la 104—; lo corrigió una auditoría de fidelidad.)
   //
   // Sin esta distinción, una cuña con su propio fader abajo pasaría por sonando
   // paso tras paso y la aplicación la subiría hasta el tope sin que nadie oiga
