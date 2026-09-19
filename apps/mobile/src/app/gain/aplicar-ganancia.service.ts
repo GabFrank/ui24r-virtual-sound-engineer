@@ -156,7 +156,7 @@ export class AplicarGananciaService {
       //
       // El motivo verdadero es más simple: el techo de «hasta donde estaba antes
       // de que yo lo bajara» lo anota `registrarTecho` cuando la aplicación BAJA
-      // un envío a monitor, y lo guarda `BajarEnvioService`. **Este servicio sólo
+      // un envío a monitor, y lo guarda `EnvioAMonitorService`. **Este servicio sólo
       // aplica ganancia del previo**, que no tiene techo propio ni entra en ese
       // mapa, así que acá va vacío y no se pierde nada.
       techoPorRuta: new Map(),

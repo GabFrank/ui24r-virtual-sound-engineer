@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { puedeBajarEnvioAMonitor } from '@vse/assistants';
+import { puedeBajarEnvioAMonitor, puedeSubirEnvioAMonitor } from '@vse/assistants';
 import { LEY_DEL_ENVIO } from './ley-del-envio.ts';
 import type { ContextoSeguridad } from '@vse/safety';
 import { anclarSiSeAplico, olvidarTecho } from '@vse/safety';
@@ -69,8 +69,39 @@ export type ResultadoBajada =
   | { readonly estado: 'NO_SE_PUEDE'; readonly motivo: string }
   | { readonly estado: 'FALLO'; readonly motivo: string };
 
+/** Lo que hace falta para subir. Casi igual, con dos diferencias que importan. */
+export interface EnvioASubir {
+  readonly canal: number;
+  readonly auxiliar: number;
+  /** `i.N.aux.M.value`, en forma canónica. */
+  readonly ruta: string;
+  /**
+   * Dónde está ahora, en dB. Lo lee el adaptador; no se supone.
+   *
+   * **`-Infinity` es legítimo y significa silencio**, que es el caso con el que
+   * empieza un soundcheck. Para bajar no lo es --no hay desde dónde bajar-- y
+   * por eso los dos tipos no son el mismo.
+   */
+  readonly nivelActualDb: number;
+  /** El crudo que la consola tiene ahora, para la comprobación previa. */
+  readonly crudoActual: number;
+  /** Cuánto subir, en dB y positivo. Se ignora si la cuña está en silencio. */
+  readonly subirDb: number;
+}
+
+export type ResultadoSubida =
+  | {
+      readonly estado: 'APLICADA';
+      readonly id: string;
+      readonly quedoEnDb: number;
+      /** Si este paso fue el primero desde el silencio, para poder decírselo al músico. */
+      readonly salioDelSilencio: boolean;
+    }
+  | { readonly estado: 'NO_SE_PUEDE'; readonly motivo: string }
+  | { readonly estado: 'FALLO'; readonly motivo: string };
+
 @Injectable({ providedIn: 'root' })
-export class BajarEnvioService {
+export class EnvioAMonitorService {
   private readonly seguridad = inject(SafetyService);
   private readonly diario = inject(DiarioService);
   private readonly mediciones = inject(MedicionesService);
@@ -250,6 +281,107 @@ export class BajarEnvioService {
       : r.estado === 'PARCIAL' ? r.motivo
       : r.motivo;
     this.log.warn('transaction', 'bajar_envio_fallo', { ruta: e.ruta, estado: r.estado, motivo });
+    return { estado: 'FALLO', motivo };
+  }
+
+  /** Si el envío se puede subir ahora, y si no, por qué. */
+  puedeSubir(e: EnvioASubir): { readonly puede: boolean; readonly motivo: string | null } {
+    const v = this.veredictoDeSubida(e);
+    return v.puede ? { puede: true, motivo: null } : { puede: false, motivo: v.motivo };
+  }
+
+  private veredictoDeSubida(e: EnvioASubir) {
+    const permiso = this.seguridad.permiteEscritura('MONITOR_AUX_SEND');
+    return puedeSubirEnvioAMonitor({
+      ruta: e.ruta,
+      nivelActualDb: e.nivelActualDb,
+      subirDb: e.subirDb,
+      sessionState: this.sesion.estado(),
+      paroDeEmergencia: this.seguridad.bloqueado(),
+      conexionPermiteEscribir: permiso.permitido,
+    }, LEY_DEL_ENVIO);
+  }
+
+  /**
+   * Sube el envío de un canal a una cuña, un paso.
+   *
+   * **Es el camino que faltaba para que ADR-034 sirva de algo.** El motor sabe
+   * distinguir poner el nivel de retocarlo desde el 2026-09-17 y sabe salir del
+   * silencio desde el 2026-09-19; lo que no existía era quien lo propusiera.
+   */
+  async subir(e: EnvioASubir, sessionId: string): Promise<ResultadoSubida> {
+    const v = this.veredictoDeSubida(e);
+    if (!v.puede) return { estado: 'NO_SE_PUEDE', motivo: v.motivo };
+
+    const api = this.mixer.api();
+    if (api === null) return { estado: 'NO_SE_PUEDE', motivo: 'la consola no está conectada' };
+
+    this.log.info('transaction', 'subir_envio_pedido', {
+      canal: e.canal, auxiliar: e.auxiliar, ruta: e.ruta,
+      desdeDb: e.nivelActualDb, hastaDb: v.destinoDb, salidaDelSilencio: v.saleDelSilencio,
+    });
+
+    // INV-001: sin punto de retorno no se escribe.
+    const instantanea = await api.guardarInstantanea();
+    if (instantanea === null) {
+      this.log.warn('safety', 'sin_punto_de_retorno', { ruta: e.ruta });
+      return {
+        estado: 'NO_SE_PUEDE',
+        motivo: 'no se pudo crear el punto de retorno en la consola, así que no se escribe nada',
+      };
+    }
+
+    const cambio = {
+      kind: 'MONITOR_AUX_SEND' as const,
+      path: e.ruta,
+      unidad: 'dB',
+      // Al cable va el crudo; al control de INV-004, los decibeles.
+      valorPropuesto: v.crudo,
+      valorEsperado: e.crudoActual,
+      magnitudPropuesta: v.destinoDb,
+      // **Desde el silencio se declara −∞, y es lo único que el motor acepta.**
+      // `verificarAtaduraDelOrigen` sólo abre el caso con nombre propio cuando el
+      // llamador dice la verdad: declarar un número finito desde el crudo del
+      // silencio es la mentira que esa guarda existe para cazar, y rebota con
+      // `ORIGEN_NO_ATADO`. El asistente ya lo resolvió; acá sólo se transcribe.
+      magnitudEsperada: v.saleDelSilencio ? -Infinity : e.nivelActualDb,
+    };
+
+    const ejecutor = this.seguridad.crearEjecutor(api, this.diario);
+    const r = await ejecutor.ejecutar(
+      `envio-${e.canal}-${e.auxiliar}-${Date.now()}`,
+      sessionId,
+      v.saleDelSilencio
+        ? `encender el envío del canal ${e.canal} al monitor ${e.auxiliar} desde el silencio`
+        : `subir ${e.subirDb} dB el envío del canal ${e.canal} al monitor ${e.auxiliar}`,
+      [cambio],
+      await this.contexto(sessionId),
+      {
+        conexionPermiteEscribir: true,
+        snapshotRef: instantanea,
+        tipoDeOperacion: 'MONITOR_AUX_SEND',
+      },
+    );
+
+    // **Subir NO ancla techo, y es lo contrario de bajar.** El techo por ruta
+    // existe para que la aplicación pueda devolver una cuña «hasta donde estaba»
+    // después de haberla bajado ella. Anclarlo al subir convertiría cada subida
+    // en un permiso para seguir subiendo hasta ahí, que es justo el freno que
+    // ADR-028 puso. Quien acota una subida es el techo de nominal y los 2 dB por
+    // paso, no este registro.
+
+    if (r.estado === 'APLICADA') {
+      return {
+        estado: 'APLICADA', id: r.id, quedoEnDb: v.destinoDb,
+        salioDelSilencio: v.saleDelSilencio,
+      };
+    }
+
+    const motivo = r.estado === 'RECHAZADA' ? r.motivos.join('; ')
+      : r.estado === 'CONFLICTO' ? `otro cliente cambió ${r.path}: ${r.motivo}`
+      : r.estado === 'PARCIAL' ? r.motivo
+      : r.motivo;
+    this.log.warn('transaction', 'subir_envio_fallo', { ruta: e.ruta, estado: r.estado, motivo });
     return { estado: 'FALLO', motivo };
   }
 }

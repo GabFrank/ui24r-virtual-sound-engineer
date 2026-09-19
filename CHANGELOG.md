@@ -6,6 +6,18 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación ya sabe subir la cuña de un músico, no sólo bajarla.** Hasta
+  ahora el único asistente de monitor bajaba —la regla tuya para cazar un
+  acople— y subir quedaba entero en tus manos. Ahora sube **de a 2 dB por vez**,
+  con techo en nominal, y si la cuña está apagada la enciende en el punto más
+  bajo que sabe escribir.
+  **Lo que no hace, que importa igual:** no se pasa de nominal, y te lo dice en
+  vez de recortar en silencio; no toca nada durante el show; no sube una ruta
+  que no sea un retorno de monitor de esta consola; y no anota techo al subir
+  —el techo existe para devolver una cuña adonde estaba después de que la
+  aplicación la bajó, no para autorizarse a seguir subiendo—.
+  **Sigue sin haber pantalla que lo llame**: eso es lo que viene.
+
 - **Una cuña apagada ya se puede levantar.** Hasta ahora, si el retorno de un
   músico estaba en cero, la aplicación no podía moverlo: el motor necesita saber
   de qué nivel sale para medir cuánto se mueve, y desde el silencio no hay nivel

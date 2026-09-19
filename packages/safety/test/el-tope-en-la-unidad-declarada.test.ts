@@ -173,12 +173,23 @@ test('ningun sitio de produccion pasa el crudo como si fuera la magnitud', () =>
   // declara como su primer hueco que «ningun camino de la aplicacion propone un
   // cambio de envio a monitor: el unico `CambioPropuesto` que se construye en
   // produccion en todo el repositorio es `aplicar-ganancia.service.ts`». El
-  // segundo es `apps/mobile/src/app/monitor/bajar-envio.service.ts`, y baja el
+  // segundo es `apps/mobile/src/app/monitor/envio-a-monitor.service.ts`, y baja el
   // envio de un canal a una cuña con la ley que midio el item 104.
   //
+  // **2 -> 3 el 2026-09-19**, y es el mismo archivo con un segundo metodo:
+  // `EnvioAMonitorService.subir`, que es el camino que faltaba para que ADR-034
+  // sirva de algo. Sube el envio de a un paso y enciende una cuña apagada.
+  //
+  // **Este sitio tiene algo que los otros dos no**, y por eso conviene decirlo
+  // aca: en el caso del silencio declara `magnitudEsperada: -Infinity`, que es
+  // lo UNICO que el motor acepta desde el crudo del silencio. No es una
+  // excepcion a esta guarda --el crudo sigue yendo como crudo y los decibeles
+  // como magnitud-- pero es la primera vez que una magnitud declarada no es un
+  // numero finito, y quien lea esta cuenta merece saberlo.
+  //
   // Lo miro, que es lo que este centinela pide: `malos` sigue vacio, o sea que
-  // el sitio nuevo pasa el crudo como crudo y los decibeles como magnitud. La
-  // guarda comprobo al llamador nuevo el dia que nacio.
-  assert.equal(vistos, 2, 'sitios de produccion que construyen un CambioPropuesto');
+  // los sitios nuevos pasan el crudo como crudo y los decibeles como magnitud.
+  // La guarda comprobo al llamador nuevo el dia que nacio.
+  assert.equal(vistos, 3, 'sitios de produccion que construyen un CambioPropuesto');
   assert.deepEqual(malos, [], 'el crudo pasado como magnitud: el defecto de vuelta');
 });
