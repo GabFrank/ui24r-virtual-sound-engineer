@@ -30,6 +30,9 @@ CÓMO QUIERO QUE TRABAJES — esto no es negociable:
 - Explicame en lenguaje de producto: entiendo de consola, sonido y show; no de
   código, claves ni nombres de función. El detalle técnico va al commit o al
   documento, que es donde se audita.
+- Los prompts para retomar y todo lo que yo tenga que copiar, ESCRIBILO EN EL
+  CHAT. Muchas veces entro en sesión remota y no tengo cómo abrir un archivo.
+  Guardalo en el repositorio igual, pero la copia va acá.
 - Buscá el trabajo previo de verdad y decime explícitamente que lo hiciste. El
   inventario de los cuatro repositorios está en
   docs/referencia/trabajo-previo-de-terceros.md. "No encontré X" no es "no hacen

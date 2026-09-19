@@ -252,3 +252,11 @@ Sigue valiendo:
 
 El prompt para pegar después de un `/clear` está en
 [`2026-09-19-prompt-para-retomar.md`](2026-09-19-prompt-para-retomar.md).
+
+**Y hay que escribírselo en el chat, no sólo dejarlo acá.** Lo pidió el
+2026-09-19: *«los prompts para retomar tarea necesito que lo escribas aquí para
+que lo copie, de otra forma tengo que abrir el archivo (...) y si estoy en sesión
+remota no tengo acceso a ese archivo»*. Trabaja por SSH y AnyDesk, así que un
+entregable que tiene que **copiar** y que vive sólo en un archivo es un
+entregable que no le llegó. El archivo queda para auditar; la copia va en la
+respuesta.
