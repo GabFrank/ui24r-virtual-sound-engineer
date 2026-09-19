@@ -81,6 +81,24 @@ export class DiarioService implements Diario {
    * aplicación anotó que iba a escribir y no llegó a anotar cómo terminó. Al
    * arrancar hay que releer la consola antes de confiar en nada.
    */
+  /**
+   * Todas las transacciones de una sesión, de la más vieja a la más nueva.
+   *
+   * **El orden lo pone el `ORDER BY` y no el que llama.** El historial usa la
+   * última transacción que tocó cada ruta para saber si hubo escucha después;
+   * con las filas desordenadas, «la última» sería otra y el freno miraría el
+   * dato equivocado.
+   */
+  async deLaSesion(sessionId: string): Promise<readonly EntradaDiario[]> {
+    const filas = await this.db.consultar<{ datos: string }>(
+      `SELECT datos FROM transaction_journal
+        WHERE session_id = ?
+        ORDER BY creado_el`,
+      [sessionId],
+    );
+    return filas.map((f) => JSON.parse(f.datos) as EntradaDiario);
+  }
+
   async interrumpidas(): Promise<readonly EntradaDiario[]> {
     const filas = await this.db.consultar<{ datos: string }>(
       `SELECT datos FROM transaction_journal

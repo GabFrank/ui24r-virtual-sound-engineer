@@ -14,6 +14,17 @@ El usuario objetivo **depende de sus monitores para tocar**. Un asistente que "a
 
 La propiedad se completa con la categoría **solo del usuario**, que la aplicación nunca escribe:
 
+> **Los envíos de monitor ya no están en esa categoría, y esta ADR es la fuente
+> de la frase.** [ADR-028](ADR-028-abrir-el-envio-a-monitor.md) abrió el **nivel**
+> del envío el 2026-09-12 —`i.N.aux.M.value`, con techo y nunca en show— por
+> autorización explícita del usuario, y [ADR-034](ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md)
+> separó el 2026-09-17 poner el nivel de retocarlo. Sigue cerrado todo lo demás
+> del envío —`mute`, `pan`, `post`, `postproc`— y el fader del bus `a.N.mix`.
+> La tabla de abajo queda como estaba con esta nota al lado: **el 2026-09-17 se
+> corrigió `autonomy-matrix.md`, que dice de sí mismo «implementa ADR-010», y no
+> se corrigió acá.** Corregir el derivado y dejar la fuente es cómo una
+> afirmación falsa vuelve.
+
 | Parámetro | Dueño |
 |---|---|
 | Ganancia de entrada, pasa altos, ecualizador de canal, compresor, puerta, deesser | Asistente de canal |
@@ -22,7 +33,7 @@ La propiedad se completa con la categoría **solo del usuario**, que la aplicaci
 | Envíos hacia el bus de análisis | Sistema |
 | Reproductor: silencio, fader, envíos | Sistema, solo dentro de la reserva |
 | Silencio de salidas durante medición por componente | Sistema, con restauración garantizada |
-| Envíos auxiliares de monitores | **Solo del usuario** |
+| Envíos auxiliares de monitores | **Solo del usuario**, salvo el nivel: ver la nota de arriba (ADR-028, ADR-034) |
 | Fader general, silencio de entradas y general | **Solo del usuario** |
 | Alimentación fantasma | **Solo del usuario**, la aplicación solo lee |
 | Limitador de salida | **Solo del usuario**, protege el sistema |

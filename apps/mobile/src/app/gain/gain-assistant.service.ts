@@ -7,6 +7,9 @@ import { DINAMICA_SIN_LEER, type ChannelAssignment, type DinamicaDeCanal } from 
 import { Logger } from '../core/logger';
 import { MixerService } from '../core/mixer.service';
 import { BandService } from '../core/band.service';
+import { MedicionesService } from '../core/mediciones.service';
+import { SesionService } from '../core/sesion.service';
+import { medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS } from '../core/medicion-de-la-captura.ts';
 
 export type EstadoCaptura = 'INACTIVA' | 'CUENTA_REGRESIVA' | 'CAPTURANDO' | 'LISTA';
 
@@ -16,6 +19,21 @@ export interface ResultadoCaptura {
   readonly analisis: AnalisisDeGanancia;
   readonly propuesta: PropuestaDeGanancia;
   readonly capturadaEl: string;
+  /**
+   * La medición que quedó guardada de esta ventana, si quedó.
+   *
+   * **Es lo que permite decirle al motor «acá se escuchó».** Quien aplica un
+   * cambio anota este identificador como `medicionPosteriorId` de su transacción,
+   * y sin eso el motor rechaza el ajuste siguiente sobre el mismo canal aunque el
+   * músico haya tocado.
+   *
+   * `null` cuando no había sesión abierta donde guardarla —la tabla se lee por
+   * sesión y una fila huérfana no la encontraría nadie— o cuando la escritura
+   * falló. **Medir sigue funcionando en los dos casos**: la pantalla de ganancia
+   * también sirve para mirar cómo está un canal sin sesión, y perder eso por no
+   * poder guardar sería cambiar una función por un registro.
+   */
+  readonly medicionId: string | null;
 }
 
 /** Duración de la ventana de captura, en segundos. */
@@ -34,6 +52,8 @@ export class GainAssistantService {
   private readonly log = inject(Logger);
   private readonly mixer = inject(MixerService);
   private readonly banda = inject(BandService);
+  private readonly mediciones = inject(MedicionesService);
+  private readonly sesion = inject(SesionService);
 
   readonly estado = signal<EstadoCaptura>('INACTIVA');
   readonly segundosRestantes = signal(0);
@@ -46,7 +66,7 @@ export class GainAssistantService {
 
   private muestras: MuestraVu[] = [];
   private temporizador: ReturnType<typeof setInterval> | null = null;
-  /** El muestreo de niveles, cada 50 ms. Vive aparte de la cuenta atrás. */
+  /** El muestreo de niveles. Vive aparte de la cuenta atrás. */
   private muestreo: ReturnType<typeof setInterval> | null = null;
   /** Para poder terminar la cuenta atrás al cancelar, y no dejarla colgada. */
   private resolverCuenta: (() => void) | null = null;
@@ -75,9 +95,32 @@ export class GainAssistantService {
       canal: indice, duracionS: DURACION_CAPTURA_S,
     });
 
+    // **Cuándo EMPIEZA la ventana, y por eso se toma acá y no al terminar.**
+    // `Measurement.timestamp` es el principio de la captura y el motor hace
+    // `timestamp + duracionS` para saber si la escucha terminó. Con la fecha del
+    // final, esa suma cae dieciocho segundos más adelante y la escucha **nunca**
+    // se da por terminada: el ajuste siguiente se rechazaría para siempre.
+    // `capturadaEl`, que ya existía, se toma al final y es otra cosa.
+    //
+    // Sale de `toISOString()`, así que trae la `Z`: una fecha sin huso la rechaza
+    // el motor en vez de adivinarle una, y con razón —medido, una medición de un
+    // minuto antes de la escritura quedaba tres horas después—.
+    //
+    // **Queda hasta 50 ms antes de la primera muestra**, que es un tiempo de
+    // muestreo: la ventana declarada es la real corrida ese tanto hacia atrás,
+    // cuatro órdenes de magnitud menos que los diez segundos de escucha mínima, y
+    // corre hacia el lado de declarar la escucha más temprano y más corta.
+    const empezoEl = new Date().toISOString();
+
     await this.recolectar();
 
-    const analisis = analizarVentana(this.muestras);
+    // **La ventana se toma por referencia una sola vez**, porque lo que sigue
+    // tiene un `await`: `cancelar()` vacía `this.muestras` y la captura siguiente
+    // la reasigna, así que mirarla dos veces podría analizar una cosa y guardar
+    // otra. Es la misma forma del defecto que ya costó una recomendación
+    // calculada sobre dos canales mezclados.
+    const muestras = this.muestras;
+    const analisis = analizarVentana(muestras);
     const perfil = this.banda.perfilDe(asignacion);
     const canal = this.mixer.canales().find((c) => c.indice === indice);
     // `null` cuando la consola todavia no dijo la ganancia: proponer a partir
@@ -111,6 +154,7 @@ export class GainAssistantService {
       analisis,
       propuesta,
       capturadaEl: new Date().toISOString(),
+      medicionId: await this.guardarLaEscucha(empezoEl, asignacion, analisis, muestras),
     };
 
     this.resultados.update((prev) => [
@@ -150,6 +194,70 @@ export class GainAssistantService {
    * sobre dos canales mezclados, presentada con su confianza y su evidencia
    * como si fuera fiable.
    */
+  /**
+   * Guarda la ventana como medición y devuelve su identificador.
+   *
+   * **Es la mitad que faltaba del lazo.** La aplicación medía, le contaba al
+   * usuario si el cambio sirvió, y la ventana se perdía. El motor de seguridad
+   * exige una medición entre un cambio y el siguiente sobre el mismo parámetro y
+   * la busca en la tabla `measurement`: con la tabla vacía, **el segundo ajuste
+   * sobre el mismo canal se rechazaba siempre**.
+   *
+   * **Se guarda toda captura y no sólo la posterior a un cambio**, por dos
+   * motivos. Uno es que la ventana de antes es la evidencia de la propuesta, y
+   * tirarla dejaría el historial contando decisiones sin lo que las causó. El otro
+   * es que quien captura no sabe si va a haber un cambio después: decidirlo acá
+   * sería adivinar.
+   *
+   * **No interrumpe la captura si falla.** Medir sirve por sí solo —la pantalla
+   * también se usa para mirar cómo está un canal— y una escritura fallida no es
+   * motivo para no contarle al usuario lo que se acaba de oír. Lo que se pierde es
+   * el permiso para el ajuste siguiente, y eso el motor lo dice con su propio
+   * nombre en vez de dejarlo pasar.
+   */
+  private async guardarLaEscucha(
+    empezoEl: string,
+    asignacion: ChannelAssignment,
+    analisis: AnalisisDeGanancia,
+    muestras: readonly MuestraVu[],
+  ): Promise<string | null> {
+    const sessionId = this.sesion.actual()?.sesion.id ?? null;
+    if (sessionId === null) {
+      // **No es un fallo y no se registra como tal.** Sin sesión abierta no hay
+      // a qué colgar la medición: la tabla se lee por sesión y una fila huérfana
+      // no la encontraría nadie, porque la aplicación **no** activa las claves
+      // foráneas de SQLite y la base la aceptaría en silencio.
+      this.log.info('audio', 'escucha_sin_sesion', { canal: asignacion.ui24rInputIndex });
+      return null;
+    }
+
+    // El identificador sigue la forma que ya usa el ejecutor para las
+    // transacciones —`ganancia-<canal>-<instante>`—, en vez de inventar un
+    // esquema nuevo para la fila de al lado.
+    const id = `medicion-${asignacion.ui24rInputIndex}-${Date.now()}`;
+    const m = medicionDeLaCaptura({
+      id, sessionId, empezoEl, channelId: asignacion.id, analisis, muestras,
+    });
+
+    try {
+      await this.mediciones.guardar(m);
+    } catch (e) {
+      this.log.warn('audio', 'escucha_no_guardada', {
+        canal: asignacion.ui24rInputIndex,
+        motivo: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+
+    this.log.info('audio', 'escucha_guardada', {
+      canal: asignacion.ui24rInputIndex,
+      id,
+      senal: m.signalType,
+      duracionS: Number(m.duracionS.toFixed(1)),
+    });
+    return id;
+  }
+
   cancelar(): void {
     this.detenerTemporizadores();
     this.estado.set('INACTIVA');
@@ -198,7 +306,11 @@ export class GainAssistantService {
         });
       }
     };
-    this.muestreo = setInterval(recoger, 50);
+    // **La cadencia sale de la constante compartida y no de un número acá.** De
+    // ella sale también el `sampleRate` de la medición que se guarda: con el valor
+    // escrito en dos sitios, cambiar el temporizador dejaría todas las mediciones
+    // declarando una cadencia que ya no es la suya.
+    this.muestreo = setInterval(recoger, INTERVALO_DE_MUESTREO_MS);
     return this.cuentaAtras(DURACION_CAPTURA_S).finally(() => {
       if (this.muestreo !== null) clearInterval(this.muestreo);
       this.muestreo = null;

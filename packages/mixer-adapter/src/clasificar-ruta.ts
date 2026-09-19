@@ -262,6 +262,15 @@ export function esEnvioDeMonitor(path: string): boolean {
  */
 export const CANALES_DE_ENTRADA = 24;
 export const AUXILIARES = 10;
+/**
+ * Bandas del ecualizador grafico de salida: **31**, contadas sobre el aparato el
+ * 2026-09-16 --31 por lado en el general y 31 en cada auxiliar--.
+ *
+ * El cliente trae **32 etiquetas** de frecuencia y `this.bands = 31`: la ultima
+ * --«22k»-- es el borde del grafico y no una banda. Acotar con 32 daria una
+ * conversion para una banda que no existe, que es lo que esta funcion evita.
+ */
+export const BANDAS_DEL_GRAFICO = 31;
 
 /**
  * Si una ruta es **exactamente** un nivel de envío a monitor de esta consola.
@@ -332,6 +341,21 @@ export function esNivelDeEnvioAMonitor(ruta: string): boolean {
  * una conversión para una ruta que nadie acotó es exactamente lo que la auditoría
  * de la lista blanca castigó.
  */
+/**
+ * ¿Este segmento numerico es una banda del ecualizador grafico?
+ *
+ * **Se exige `peak` en el lugar que corresponde, no en cualquiera.** Aceptar
+ * cualquier numero precedido de `l` o `r` canonizaria rutas que nadie acoto --y
+ * dar una conversion para una ruta sin acotar es lo que la auditoria de la lista
+ * blanca castigo--.
+ */
+function esBandaDelGrafico(partes: readonly string[], i: number): boolean {
+  const anterior = i >= 1 ? partes[i - 1] : undefined;
+  if (anterior === 'peak') return true;
+  const dosAtras = i >= 2 ? partes[i - 2] : undefined;
+  return (anterior === 'l' || anterior === 'r') && dosAtras === 'peak';
+}
+
 export function canonizarRuta(ruta: string): string | undefined {
   const partes = ruta.split('.');
   for (let i = 0; i < partes.length; i++) {
@@ -353,6 +377,19 @@ export function canonizarRuta(ruta: string): string | undefined {
     } else if (familia === 'aux') {
       if (n >= AUXILIARES) return undefined;
       partes[i] = 'M';
+    } else if (familia === 'a') {
+      // **El bus auxiliar como sujeto**, no como destino de un envio: `a.4.mix`,
+      // `a.4.eq.peak.17`. Se acota con el mismo numero de auxiliares.
+      if (n >= AUXILIARES) return undefined;
+      partes[i] = 'M';
+    } else if (esBandaDelGrafico(partes, i)) {
+      // **La banda del ecualizador grafico de salida.** Aparece en dos formas y
+      // hay que reconocer las dos: `a.4.eq.peak.17` --el numero sigue a `peak`--
+      // y `m.eq.peak.l.17`, donde el general separa izquierda y derecha y el
+      // numero sigue a `l` o `r`. Mirar solo el segmento anterior reconoceria la
+      // primera y dejaria la del general afuera.
+      if (n >= BANDAS_DEL_GRAFICO) return undefined;
+      partes[i] = 'K';
     } else {
       return undefined;
     }

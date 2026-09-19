@@ -19,6 +19,12 @@ m.afs.eq.6 ^ 1000.0081787109, 7.0, -18.0, 2
 
 Una notch de **−18 dB con Q 7 en 1 kHz**. Atenuación real sobre su PA.
 
+> **La profundidad no es una constante.** El 2026-09-16 el supresor plantó tres
+> notches de **−15 dB** —Q 7 también— con un estímulo de tres tonos. Las dos son
+> observaciones reales, así que **−18 no es «la» profundidad del supresor**: es
+> una de dos que se vieron. De qué depende no se midió. Donde este repositorio
+> diga «notches de −18 dB» hay que leer «del orden de −15 a −18».
+
 ## Lo que se creía y no era
 
 El guion `limpiar-supresor-del-general.ts` afirmaba, desde el 2026-09-10:
@@ -78,5 +84,11 @@ y no 48.
 
 - **Qué distingue a `clearfixed` de `clearlive`**, si es que alguno hace algo.
   Con dos corridas que se contradicen, lo honesto es decir que no se sabe.
-- **Qué valor de `m.afs.fmode` es LIVE, FIXED y LOCK** (tarea T2). Decide si una
+- **Qué valor de `m.afs.fmode` es LIVE, FIXED y LOCK** (tarea T2). **Contestado a
+  medias el 2026-09-16, y la pregunta estaba mal planteada**: el modo sale de DOS
+  claves, `afs.logic` y `afs.fmode`, y con `logic = 0` la consola muestra LOCK sea
+  cual sea `fmode`. El mapeo clave→etiqueta esta en
+  [`hallazgo-el-modo-del-supresor-son-dos-claves.md`](hallazgo-el-modo-del-supresor-son-dos-claves.md).
+  Lo que sigue abierto es cual de los tres modos es seguro para meter un tono, que
+  es semantica del aparato y no se lee del cliente. Decide si una
   corrida planta filtros permanentes o pasajeros, y sigue sin medirse.

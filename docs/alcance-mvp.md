@@ -24,11 +24,12 @@ instantánea de la consola.
 | 5 | **Armar el escenario**: dónde está cada fuente, micrófono, monitor y caja | **construido** |
 | 6 | **Recorrido guiado, instrumento por instrumento** | **construido**; falta que entre en el camino de usuario verificado |
 | 7 | Por cada instrumento: ganancia | construido, y **medido** |
-| 8 | Por cada instrumento: **puerta** | **la ley del umbral no está medida** |
-| 9 | Por cada instrumento: **compresor** | **las leyes no están medidas** |
-| 10 | Por cada instrumento: **ecualizador de canal** | **las leyes no están medidas** |
+| 8 | Por cada instrumento: **puerta** | **Se ajusta por lazo cerrado** sobre el indicador de puerta ([ADR-032](adr/ADR-032-puerta-y-compresor-por-lazo-cerrado.md), 2026-09-17); la profundidad y el sostenido están medidos ([116](compromisos/116-los-tiempos-de-la-puerta.md), [120](compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md)). Sin tope, servicio ni pantalla |
+| 9 | Por cada instrumento: **compresor** | **Se ajusta por lazo cerrado** sobre el medidor de reducción ([ADR-032](adr/ADR-032-puerta-y-compresor-por-lazo-cerrado.md)): no hay «una relación», hay una curva ([117](compromisos/117-la-curva-del-compresor.md)). Sin tope, servicio ni pantalla, y **sin decidir cómo se muestra** |
+| 10 | Por cada instrumento: **ecualizador de canal** | **Las leyes están medidas enteras** desde el 2026-09-16 —cuatro bandas, pasa-altos y pasa-bajos—. Lo que falta es todo lo demás: la decisión que lo abre, el criterio del asistente, el servicio y la pantalla |
 | 11 | Por cada instrumento: **cuánto manda a cada efecto** | **la ley del envío está acotada, no medida** (96b, 2026-09-12): no se desvía de `faderADb` más de 0,25 dB sobre 28 dB de recorrido, **con la linealidad del reverb sin poder decidirse** |
-| 12 | Envíos de monitor por auxiliar | **La ley está medida desde el 2026-09-13** (ítem 104, contra un convertidor externo): `i.N.aux.M.value` entró a `RAW_MAP` en `PROBADO`, en dB. Antes estaba sólo acotada (94, 2026-09-12: no se desvía de `faderADb` más de 0,31 dB sobre 27,87 dB), y con esa cota ADR-028 ya había abierto las 240 rutas. **Lo que falta acá no es la ley: es la pantalla.** El servicio `monitor/bajar-envio.service.ts` está escrito y probado y no lo llama nadie |
+| 12 | Envíos de monitor por auxiliar | **La ley está medida desde el 2026-09-13** (ítem 104, contra un convertidor externo): `i.N.aux.M.value` entró a `RAW_MAP` en `PROBADO`, en dB. Antes estaba sólo acotada (94, 2026-09-12: no se desvía de `faderADb` más de 0,31 dB sobre 27,87 dB), y con esa cota ADR-028 ya había abierto las 240 rutas. **Lo que falta acá no es la ley: es la pantalla.** El servicio `monitor/envio-a-monitor.service.ts` está escrito y probado —**baja y, desde el 2026-09-19, también sube**— y no lo llama nadie |
+| 12b | **Mezcla de conjunto**: levantar uno por uno, probar combinaciones, equilibrar faders | **Agregado el 2026-09-17** ([ADR-031](adr/ADR-031-la-mezcla-de-conjunto-entra.md)): es lo que el usuario hace y no estaba. Nada construido; el fader de canal **no tiene ley medida contra el audio** y hay que medirla |
 | 13 | Guardar la instantánea al terminar | **construido** |
 | 14 | Cerrar la sesión con su registro exportable | **construido** |
 
@@ -42,9 +43,21 @@ recorrido guiado. La alternativa era un recorrido que lleva a la banda por las
 seis etapas ajustando sola la única medida y anotando a mano las otras cinco —
 útil, y a la vez un soundcheck a medias que se quedaría así. Se eligió medirlas.
 
-Eso las convierte en **trabajo presencial de la ruta crítica**: puerta y
-compresor encadenados, ecualizador de canal, y envíos a efecto y a monitor con
-el dato de dónde derivan. Hasta entonces el recorrido existe, ordena y explica,
+> **Revisado el 2026-09-17, después de medirlas.** Tres de las cinco se midieron
+> —ecualizador y monitor enteros, la puerta a medias— y dos **demostraron no ser
+> leyes**: el umbral de la puerta no se deja medir con este banco y el compresor
+> tiene una curva, no una relación. El usuario decidió que **la puerta y el
+> compresor se ajustan cerrando el lazo** sobre los medidores de la consola
+> ([ADR-032](adr/ADR-032-puerta-y-compresor-por-lazo-cerrado.md)), así que **ya
+> no queda ninguna ley de canal por medir antes de la entrega**. La que sí falta
+> y es nueva es la del **fader de canal**, porque la mezcla de conjunto entró
+> ([ADR-031](adr/ADR-031-la-mezcla-de-conjunto-entra.md)). La hoja de ruta
+> completa, con qué medición es herramienta y cuál es trofeo, está en
+> [`pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md`](pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
+
+**El cuello de botella ya no es medir: es cablear.** Cada etapa actúa cuando
+tiene las cinco cosas —tope, decisión, servicio, pantalla, y ley o lazo— y hoy
+sólo la ganancia las tiene. Hasta entonces el recorrido existe, ordena y explica,
 pero sólo la ganancia se aplica sola.
 
 ### El orden del recorrido
@@ -173,7 +186,12 @@ tiempo no alcanza, por sí solo, para dejarlo afuera.
 - **Puerta, compresor y ecualizador de canal**, asistidos y automáticos. Una
   mezcla de banda no se resuelve sólo con ecualización: la puerta decide cuánto
   de lo ajeno entra por cada micrófono y el compresor cuánto se mueve cada fuente.
-- **Cuánto manda cada canal a cada efecto**, y qué efecto es.
+- **Cuánto manda cada canal a cada efecto**, y qué efecto es. Confirmado el
+  2026-09-17 contra la matriz de autonomía, que decía lo contrario
+  ([ADR-033](adr/ADR-033-los-envios-a-efectos-entran.md)).
+- **La mezcla de conjunto**: levantar uno por uno, probar combinaciones y
+  equilibrar los faders de canal, dentro de topes
+  ([ADR-031](adr/ADR-031-la-mezcla-de-conjunto-entra.md), 2026-09-17).
 - **Envíos de monitor por auxiliar**, con el escenario como punto de partida.
 - **El escenario**: dónde está cada cosa, con qué orientación y con cuánta
   incertidumbre. Registro de monitores y sistema de amplificación con su tipo.
@@ -267,13 +285,20 @@ Su detalle está en
 
 ## Lo que bloquea
 
+> **Al 2026-09-17 esta sección quedó vieja y se deja para que se vea qué cambió.**
+> El ecualizador y el monitor están medidos; la puerta y el compresor se ajustan
+> por lazo cerrado y no necesitan ley; el envío a efectos está acotado y alcanza.
+> **Lo que bloquea hoy es el cableado**, pieza por pieza, en el orden de
+> [`pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md`](pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
+> La única medición nueva que la hoja de ruta pide es la del fader de canal.
+
 **Ninguno de los parámetros nuevos tiene su ley medida.** La matriz de
 capacidades los declara *desconocidos*: se sabe escribir las rutas y que la
 consola las difunde, pero no qué significan los números.
 
 | Qué | Rutas | Qué falta saber |
 |---|---|---|
-| Ecualizador de canal | `i.N.eq.b1..b5.{gain,q,freq}`, `i.N.eq.hpf.freq` | cuántos dB, sobre qué Hz, con qué Q |
+| Ecualizador de canal | `i.N.eq.b1..b4.{gain,q,freq}`, `i.N.eq.hpf.freq` | cuántos dB, sobre qué Hz, con qué Q |
 | Puerta | `i.N.gate.{thresh,depth,attack,hold,release}` | sobre todo **el umbral en dB**: es lo que la filtración estimada alimenta |
 | Compresor | `i.N.dyn.{threshold,ratio,attack,release,outgain}` | umbral en dB, relación, tiempos en ms |
 | Envío a efecto y a monitor | `i.N.fx.M.value`, `i.N.aux.M.value` | dB, y dónde se deriva (antes o después del fader) |

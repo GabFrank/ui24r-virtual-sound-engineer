@@ -24,13 +24,26 @@ merece pensarse aparte: bajar el general durante un soundcheck es distinto de
 bajarlo con gente adelante, y el usuario ya dejó escrito que el modo live es una
 función que hoy no existe.
 
-## Estado al 2026-09-13: dos de tres
+## Estado al 2026-09-15: tres de tres, y sin implementar
 
 Los dos requisitos de medición están cumplidos —ítems **106** y **107**, los dos
-contra un convertidor externo— y la decisión quedó registrada en
-[`ADR-029`](../adr/ADR-029-bajar-los-buses-para-cazar-acoples.md), en estado
-**parcial**: el auxiliar decidido, el general esperando **una decisión tuya sobre
-su techo**, que el ADR plantea como cuatro opciones concretas.
+contra un convertidor externo— y la decisión quedó completa en
+[`ADR-029`](../adr/ADR-029-bajar-los-buses-para-cazar-acoples.md).
+
+**El techo del general lo decidiste el 2026-09-15: «hasta donde estaba», igual que
+el auxiliar.** O sea que los dos buses reciben el mismo contrato —la aplicación
+sólo baja, y el techo para volver a subir es dónde estaba antes de que ella lo
+bajara—, y subir sigue siendo tuyo.
+
+Lo que se investigó **después** de preguntar, y que debería haberse investigado
+antes: el supresor dbx que la propia consola trae ya resuelve esto igual —sus
+filtros LIVE se levantan solos cuando dejan de hacer falta— y los atenuadores
+automáticos de cualquier consola restauran el nivel completo cuando el disparador
+se va. La sección de trabajo previo del ADR lo detalla, junto con un argumento
+de este mismo documento que tenía la acústica al revés: una sala llena absorbe
+más y **aumenta** la ganancia disponible antes del acople, no la reduce.
+
+**Sigue sin implementarse**, y el ADR dice qué falta.
 
 ## Lo que hace falta antes
 

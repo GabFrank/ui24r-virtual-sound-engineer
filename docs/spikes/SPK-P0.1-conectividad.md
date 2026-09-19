@@ -230,6 +230,52 @@ un número escrito a mano**, que es justamente lo que el adaptador no hace —es
 que esta consola tampoco manda— y lo que alguien podría sentirse tentado de hacer al leer las
 tablas viejas.
 
+### El plazo de 250 ms aguanta, y el número que lo decide no es la duración
+
+**Medido el 2026-09-16, diez conexiones seguidas**, con
+`tools/spikes/p0-1/fin-del-volcado.ts`. Evidencia:
+[`fin-del-volcado-2026-09-16.txt`](SPK-P0.1/evidence/fin-del-volcado-2026-09-16.txt).
+Contesta la fila 13 de [§5 de la auditoría externa](../backlog/auditorias/2026-09-15-auditoria-externa.md),
+que estaba abierta **con un dato de otro modelo de consola**: los tiempos que esa
+fila cita son de una Ui16 y están en la propia auditoría, no acá.
+
+| | mediana | mínimo | máximo |
+|---|---|---|---|
+| duración del volcado | 146 ms | 134 ms | 305 ms |
+| líneas de estado | 6 665 | 6 665 | 6 665 |
+| **hueco mayor entre dos líneas** | **11 ms** | 9 ms | **13 ms** |
+
+**El número que importa es el hueco, no la duración**, y conviene decir por qué.
+El adaptador no cronometra cuánto dura el volcado: lo da por terminado cuando
+pasan `quietudVolcadoMs` = 250 ms **sin una línea de estado**. Entonces un volcado
+largo y parejo es inofensivo, y uno corto con una pausa de 300 ms en el medio lo
+rompería: el adaptador cortaría ahí y leería el resto **como si alguien hubiera
+cambiado cien parámetros a mano**, que es exactamente la alerta que
+`volcadoIniciado()` existe para no disparar.
+
+El peor hueco medido es **13 ms contra un plazo de 250**, o sea 237 ms de margen,
+un factor de diecinueve. El plazo aguanta con holgura.
+
+**Y es una cota sobre diez conexiones, no una garantía.** La Ui16 tardó una vez
+12 s, y eso no se ve repitiendo diez veces en un rato tranquilo, con la consola
+descansada y la red sin tráfico. Lo que esta corrida descarta es que el volcado
+tenga huecos internos **habituales** capaces de engañar al plazo; no descarta el
+caso raro.
+
+**La primera conexión de la tanda es más lenta que las otras nueve** —305 ms
+contra ~146— y el efecto está en la primera línea, que tardó 191 ms contra ~64.
+Es despertar algo, no un volcado distinto: las líneas fueron las mismas 6 665.
+
+**Se confirma que no hay marcador de fin, por un camino independiente.** Los
+únicos verbos que la consola emite son `SETD`, `SETS`, `RTA`, `VU2`, `VUA` y
+`UPDATE_PLAYLIST`; ninguno sirve de `DUMP_END`. Este documento ya lo afirmaba más
+arriba a partir del volcado del 2026-09-08; ahora además está medido enumerando lo
+que la consola manda.
+
+**Y el tamaño fue idéntico en las diez**, 6 665 líneas, lo que refuerza lo que
+dice la sección de arriba: dentro de una sesión el volcado es estable; entre
+sesiones no. El 2026-09-08 fueron esas mismas 6 665 y el 2026-09-09 fueron 6 087.
+
 ### La segunda conexión testigo, medida
 
 Dos conexiones abiertas **desde el mismo proceso** son **dos clientes distintos** para la

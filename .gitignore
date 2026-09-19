@@ -29,3 +29,11 @@ vse-*.apk.sha256
 
 # El grabador se compila desde `tools/audio/grabar.swift`; el binario no va al repo.
 tools/audio/bin/
+
+# Los árboles de trabajo que la herramienta crea para correr un agente aislado
+# --un auditor sembrando defectos sin pisar el árbol principal--. Son copias
+# completas del repositorio y se borran solas al terminar.
+.claude/worktrees/
+
+# Estado de una maquina, no del proyecto: lo que una corrida dejo sin restaurar.
+.restauracion-pendiente.json

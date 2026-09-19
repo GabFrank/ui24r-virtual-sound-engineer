@@ -33,6 +33,80 @@ como no verificada.
 
 ## Lo que aporta, y que el proyecto no tenía
 
+### Los rangos del manual contra las fórmulas del cliente, uno por uno
+
+**2026-09-16.** Con el extracto del cliente
+[verificado contra la consola](../backlog/hallazgo-la-respuesta-estaba-archivada.md)
+el mismo día, se puede hacer algo que no se había hecho: **evaluar cada fórmula en
+los extremos del crudo y compararla contra el rango que declara el manual**. Son
+dos fuentes independientes —el papel del fabricante y el código de su propio
+cliente— y este proyecto ya usó ese cruce para el Q.
+
+| Parámetro | Manual | La fórmula, en V=0 y V=1 | |
+|---|---|---|---|
+| Compresor: ataque | 1 … 400 ms | `400^d(V)` → 1 … 400 | ✔ |
+| Compresor: relajación | 10 … 2000 ms | `10·200^d(V)` → 10 … 2000 | ✔ |
+| Compresor: umbral | −90 … +6 dB | `96·V − 90` → −90 … +6 | ✔ |
+| Compresor: compensación | −24 … +48 dB | `72·V − 24` → −24 … +48 | ✔ |
+| Puerta: umbral | −inf … +6 dB | `96·V − 90` → −90 … +6, y el cliente escribe `-inf` por debajo de −89 | ✔ |
+| Puerta: profundidad | −inf … 0 dB | `60·V − 60` → −60 … 0, con piso de pantalla en −60 | ✔ |
+| Puerta: ataque | — | `400^d(V)` → 1 … 400 | — |
+| Puerta: relajación | — | `5·400^d(V)` → 5 … 2000 | — |
+| Puerta: retención | — | `2000^d(V)` → 1 … 2000 | — |
+| De-esser: frecuencia | 2 … 15 kHz | `2000·7,5^V` → 2000 … 15000 | ✔ |
+| EQ de canal: ganancia | −20 … +20 dB | `40·V − 20` → −20 … +20 | ✔ **y medido** |
+| EQ de canal: Q | 0,05 … 15 | `0,05·300^V` → 0,05 … 15 | ✔ |
+| EQ de canal: frecuencia | 20 Hz … 22 kHz | `20·1102,5^V` → 20 … 22050 | ✔ |
+| EQ de salida: ganancia | ±15 dB | `30·V − 15` → −15 … +15 | ✔ |
+| **Compresor: relación** | **1:1 … 50:1** | `1/V`, y el control llega hasta el crudo **0**. **MEDIDO el 2026-09-16 ([ítem 110](../compromisos/110-el-crudo-cero-de-la-relacion.md)): en el crudo 0 la salida BAJA al subir la fuente** —sobre-limita— y el crudo 0,02, que el manual llama 50:1, mide 7,8:1 | **✘ el manual no es** |
+
+Con `d(V) = 1 − (1 − V)²`.
+
+**Trece de catorce coinciden exactamente.** Eso no convierte las fórmulas en leyes
+medidas —siguen describiendo la **pantalla**, y la medición 97 refutó dos de ellas
+contra el audio— pero sí las saca de «fuente única»: el rango que publican es el
+que el fabricante declara en papel.
+
+> **CERRADO el 2026-09-16 midiendo, y el manual es el que pierde.** El
+> [ítem 110](../compromisos/110-el-crudo-cero-de-la-relacion.md) llevó la señal a
+> la zona activa y subió la fuente: con el crudo 0 **la salida baja** —0,068 dB
+> con 4 dB de fuente—, o sea que sobre-limita, que es **más** que una relación
+> infinita. El tope 50:1 del manual predice que la salida **sube** 0,080 dB: diez
+> veces más y en el otro sentido.
+>
+> Y el crudo 0,02 —el que el manual llamaría 50:1— midió **7,8:1**.
+>
+> Lo que sigue sin cerrar es la **ley** de la relación, que la 97 refutó y nadie
+> volvió a establecer: las relaciones nominales no reproducen —4:1 mide 1,4:1— y
+> eso no es un hallazgo del 110 sino el estado conocido de esa ley.
+
+**La que no cuadra es la relación del compresor**, y vale la pena no taparla.
+
+Una primera lectura supuso que sería un redondeo —el formateador muestra `inf` por
+encima de 60, y de ahí salía un crudo de 0,0167 contra el 0,02 que daría 50—.
+**No es un redondeo, y esto el proyecto ya lo sabía.** `raw-map.ts` dice, desde
+antes: *«en 0 la razón sería infinita, así que no hay rango físico que declarar
+sin inventarlo»*. Lo único que agrega esta lectura es la confirmación desde el
+control: el deslizador declara sus marcas en
+`[1, 1/1,2, 0,625, 0,5, 1/3, 0,2, 0,1, 0]` y **la última es cero**, o sea que el
+control del fabricante efectivamente llega hasta ahí. Las marcas intermedias caen
+en 1, 1,2, 1,6, 2, 3, 5 y 10.
+
+Así que la pregunta queda más afilada, no resuelta: **el cliente permite escribir
+∞ y el manual declara 50:1.** O el manual describe el rango útil y redondea, o el
+procesador recorta en algún lado que la pantalla no muestra. Lo segundo es
+comportamiento y no se lee: se mide.
+
+Y no es un detalle de catálogo. Si el crudo 0 es de verdad un limitador, **hay una
+ruta donde un valor extremo cambia la naturaleza del proceso**, no sólo su
+intensidad. Es coherente con que ésta sea justamente la ley que la medición 97 ya
+refutó contra el audio por otro motivo, y con que `i.N.dyn.ratio` esté fuera de la
+tabla de conversión a propósito, con su motivo escrito al lado.
+
+**Esta comparación no tiene guarda propia, y no hace falta**: si una fórmula del
+cliente cambia, lo detecta `tools/spikes/p0-2a/cliente-sigue-igual.ts`, que
+compara las 56 funciones contra el extracto archivado.
+
 ### La tabla de especificaciones
 
 Rangos declarados por el fabricante. **Ninguno está medido contra el aparato**,
@@ -41,17 +115,17 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 | Parámetro | Manual | En el código hoy |
 |---|---|---|
 | Compresor: umbral | −90 dB … +6 dB | igual (la fórmula refutada evaluada en 0 y 1) |
-| **Compresor: relación** | **1:1 … 50:1** | **no está**, por «no se conoce el crudo mínimo» |
+| **Compresor: relación** | **1:1 … 50:1** | **no está en la tabla, a propósito**, y el motivo que figuraba acá —«no se conoce el crudo mínimo»— **no es el que `raw-map.ts` da**. Los suyos son dos: en el crudo 0 la razón sería infinita, así que no hay rango físico que declarar sin inventarlo; y la medición 97 **refutó** `1/V` contra el audio. Corregido el 2026-09-16 |
 | Compresor: ataque | 1 … 400 ms | sin medir |
 | Compresor: relajación | 10 … 2000 ms | sin medir |
 | Compresor: compensación | −24 … +48 dB | `i.N.dyn.outgain` con `72a − 24`, o sea −24 … +48 ✔ |
 | Puerta: umbral | −inf … +6 dB | `96a − 90`, o sea −90 … +6 |
-| **Puerta: profundidad** | **−inf … 0 dB** | `60a − 60`, o sea **−60 … 0** |
+| Puerta: profundidad | −inf … 0 dB | `60a − 60`, o sea −60 … 0. **Resuelto el 2026-09-16: no es una discrepancia** — el cliente formatea esta perilla con un piso de −60 y muestra **−∞** en cuanto el valor lo alcanza, y la ley da exactamente −60 en el extremo. El manual describe la pantalla; la tabla, el crudo ✔ |
 | De-esser: umbral | −90 … 6 dB | sin entrada |
 | De-esser: relación | infinito … 1:1 | sin entrada |
 | De-esser: frecuencia | 2 … 15 kHz | `2000 · 7,5^a`, o sea 2 … 15 kHz ✔ |
-| **EQ de canal: ganancia** | **−20 … +20 dB** | **−15 … +15** |
-| **EQ de canal: Q** | **0,05 … 15** | **0,3 … 10** |
+| EQ de canal: ganancia | −20 … +20 dB | **MEDIDO el 2026-09-16: `40·V − 20`, o sea −20 … +20 ✔** — el manual tenía razón y la tabla estaba mal. Ver el [ítem 108](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md) |
+| EQ de canal: Q | 0,05 … 15 | `0,05 · 300^V`, que en el rango completo del crudo da **exactamente 0,05 … 15,0000** ✔. **Resuelto el 2026-09-16: tampoco era una discrepancia** — lo que la tabla publica como rango físico es el **tramo que se midió** (crudo 0,35 … 0,70), no el recorrido del control |
 | EQ de canal: frecuencia | 20 Hz … 22 kHz | 20 … 20 000 Hz |
 | EQ de salida | 31 bandas, ±15 dB | igual ✔ |
 | **Ganancia de entrada** | **−6 … +58 dB** | el recorrido medido da −6,0 … +55,9 |
@@ -62,6 +136,39 @@ y varios contradicen lo que hay escrito hoy en `raw-map.ts`:
 **Las tres en negrita de `raw-map.ts` hay que mirarlas**: el Q del manual
 (0,05 … 15) coincide con lo que `protocol-spec.md` §6.3 sacó del `mixer.html`
 (`0,05 · 300^V`), así que ahí son **dos fuentes independientes contra el código**.
+
+> **Una de las tres se cerró el 2026-09-16, y la lección es sobre este documento.**
+> La ganancia del ecualizador de canal se midió contra el filtro real y dio
+> `40·V − 20`: **el manual tenía razón**. La tabla decía ±15 porque alguien leyó
+> `VtoEQGAIN15` en vez de `VtoEQGAIN20` en el extracto del cliente, dos líneas más
+> abajo.
+>
+> Lo incómodo es que **esta fila ya lo decía, en negrita y con un cartel que pedía
+> mirarla**. Sumada al extracto del cliente, la respuesta estaba en el repositorio
+> **en dos lugares independientes** —el manual del fabricante y el código de su
+> propio cliente— y la contradicción sobrevivió meses igual.
+>
+> Lo que la medición agregó, y que ninguna de las dos fuentes podía dar, es que el
+> **audio** se mueve esos decibeles. Este repositorio ya sabe que una fórmula del
+> cliente puede describir bien la pantalla y mal el audio: la 97 refutó dos del
+> mismo archivo. Así que la corrida no sobró; lo que sobró fue el tiempo que la
+> contradicción estuvo escrita sin que nadie la resolviera.
+>
+> **Las otras dos se cerraron el mismo día, leyendo, y ninguna era una
+> contradicción.** El Q: `0,05 · 300^V` evaluado en el rango completo del crudo da
+> exactamente 0,05 … 15,0000, que es el manual clavado; lo que la tabla publica es
+> el **tramo medido** (crudo 0,35 … 0,70), no el recorrido del control, y comparar
+> uno contra otro es comparar dos cosas distintas. La profundidad de la puerta: el
+> cliente la formatea con un piso de −60 y muestra **−∞** en cuanto el valor lo
+> alcanza, y la ley da justo −60 en el extremo; el manual describe la pantalla y
+> la tabla el crudo.
+>
+> **De las tres en negrita, una era real y dos eran aparentes**, y conviene no
+> quedarse con la parte cómoda de esa frase. La real —los ±15— costó meses y una
+> medición. Las dos aparentes costaron media hora de lectura **que nadie había
+> hecho en meses**, y mientras tanto estuvieron ahí marcadas, indistinguibles de
+> la que sí importaba. Una lista de sospechas sin depurar le quita fuerza a la
+> sospecha que vale.
 
 ### La relación del compresor llega hasta 50:1
 

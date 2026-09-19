@@ -22,6 +22,14 @@
 > **La ruta manda sobre la clase declarada.** `clasificarRuta` deriva de la ruta a qué categoría de propiedad pertenece, y el motor rechaza si no coincide con la que declaró quien propone (INV-008/INV-010). Dos correcciones que salieron de comparar el clasificador con esta tabla: la alimentación fantasma es `hw.N.phantom` y no `i.N.phantom`, y `var.mtk.*` —soundcheck y multipista— estaba clasificado como envío al bus de análisis, o sea como el **único routing escribible** que admite INV-008. El envío al bus de análisis solo se reconoce si se dice qué auxiliar es ese bus, que lo tiene que decir SPK-P0.5: sin ese dato, todos los `i.N.aux.M.value` son envíos de monitor. **Y eso ya no significa «no se escribe ninguno»**, que es lo que decía acá: ADR-028 abrió el nivel del envío a monitor el 2026-09-12, con techo y fuera del show.
 
 > **El 2026-09-10 se barrieron 18 rutas escribiendo en cada una, y eso NO alcanza para poner la columna *Probado* en sí.** El barrido midió que la ruta existe, que acepta la escritura, que **la consola la difunde** —18 de 18, mediana 17 ms— y que el valor vuelve a su sitio al restaurarlo. Lo que **no** midió es qué significa el número: que `i.16.eq.b1.gain` pase de 0,5 a 0,53 no dice cuántos decibeles son, ni sobre qué frecuencia, ni con qué Q. La regla de ADR-006 pide *Probado* para implementar una función de producto, y una función de ecualizador construida sobre una ley de conversión sin medir sería exactamente el error que esta matriz existe para evitar. Así que el barrido cierra la **política de confirmación** —ver [ack-policy](ack-policy.md)— y deja esas filas donde estaban. Evidencia: `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-10.txt` —transcripción— y su remedición con la herramienta, `spikes/SPK-ACK-POLICY/evidence/barrido-testigo-2026-09-11.txt`, que vuelve a dar 18 de 18. **La mediana de 17 ms no reprodujo** y por qué no está medido.
+>
+> **Y el ejemplo que ese párrafo usa dejó de valer el 2026-09-16.** Decía que
+> «que `i.16.eq.b1.gain` pase de 0,5 a 0,53 no dice cuántos decibeles son». Ahora
+> sí lo dice: el [ítem 108](compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md)
+> midió esa ley contra el filtro real, y las cifras están en su contrato y en su
+> evidencia. El razonamiento del párrafo sigue siendo correcto y por eso se deja
+> entero: lo que cambió no es la regla sino el hecho, y sólo para **una** de las
+> cinco hojas del ecualizador.
 
 > **Hay dos rutas con la escritura probada contra el aparato, y la columna *Probado* ya no significa lo mismo en todas las filas.** Hasta el 2026-09-08 esa columna decía «lo leímos y coincide». Ese día se escribió por primera vez en una consola real, desde un script de spike y no desde la aplicación —el nivel de autonomía sigue en OBSERVE—: `i.9.mute` y `i.9.mix`. Las dos se aplican. Lo que se aprendió vale para toda escritura y no solo para esas dos rutas: **la consola no devuelve eco a quien escribe**, pero **sí difunde el cambio a los demás clientes**, y desde el mismo cliente hay dos formas de verificar una escritura: pedir `INIT`, que trae el valor nuevo a los ~100 ms y con él el volcado entero —del orden de seis mil claves—, o **abrir una segunda conexión que haga de testigo**, que el 2026-09-09 quedó medida en **11,5 ms de mediana** sobre ocho muestras (los 27 ms que se citaron al principio eran una sola, retirada por ADR-024). Qué se considera «aplicado» a partir de esto lo decide SPK-ACK-POLICY, que con ese dato **ya eligió el testigo**. Donde una fila diga escritura probada, es contra el aparato; donde no lo diga, la marca es de lectura.
 
@@ -30,6 +38,45 @@
 > **La `N` de estas rutas es de base cero, y no leerlo así corre la tabla entera.** El canal 1 es `i.0.mix`, `hw.0.gain`, `i.0.name`. Está medido contra el aparato y escrito en [protocol-spec.md](protocol-spec.md) desde el 2026-09-08, y aun así el adaptador componía `i.1` para el canal 1: la trama `VU2` sí trae el canal 1 en su posición 0, así que el nivel caía en la fila correcta y **todo lo demás corrido uno** —nombre, ganancia, fader y silencio del canal siguiente al lado del medidor del anterior—. Un asistente que propusiera bajar esa ganancia habría nombrado el canal equivocado, y en nivel ASISTIDO habría escrito en el equivocado. Corregido en `eb3900a`. No lo agarró ningún test porque el simulador cargaba la misma suposición y los dos errores se cancelaban: un test que pasa contra el simulador no cierra nada.
 
 > **La consola reporta veinticuatro entradas y hay que preguntárselo.** La cabecera de cada trama `VU2` trae la cantidad de entradas en su byte 0 y el volcado manda un `i.N.name` por cada una. La aplicación tenía doce fijos, y las dos entradas RCA —los canales 21 y 22, justo la fuente con la que se prueba con música— no se veían. La cantidad de canales sale de lo que informa la consola, nunca de una constante.
+
+## Las rutas crudas con ley medida
+
+**Esta tabla la comprueba una guarda**, `tools/docs/validate-rutas-medidas.mjs`:
+tiene que nombrar **exactamente** las rutas que `rutasProbadas()` declara en
+`packages/mixer-adapter/src/raw-map.ts`, ni una más ni una menos.
+
+**Existe porque el primer principio del repositorio apunta acá.** «Ninguna
+función se implementa sobre un parámetro que no esté probado en
+`docs/capability-matrix.md`» — y el 2026-09-16 una auditoría encontró que este
+documento venía **atrasado respecto del código**: el pasa-altos y el ecualizador
+paramétrico seguían figurando como `INFERIDO` y «desconocida» con sus leyes ya
+medidas, el pasa-bajos y el envío a monitor **no tenían fila**, y nada lo avisaba.
+Un documento que decide qué se puede implementar no puede enterarse último.
+
+| Ruta canónica | Ley medida | Ítem | Evidencia |
+|---|---|---|---|
+| `i.N.eq.b1.freq` | la curva de frecuencia del ecualizador de canal | 101 | SPK-P0.10b-vu2 |
+| `i.N.eq.b1.q` | la curva de Q | 101 | SPK-P0.10b-vu2 |
+| `i.N.eq.b1.gain` | `40·V − 20`, o sea **±20 dB** | 113 | `ley-ganancia-banda-1-2026-09-16.txt` |
+| `i.N.eq.b2.gain` | `40·V − 20` | 108 | `ley-ganancia-del-eq-2026-09-16b.txt` |
+| `i.N.eq.b3.gain` | `40·V − 20` | 113 | `ley-ganancia-banda-3-2026-09-16.txt` |
+| `i.N.eq.b4.gain` | `40·V − 20` | 113 | `ley-ganancia-banda-4-2026-09-16b.txt` |
+| `i.N.eq.hpf.freq` | la curva del pasa-altos contra el filtro real | 103 | SPK-P0.10b-vu2 |
+| `i.N.eq.lpf.freq` | la curva del pasa-bajos contra el filtro real | 103 | SPK-P0.10b-vu2 |
+| `i.N.aux.M.value` | `VtoLIN`, contra la salida física del bus | 104 | `ley-del-envio-a-monitor-2026-09-13.txt` |
+| `a.M.eq.peak.K` | `30·V − 15`, el gráfico de un **auxiliar** | 109 | `ley-del-eq-de-salida-2026-09-16b.txt` |
+| `m.eq.peak.l.K` | `30·V − 15`, el gráfico del **general**, lado izquierdo | 112 | `ley-del-eq-del-general-2026-09-16b.txt` |
+| `i.N.gate.hold` | `2000^desqr(V)` ms — **la primera ley de tiempo medida**, y la fórmula del cliente acertó exacta | 116 | `tiempos-de-la-puerta-2026-09-16.txt` |
+| `i.N.gate.depth` | `60·V − 60` dB — la fórmula del cliente, **acertada al décimo de dB**; medida entre el crudo 0,55 y el 1,00, y no más abajo porque ahí empieza el piso del banco | 120 | `umbral-de-la-puerta-2026-09-17.txt` |
+
+**Lo que NO está en esta tabla no tiene ley medida**, por más que su clave exista
+y acepte escritura: el compresor, el deesser, el lado derecho del general y las
+otras treinta bandas de cada gráfico. **De la puerta ya hay dos** —el sostenido y
+la profundidad—; le siguen faltando el umbral, el ataque y la relajación.
+
+**Y `i.N.eq.b5.gain` no está por un motivo distinto y peor: se midió y no hace
+nada.** El ecualizador de canal tiene **cuatro** campanas, no cinco. Ver
+[el hallazgo](backlog/hallazgo-el-ecualizador-de-canal-tiene-cuatro-bandas.md).
 
 ## Entradas y canales
 
@@ -43,10 +90,12 @@
 | Alimentación fantasma | `hw(n).setPhantom` | `hw.N.phantom` | booleano | CONFIRMADO en lectura contra el aparato el 2026-09-10, y con la trampa medida: **`i.N.phantom` existe y dice otra cosa**. Con el condensador alimentado, `hw.8.phantom` valía 1 y `i.8.phantom` valía 0 en el mismo momento. Quien lea la ruta del canal en vez de la del previo va a decir «sin fantasma» sobre un micrófono alimentado. Sigue siendo **solo lectura** por INV-007. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ lectura | P0.2a |
 | Alta impedancia | — | `hw.N.hiz` | booleano | INFERIDO | ⬜ | P0.2a |
 | Retardo de canal | `master.input(n).setDelay` | `i.N.delay` | ms, de 0 a 250 | CONFIRMADO | ⬜ | P0.2a |
-| Filtro pasa altos | — | `i.N.eq.hpf.freq`, `.slope` | desconocida | INFERIDO | ⬜ | P0.2b |
-| Ecualizador paramétrico | — | `i.N.eq.b1..b5.{gain,q,freq}` | desconocida | INFERIDO | ⬜ | P0.2b |
-| Compresor | — | `i.N.dyn.{threshold,ratio,attack,release,gain}` | desconocida | INFERIDO | ⬜ | P0.2b |
-| Puerta de ruido | — | `i.N.gate.{thresh,depth,attack,release}` | desconocida | INFERIDO | ⬜ | P0.2b |
+| Filtro pasa altos | — | `i.N.eq.hpf.freq`, `.slope` | **`freq`: curva MEDIDA** contra el filtro real (ítem 103); `slope` sin medir | **MEDIDO** la frecuencia, INFERIDO el resto | ✅ `freq` | P0.2b |
+| Filtro pasa bajos | — | `i.N.eq.lpf.freq` | **curva MEDIDA** contra el filtro real (ítem 103) | MEDIDO | ✅ | P0.2b |
+| Ecualizador paramétrico | — | `i.N.eq.b1..b4.{gain,q,freq}` | **son CUATRO bandas, no cinco** (ítem 113, medido contra el audio: `b5` no mueve nada). La **ganancia de las cuatro** es `40·V − 20` —±20 dB—, medida una por una; `freq` y `q` tienen su curva medida contra el filtro real en la banda 1 (ítem 101) y **no se midieron en las otras tres** | **MEDIDO** la ganancia de las cuatro; `freq` y `q`, sólo la banda 1 | ✅ ganancia ×4 | P0.2b |
+| Envío de canal a auxiliar | — | `i.N.aux.M.value` | **`VtoLIN`, MEDIDA** contra la salida física del bus con un convertidor externo (ítem 104): 0,007 dB sobre los primeros 32 dB de atenuación | MEDIDO | ✅ | P0.10b |
+| Compresor | — | `i.N.dyn.{threshold,ratio,attack,release,outgain,softknee}` | **El UMBRAL tiene su pendiente medida** (ítem 118): **96,4 dB por unidad de crudo** contra los 96 del cliente, con residuos de 0,04 a 0,15 dB — **`VtoTHRESH` NO estaba refutada**, la 97 había refutado la conjunción. Falta su **cero**, que este banco no puede anclar. **La RELACIÓN no es un número: es una curva** (ítem 118). La pendiente por encima del codo sube con el nivel, de 0,05 pegada al codo hasta 0,55 veinte dB más arriba. Lo que el [ítem 117](compromisos/117-la-curva-del-compresor.md) midió —`R = 1 + 0,548·(1/a − 1)`— es el **promedio** de esa curva en una ventana de 12 dB, no la relación; sirve para esa ventana y no se extrapola. **Y la SUPERFICIE está medida** (ítem 119): cuántos dB baja, para ocho posiciones del control y seis excesos, con el codo en el mismo sitio para todas y comprobado que la reducción depende **sólo del exceso** —tres umbrales, 0,27 dB de diferencia—. Esa tabla es lo que la aplicación puede interpolar. El **ataque** tiene su forma medida (ítem 114): `400^desqr(V)` con factor 0,641 sobre el t63. La **relajación** no: 26,5 % de dispersión | **MEDIDO**: la pendiente del umbral, la curva de la relación y la forma del ataque. Sin medir: el cero del umbral y la relajación | ⬜ ninguna en `RAW_MAP`: al umbral le falta el cero y la relación no es una ley de un número | P0.2b |
+| Puerta de ruido | — | `i.N.gate.{thresh,depth,attack,hold,release}` | **el SOSTENIDO está medido y la fórmula del cliente acertó exacta** (ítem 116): `2000^desqr(V)` ms, con error máximo de 0,7 ms sobre un recorrido de 28 a 2000. El **ataque** sigue la forma del cliente con factor 0,199. La **relajación NO sigue esa forma** —el cociente no es constante— y queda sin ley. La **profundidad está MEDIDA** ([ítem 120](compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md)): `60a − 60` acierta al décimo de dB entre el crudo 0,55 y el 1,00, y el techo de 29 dB que la corrida anterior le atribuyó **era el piso del banco** —la fuente subió 12 dB y el techo no se movió—. El **umbral** sigue sin ley: la escalera fina lo acota **entre 80 y 100 dB por unidad**, y los 96 del cliente están adentro. **Tiene histéresis**, menor que 1,5 dB y por debajo de la resolución del banco | **MEDIDOS** el sostenido y la profundidad; forma medida el ataque; **REFUTADA** la forma de la relajación; acotado el umbral | ✅ `hold`, `depth` | P0.2b |
 | Deesser | — | `i.N.deesser.{freq,ratio,threshold}` | desconocida | INFERIDO | ⬜ | P0.2b |
 | Polaridad de canal | — | `i.N.invert` | booleano | INFERIDO | ⬜ | P0.2c |
 | Protección ante recuperación | — | `i.N.safe` | booleano | INFERIDO | ⬜ | P0.8 |
@@ -64,8 +113,8 @@
 | Matriz, con el general como fuente | `mtx(b).master()` | `m.mtx.B.value/mute/pan/postproc` | dB | CONFIRMADO el 2026-09-10 en `m.mtx.0.value` y `m.mtx.0.mute`, escritos, difundidos y restaurados. **La matriz no es `hwoutaux.N.src`**, que es el jack físico. Tienen envío a la matriz 19 fuentes: los 10 auxiliares, los 6 subgrupos, el general y **solo dos canales, `i.9` e `i.19`**. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ | P0.2a |
 | Salida: fader, silencio, retardo | `master.aux(b)` | `a.B.mix/mute/delay` | dB, y el retardo en unidad **sin medir** | CONFIRMADO. `a.0.delay` escrito, difundido y restaurado el 2026-09-10 | ✅ | P0.2a |
 | Retardo general por lado | `setDelayL/R` | `m.delayL`, `m.delayR` | crudo de 0 a 1. **«De 0 a 500 ms» sale de la API tipada de terceros, no de una medición nuestra** | CONFIRMADO como ruta el 2026-09-10: los dos aceptaron 0,25, lo difundieron y volvieron a 0. Cuántos milisegundos son esos 0,25 **no está medido**: la ley de conversión no aparece en el código que la consola sirve. Evidencia: `spikes/SPK-P0.2a/evidence/capacidades-que-faltan-2026-09-10b.txt` | ✅ ruta, ⬜ unidad | P0.2a |
-| Ecualizador de salida | — | `a.B.eq.*`, `m.eq.*` | desconocida | INFERIDO | ⬜ | P0.2c |
-| Ecualizador gráfico de 31 bandas | — | sin clave conocida | — | DESCONOCIDO | ⬜ | P0.2c |
+| Ecualizador de salida **= el gráfico de 31 bandas** | — | `m.eq.peak.{l,r}.K` y `a.B.eq.peak.K`, con `K` de 0 a 30 | crudo de 0 a 1. **MEDIDO contra el audio el 2026-09-16 en las DOS superficies: `30·V − 15`, o sea ±15 dB.** En un auxiliar ([ítem 109](compromisos/109-la-ley-del-ecualizador-de-salida.md)) dio `29,990·V − 14,995`, y en el general ([ítem 112](compromisos/112-la-ley-del-ecualizador-del-general.md)) `29,993·V − 14,996`, las dos con residuo máximo de 0,001 dB. La fórmula del cliente —`VtoEQGAIN15`— resultó exacta. **Falta el lado DERECHO del general**: la salida que vuelve al banco es la master 1, y medir `.r.K` pide cambiar un cable. No se supone por simetría, porque el enlace L/R **lo copia el cliente y no la consola** ([hallazgo](backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md)). Y una banda de treinta y una en cada superficie | **Las claves están OBSERVADAS en el aparato el 2026-09-16**, contadas sobre el volcado: 31 bandas por lado en el general —L y R por separado, con su `linked`— y 31 en cada uno de los diez auxiliares. Los subgrupos y los bloques de efectos **no tienen**. La unidad es **`MEDIDO`** desde el 2026-09-16, en las dos superficies. Venía de una fórmula del cliente y esa procedencia no alcanzaba —la 97 refutó dos fórmulas de ese mismo archivo—, así que se midió; acá la del cliente resultó exacta. **El lado derecho del general sigue sin medir.** **No es el ecualizador de canal con otro prefijo**: el canal tiene **4** bandas paramétricas con frecuencia y Q y una ley de ±20 dB medida en las cuatro; acá no existe `m.eq.b1.gain`. Ver [hallazgo](backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md) | ⬜ unidad | P0.2c |
+| ~~Ecualizador gráfico de 31 bandas, sin clave conocida~~ | — | — | — | **Fila retirada el 2026-09-16: era la de arriba.** Esta matriz tenía dos filas para una sola cosa —el ecualizador de salida y «el gráfico de 31 bandas»— y por eso la segunda decía «sin clave conocida» mientras la primera ya nombraba el prefijo. Son lo mismo | — | — |
 | Polaridad de salida | — | `a.B.invert`, `m.l.invert` | booleano | INFERIDO | ⬜ | P0.2c |
 | Silencio individual por bus | — | según topología | booleano | DESCONOCIDO | ⬜ | PA-BUS |
 | Supresión de realimentación | — | `a.B.afs.*`, `m.afs.*` | — | INFERIDO en lectura, DESCONOCIDO en escritura | ⬜ | P0.2c |

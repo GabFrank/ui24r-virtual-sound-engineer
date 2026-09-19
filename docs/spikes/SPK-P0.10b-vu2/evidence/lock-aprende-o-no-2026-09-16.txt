@@ -1,0 +1,63 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T16:45:27.383Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/lock-aprende-o-no.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/lock-aprende-o-no.ts sha256:137d3c62118768f7
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== ¿EL SUPRESOR APRENDE EN MODO LOCK? ===
+
+   supresor encendido: 1  (se EXIGE, no se escribe)
+   modo al empezar: logic=1 fmode=1
+   ranuras del supresor: 12
+   de esas, con filtro PLANTADO (atenuacion distinta de 0): 0
+   estimulo: 1000, 100, 10000 Hz, las mismas que plantaron en septiembre
+   exposicion: hasta 4 min, cortando en cuanto aparezca algo
+
+   SOLO se escribe m.afs.logic. Ni fmode ni enabled se tocan.
+
+   LOCK puesto y COMPROBADO por HTTP (logic = 0)
+
+   C1 -- ¿el tono llega al general?
+       1000 Hz: -29.21 dBFS, 95.8 dB sobre el piso
+        100 Hz: -29.31 dBFS, 95.6 dB sobre el piso
+      10000 Hz: -29.66 dBFS, 96.0 dB sobre el piso
+   C1 PASA: las tres frecuencias por encima de 40 dB
+
+   30 s de tono, la pila sin moverse
+   60 s de tono, la pila sin moverse
+   90 s de tono, la pila sin moverse
+   120 s de tono, la pila sin moverse
+   150 s de tono, la pila sin moverse
+   180 s de tono, la pila sin moverse
+   210 s de tono, la pila sin moverse
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.logic  esperado 1  leido 1  OK
+   m.afs.fmode  1  (no se toco)
+   m.afs.enabled 1  (no se toco)
+
+=== LA PILA DEL SUPRESOR ===
+   ranuras: 12 antes, 12 despues
+   filtros PLANTADOS: 0 antes, 0 despues
+   IDENTICA, ranura por ranura y campo por campo.
+
+=== VEREDICTO ===
+   EN LOCK NO APRENDIO. 4 minutos de las tres frecuencias que
+   plantaron filtros en septiembre, y la pila quedo identica filtro por filtro.
+
+   Lo que esto SI habilita: LOCK es el modo para meter tono cuando no se
+   quiera apagar el supresor. La guarda de `m.afs.enabled = 0` sigue siendo
+   la primera opcion, porque no depende de esta medicion.
+
+   Lo que NO prueba: nada de LIVE ni de FIXED, que no se probaron a proposito.
+   Y es UNA exposicion, de cuatro minutos, en un dia. El control positivo es
+   historico --septiembre-- y no concurrente: no se demostro que ESTE estimulo
+   hubiera plantado algo en otro modo.
+
+
+# salida del proceso: 0

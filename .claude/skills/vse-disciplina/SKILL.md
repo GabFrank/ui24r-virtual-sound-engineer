@@ -104,9 +104,85 @@ Las constantes que salen del cliente de la consola se comparan contra una transc
 
 **Cuando las fuentes se contradicen y no se puede medir, decidí por procedencia y escribí el razonamiento.** El byte 5 de la cabecera de `VU2` se resolvió así: el cliente del fabricante y dos implementaciones de terceros dicen cosas distintas, en una Ui24R los dos valores son iguales, y se siguió a quien probablemente tenga la documentación oficial.
 
+
+**Y antes de proponer, mirá qué hicieron los demás. Siempre, no sólo para el protocolo.** La línea de §3 decía «buscá trabajo previo antes de decodificar a mano», y por estar en la sección de medir se leyó como que valía sólo para el protocolo. No vale sólo para eso.
+
+> **Lo que pasó.** El 2026-09-15 se le pidió al usuario que decidiera hasta dónde puede volver a subir la aplicación el fader del general después de bajarlo para cazar un acople, ofreciéndole cuatro opciones **sin haber mirado qué hace nadie más**. Su respuesta: «*¿no habíamos quedado en que nada iba a ser implementado antes que se investigue en proyectos existentes?*». Y tenía razón dos veces, porque al mirar apareció que **el supresor de la propia consola ya contesta esa pregunta** —los filtros LIVE del dbx AFS se levantan solos cuando dejan de hacer falta— y que el argumento que el ADR daba para dudar tenía la acústica al revés.
+
+**Toda propuesta lleva su sección de trabajo previo**, y lleva una de estas dos formas:
+
+- **Qué proyecto o documentación hace algo parecido, y cómo lo resolvió**, con el enlace. Entra como hipótesis, no como verdad: `DigiMixer` recorta el medidor en 240 y está mal.
+- **«No hay coincidencias en otros proyectos»**, dicho así de explícito. Que no haya nada es un dato: significa que lo que se propone no tiene precedente y hay que tener más cuidado, no menos.
+
+Lo que no vale es no decir nada, porque el que lee no puede distinguir «no hay» de «no miré». `tools/docs/validate-trabajo-previo.mjs` lo comprueba en las ADR.
+
+**Y hay cuatro repositorios donde mirar primero, que el usuario pidió por nombre
+el 2026-09-16.** Los cuatro hablan el protocolo de esta consola:
+[`fmalcher/soundcraft-ui`](https://github.com/fmalcher/soundcraft-ui),
+[`Dennion/ioBroker.soundcraft`](https://github.com/Dennion/ioBroker.soundcraft),
+[`ndikanov/ui24`](https://github.com/ndikanov/ui24) y
+[`NaturalDevCR/MyUiPro`](https://github.com/NaturalDevCR/MyUiPro).
+
+> **Lo que pasó.** Una medición del ítem 108 fallaba y se probaron **nueve
+> hipótesis**, todas refutadas contra el aparato, sin haber mirado qué hizo nadie
+> más. El usuario lo cortó dos veces: «*¿no hay algún proyecto de GitHub que tenga
+> algo documentado o parecido?*» y después «*buscá también en repositorios de
+> terceros*». De ahí salió la única pista accionable —que la consola cierra el
+> socket si deja de recibir `3:::ALIVE`—, y aunque resultó estar ya cubierta, era
+> la pregunta correcta y se había hecho tarde. El repositorio citaba uno solo de
+> los cuatro, enterrado en un anexo de auditoría.
+
+**Y hay una tercera forma de fallar, que es la que de verdad muerde: «no
+encontré X» dicho como «no hacen X».** Un `grep` del parámetro del día que vuelve
+vacío dice que ese parámetro no aparece, y nada más. Convertirlo en una
+afirmación sobre todo el proyecto ajeno es ampliar el alcance en silencio.
+
+> **Lo que pasó, tres veces.** Se escribió que ninguno de los cuatro nombra
+> `afs.*` —`fmalcher` lista las doce claves del supresor—. Se escribió que
+> `fmalcher` tiene «cero coincidencias de `eq.peak`» y con eso «no expone el
+> ecualizador de salida» —lo expone entero, anidado en un JSON, donde esa cadena
+> nunca aparece—. Y se escribió que `MyUiPro` e `ioBroker` «no tocan parámetros
+> de mezcla» —los dos escriben la ganancia del previo, y `MyUiPro` publica una
+> ley para convertirla, la misma que publica `fmalcher`—. Las tres veces la frase
+> falsa era la **cómoda**: dejaba el hallazgo propio sin precedente.
+
+**Para estos cuatro la respuesta está archivada**, con el commit que se miró de
+cada uno: `docs/referencia/trabajo-previo-de-terceros.md`. Qué escribe cada uno,
+qué convierte y qué no tiene. Antes de escribir «ninguno de los cuatro hace X»,
+se busca ahí; si X no está, se clona, se grepea y **se agrega la fila**. Recordar
+no cuenta.
+
+Y sigue valiendo la advertencia de §3: **el trabajo previo da hipótesis, no
+verdades.** De los cuatro, **ninguno documenta la cadencia del `VU2`** ni que se
+emite por cambio, que es lo que hacía falta. Que no haya precedente es un dato:
+significa más cuidado, no menos.
+
+## 8. Explicarle al usuario en su idioma, que es el del producto
+
+**Nada de nombres de clave, de funciones ni de archivos en la explicación
+principal.** El detalle técnico va al commit, al documento o a la evidencia, que
+es donde se audita. A la conversación va **qué se quiere saber, por qué importa
+para el producto, qué se va a hacer, cuánto lleva y qué le toca de su equipo.**
+
+> **Lo que pasó.** El 2026-09-16 se le explicó un fallo de medición a base de
+> `m.afs.enabled`, conteos de cuadros `VU2` y bloqueos del bucle de eventos. Él
+> pidió la versión simple, la aprobó, y dejó la regla: «*las explicaciones deben
+> de ser así, pues yo ni entiendo de claves ni funciones. **Entiendo del
+> producto**.*»
+
+**Por qué no es cosmética.** Es músico e ingeniero de sonido, no programador, y
+**la autoridad es humana**: las decisiones sobre qué se toca de su consola son
+suyas. Una explicación que no puede evaluar lo obliga a aceptar o rechazar a
+ciegas, que es exactamente lo contrario de la regla 5 del README.
+
+Si hace falta una analogía, que sea del oficio —un velocímetro que se apaga con
+el auto parado, no un búfer que no se vacía—. Y vale igual **cuando él pregunta
+algo técnico**: primero qué significa para el producto, después el detalle si lo
+pide.
+
 ---
 
-## 8. Trabajar con lotes de ediciones
+## 9. Trabajar con lotes de ediciones
 
 **Un lote tiene que informar cuáles no aplicaron.** Si aborta en la primera falla, las siguientes no se ejecutan y nadie se entera.
 
@@ -168,6 +244,53 @@ revertir: es difícil de *revisar*, y en este proyecto las cosas que se
 descubrieron tarde —el techo del medidor, la retención de picos, el respaldo por
 VU que no existía— se descubrieron leyendo, no ejecutando. Lo que no se puede
 leer con atención no se revisa.
+
+## Terminar una medición es más que archivarla
+
+**El usuario preguntó tres veces en un día si la documentación estaba bien, y las
+tres veces faltaba algo.** No es casualidad ni distracción: el trabajo de medir
+produce contrato y evidencia —que se hacen solos, porque son el trabajo— y deja
+atrás **los documentos que dicen qué se sabe**, que son otros.
+
+Su frase: *«se me hace costumbre preguntar porque de alguna manera es algo en
+donde siempre fallamos»*. Tenía razón las tres veces.
+
+### La lista, sacada de lo que falló de verdad el 2026-09-16
+
+Cuando una medición termina, estos son los que se quedan atrás. **Se recorren, no
+se recuerdan:**
+
+| Documento | Qué se le pudre |
+|---|---|
+| `docs/capability-matrix.md` | la **fila narrativa** de la familia: dice «desconocida / INFERIDO» de algo recién medido |
+| `docs/protocol-spec.md` §4.6 | la **tabla de constantes**: dice «sin probar» o «REFUTADA» de fórmulas que cambiaron de estado |
+| `README.md` | el resumen de qué falta medir |
+| `.claude/skills/vse-experto/SKILL.md` | la sección «Estado real, hoy», que **avisa de que se pudre** y se pudre igual |
+| `CHANGELOG.md` | lo que el usuario va a ver |
+| el contrato **anterior** | si esta medición contesta una pregunta que aquél dejó abierta, hay que decirlo **ahí** |
+
+### Lo que se puede comprobar solo, y lo que no
+
+`validate-rutas-medidas` cubre **la mitad mecanizable**: que ningún documento
+describa con una palabra de negación —«sin probar», «REFUTADA», «INFERIDO»,
+«desconocida»— una ruta que `RAW_MAP` declara `PROBADO`. Mira todos los `.md` del
+repositorio, no uno.
+
+**Lo que no puede cubrir es la prosa que describe una ley sin nombrar su ruta**, y
+ahí no hay guarda posible. Por eso la otra mitad de la regla:
+
+### Los documentos de estado APUNTAN, no repiten
+
+**Cada número repetido es un número que se pudre.** Un documento de estado dice
+*qué* se sabe y *dónde* está el detalle; el detalle vive en el contrato de la
+medición, que es el único sitio donde se actualiza cuando cambia.
+
+> **Lo que pasó.** La fila del compresor en la matriz repetía la ley completa con
+> sus cifras. Cuando la medición siguiente mostró que esa ley era el promedio de
+> una curva, hubo que corregirla **en cuatro lugares** — y dos se encontraron
+> recién cuando el usuario preguntó por tercera vez.
+
+---
 
 ## Una medición que no se archiva no se midió: se contó
 

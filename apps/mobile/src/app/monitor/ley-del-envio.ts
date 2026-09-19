@@ -20,7 +20,7 @@ import { aRaw, entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
  * sujetaba nada: cambiando estas tres funciones por otras inventadas, la suite
  * entera seguía en verde.
  *
- * Vivía en `bajar-envio.service.ts`, que lleva un decorador de Angular, y el
+ * Vivía en `envio-a-monitor.service.ts`, que lleva un decorador de Angular, y el
  * modo de eliminación de tipos de Node —con el que corren los tests— no parsea
  * un decorador. O sea que un test que importara el servicio no compilaría, y
  * uno que reconstruyera el objeto probaría la ley sin probar que la aplicación

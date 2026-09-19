@@ -1,0 +1,88 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T13:55:46.348Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts sha256:82b7b334b295faad
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 110 — ¿EL CRUDO 0 DE LA RELACION ES UN LIMITADOR? ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   softknee esta en 0, se LEE y NO se toca: con rodilla blanda la
+   relacion efectiva cerca del umbral no es la nominal.
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== REFERENCIA: el compresor PUENTEADO ===
+   fuente  -28 dBFS -> -57.41 dBFS   (margen 82.4 dB)
+   fuente  -24 dBFS -> -53.41 dBFS   (margen 85.3 dB)
+   fuente  -18 dBFS -> -47.43 dBFS   (margen 90.9 dB)
+   la referencia subio 9.98 dB con 10 dB de fuente
+
+=== CALIBRACION DEL UMBRAL ===
+   (su ley esta refutada desde la 97, asi que se calibra midiendo)
+   umbral 0.22 -> reduccion de 4.18 dB
+   umbral 0.19 -> reduccion de 4.65 dB
+   umbral 0.16 -> reduccion de 5.03 dB
+   -> se usa el umbral 0.16
+
+=== LAS TRES RELACIONES ===
+   crudo 0.25  (4:1)
+      salidas: -65.53  -62.74  -57.98 dBFS   | reduccion en el medio: 9.34 dB
+   crudo 0.02  (50:1 (el tope del manual))
+      salidas: -70.87  -70.36  -69.34 dBFS   | reduccion en el medio: 16.96 dB
+   crudo 0     (infinito segun el cliente)
+      salidas: -71.73  -71.79  -71.77 dBFS   | reduccion en el medio: 18.39 dB
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+
+=== VEREDICTOS ===
+C2 la cadena sigue a la fuente: con el compresor PUENTEADO, 10 dB de fuente movieron la salida 9.98 dB
+   PASA
+   (la relacion NOMINAL del cliente no se usa de control: la 97 la refuto)
+C3 el compresor esta actuando: reduce 9.34 dB con 4:1 (minimo 5)
+   PASA
+
+   relacion            | +4 dB de fuente | +10 dB de fuente | R implicita (chico)
+   --------------------|-----------------|------------------|--------------------
+   0.25  4:1           |         2.784 dB |          7.546 dB | 1.4:1
+   0.02  50:1 (el tope del manual)|         0.510 dB |          1.537 dB | 7.8:1
+         (el escalon grande sube mucho mas que el chico: el compresor toco
+          su techo en el medio, asi que el grande NO mide la relacion)
+   0     infinito segun el cliente|        -0.068 dB |         -0.046 dB | infinita
+         (el escalon grande sube mucho mas que el chico: el compresor toco
+          su techo en el medio, asi que el grande NO mide la relacion)
+
+Con el escalon chico, el crudo 0 movio la salida -0.068 dB.
+El 50:1 del manual predice 0,080 dB; una relacion infinita predice 0,000.
+
+EL CRUDO 0 SOBRE-LIMITA: al subir la fuente, la salida BAJA. Es mas que
+una relacion infinita --pendiente negativa-- y descarta el 50:1 del manual,
+que predice que la salida SUBE 0,080 dB con este escalon.
+   El crudo 0,02 --el 50:1 del manual-- dio 0.510 dB.
+
+   Y queda dicho lo que NO se puede leer de esta tabla: las relaciones
+   NOMINALES no reproducen --4:1 mide 1,5:1 y 50:1 mide 6:1--, que es
+   exactamente lo que la 97 ya habia refutado. No es un hallazgo nuevo
+   ni un defecto de esta corrida: es el estado conocido de esa ley.
+
+   LIMITE DE ESTA CORRIDA, declarado antes de medir: con esta precision no se
+   distingue una relacion infinita de una muy alta. Lo que si se puede es
+   descartar el 50:1, que predice un movimiento diez veces mayor.
+
+Un umbral, una frecuencia, un canal, un dia. Nada de la ley de la relacion,
+que sigue refutada desde la 97, ni de los tiempos, que siguen sin medirse.
+
+
+# salida del proceso: 0

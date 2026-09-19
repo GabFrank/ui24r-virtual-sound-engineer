@@ -86,6 +86,24 @@ export interface MeasurementMetrics {
 export interface Measurement {
   readonly id: MeasurementId;
   readonly sessionId: SessionId;
+  /**
+   * Cuándo **empezó** la captura, en ISO 8601 y **con huso horario explícito**.
+   *
+   * **Las dos cláusulas se escribieron el 2026-09-18 y antes no había ninguna.**
+   * El campo era un `string` sin semántica: nada decía si era el principio o el
+   * fin de la captura, ni en qué formato. Una auditoría de fidelidad lo marcó al
+   * ver que el motor de seguridad había empezado a depender de que fuera el
+   * principio --`historialDeLaSesion` comprueba que la ventana de escucha haya
+   * terminado, y para eso hace `timestamp + duracionS`--. Una garantía apoyada en
+   * un supuesto que el tipo no da es la forma de error que este repositorio
+   * repite, así que el supuesto pasa a ser la definición.
+   *
+   * **Y el huso no es decoración.** `Date.parse` de una fecha sin zona la
+   * interpreta como hora local, así que la misma cadena significa cosas
+   * distintas según dónde corra el proceso: medido, una medición de un minuto
+   * antes de una escritura quedaba tres horas después. Quien la lea para ordenar
+   * eventos rechaza la fecha sin huso en vez de adivinarle una.
+   */
   readonly timestamp: string;
   readonly signalType: SignalType;
   readonly referenceMode: AnalysisReferenceMode | null;

@@ -1,0 +1,130 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T13:11:04.227Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/umbral-de-la-puerta.ts sha256:195fc7195665e2ce
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 120 — EL UMBRAL Y LA PROFUNDIDAD DE LA PUERTA ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 19 escalones, -36 a -9 dBFS, y por primera vez tambien AL REVES
+   6 umbrales y 6 profundidades
+   los tiempos de la puerta van a su MINIMO para que cada escalon asiente,
+   asi que la histeresis que sale es la del detector, no la que se percibe
+   con el sostenido puesto. El contrato lo dice.
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.gate.thresh        0
+   i.9.gate.depth         0
+   i.9.gate.bypass        0
+   i.9.gate.attack        0
+   i.9.gate.hold          0.3042441765
+   i.9.gate.release       0.3150737134
+   i.9.dyn.bypass         0
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -36 dBFS -> salida   -65.55 dBFS
+   entrada -34.5 dBFS -> salida   -64.07 dBFS
+   entrada  -33 dBFS -> salida   -62.57 dBFS
+   entrada -31.5 dBFS -> salida   -61.08 dBFS
+   entrada  -30 dBFS -> salida   -59.59 dBFS
+   entrada -28.5 dBFS -> salida   -58.10 dBFS
+   entrada  -27 dBFS -> salida   -56.60 dBFS
+   entrada -25.5 dBFS -> salida   -55.10 dBFS
+   entrada  -24 dBFS -> salida   -53.61 dBFS
+   entrada -22.5 dBFS -> salida   -52.11 dBFS
+   entrada  -21 dBFS -> salida   -50.61 dBFS
+   entrada -19.5 dBFS -> salida   -49.12 dBFS
+   entrada  -18 dBFS -> salida   -47.63 dBFS
+   entrada -16.5 dBFS -> salida   -46.13 dBFS
+   entrada  -15 dBFS -> salida   -44.64 dBFS
+   entrada -13.5 dBFS -> salida   -43.15 dBFS
+   entrada  -12 dBFS -> salida   -41.66 dBFS
+   entrada -10.5 dBFS -> salida   -40.16 dBFS
+   entrada   -9 dBFS -> salida   -38.66 dBFS
+   pendiente 0.9961 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -65.6 dBFS
+
+=== EL UMBRAL (profundidad fija en 0.6667) ===
+   crudo | cierre abajo | apertura (dBFS) | ancho de la transicion
+   0.30  |      20.0 dB | -29.25 dBFS | 0.8 escalones
+         atenuacion: -36:20.0  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:0.0  -27:0.0  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.33  |      19.9 dB | -26.25 dBFS | 0.8 escalones
+         atenuacion: -36:19.9  -34.5:20.0  -33:19.9  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.36  |      20.0 dB | -23.25 dBFS | 0.8 escalones
+         atenuacion: -36:20.0  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.39  |      20.0 dB | -21.75 dBFS | 0.8 escalones
+         atenuacion: -36:20.0  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.42  |      19.9 dB | -18.75 dBFS | 0.8 escalones
+         atenuacion: -36:19.9  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:20.0  -19.5:20.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   0.45  |      20.0 dB | -15.75 dBFS | 0.8 escalones
+         atenuacion: -36:20.0  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:20.0  -19.5:20.0  -18:20.0  -16.5:20.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+
+C3 la puerta cierra: la menor atenuacion en el escalon mas bajo fue 19.9 dB (minimo 10) -> PASA
+C4 la transicion es nitida: la mas ancha tardo 0.8 escalones (tope 2) -> PASA
+
+L1 el umbral es lineal: residuo maximo 0.56 dB (tope 1.5) -> PASA
+   PENDIENTE MEDIDA: 87.1 dB por unidad de crudo
+   el cliente dice 96 (VtoGATE_THRESH = 96a - 90)
+   cociente 0.908
+
+=== LA PROFUNDIDAD (umbral fijo en 0.39) ===
+   crudo | atenuacion medida | el cliente dice | diferencia
+   1.00  |            0.0 dB |          0.0 dB | +0.0 dB
+   0.85  |            9.0 dB |          9.0 dB | -0.0 dB
+   0.70  |           18.0 dB |         18.0 dB | -0.0 dB
+   0.55  |           27.0 dB |         27.0 dB | -0.0 dB
+   0.40  |           35.0 dB |         36.0 dB | -1.0 dB
+   0.25  |           39.9 dB |         45.0 dB | -5.1 dB
+
+=== LA HISTERESIS: ¿ABRE Y CIERRA EN EL MISMO NIVEL? ===
+   umbral 0.33: abre en -26.25 dBFS, cierra en -27.75 dBFS -> histeresis 1.50 dB
+      subiendo: -36:19.9  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+      bajando:  -36:20.0  -34.5:19.9  -33:20.0  -31.5:19.9  -30:20.0  -28.5:20.0  -27:0.0  -25.5:0.0  -24:0.0  -22.5:0.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   umbral 0.39: abre en -21.75 dBFS, cierra en -21.75 dBFS -> histeresis -0.00 dB
+      subiendo: -36:20.0  -34.5:20.1  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+      bajando:  -36:19.9  -34.5:19.9  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:0.0  -19.5:0.0  -18:0.0  -16.5:0.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+   umbral 0.45: abre en -15.75 dBFS, cierra en -15.75 dBFS -> histeresis -0.00 dB
+      subiendo: -36:20.1  -34.5:20.0  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:20.0  -19.5:20.0  -18:20.0  -16.5:20.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+      bajando:  -36:20.0  -34.5:19.9  -33:20.0  -31.5:20.0  -30:20.0  -28.5:20.0  -27:20.0  -25.5:20.0  -24:20.0  -22.5:20.0  -21:20.0  -19.5:20.0  -18:20.0  -16.5:20.0  -15:0.0  -13.5:0.0  -12:0.0  -10.5:0.0  -9:0.0
+
+   Sin expectativa declarada: no habia base para predecir ni que exista
+   ni que no. Y con el sostenido en su minimo, esta es la histeresis del
+   DETECTOR, no la que se percibe con el sostenido puesto.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.gate.thresh        esperado 0  leido 0
+   OK   i.9.gate.depth         esperado 0  leido 0
+   OK   i.9.gate.bypass        esperado 0  leido 0
+   OK   i.9.gate.attack        esperado 0  leido 0
+   OK   i.9.gate.hold          esperado 0.3042441765  leido 0.3042441765
+   OK   i.9.gate.release       esperado 0.3150737134  leido 0.3150737134
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, un canal, un dia.
+   Se mide LA PENDIENTE del umbral, no su cero: este banco no tiene con
+   que anclar la escala interna de la consola.
+   Nada de la relajacion de la puerta, cuya forma el item 116 refuto y que
+   sigue sin ley: eso necesita un modelo nuevo, no otra corrida de esta.
+   Nada con el sostenido puesto. Nada con señal real.
+
+
+# salida del proceso: 0

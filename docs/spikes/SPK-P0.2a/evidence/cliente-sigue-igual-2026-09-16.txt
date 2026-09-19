@@ -1,0 +1,33 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T04:58:57.425Z
+# comando: node --experimental-strip-types tools/spikes/p0-2a/cliente-sigue-igual.ts 192.168.0.78
+# guion: tools/spikes/p0-2a/cliente-sigue-igual.ts sha256:6580dbbe889a220e
+# la huella cubre 2 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== EL CLIENTE DE 192.168.0.78 CONTRA EL EXTRACTO ARCHIVADO ===
+
+   extracto:  docs/spikes/SPK-P0.2a/evidence/tablas-conversion-ui24r.js
+   servido:   http://192.168.0.78/mixer.html  (1283641 bytes)
+   sha256:    9279507d99832442b4c1544594348e7647887a52910267d87457171700304bf6
+
+   funciones en el extracto:        56
+   de esas, presentes en la consola: 56
+   identicas:                        56
+   distintas:                        0
+   ausentes en la consola:           0
+
+
+   EL EXTRACTO SIGUE VALIENDO. Las leyes de presentacion que cuelgan de el
+   describen lo que esta consola muestra hoy.
+
+   Recordatorio: que el cliente diga una formula es lo que la PANTALLA
+   muestra, no lo que el audio hace. Entran como INFERIDO. La medicion 97
+   refuto VtoTHRESH y VtoRATIO de este mismo archivo.
+
+
+# salida del proceso: 0

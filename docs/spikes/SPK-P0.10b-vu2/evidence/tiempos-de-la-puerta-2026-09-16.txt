@@ -1,0 +1,105 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T22:31:41.241Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/tiempos-de-la-puerta.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/tiempos-de-la-puerta.ts sha256:6b966ff80ff934b7
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 116 — LOS TIEMPOS DE LA PUERTA, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   tono 4000 Hz, escalon de -30 a -12 dBFS
+   profundidad fijada en -20 dB (crudo 0.6667), y el motivo esta en el contrato
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.gate.enabled       1
+   i.9.gate.bypass        0
+   i.9.gate.attack        0
+   i.9.gate.hold          0.3042441765
+   i.9.gate.release       0.3150737134
+   i.9.gate.thresh        0
+   i.9.gate.depth         0
+   i.9.dyn.bypass         0
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — EL ESCALON CON LA PUERTA PUENTEADA ===
+   asentado -41.61 dBFS, recorrido posterior al escalon -0.01 dB
+   apertura: t63 <5 (piso), t90 <5 (piso)
+   PASA: sin puerta el escalon salta y ya.
+
+C1 el tono llega: 83.1 dB (minimo 45)
+
+=== CALIBRACION DEL UMBRAL ===
+   sin puerta, el nivel bajo esta en ~-59.6 dBFS y el alto en -41.6
+   umbral 0.500 -> la puerta abre 0.00 dB y deja el alto en -61.61 dBFS
+   umbral 0.460 -> la puerta abre 21.79 dB y deja el alto en -41.61 dBFS
+
+C3 la puerta cierra: atenua 21.79 dB con el nivel bajo (minimo 10) -> PASA
+C4 el umbral quedo EN EL MEDIO: con el nivel alto la salida da -41.61 contra -41.61 sin puerta -> PASA
+
+   profundidad MEDIDA: 21.79 dB, el cliente predice -20.0 (L5)
+
+=== LA APERTURA (attack) ===
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.000 | <5 (piso) | <5 (piso) |            1.0 ms | 0.50   (repite 50%)
+   0.125 | <5 (piso) | <5 (piso) |            4.1 ms | 0.25   (repite 0%)
+   0.250 | <5 (piso) |  11.5 ms |           13.8 ms | 0.33   (repite 0%)
+   0.375 |   7.0 ms |  24.0 ms |           38.5 ms | 0.18   (repite 7%)
+   0.500 |  18.5 ms |  59.0 ms |           89.4 ms | 0.21   (repite 0%)
+   0.625 |  35.0 ms | 112.0 ms |          172.2 ms | 0.20   (repite 1%)
+   0.750 |  55.0 ms | 178.0 ms |          275.1 ms | 0.20   (repite 2%)
+   0.875 |  72.5 ms | 236.0 ms |          364.3 ms | 0.20   (repite 1%)
+   1.000 |  80.5 ms | 259.0 ms |          400.0 ms | 0.20   (repite 1%)
+
+=== EL SOSTENIDO (hold) ===
+   crudo | sostenido | el cliente predice | medido/predicho
+   0.000 |  no cruza |            1.0 ms | —
+   0.125 |  no cruza |            5.9 ms | —
+   0.250 |   28.5 ms |           27.8 ms | 1.02
+   0.375 |  103.0 ms |          102.7 ms | 1.00
+   0.500 |  299.0 ms |          299.1 ms | 1.00
+   0.625 |  687.0 ms |          686.8 ms | 1.00
+   0.750 | 1244.0 ms |         1243.7 ms | 1.00
+   0.875 | 1776.0 ms |         1776.0 ms | 1.00
+   1.000 | 2000.0 ms |         2000.0 ms | 1.00
+
+=== LA RELAJACION (release) ===
+   crudo |   t63    |   t90    | el cliente predice | medido/predicho
+   0.000 | <5 (piso) | <5 (piso) |            5.0 ms | 0.00   (repite 0%)
+   0.125 |   9.5 ms |  19.0 ms |           20.4 ms | 0.47   (repite 5%)
+   0.250 |  43.0 ms |  81.0 ms |           68.8 ms | 0.63   (repite 3%)
+   0.375 | 130.0 ms | 245.0 ms |          192.6 ms | 0.68   (repite 1%)
+   0.500 | 314.0 ms | 585.0 ms |          447.2 ms | 0.70   (repite 2%)
+   0.625 | 592.0 ms | 1124.0 ms |          861.2 ms | 0.69   (repite 2%)
+   0.750 | 868.5 ms | 1552.5 ms |         1375.3 ms | 0.63   (repite 2%)
+   0.875 | 1006.0 ms | 1757.5 ms |         1821.3 ms | 0.55   (repite 1%)
+   1.000 | 1008.0 ms | 1780.5 ms |         2000.0 ms | 0.50   (repite 6%)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.gate.bypass        esperado 0  leido 0
+   OK   i.9.gate.attack        esperado 0  leido 0
+   OK   i.9.gate.hold          esperado 0.3042441765  leido 0.3042441765
+   OK   i.9.gate.release       esperado 0.3150737134  leido 0.3150737134
+   OK   i.9.gate.thresh        esperado 0  leido 0
+   OK   i.9.gate.depth         esperado 0  leido 0
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, un umbral, una profundidad, un canal, un dia.
+   Nada de la ley del umbral: se calibro y se informa el crudo usado.
+   Nada con señal real. Nada de la puerta de los buses de salida.
+
+
+# salida del proceso: 0

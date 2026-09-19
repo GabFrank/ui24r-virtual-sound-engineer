@@ -6,6 +6,521 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La pantalla de ganancia ya guarda lo que escucha, y con eso podés ajustar un
+  canal dos veces.** Hasta ahora, cuando aplicabas una ganancia, la aplicación
+  volvía a medir dieciocho segundos para contarte si había servido —y ahí tiraba
+  esa medición—. El motor, en cambio, no te deja tocar dos veces el mismo
+  parámetro sin haber escuchado en el medio, y esa escucha la busca guardada.
+  Resultado: **el segundo ajuste sobre el mismo canal se rechazaba siempre**,
+  diciendo que faltaba escuchar, aunque el músico hubiera estado tocando los
+  dieciocho segundos delante tuyo. La aplicación sabía que había escuchado, te lo
+  decía por pantalla, y no se lo decía al motor.
+  Ahora cada ventana que se mide queda guardada, y la que viene después de un
+  cambio queda anotada como la escucha de ese cambio. **Medí, aplicá, seguí
+  tocando, y podés volver a aplicar otro paso.**
+  **Lo que esa medición NO es, para que no se le pida lo que no puede dar:** sale
+  del medidor de la consola, no de un micrófono. Sirve para saber cuánto entró y
+  cuándo. No sirve para decidir ecualización de sala, y la aplicación la marca
+  como no confiable para eso a propósito.
+  **Y si no hubo nadie tocando, no cuenta.** Una ventana en silencio se guarda
+  igual —es información— pero no habilita el paso siguiente: si nadie tocó, nadie
+  escuchó. Lo mismo con una ventana cortada antes de los diez segundos.
+  **Las cuñas de monitor todavía no**: ahí no hay nada que mida, y eso llega con
+  la pantalla por músico.
+
+- **La aplicación ya sabe subir la cuña de un músico, no sólo bajarla.** Hasta
+  ahora el único asistente de monitor bajaba —la regla tuya para cazar un
+  acople— y subir quedaba entero en tus manos. Ahora sube **de a 2 dB por vez**,
+  con techo en nominal, y si la cuña está apagada la enciende en el punto más
+  bajo que sabe escribir.
+  **Lo que no hace, que importa igual:** no se pasa de nominal, y te lo dice en
+  vez de recortar en silencio; no toca nada durante el show; no sube una ruta
+  que no sea un retorno de monitor de esta consola; y no anota techo al subir
+  —el techo existe para devolver una cuña adonde estaba después de que la
+  aplicación la bajó, no para autorizarse a seguir subiendo—.
+  **Sigue sin haber pantalla que lo llame**: eso es lo que viene. Y cuando venga,
+  va a tener que **pedir el último tramo a medida**: con pasos fijos de 2 dB la
+  cuña llega hasta 0,1 dB por debajo de nominal y ahí frena, porque el asistente
+  te avisa en vez de recortar por su cuenta.
+
+- **Una cuña apagada ya se puede levantar.** Hasta ahora, si el retorno de un
+  músico estaba en cero, la aplicación no podía moverlo: el motor necesita saber
+  de qué nivel sale para medir cuánto se mueve, y desde el silencio no hay nivel
+  del que salir. La cuña quedaba trabada abajo.
+  Ahora el primer paso desde el silencio es **un caso aparte**, como vos elegiste:
+  la aplicación la sube **al punto más bajo que sabe escribir** —apenas audible—
+  y de ahí en adelante sigue el camino normal, de a 2 dB y escuchando entre paso
+  y paso. **A ningún otro sitio**: pedir cualquier otro destino desde el silencio
+  se rechaza, y esto vale sólo para los retornos de monitor, no para el resto de
+  la consola. Tampoco durante el show.
+
+- **Las mediciones de la sesión ya llegan al motor de seguridad.** Es plomería,
+  no una función que puedas usar todavía, pero es la que destrababa la pieza que
+  sigue: el motor decide si se escuchó entre un paso y el siguiente mirando las
+  mediciones de la sesión, y hasta ahora **le llegaba una lista vacía**. Con la
+  lista vacía ninguna cuña quedaba nunca con escucha comprobada, así que
+  **el segundo paso de cualquier rampa se rechazaba**. Una cuña se levanta en
+  pasos de 2 dB escuchando entre uno y otro: el segundo no llegaba nunca.
+  **Hoy no cambia nada en la tablet**, porque todavía nadie guarda mediciones
+  —eso lo hace la pantalla de monitor, que no existe—; lo que cambia es que el
+  día que las guarde, la rampa avanza. Hay una guarda que corre con las pruebas
+  para que nadie vuelva a dejar la lista vacía sin enterarse.
+
+- **Los topes que hacían imposible levantar la cuña de un músico ya no la
+  frenan, y hay un techo donde parar.** Es un cambio del motor de seguridad,
+  no una función que puedas usar todavía: **ninguna pantalla lo llama y el
+  asistente de monitor sigue sabiendo sólo bajar**, así que en la tablet no vas
+  a ver nada nuevo. Lo que cambió es que ahora *se puede* construir encima.
+  Antes no. Hasta hoy tenía permitido moverla cuatro decibeles en todo el
+  soundcheck, y levantar un retorno desde el silencio son más de veinte: el paso
+  de tu soundcheck en que subís el auxiliar para que el músico tenga referencia
+  era, literalmente, imposible. Ahora son dos cosas distintas:
+  - **Poner el nivel.** Sube de a 2 dB con el músico tocando, escuchando entre
+    paso y paso, hasta donde haga falta. No tiene presupuesto porque lo que la
+    frena es el techo.
+  - **Retocar.** Una vez que decís que así está bien, vuelven los topes de
+    siempre —2 dB por vez, 4 en toda la sesión— pero contados **desde ese nivel**
+    y no desde donde estaba la cuña al empezar. Antes el retoque nacía con el
+    presupuesto ya gastado por la subida.
+
+  **El techo es nominal, 0 dB, y rige en las dos.** Pasar de ahí sigue siendo
+  decisión tuya. Lo elegiste vos, y también elegiste que valga también al
+  retocar: si no, una cuña que quedaba apenas debajo de nominal la cruzaba sola
+  con un retoque normal.
+
+  **Lo que todavía falta, y es casi todo lo visible**: el asistente que sepa
+  subir —hoy sólo sabe bajar, porque nació para cazar acoples—, la pantalla por
+  músico, y quien marque «este es el nivel de este músico», que es esa misma
+  pantalla. Hasta que esté, ninguna cuña llega a tener nivel establecido.
+  Arrancar desde el silencio absoluto tampoco se puede todavía.
+
+- **La hoja de ruta se rehízo desde tu soundcheck, no desde la consola.** Contaste
+  paso por paso cómo hacés un soundcheck y se cruzó con lo que dicen las fuentes
+  de oficio y con lo que la aplicación ya tiene. Tres cosas cambiaron:
+  - **La mezcla de conjunto entra al MVP** —levantar uno por uno, probar
+    combinaciones, equilibrar faders—. Es lo que hacés y no estaba.
+  - **La puerta y el compresor se van a ajustar como lo hace la ganancia**:
+    moviendo de a poco y mirando lo que la consola mide, sin esperar leyes que
+    demostraron no existir. No se miden más leyes de esos dos para el MVP.
+  - **Los envíos a efectos entran**: cuánto manda cada canal a cada efecto. Dos
+    documentos decían cosas distintas sobre esto y ahora dicen lo mismo.
+
+  Y quedó separado, medición por medición, qué va a usar alguna herramienta de
+  la aplicación y qué era un trofeo: el ecualizador de salida, los faders de bus
+  y del general, la superficie del compresor y el umbral de la puerta en dB
+  quedan congelados hasta después de la entrega.
+
+- **Decidido: el freno va a contar por parlante, no por perilla.** Es una
+  decisión escrita, todavía no código. El motor cuenta cuánto se movió cada
+  perilla por separado, y vos no escuchás perillas: escuchás una cuña. A la cuña
+  de un músico le llegan varias cosas —el ecualizador del canal, el envío— y hoy
+  cada una tiene su propio freno, así que **pasan juntas**.
+
+  **Medido, con el motor:** el ecualizador y el envío se mueven juntos y son
+  **6 dB de golpe en la cuña**, sin pasar ningún freno. Cuatro bandas del
+  ecualizador sobre el mismo punto son **16 dB**, con el freno por banda en 4. Y
+  la ganancia de entrada tiene un problema aparte: la misma perilla escrita de
+  cuatro maneras distintas son **cuatro presupuestos** — **12 dB con el freno en
+  3** de una sola vez, y en tandas **no hay techo**, porque las maneras de
+  escribirla son infinitas.
+
+  Esto había aparecido cuatro veces en revisiones distintas. **Es uno solo.**
+  Elegiste la opción completa —que todo lo que llega a la misma cuña comparta un
+  solo presupuesto— y que si dos de esas cosas se mueven en la misma tanda, la
+  tanda se rechace: adentro de una tanda no hay dónde escuchar, y si se mueven
+  dos juntas no sabés cuál fue.
+
+  **Y elegiste algo que te ahorra el soundcheck.** Cuatro bandas del ecualizador
+  no son cuatro caminos a la cuña: una en 100 Hz y otra en 5 kHz son partes
+  distintas del sonido. Sólo chocan si **pisan la misma zona**. Así seguís
+  ecualizando un canal de una sola vez, como hacés hoy, en vez de cuatro veces
+  con diez segundos de espera entre cada una.
+
+  **Dos cosas que hay que decir, porque una revisión las corrigió.** La primera:
+  se había escrito que el fader del canal también llega a la cuña, y **en tu
+  consola no**: los 320 envíos están puestos antes del fader. Por eso son 6 dB y
+  no 9. La segunda: se había escrito que tu consola no tiene nada enlazado en
+  estéreo, y **tiene dos pares** — las entradas de línea y el reproductor. O sea
+  que el enlace no es un riesgo a futuro: está activo ahora.
+
+### Corregido
+
+- **«Ya escuché» era una palabra, no una comprobación: la cuña se podía subir
+  32 dB sin que pasara nada de tiempo.** El motor tiene una regla vieja y buena
+  —no se mueve una cuña dos veces sin que el músico haya escuchado en el medio—
+  y la cumplía mirando un casillero: si algo dejaba ahí cualquier cosa escrita,
+  daba por hecho que se había escuchado. No comprobaba que esa escucha
+  existiera, ni que fuera de este show, ni que hubiera pasado *después* del
+  cambio, ni que hubiera habido sonido, ni cuánto había durado.
+  **Medido: dieciséis pasos honestos de 2 dB levantaron una cuña desde el piso
+  hasta nominal —32 dB— sin una sola espera**, con dieciséis escuchas que no
+  existían. Lo único que la frenó fue llegar arriba de todo.
+
+  **Hoy no te podía pasar**, porque ninguna pantalla llena ese casillero
+  todavía. Pero la pantalla de monitor —la que sigue— es justo la que lo va a
+  llenar, y el día que lo hiciera, esos 32 dB entraban solos.
+
+  Ahora, para que un paso autorice al siguiente, la escucha tiene que ser real:
+  existir de verdad, ser de este show, haber empezado después de que el cambio
+  llegara a la consola, **haber tenido sonido** —una medición hecha en silencio
+  no cuenta— y **haber terminado**. Lo elegiste vos entre varias opciones,
+  incluida la de frenar sólo con un cronómetro, que descartaste con el argumento
+  correcto: un cronómetro no es una escucha.
+
+  **Cuánto tiene que durar lo decide cada ajuste, y también lo elegiste vos.**
+  Para la cuña de monitor son diez segundos, que es el mismo tiempo que la
+  aplicación ya usa hoy para decidir si una medición de ganancia alcanzó. Para
+  silenciar un canal cuando estás cazando un acople son cero: eso se oye en el
+  momento, y pedirte diez segundos ahí sería frenarte justo cuando la sala está
+  acoplando. Las demás llevan diez por ahora, porque no hay ninguna medición que
+  diga otra cosa.
+
+  **La misma rampa que movía 32 dB ahora se frena en el segundo paso: 2 dB.**
+  Y lo que no cambió: con escuchas de verdad la rampa avanza igual, paso a paso,
+  como tiene que ser.
+
+  **Dos cosas que hay que decir, porque la primera versión de este arreglo no
+  las cumplía y lo encontró una auditoría el mismo día.** La primera: comprobaba
+  que la escucha *dijera* durar diez segundos, no que esos diez segundos
+  hubieran pasado, así que con mediciones bien escritas la ráfaga volvía entera.
+  Ahora se exige que la ventana haya terminado de verdad. La segunda: la
+  aplicación sabe que **hubo sonido**, no que **eras vos tocando**. Un barrido de
+  prueba con la banda en el bar también cuenta. Distinguir una cosa de la otra
+  necesita cruzar la medición con el canal, y eso todavía no está.
+
+- **Pedir cuatro pasos de 2 dB juntos movía la cuña 8 dB.** El freno de «no más
+  de 2 dB por vez» se cobraba una vez por cada paso, y nadie sumaba la cadena: si
+  algo mandaba cuatro pasos en una sola tanda, los cuatro pasaban —cada uno cabía
+  en su freno— y la cuña se movía cuatro veces más de lo permitido. **Sin mentir
+  ningún número**: los cuatro pasos eran honestos. Y como para el motor cada uno
+  era «el primero» de esa cuña, tampoco se exigía volver a escuchar en el medio,
+  que es justamente lo que convierte una subida en una rampa y no en una corrida.
+
+  Y los pasos intermedios **se oían**: no era un salto de 8 dB, era una rampa de
+  tres décimas de segundo en la cuña del músico sin una sola escucha en el medio.
+
+  Ahora una tanda no puede tocar dos veces la misma cuña. Va de a un paso.
+  Tocar **varias cuñas distintas** en una misma tanda sigue permitido: eso es lo
+  que el producto tiene que poder hacer.
+
+  **Lo que esto todavía no garantiza**: que entre un paso y el siguiente hayas
+  escuchado de verdad. Hoy alcanza con que algo deje anotado que se midió, sin
+  comprobar cuándo ni contra qué. Queda anotado como lo próximo a cerrar, porque
+  es lo que le da sentido a este freno.
+
+  **No te afectó**, porque hoy ninguna pantalla manda tandas de varios pasos. Se
+  tapó antes de construir el asistente que sube, que es justamente quien iba a
+  empezar a mandarlas.
+
+- **El freno de «no más de 2 dB por vez» se podía correr diciéndole al motor que
+  la cuña venía de más arriba de donde venía.** El motor no mira a qué nivel
+  queda un parámetro: mira **cuánto se movió**, o sea a dónde va menos de dónde
+  venía. Lo primero estaba comprobado desde hace días; lo segundo no lo
+  comprobaba nadie. Así que un salto de treinta y pico de decibeles en la cuña
+  de un músico pasaba el freno de 2 dB con sólo declarar que arrancaba un
+  decibel más abajo, **y la escritura salía al cable**. Ahora el punto de
+  partida tiene que ser coherente con el valor de partida, y si no lo es el
+  cambio se rechaza.
+
+  **Por qué importa justo ahora y no era urgente antes.** Desde el cambio de
+  arriba, mientras una cuña todavía no tiene su nivel marcado el presupuesto de
+  la sesión queda suspendido —si no, no se puede levantar un retorno desde el
+  silencio—. Con el presupuesto suspendido, **el freno por paso es el único que
+  queda** sobre lo brusco que puede ser un movimiento. Un freno que se corre
+  declarando de dónde venía no es un freno.
+
+  **Y ese freno no es de 2 dB exactos, sino de 2,84.** Comparar niveles con la
+  conversión medida tiene una tolerancia, y acá son 0,42 dB en cada extremo del
+  movimiento: los dos suman. Un paso de 2,84 dB puede pasar por uno de 2; uno de
+  2,85 ya no. Está medido. Es inaudible como salto suelto y vale decirlo igual,
+  porque el freno se presenta como exacto y no lo es — y conviene la comparación
+  honesta: **antes de este arreglo ese margen no era de 0,84 dB, era ilimitado**,
+  porque el punto de partida no se comparaba contra nada. Esto no deja el freno
+  exacto; lo deja acotado.
+
+  **No te afectó**, y conviene decir por qué exactamente: la única pantalla que
+  escribe hoy es la de ganancia, y saca el punto de partida del valor que la
+  consola informa, así que nunca mintió. El ajuste de monitores todavía no
+  tiene pantalla que lo llame. Se tapó igual, porque el motor es la pieza que no
+  puede depender de que quien lo llama haga las cosas bien.
+
+  **Y lo que sigue sin cubrir, dicho con todas las letras**: esto sólo se puede
+  comprobar en los parámetros cuya conversión está medida contra tu consola. La
+  **ganancia de entrada no lo está**, y es justamente el único que la aplicación
+  mueve hoy de punta a punta: ahí el motor sigue creyéndole a lo que le
+  declaran. Se arregla midiendo esa conversión, no escribiendo más código.
+
+  **Un efecto de borde que conviene que sepas**: una cuña en silencio absoluto
+  ya no admite ningún movimiento, ni chico. El silencio no es un nivel del que
+  se pueda medir una distancia, así que no hay desde dónde contar el paso. Antes
+  un pasito declarado desde el silencio pasaba, y lo que se escribía de verdad
+  era un salto desde el silencio disfrazado de pasito. Arrancar una cuña desde
+  cero sigue siendo lo que falta construir, y ahora el freno lo dice con todas
+  las letras en vez de dejarlo pasar disfrazado.
+
+- **Un número que no era un número pasaba todos los controles del motor de
+  seguridad.** Si algo le hubiera entregado al motor un nivel que no es un
+  número —una lectura que falló, un valor que nunca llegó de la consola— pasaban
+  el tope de cuánto se mueve un parámetro de una vez, el presupuesto de la
+  sesión, el techo nuevo de los monitores, **y** la guarda que existe para
+  comprobar que el número que el motor juzga sea el mismo que va al cable: esa
+  última decía «atado» y no lo estaba, con cualquier valor. No te afectó —las
+  dos pantallas que escriben calculan números de verdad— y se tapó igual, porque
+  el motor es justamente la pieza que no puede depender de que quien lo llama
+  haga las cosas bien.
+
+- **Los dos frenos que la aplicación tenía escritos y no aplicaba, ahora
+  aplican.** El motor de seguridad sabe negarse a mover un parámetro más de lo
+  presupuestado en una sesión, y a moverlo dos veces sin escuchar en el medio.
+  Las dos reglas estaban en el código y **no llegaban a la consola**: la
+  aplicación le entregaba al motor un historial vacío, así que cada cambio
+  parecía el primero. No te afectó porque ninguna pantalla repite un cambio —la
+  de ganancia aplica una vez—, y habría sido lo primero que pasara al levantar
+  una cuña paso a paso.
+
+- **El registro de cambios anotaba «dB» al lado de números que no eran
+  decibeles.** Es el mismo error que este proyecto ya había cazado y arreglado en
+  el motor de seguridad —donde un tope de 3 dB dejaba pasar saltos de 61,9— y que
+  en el registro nunca se había arreglado. No se cobraba mientras el registro
+  fuera sólo para leer después; se cobraría ahora, que va a alimentar los frenos
+  de la aplicación.
+
+- **La pantalla del recorrido decía «sin medir» sobre dos etapas medidas** —el
+  ecualizador y el monitor— durante cuatro días. Se corrigió y quedó una guarda
+  que compara esa tabla con la de leyes cada vez que corren las pruebas.
+
+- **Anotado por qué se perdió una madrugada de mediciones, para que no se repita.**
+  El audio de la Mac se traba y el síntoma se lee igual que un permiso denegado: el
+  grabador encuentra la interfaz, dice que graba, y no captura nada. La sesión que
+  lo encontró concluyó que las mediciones no se podían lanzar por conexión remota —y
+  era falso—. Se arregla reiniciando el servicio de audio, sin tocar la máquina.
+  Queda escrito cómo distinguirlo en treinta segundos.
+
+- **La puerta de ruido de tu consola cierra tanto como promete — y lo de anoche
+  era culpa de nuestro instrumento, no de ella.** Anteanoche se midió que la
+  puerta "se saturaba" a 29 dB de atenuación y se escribió que no llegaba a lo que
+  declara el fabricante. **Eso era falso y queda retractado.**
+
+  Repitiendo la medición con la señal 12 dB más arriba, el techo **no se movió de
+  su nivel absoluto**: −106,6 dBFS entonces, −105,5 ahora. Un límite de la puerta
+  habría subido con la señal; uno del banco de medición se queda donde está. Era
+  el banco.
+
+  Con eso, la ley de cuánto atenúa la puerta quedó **medida y confirmada al
+  décimo de decibel** —0, 9, 18 y 27 dB en los cuatro puntos que el banco alcanza
+  a ver—, y publicada con su límite escrito: comprobada hasta 27 dB de atenuación,
+  y de ahí para abajo nadie la vio todavía.
+
+- **La puerta abre y cierra en niveles casi iguales, y eso es una buena noticia.**
+  Una puerta que abre y cierra exactamente en el mismo punto castañetea con la
+  señal justo en el umbral. Ésta no: se comprobó que a un mismo nivel está cerrada
+  si venís subiendo y abierta si venís bajando. **Cuánta diferencia tiene todavía
+  no se puede decir** —es más chica que la resolución del instrumento—, pero el
+  chisporroteo no va a venir por ahí.
+
+- **A qué nivel abre la puerta sigue sin poder decirse**, y se dice. La medición
+  arrojó un número, y **no se publica**: la puerta abre de golpe, así que lo que se
+  mide es dónde cae el escalón de la escalera y no dónde está el umbral. Lo único
+  honesto es una franja, que esta corrida estrechó de "entre 60 y 100" a **entre 80
+  y 100**. La fórmula del fabricante cae adentro y sigue sin confirmarse.
+
+- **Un filtro se plantó en tu consola y se borró en el acto.** Hay que contarlo
+  entero porque el daño fue real: una medición de la puerta se murió de golpe, y
+  la herramienta que repara ese tipo de accidente **volvió a encender tu supresor
+  mientras el tono de prueba seguía sonando** — el reproductor había sobrevivido a
+  la medición muerta. El supresor hizo lo suyo y plantó una banda de 4 kHz
+  atenuada 18 dB.
+
+  **Se detectó en la comparación de rutina** contra el retrato de tu consola de
+  anteanoche, que es lo que se hace después de cada medición, y se borró. Tu
+  consola quedó sin ningún filtro plantado.
+
+  **La herramienta está arreglada:** ahora calla todo antes de tocar nada, y
+  devuelve el supresor **último**. Y quedó escrito por qué ninguna de las
+  protecciones existentes podía verlo.
+
+- **Y la tabla completa de cuánto comprime, para cada posición del control.** Con
+  el hallazgo de que no hay "una relación" hacía falta el dato entero, y ahí está:
+  ocho posiciones del control por seis alturas de señal, medidas una por una.
+
+  Se lee directo: con el control en 0,25 y una voz **10 dB por encima del umbral**,
+  el compresor la baja **6,1 dB**. Eso es lo que hace el aparato.
+
+  **Y sirve para cualquier umbral**, no sólo el que se usó para medir: se comprobó
+  que cuánto baja depende **sólo de cuánto te pasás**, con tres umbrales separados
+  nueve decibeles entre sí y menos de tres décimas de diferencia.
+
+  Con esa tabla la app puede proponer compresión con números reales — interpolando
+  lo medido, en vez de una fórmula que ya sabemos que no describe tu consola.
+
+- **El umbral del compresor sí funciona como dice la consola** — y el proyecto lo
+  daba por roto desde hace días. Se midió aparte, sin suponer nada de la
+  compresión, y el control mueve **96,4 decibeles por vuelta completa** contra los
+  96 que declara el fabricante. La diferencia es medio por ciento.
+
+  Estaba marcado como "refutado" por un error de lectura nuestro: la medición
+  vieja había probado **tres cosas juntas** —umbral, relación y forma de la
+  rodilla— y al fallar el conjunto se culpó a dos. El culpable era la relación,
+  medida hoy.
+
+- **Y el compresor no tiene una relación: tiene una curva.** Éste es el hallazgo
+  grande del día, y cambia cómo hay que pensarlo.
+
+  Apenas la señal pasa el umbral, **aprieta fortísimo** —del orden de 20:1—. A
+  medida que la señal sigue subiendo, **va aflojando**, hasta menos de 2:1 unos
+  veinte decibeles más arriba. Pasa igual en las cinco posiciones de umbral que se
+  probaron.
+
+  En la práctica: una voz que arranca apenas por encima del umbral y termina
+  fuerte **no recibe una compresión: recibe dos**. Densa al principio, abierta al
+  final. No es necesariamente malo — muchos compresores queridos hacen esto — pero
+  **no es lo que dice la etiqueta**, y obliga a releer lo que se midió hace unas
+  horas: aquel "2,6 a 1" es el promedio de esa curva en un tramo, no una relación.
+
+  **La curva quedó publicada entera**, no sólo la conclusión: la tabla de qué sale
+  por cada nivel que entra, en seis posiciones de umbral, y la misma tabla como
+  "cuánto baja". Con eso cualquiera puede mirar el dato sin creernos.
+
+  **Y hay un regalo adentro:** cuánto baja depende **sólo de cuánto se pasa del
+  umbral**, no de dónde esté puesto el umbral ni de qué tan fuerte venga la señal.
+  Eso quiere decir que la curva se escribe una vez y sirve para cualquier ajuste —
+  y es lo que permitió medir el umbral con un error de cuatro centésimas de
+  decibel.
+
+- **Ya se sabe cuánto comprime de verdad el compresor.** Era el agujero más
+  grande que quedaba: la cuenta del fabricante estaba refutada desde hace días y
+  no había nada en su lugar.
+
+  Se midió la curva completa —cuánto sale por cada nivel que entra, doce niveles
+  en una sola pasada— y salió una ley simple: **el compresor aprieta un poco más
+  de la mitad de lo que dice la etiqueta**. Donde tu consola marca 4:1, comprime
+  2,6:1; donde marca 20:1, comprime 11:1.
+
+  Eso importa en la práctica: si venías poniendo 4:1 esperando un control firme
+  sobre una voz, estabas comprimiendo bastante menos de lo que creías.
+
+  La ley acierta con menos del 3 % de error en siete posiciones. Todavía no entra
+  en la tabla que usa la app por un detalle de forma —esa escala va al revés que
+  todas las demás— y queda anotado.
+
+- **El primer tiempo medido que coincide exacto con la consola: el sostenido de
+  la puerta.** Es cuánto se queda abierta después de que el sonido baja — lo que
+  hace que no castañetee entre sílaba y sílaba. La cuenta de la consola dio el
+  número justo, con un error de menos de un milisegundo sobre un recorrido que va
+  de 28 a 2000.
+
+  **Y ese acierto explica por qué los otros no coincidían.** Un sostenido es una
+  espera: o empezó a cerrar o no. Un ataque y una relajación son *asentamientos*,
+  y ahí hay que elegir a qué punto se le llama "el tiempo". El único de los tres
+  que no necesita esa elección es el único que da igual.
+
+  De yapa sirve como prueba del equipo de medición: reproduce una ley conocida con
+  un error del 0,1 %, así que los desacuerdos del compresor no son del banco.
+
+- **Y de la puerta también se midió cómo abre y cómo cierra.** Al abrir, la forma
+  de la curva de la consola es correcta y el número no. Al cerrar, **la forma
+  tampoco**: es el primer control donde la cuenta del fabricante no describe lo
+  que hace el aparato, y queda dicho sin reemplazo — no hay ley nueva que ofrecer
+  todavía.
+
+- **Ya se sabe cómo suelta el compresor, y no es como se sospechaba.** Había una
+  explicación candidata para por qué los milisegundos de la pantalla no coinciden
+  con lo que hace el aparato al soltar: que el tiempo dependiera de **cuánto**
+  tuviera que recuperar. Se probó midiendo con mucha y con poca compresión, y
+  **es falsa** — con menos que recuperar, tarda *más*, que es justo lo contrario.
+
+  De paso quedó **cerrado el ataque**: la forma de la curva que muestra la consola
+  es correcta sobre un recorrido de 400 a 1, con un error de 2 %. Al soltar, la
+  medición todavía no tiene esa calidad y se dice así.
+
+- **Ya se sabe cuánto tarda de verdad el compresor en apretar y en soltar.** Es
+  lo que decide si un bombo tiene pegue o suena chato, y si una voz respira o
+  queda pareja.
+
+  El resultado tiene dos mitades. **La buena:** la forma de la curva que muestra
+  la consola es correcta — si movés el control para duplicar el tiempo, se duplica
+  de verdad. Eso se midió sobre un recorrido de 400 a 1 y el error no pasa del
+  1,5 %.
+
+  **La otra:** los milisegundos que muestra la pantalla **no son los que hace el
+  aparato**, sobre todo al soltar. Lo que la consola llama medio segundo de
+  relajación, en el audio recupera en unos 120 milisegundos. Parte de esa
+  diferencia puede ser sólo una forma distinta de contar el mismo tiempo —el
+  fabricante no dice cuál usa—, pero al soltar la diferencia es demasiado grande
+  para explicarse así, y queda como pregunta abierta.
+
+  Todavía no entra en la tabla que usa la app: la forma se confirmó, no se dedujo,
+  y falta explicar ese desacuerdo. Está escrito qué haría falta para cerrarlo.
+
+- **El ecualizador de canal ya se puede tocar con números reales, en sus cuatro
+  bandas.** Antes se sabía cuántos decibeles mueve **una** banda; ahora están
+  medidas las cuatro, una por una, contra el audio que sale. Las cuatro se
+  comportan igual: de tope a tope son 40 dB, veinte para arriba y veinte para
+  abajo.
+
+  Con eso, cuando la aplicación proponga «bajá 3 dB en 800 Hz» en cualquier banda,
+  **van a ser 3 dB de verdad**.
+
+- **Y son cuatro, no cinco.** La consola publica una quinta banda que **no suena**:
+  se movió su control de punta a punta con el tono presente y el audio no cambió
+  ni una centésima de decibel. El manual de Soundcraft ya decía «4-band
+  Parametric EQ» y el manual técnico avisaba, con todas las letras, que las
+  referencias sueltas a una quinta banda no la convierten en banda.
+
+  Importa porque una aplicación que te ofreciera cinco te estaría mostrando un
+  control que no hace nada — y peor: la aplicación creería que sí, porque la
+  consola acepta el valor y lo guarda. Queda fuera, con el motivo escrito al lado.
+
+- **El botón CLEAR ALL de tu supresor estaba trabado, y lo destrabamos.** La
+  consola guardaba ese botón como "apretado" desde el 13 de septiembre —muy
+  probablemente por culpa de una prueba nuestra—, y como dispara al apretarse y
+  ya figuraba apretado, **no podía volver a dispararse**. Si alguna vez hubieras
+  querido borrar los filtros del supresor desde la tablet, no habría pasado nada.
+
+  Quedó como lo deja el programa oficial. Es el único dato de tu consola que no
+  volvió al valor que tenía, y es a propósito: devolverlo habría sido devolverte
+  el defecto.
+
+- **Ya se sabe en qué modo del supresor de acople se puede meter un tono sin que
+  te plante filtros: LOCK.** Cuatro minutos con las tres frecuencias que te
+  plantaron filtros en septiembre, con el supresor encendido y en LOCK, y no
+  aprendió nada. **Y se comprobó el mismo día que no era por flojo el tono**:
+  con el supresor en su modo normal, el mismo sonido le plantó **tres filtros en
+  menos de cinco segundos**. Cuatro minutos sin nada contra cinco segundos con
+  tres. Los tres se borraron y tu consola quedó como estaba.
+
+  Para qué sirve: hasta ahora, para medir cualquier cosa con un tono había que
+  **apagarte el supresor** y volver a encenderlo al terminar. Eso sigue siendo la
+  primera opción —es la más segura y no depende de esta medición—, pero ahora hay
+  una segunda: dejarlo encendido en LOCK.
+
+  **Y de paso se descubrió que los "doce filtros" de tu supresor eran doce
+  ranuras vacías.** Están ahí, con sus valores de fábrica y cero atenuación: no
+  hay ningún filtro plantado. Los que tenías se fueron el 13 de septiembre,
+  cuando se probó cómo borrar uno y resultó que lo único que borra se lleva todo.
+  El proyecto venía llamándolos "filtros" y comparando cuántos había; ahora
+  compara qué dice cada uno, que es lo que detectaría uno nuevo de verdad.
+
+- **El ecualizador de la salida principal ya se puede tocar con números
+  reales.** Hasta ayer la aplicación sabía cuántos decibeles mueve una banda del
+  gráfico **de un auxiliar**, porque eso era lo que se había medido; para la
+  salida por la que sale la mezcla al público, la misma ley era una suposición
+  —razonable, pero suposición—. Se midió, y **da lo mismo**: de tope a tope el
+  recorrido es de 30 dB, quince para abajo y quince para arriba, y el punto de
+  descanso está justo en el medio.
+
+  Lo que cambia en la práctica: cuando la aplicación proponga corregir la sala,
+  va a poder decir «bajá 3 dB en 1 kHz» sobre la salida principal **y que sean
+  3 dB de verdad**, no una estimación.
+
+  **Falta la mitad derecha**, y no es un olvido: el equipo de medición vuelve por
+  la salida izquierda, así que la derecha no se puede comprobar sin cambiar un
+  cable. Se anotó como tarea en vez de darla por sentada — entre otras cosas
+  porque se descubrió que **la consola no copia sola** un cambio de un lado al
+  otro, aunque los muestre enlazados: el que copia es el programa que uno usa
+  para tocarla. Un programa que escriba un solo lado deja la mezcla
+  desbalanceada en esa banda, sin avisar.
+
 - **El escenario: dónde está cada cosa en la sala, y con cuánta duda.** La
   aplicación razonaba sobre señales —niveles, espectro, medidores— y ahora puede
   razonar también sobre el espacio. Lo que eso agrega no es una pantalla: es un

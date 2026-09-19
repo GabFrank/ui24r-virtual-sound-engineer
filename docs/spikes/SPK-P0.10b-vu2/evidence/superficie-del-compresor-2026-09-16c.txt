@@ -1,0 +1,127 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T01:05:47.141Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/superficie-del-compresor-2.ts sha256:e26c47ba62ed830c
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 117 — LA CURVA DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 14 escalones: -48 a -9 dBFS de 3 en 3, 1.2 s cada uno
+   se barren 8 relaciones: 1, 0.75, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05
+   umbral fijo en 0.35 para la superficie
+   y la invariancia se comprueba otra vez con la relacion 0.35 en 3 umbrales
+   el codo sale de donde la reduccion cruza 2 dB, no de ajustar rectas
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -48 dBFS -> salida   -77.52 dBFS
+   entrada  -45 dBFS -> salida   -74.51 dBFS
+   entrada  -42 dBFS -> salida   -71.51 dBFS
+   entrada  -39 dBFS -> salida   -68.51 dBFS
+   entrada  -36 dBFS -> salida   -65.51 dBFS
+   entrada  -33 dBFS -> salida   -62.52 dBFS
+   entrada  -30 dBFS -> salida   -59.55 dBFS
+   entrada  -27 dBFS -> salida   -56.55 dBFS
+   entrada  -24 dBFS -> salida   -53.56 dBFS
+   entrada  -21 dBFS -> salida   -50.56 dBFS
+   entrada  -18 dBFS -> salida   -47.58 dBFS
+   entrada  -15 dBFS -> salida   -44.59 dBFS
+   entrada  -12 dBFS -> salida   -41.61 dBFS
+   entrada   -9 dBFS -> salida   -38.61 dBFS
+   pendiente 0.9971 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -77.5 dBFS
+
+=== LA SUPERFICIE (umbral fijo en 0.35) ===
+   relacion 1.00 | codo(despegue)   fuera | reduccion: -48:0.0  -45:0.0  -42:0.0  -39:0.0  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.0  -21:0.0  -18:0.0  -15:0.0  -12:0.0  -9:0.0
+   relacion 0.75 | codo(despegue) -23.28 dBFS | reduccion: -48:0.0  -45:0.0  -42:0.0  -39:0.0  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.2  -21:0.7  -18:1.2  -15:1.6  -12:1.8  -9:2.0
+   relacion 0.50 | codo(despegue) -24.23 dBFS | reduccion: -48:0.1  -45:0.0  -42:0.1  -39:0.0  -36:0.0  -33:0.0  -30:0.0  -27:0.0  -24:0.3  -21:1.6  -18:2.7  -15:3.5  -12:4.2  -9:4.7
+   relacion 0.35 | codo(despegue) -24.68 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.0  -27:0.0  -24:0.4  -21:2.2  -18:3.6  -15:5.0  -12:5.9  -9:6.8
+   relacion 0.25 | codo(despegue) -24.98 dBFS | reduccion: -48:0.1  -45:0.0  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.4  -21:2.6  -18:4.3  -15:6.1  -12:7.4  -9:8.5
+   relacion 0.15 | codo(despegue) -25.29 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.5  -21:3.0  -18:5.2  -15:7.3  -12:9.1  -9:10.7
+   relacion 0.10 | codo(despegue) -25.53 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.5  -21:3.2  -18:5.7  -15:8.0  -12:10.2  -9:12.0
+   relacion 0.05 | codo(despegue) -25.78 dBFS | reduccion: -48:0.1  -45:0.1  -42:0.1  -39:0.1  -36:0.1  -33:0.1  -30:0.1  -27:0.1  -24:0.6  -21:3.4  -18:6.2  -15:8.6  -12:11.3  -9:13.6
+
+C3 el codo esta en el mismo sitio para todas: se movio 2.50 dB entre 7 relaciones (tope 3) -> PASA
+
+=== REDUCCION CONTRA EXCESO SOBRE EL CODO ===
+   (el codo medido esta en -24.83 dBFS)
+   exceso dB |    0.8    3.8    6.8    9.8   12.8   15.8
+   rel 1.00   |    0.0    0.0    0.0    0.0    0.0    0.0
+   rel 0.75   |    0.2    0.7    1.2    1.6    1.8    2.0
+   rel 0.50   |    0.3    1.6    2.7    3.5    4.2    4.7
+   rel 0.35   |    0.4    2.2    3.6    5.0    5.9    6.8
+   rel 0.25   |    0.4    2.6    4.3    6.1    7.4    8.5
+   rel 0.15   |    0.5    3.0    5.2    7.3    9.1   10.7
+   rel 0.10   |    0.5    3.2    5.7    8.0   10.2   12.0
+   rel 0.05   |    0.6    3.4    6.2    8.6   11.3   13.6
+
+=== L3 — LA REDUCCION MAXIMA CONTRA EL TECHO DEL ITEM 98 ===
+   relacion | reduccion maxima alcanzada | techo -20*log10(a) | alcanzado
+   1.00     |                    0.0 dB |            0.0 dB | -Infinity%
+   0.75     |                    2.0 dB |            2.5 dB | 81%
+   0.50     |                    4.7 dB |            6.0 dB | 78%
+   0.35     |                    6.8 dB |            9.1 dB | 74%
+   0.25     |                    8.5 dB |           12.0 dB | 71%
+   0.15     |                   10.7 dB |           16.5 dB | 65%
+   0.10     |                   12.0 dB |           20.0 dB | 60%
+   0.05     |                   13.6 dB |           26.0 dB | 52%
+   Sin tope: es una comprobacion cruzada con el item 98, que midio esto
+   con otro metodo --barriendo el umbral y con el medidor de la consola--.
+
+=== C4 — LA INVARIANCIA CONTRA EL UMBRAL, CON OTRA RELACION ===
+   umbral 0.30 | codo -29.44 dBFS
+   umbral 0.35 | codo -25.10 dBFS
+   umbral 0.40 | codo -20.28 dBFS
+   exceso | u=0.3 | u=0.35 | u=0.4
+       3  | 1.75 | 1.52 | 1.54
+       6  | 3.41 | 3.14 | 3.13
+       9  | 4.67 | 4.48 | 4.46
+   la mayor diferencia a igual exceso: 0.27 dB (tope 1) -> PASA
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.attack         esperado 0.34375  leido 0.34375
+   OK   i.9.dyn.release        esperado 0.4887695312  leido 0.4887695312
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, UN umbral (0.35) para la
+   superficie, 8 relaciones, un canal, un dia.
+   La superficie se publica en EXCESO sobre el codo, y eso vale porque C4
+   comprueba que la reduccion dependa solo del exceso. Sin C4, esta tabla
+   no se podria usar en otro umbral.
+   Nada del CERO del umbral, que sigue sin ancla. Nada de los tiempos: la
+   escalera se lee asentada. Nada de la rodilla blanda. Nada con señal real,
+   y con la curva doblada esa diferencia importa mas que antes: un tono se
+   queda en un nivel y una voz no.
+
+
+# salida del proceso: 0

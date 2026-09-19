@@ -169,6 +169,9 @@ export function contexto(parcial: Partial<ContextoSeguridad> = {}): ContextoSegu
     rutasConMedicionPosterior: new Set(),
     rutasYaTocadas: new Set(),
     techoPorRuta: new Map(),
+    // Vacío: ninguna cuña tiene nivel establecido, que es el estado de un
+    // soundcheck recién empezado. Los tests que prueban el retoque lo llenan.
+    rutasConNivelEstablecido: new Set(),
     hayTakeDeSoundcheckActivo: false,
     // **Un PREFIJO de bus, y con la forma que el aparato tiene.** Acá decía
     // `new Set(['m.eq.b1.gain'])` -- una ruta completa, y encima inventada: el

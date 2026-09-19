@@ -1,0 +1,31 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-17T02:21:24.049Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/limpiar-supresor.ts 1 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/limpiar-supresor.ts sha256:fb61770705dd46a6
+# la huella cubre 5 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== LIMPIAR LOS FILTROS DEL SUPRESOR DEL GENERAL ===
+
+   filtros plantados ahora: 1  (se esperaban 1)
+      ranura 3: 4000.0319824219,7.0000000000,-18.0000000000,2
+
+   clearall antes: 0
+   se baja a 0 para que exista el flanco, y despues la secuencia del cliente.
+
+=== RELEIDO POR HTTP ===
+   filtros plantados: 0
+   m.afs.clearall  0  (queda en 0, como lo deja el cliente)
+   m.afs.enabled   1   (no se toco)
+   m.afs.logic     1   (no se toco)
+   m.afs.fmode     1   (no se toco)
+   m.afs.numtotal  12
+
+LIMPIA. La pila del supresor vuelve a no tener ningun filtro plantado.
+
+
+# salida del proceso: 0

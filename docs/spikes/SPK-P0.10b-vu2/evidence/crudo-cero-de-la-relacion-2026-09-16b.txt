@@ -1,0 +1,70 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T13:47:42.811Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/crudo-cero-de-la-relacion.ts sha256:f9b0b6e3e78d57b7
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 110 — ¿EL CRUDO 0 DE LA RELACION ES UN LIMITADOR? ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   softknee esta en 0, se LEE y NO se toca: con rodilla blanda la
+   relacion efectiva cerca del umbral no es la nominal.
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== REFERENCIA: el compresor PUENTEADO ===
+   fuente  -28 dBFS -> -57.41 dBFS   (margen 82.4 dB)
+   fuente  -24 dBFS -> -53.41 dBFS   (margen 84.3 dB)
+   fuente  -18 dBFS -> -47.43 dBFS   (margen 92.2 dB)
+   la referencia subio 9.98 dB con 10 dB de fuente
+
+=== CALIBRACION DEL UMBRAL ===
+   (su ley esta refutada desde la 97, asi que se calibra midiendo)
+   umbral 0.30 -> reduccion de 2.23 dB
+   -> se usa el umbral 0.3
+
+=== LAS TRES RELACIONES ===
+   crudo 0.5   (2:1)
+      salidas: -58.05  -55.60  -51.26 dBFS   | reduccion en el medio: 2.19 dB
+   crudo 0.02  (50:1 (el tope del manual))
+      salidas: -58.69  -58.51  -58.09 dBFS   | reduccion en el medio: 5.10 dB
+   crudo 0     (infinito segun el cliente)
+      salidas: -58.79  -58.63  -58.30 dBFS   | reduccion en el medio: 5.22 dB
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+
+=== VEREDICTOS ===
+C2 el metodo funciona: con 2:1 y 4 dB de fuente la salida subio 2.44 dB (se esperaban 2,0)
+   PASA
+C3 el compresor esta actuando: reduce 2.19 dB con 2:1 (minimo 3)
+   NO PASA: si no reduce, «no se movio» no dice nada
+
+   relacion            | +4 dB de fuente | +10 dB de fuente | R implicita (chico)
+   --------------------|-----------------|------------------|--------------------
+   0.5   2:1           |         2.443 dB |          6.783 dB | 1.6:1
+   0.02  50:1 (el tope del manual)|         0.185 dB |          0.599 dB | 21.6:1
+         (el escalon grande sube mucho mas que el chico: el compresor toco
+          su techo en el medio, asi que el grande NO mide la relacion)
+   0     infinito segun el cliente|         0.154 dB |          0.487 dB | 26.1:1
+         (el escalon grande sube mucho mas que el chico: el compresor toco
+          su techo en el medio, asi que el grande NO mide la relacion)
+
+NO SE CONCLUYE NADA: fallo un control.
+
+Un umbral, una frecuencia, un canal, un dia. Nada de la ley de la relacion,
+que sigue refutada desde la 97, ni de los tiempos, que siguen sin medirse.
+
+
+# salida del proceso: 1

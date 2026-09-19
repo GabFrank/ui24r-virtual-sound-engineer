@@ -1,0 +1,48 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T15:23:45.484Z
+# comando: node --experimental-strip-types tools/spikes/p0-2c/ley-del-eq-del-general.ts 17 192.168.0.78
+# guion: tools/spikes/p0-2c/ley-del-eq-del-general.ts sha256:6abbddfdfb7b8bc7
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 112 — LA LEY DEL ECUALIZADOR DEL GENERAL ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   m.eq.linked = 1: los dos lados entran en PREVIO
+   se barre m.eq.peak.l.17
+
+   m.afs.enabled            1
+   m.dyn.bypass             0
+   m.eq.peak.l.17           0.5
+   m.eq.peak.r.17           0.5
+   i.9.mix                  0.7451777309
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   i.9.deesser.enabled      0
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CALIBRACION DEL NIVEL ===
+   fader del canal 0.450 -> -61.36 dBFS
+   fader del canal 0.530 -> -56.66 dBFS
+   fader del canal 0.610 -> -52.81 dBFS
+   fader del canal 0.690 -> -49.52 dBFS
+   fader del canal 0.770 -> -46.49 dBFS
+   fader del canal 0.850 -> -43.45 dBFS
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2c/ley-del-eq-del-general.ts:285
+      throw new Error(`no se pudo dejar el nivel plano dentro de `
+            ^
+
+Error: no se pudo dejar el nivel plano dentro de -40..-18 dBFS en 6 intentos. Sin un punto de partida sano, un realce recorta el conversor y la ley sale aplanada.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2c/ley-del-eq-del-general.ts:285:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-2c/ley-del-eq-del-general.ts:234:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1
