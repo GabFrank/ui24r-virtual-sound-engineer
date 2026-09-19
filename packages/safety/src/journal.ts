@@ -107,7 +107,10 @@ export interface EntradaDiario {
    *
    * **Nace vacío y lo llena el usuario, no la aplicación.** La aplicación no
    * puede saber cuándo el músico está conforme con su cuña: eso lo dice él, y lo
-   * anota la pantalla de monitor con `actualizar`, igual que `medicionPosteriorId`.
+   * anota la pantalla de monitor con `actualizar`, por el mismo camino que usa
+   * `AplicarGananciaService.anotarEscucha` para `medicionPosteriorId` desde el
+   * 2026-09-19. **Y la comparación es sólo del mecanismo**: el que se anota acá
+   * lo decide una persona, y el otro lo decide el reloj.
    * Marcarlo solo —al llegar al techo, por ejemplo— sería la aplicación
    * declarando terminada una operación cuyo criterio de terminado es de otro.
    *

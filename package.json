@@ -19,7 +19,7 @@
     "test:guardas": "node --test tools/docs/test/*.test.mjs",
     "validate:docs": "node tools/docs/validate-ids.mjs && node tools/docs/validate-numeros.mjs && node tools/docs/validate-huerfanos.mjs && node tools/docs/validate-fichas.mjs && node tools/docs/validate-capturas.mjs && node tools/docs/validate-cifras-medidas.mjs && node tools/docs/validate-evidencia-archivada.mjs && node tools/docs/validate-huella-de-evidencia.mjs && node tools/docs/validate-trabajo-previo.mjs && node tools/docs/validate-rutas-medidas.mjs",
     "validate:templates": "node tools/docs/validate-templates.mjs && node tools/docs/validate-plantillas-llamadas.mjs",
-    "validate:limites": "node tools/docs/validate-limites.mjs && node tools/docs/validate-mediciones-al-historial.mjs",
+    "validate:limites": "node tools/docs/validate-limites.mjs && node tools/docs/validate-mediciones-al-historial.mjs && node tools/docs/validate-escucha-anotada.mjs",
     "verificar": "npm run validate:docs && npm run validate:templates && npm run validate:limites && npm run lint && npm test && npm run test:dsp && npm run test:audio && npm run test:guardas",
     "verificar:commits": "node tools/docs/validate-commits.mjs",
     "lint:tools": "tsc -p tools/tsconfig.json --noEmit"

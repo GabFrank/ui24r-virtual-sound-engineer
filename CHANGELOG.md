@@ -6,6 +6,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La pantalla de ganancia ya guarda lo que escucha, y con eso podés ajustar un
+  canal dos veces.** Hasta ahora, cuando aplicabas una ganancia, la aplicación
+  volvía a medir dieciocho segundos para contarte si había servido —y ahí tiraba
+  esa medición—. El motor, en cambio, no te deja tocar dos veces el mismo
+  parámetro sin haber escuchado en el medio, y esa escucha la busca guardada.
+  Resultado: **el segundo ajuste sobre el mismo canal se rechazaba siempre**,
+  diciendo que faltaba escuchar, aunque el músico hubiera estado tocando los
+  dieciocho segundos delante tuyo. La aplicación sabía que había escuchado, te lo
+  decía por pantalla, y no se lo decía al motor.
+  Ahora cada ventana que se mide queda guardada, y la que viene después de un
+  cambio queda anotada como la escucha de ese cambio. **Medí, aplicá, seguí
+  tocando, y podés volver a aplicar otro paso.**
+  **Lo que esa medición NO es, para que no se le pida lo que no puede dar:** sale
+  del medidor de la consola, no de un micrófono. Sirve para saber cuánto entró y
+  cuándo. No sirve para decidir ecualización de sala, y la aplicación la marca
+  como no confiable para eso a propósito.
+  **Y si no hubo nadie tocando, no cuenta.** Una ventana en silencio se guarda
+  igual —es información— pero no habilita el paso siguiente: si nadie tocó, nadie
+  escuchó. Lo mismo con una ventana cortada antes de los diez segundos.
+  **Las cuñas de monitor todavía no**: ahí no hay nada que mida, y eso llega con
+  la pantalla por músico.
+
 - **La aplicación ya sabe subir la cuña de un músico, no sólo bajarla.** Hasta
   ahora el único asistente de monitor bajaba —la regla tuya para cazar un
   acople— y subir quedaba entero en tus manos. Ahora sube **de a 2 dB por vez**,

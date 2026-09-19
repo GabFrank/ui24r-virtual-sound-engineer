@@ -142,10 +142,16 @@ export interface HistorialDeLaSesion {
  * dieciséis mediciones que no existen. Lo que corta no es ningún freno de
  * INV-004 sino el techo de nominal, o sea el final del recorrido.
  *
- * **No estaba expuesto, y esa es justamente la razón para arreglarlo ahora**:
- * en producción nadie llena ese campo todavía. Quien lo va a llenar es la
- * pantalla de monitor, que es la pieza que sigue de ADR-034 — y el día que lo
- * llene, los 8 dB de la ráfaga vuelven como 32.
+ * **No estaba expuesto cuando se arregló, y esa era la razón para arreglarlo
+ * entonces**: en producción nadie llenaba ese campo. **Desde el 2026-09-19 sí lo
+ * llena la pantalla de ganancia**, que aplica, vuelve a medir dieciocho segundos,
+ * guarda la ventana en `measurement` y anota su identificador acá. O sea que esta
+ * guarda **ya juzga de verdad en un camino de producción**, y las siete
+ * condiciones son las que dejan pasar o no un segundo ajuste sobre el mismo canal.
+ *
+ * El envío a monitor sigue sin llenarlo, y no por falta de código: `EnvioAMonitorService`
+ * no mide. Quien va a capturar ahí es la pantalla por músico, que es la pieza que
+ * sigue de ADR-034.
  *
  * ## Las cinco condiciones, y por qué cada una
  *

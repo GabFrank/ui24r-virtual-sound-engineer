@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { MIGRACIONES } from '@vse/store';
-import { CONSULTA_DE_MEDICIONES } from '../src/app/core/consulta-de-mediciones.ts';
+import { CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION } from '../src/app/core/sql-de-mediciones.ts';
 import { historialDeLaSesion } from '@vse/safety';
 import type { EntradaDiario } from '@vse/safety';
 import type { Measurement } from '@vse/domain';
@@ -106,13 +106,14 @@ function baseConEsquema(): DatabaseSync {
 test('la fila se guarda y se lee de la tabla measurement', () => {
   const db = baseConEsquema();
   const m = medicion();
-  db.prepare(
-    `INSERT INTO measurement
-       (id, session_id, timestamp, signal_type, channel_id, posicion,
-        pa_component, calibration_state_id, datos)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(m.id, m.sessionId, m.timestamp, m.signalType, null, null, null,
-        m.calibrationStateId, JSON.stringify(m));
+  // **El `INSERT` real del servicio, importado, no una copia.** La primera
+  // versión lo tenía escrito acá, así que la escritura de producción no la
+  // ejercitaba nadie: es el mismo defecto por el que el `SELECT` ya vive en su
+  // propio archivo, cometido en el renglón de al lado.
+  db.prepare(INSERCION_DE_MEDICION).run(
+    m.id, m.sessionId, m.timestamp, m.signalType, null, null, null,
+    m.calibrationStateId, JSON.stringify(m),
+  );
 
   // **La consulta REAL del servicio, importada, no una copia.** Escribirla de
   // nuevo acá dejaba la consulta de producción sin nadie que la ejercitara.
@@ -162,12 +163,7 @@ test('una fila ilegible se descarta y no tira la pantalla', () => {
   // usa de producción es `CONSULTA_DE_MEDICIONES`.
   const db = baseConEsquema();
   const buenas = medicion();
-  const insertar = db.prepare(
-    `INSERT INTO measurement
-       (id, session_id, timestamp, signal_type, channel_id, posicion,
-        pa_component, calibration_state_id, datos)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
+  const insertar = db.prepare(INSERCION_DE_MEDICION);
   insertar.run('med-rota', SESION, EMPEZO, 'PERFORMANCE', null, null, null, 'cal-1', '{"id":"x", trunc');
   insertar.run('med-nula', SESION, EMPEZO, 'PERFORMANCE', null, null, null, 'cal-1', 'null');
   insertar.run(buenas.id, SESION, buenas.timestamp, buenas.signalType, null, null, null,

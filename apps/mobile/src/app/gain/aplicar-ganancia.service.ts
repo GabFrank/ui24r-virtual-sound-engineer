@@ -83,6 +83,48 @@ export class AplicarGananciaService {
    * lo sabe este servicio. La pantalla no tiene por qué juntar ese estado para
    * preguntar si se puede.
    */
+  /**
+   * Anota en la transacción que después de ella hubo una escucha.
+   *
+   * **Es la otra mitad de guardar la medición**, y sin ella guardarla no sirve de
+   * nada: el motor no busca «alguna medición posterior», resuelve exactamente el
+   * identificador que la transacción declara. Una tabla llena de mediciones y un
+   * `medicionPosteriorId` en nulo dan el mismo veredicto que la tabla vacía.
+   *
+   * **Se llama después de volver a medir y no al aplicar**, porque la escucha
+   * ocurre después: al cerrar la transacción todavía no hay nada que oír.
+   *
+   * **Sin identificador no se anota nada.** La captura devuelve `null` cuando no
+   * hubo dónde guardar, y anotar un identificador inventado sería exactamente el
+   * agujero que el motor cerró el 2026-09-18: anotar cualquier texto contaba como
+   * haber escuchado, y una auditoría midió dieciséis pasos y 32 dB con
+   * identificadores que no existían.
+   *
+   * **Y que la medición sea de verdad una escucha no lo decide esto**: el motor
+   * comprueba siete cosas sobre ella —que exista, que sea de esta sesión, que
+   * hubiera señal, que durara lo que su clase de parámetro pide, que empezara
+   * después de que la escritura llegara al cable y que su ventana haya
+   * terminado—. Acá sólo se dice cuál fue.
+   */
+  async anotarEscucha(idTransaccion: string, medicionId: string | null): Promise<void> {
+    if (medicionId === null) {
+      this.log.info('transaction', 'escucha_sin_anotar', { transaccion: idTransaccion });
+      return;
+    }
+    try {
+      await this.diario.actualizar(idTransaccion, { medicionPosteriorId: medicionId });
+    } catch (e) {
+      // **No propaga.** El cambio ya se aplicó y se verificó; lo que se pierde es
+      // el permiso para el paso siguiente, que el motor va a negar diciendo que
+      // falta la medición intermedia. Hacer fallar la pantalla acá convertiría un
+      // freno correcto en un error para el usuario.
+      this.log.warn('transaction', 'escucha_no_anotada', {
+        transaccion: idTransaccion, medicion: medicionId,
+        motivo: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   puedeAplicar(confianza: Confidence, canal?: number): { readonly puede: boolean; readonly motivo: string | null } {
     const permiso = this.seguridad.permiteEscritura('PREAMP_GAIN');
     const v = puedeAplicarGanancia({
@@ -115,12 +157,13 @@ export class AplicarGananciaService {
     // ninguna ruta quedaba con escucha comprobada, así que **un segundo ajuste
     // sobre el mismo canal se rechazaba siempre**.
     //
-    // **Acá falta además el otro extremo, y es una tarea aparte.** Esta pantalla
-    // ya vuelve a medir después de aplicar --`capturar`, para contarte si
-    // sirvió-- y esa medición **no se guarda** en `measurement`, así que aunque
-    // ahora se lean, la que esta pantalla toma no está entre ellas. Guardarla, y
-    // anotar su identificador como `medicionPosteriorId` de la transacción, es lo
-    // que cierra el circuito.
+    // **Y el otro extremo se cerró el 2026-09-19**, que es lo que hace que esta
+    // lista traiga algo. Esta pantalla vuelve a medir después de aplicar
+    // --`capturar`, para contarte si sirvió--, y esa ventana ahora **se guarda**
+    // en `measurement` y su identificador queda anotado como `medicionPosteriorId`
+    // por `anotarEscucha`. Hasta entonces la lista se leía de una tabla que nadie
+    // escribía: o sea que volvía vacía igual, y **un segundo ajuste sobre el mismo
+    // canal se rechazaba siempre** con `SIN_MEDICION_INTERMEDIA`.
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.
