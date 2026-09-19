@@ -159,15 +159,17 @@ vez la de «abierto» contra «alcanzable».
   hallazgo abierto del 2026-09-19 y la misma tarea que ADR-035 nombra como «el
   tope es por clave y el oído es por parlante». Guardar dos medidores no lo
   cierra: lo deja mejor servido para cuando se cierre.
-- **No distingue una caída de conexión que empieza y termina dentro de la
-  ventana.** Sigue abierto igual que para la ganancia. **Lo que decía acá sobre
-  cómo se cierra está retractado**: decía «se cierra mirando la frescura de las
-  tramas», y una auditoría adversarial del 2026-09-19 midió que no hace falta.
-  La aplicación **ya ve la caída** —el estado confirmado se invalida con
-  cualquier estado que no sea conectado y no vuelve hasta un volcado completo—;
-  lo que falla es que la captura lo pregunta **una sola vez, al final**, cuando
-  ya lo está preguntando en cada muestra. Los números están en
+- ~~**No distingue una caída de conexión que empieza y termina dentro de la
+  ventana.**~~ **Cerrado el 2026-09-19, para las dos herramientas.** El muestreo
+  pregunta si la consola sigue ahí **en cada tic** y no registra el instante que
+  no pudo oír, así que el silencio de una caída ya no se cuenta como música.
+  **Lo que decía acá sobre cómo se cerraba estaba retractado**: decía «se cierra
+  mirando la frescura de las tramas», y una auditoría adversarial midió que no
+  hacía falta —la aplicación ya veía la caída; lo que faltaba era preguntarlo en
+  el bucle y no una sola vez al final—. Los números están en
   [`hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`](../backlog/hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md).
+  Decisión del usuario entre tres opciones: **descontar lo que no se oyó y
+  seguir**, en vez de abortar la escucha ante cualquier corte.
 - **No convierte esta medición en acústica.** Sale del medidor de la consola, sin
   micrófono y sin calibración, y `medicionEsConfiable` sigue contestando que no.
 

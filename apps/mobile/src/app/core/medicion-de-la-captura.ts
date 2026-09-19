@@ -187,21 +187,22 @@ function conSonido(muestras: readonly MuestraVu[]): readonly MuestraVu[] {
  * dentro de la misma ventana deja dos valores distintos, así que el medidor «se
  * movió» y esta prueba concede. Para eso está la otra mitad, en
  * `guardarLaEscucha`, que se niega a guardar una escucha si la consola no estaba
- * conectada al terminar; y ninguna de las dos alcanza a una caída que empieza y
- * termina adentro de la ventana.
+ * conectada al terminar.
  *
- * **Retractado el 2026-09-19.** Acá decía que esa caída «se cierra mirando la
- * frescura de las tramas, y es una tarea aparte», y es falso. Lo midió una
- * auditoría adversarial del mismo día: `ConnectionStateService` **ya ve la
- * caída** —`fijarEstado` invalida el estado confirmado con cualquier estado que
- * no sea `CONNECTED`, y no vuelve hasta un volcado completo—, así que
- * `permiteEscribir()` es falso durante toda la caída. Lo que falla no es que
- * falte el dato: es que la captura lo consulta **una sola vez, al final**,
- * mientras el muestreo ya corre cada `INTERVALO_DE_MUESTREO_MS` y podría
- * consultarlo en cada muestra. No hace falta ningún mecanismo de frescura.
+ * **Y la caída que empieza y termina adentro de la ventana la cierra una
+ * tercera, desde el 2026-09-19: el muestreo pregunta si la consola sigue ahí en
+ * CADA tic** y no registra el instante que no pudo oír. Así que esta prueba ya no
+ * ve dos valores distintos de los dos lados de una caída: los instantes de la
+ * caída no llegan.
  *
- * Sigue abierto, pero vale una línea y no una tarea aparte. Los números están en
- * `docs/backlog/hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`.
+ * **Antes acá decía que ese caso «se cierra mirando la frescura de las tramas, y
+ * es una tarea aparte», y era falso** —lo midió una auditoría adversarial del
+ * mismo día—: `ConnectionStateService` ya veía la caída, así que
+ * `permiteEscribir()` era falso durante toda ella y lo único que faltaba era
+ * preguntarlo en el bucle en vez de una sola vez al final. Queda escrito porque
+ * el error es la parte instructiva: **presentar como caro algo que cuesta una
+ * línea es lo que hace que esa línea no se escriba**, y estuvo un día entero
+ * logrando exactamente eso.
  */
 function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
   if (sonando.length === 0) return false;

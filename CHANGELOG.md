@@ -193,6 +193,25 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Si se cortaba el WiFi con la consola mientras la aplicación te escuchaba, esos
+  segundos se contaban como si hubieras tocado.** Cuando el enlace se cae, los
+  medidores de la consola **quedan clavados en el último valor que llegó**, y la
+  aplicación los seguía leyendo como si fueran de ahora. Sólo preguntaba si la
+  consola estaba ahí **una vez, al terminar**, así que un corte que se iba y volvía
+  dentro de los dieciocho segundos pasaba entero: **alcanzaba con que volviera un
+  instante antes del final para que la aplicación declarara la ventana completa** y
+  se diera permiso para el paso siguiente. Medido, no supuesto: 0,05 segundos de
+  música compraban un paso de 2 dB.
+  **Ahora pregunta en cada lectura, veinte veces por segundo**, y lo que no pudo
+  oír no lo cuenta. Un corte corto te cuesta esos segundos y nada más; si igual
+  llegaste a tocar lo suficiente, la escucha vale. **Y la aplicación sabe ahora
+  cuánto no pudo oír**, que es lo que le permite decirte «se cortó la consola» en
+  vez de «no tocaste» —son cosas distintas y llevan a hacer cosas distintas—.
+  Lo elegiste vos entre tres opciones: descontar lo que no oyó y seguir, en vez de
+  cortar la escucha y hacerte tocar de nuevo cada vez que parpadea la red.
+  **Vale para las dos herramientas**, la de ganancia y la de cuñas: era el mismo
+  agujero por los dos caminos.
+
 - **«Ya escuché» era una palabra, no una comprobación: la cuña se podía subir
   32 dB sin que pasara nada de tiempo.** El motor tiene una regla vieja y buena
   —no se mueve una cuña dos veces sin que el músico haya escuchado en el medio—

@@ -43,6 +43,12 @@ Cruzarlos pide un mapeo que hoy el historial no tiene.
 
 ## 2. Una caída que empieza y termina dentro de la ventana no la ve nadie
 
+> **CERRADO el 2026-09-19.** La ve el muestreo, que desde ese día pregunta si la
+> consola sigue ahí **en cada tic** y no registra el instante que no pudo oír.
+> Vale para las dos herramientas, porque el agujero era el mismo por los dos
+> caminos. El detalle, y la decisión del usuario, en el hallazgo 2 de
+> [la tanda de la cuña](hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md).
+
 **MEDIDO, y es el residuo declarado del arreglo del medidor congelado.** El
 2026-09-19 se cerraron las dos mitades: el dato —un medidor que no se movió ni un
 escalón en dieciocho segundos no es un músico— y la causa —no se guarda una

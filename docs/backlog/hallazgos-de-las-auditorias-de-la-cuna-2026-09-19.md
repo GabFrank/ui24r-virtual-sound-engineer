@@ -61,6 +61,20 @@ pero **nadie lo marca todavía**.
 
 ## 2. La caída dentro de la ventana cuesta una muestra, y cerrarla cuesta una línea
 
+> **CERRADO el 2026-09-19**, en las dos herramientas y en el mismo commit. El
+> muestreo pregunta si la consola sigue ahí **en cada tic** —no una sola vez al
+> final— y **no registra el instante que no pudo oír**: ni un cero, que afirmaría
+> que no sonó, ni el último valor conocido, que afirmaría que sigue sonando. Como
+> la escucha se cuenta por muestras, lo que la aplicación no oyó sale solo de la
+> cuenta. Decisión del usuario entre tres opciones: **descontar lo que no se oyó y
+> seguir**, en vez de abortar ante cualquier corte; y los dos servicios devuelven
+> además **cuántos segundos no se pudieron oír**, que es lo que separa «no te
+> escuché» de «no tocaste». Lo vigila una sexta regla de
+> `validate-escucha-anotada.mjs`, que exige la consulta **adentro del bucle**
+> porque la regla anterior —mirar el archivo entero— la cumplía la versión con el
+> defecto puesto. Probada mutando: con la consulta fuera del bucle, en rojo en los
+> dos archivos.
+
 **MEDIDO.** El enlace se cae, los dos medidores quedan clavados, y vuelve antes de
 terminar la ventana, así que la comprobación del final da que sí:
 

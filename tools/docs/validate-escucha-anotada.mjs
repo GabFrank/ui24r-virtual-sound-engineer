@@ -196,6 +196,55 @@ const ES_DECLARACION = /;\s*$/;
 /** Adonde la serie tiene que llegar para que pasarla signifique algo. */
 const DESTINO_DE_LA_SERIE = /\bmedicionDeLaCaptura\s*\(/;
 
+/**
+ * Y la sexta: **la conexión se consulta DENTRO del bucle de muestreo, no al
+ * final.**
+ *
+ * **El defecto que cierra, y la cuarta regla no lo cazaba.** Mirar la conexión
+ * *en alguna parte del archivo* se cumple con la consulta puesta una sola vez, al
+ * terminar la ventana, que es exactamente como estaba hasta el 2026-09-19. Con
+ * eso, un enlace que se cae y vuelve **antes** de que la ventana termine pasa
+ * entero: los dos medidores quedan clavados en su último valor, la consulta del
+ * final da que sí, y **una sola muestra viva --0,05 s-- compra un paso de 2 dB
+ * declarando dieciocho segundos de escucha**. Medido con la cadena completa.
+ *
+ * Por eso esto no cuenta apariciones en el archivo: **busca el bucle de muestreo
+ * y mira adentro**. El bucle se encuentra por su cadencia --la única constante
+ * compartida que lo define-- y no por el nombre de la función, que se puede
+ * renombrar.
+ *
+ * **Lo que esta regla NO caza**, por lo mismo que las otras: mira texto. Una
+ * consulta adentro del bucle cuyo resultado se ignore --`const v = …;` y nada
+ * más-- la satisface. Lo que la caza es leer las seis líneas de `recoger`.
+ */
+const CADENCIA_DEL_MUESTREO = /setInterval\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*INTERVALO_DE_MUESTREO_MS/;
+
+/**
+ * El cuerpo de la función que el bucle de muestreo llama en cada tic.
+ *
+ * Devuelve `null` si no se la puede aislar, y **eso es un problema y no un
+ * pase**: una guarda que no encuentra qué mirar está ciega, no en verde.
+ */
+function cuerpoDelMuestreo(texto) {
+  const cadencia = CADENCIA_DEL_MUESTREO.exec(texto);
+  if (cadencia === null) return null;
+  const nombre = cadencia[1];
+  const declara = new RegExp(`\\b(?:const|let|var|function)\\s+${nombre}\\b`);
+  const donde = declara.exec(texto);
+  if (donde === null) return null;
+  const abre = texto.indexOf('{', donde.index);
+  if (abre === -1) return null;
+  let nivel = 0;
+  for (let i = abre; i < texto.length; i++) {
+    if (texto[i] === '{') nivel++;
+    else if (texto[i] === '}') {
+      nivel--;
+      if (nivel === 0) return texto.slice(abre, i + 1);
+    }
+  }
+  return null;
+}
+
 /** Los `.ts` de una carpeta, recursivo, sin `node_modules` ni tests. */
 function archivos(dir) {
   const salida = [];
@@ -258,6 +307,13 @@ const ok = intentar(() => {
   let guardanEscucha = 0;
   let pasanLaSerieDeLaCuna = 0;
   const sinMirarLaConexion = [];
+  const sinMirarLaConexionEnElBucle = [];
+  const sinBucleQueMirar = [];
+  // **Se cuentan los que PASAN, no los que se miraron.** La primera versión de
+  // esta línea imprimía «2 que miran la conexión en cada tic» mientras las
+  // señalaba a las dos por no hacerlo: un número que contradice a los problemas
+  // de abajo le enseña al que lee la salida a no creerle al número.
+  let miranEnCadaTic = 0;
 
   for (const zona of ZONAS) {
     for (const ruta of archivos(join(RAIZ, zona))) {
@@ -292,6 +348,15 @@ const ok = intentar(() => {
       if (MITADES[0].patron.test(texto)) {
         guardanEscucha++;
         if (!GUARDA_DE_CONEXION.test(texto)) sinMirarLaConexion.push(relative(RAIZ, ruta));
+        // **Y la mira en cada tic, no una sola vez al final.** Mirar el archivo
+        // entero, que es lo que hace la línea de arriba, lo cumple la consulta
+        // puesta al terminar la ventana: exactamente el agujero que se cerró el
+        // 2026-09-19.
+        const bucle = cuerpoDelMuestreo(texto);
+        if (bucle === null) sinBucleQueMirar.push(relative(RAIZ, ruta));
+        else if (!GUARDA_DE_CONEXION.test(bucle)) {
+          sinMirarLaConexionEnElBucle.push(relative(RAIZ, ruta));
+        } else miranEnCadaTic++;
       }
     }
   }
@@ -307,6 +372,26 @@ const ok = intentar(() => {
         `nadie llama a lo que hace «${mitad.que}» en producción: ${mitad.porque}`,
       );
     }
+  }
+
+  for (const ruta of sinMirarLaConexionEnElBucle) {
+    problemas.push(
+      `${ruta} consulta permiteEscribir() pero NO adentro del bucle de muestreo. ` +
+      'Consultarlo una sola vez al final deja pasar entera una caída que empieza y ' +
+      'vuelve antes de terminar la ventana: los medidores quedan clavados en su ' +
+      'último valor y una sola muestra viva --0,05 s-- compra un paso de 2 dB ' +
+      'declarando dieciocho segundos de escucha. Medido el 2026-09-19.',
+    );
+  }
+
+  for (const ruta of sinBucleQueMirar) {
+    problemas.push(
+      `${ruta} guarda una escucha y esta guarda no pudo aislar su bucle de muestreo, ` +
+      'así que no comprobó nada adentro. Se lo busca por su cadencia ' +
+      '--setInterval(<fn>, INTERVALO_DE_MUESTREO_MS)-- y por la declaración de esa ' +
+      'función: si el muestreo cambió de forma, hay que decir quién vigila ahora que ' +
+      'la conexión se consulte en cada tic.',
+    );
   }
 
   for (const ruta of sinMirarLaConexion) {
@@ -350,7 +435,8 @@ const ok = intentar(() => {
     `guarda de la escucha: ${mirados} archivo(s) de producción, ` +
     MITADES.map((m) => `${m.que}: ${encontrados.get(m.que)} llamada(s)`).join(', ') +
     `, ${CAMPO} en ${campoEscrito} archivo(s) de la aplicación`
-    + `, ${guardanEscucha} que guarda(n) escucha y mira(n) la conexión`
+    + `, ${guardanEscucha} que guarda(n) escucha, ${miranEnCadaTic} de ell`
+    + `${guardanEscucha === 1 ? 'a' : 'as'} mirando la conexión en cada tic`
     // **Se imprime, y antes no.** Sin este número, quien lee la salida no puede
     // saber si la regla de la cuña vio un pase o cuarenta: sólo se enteraría al
     // llegar a cero, que es tarde. Lo marcó una auditoría adversarial el
