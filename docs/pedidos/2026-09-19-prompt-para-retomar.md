@@ -15,14 +15,28 @@ ANTES DE TOCAR NADA, en este orden:
    npm run verificar, y el volcado de la consola si vas a afirmar algo sobre ella.
 
 LO PRIMERO, PORQUE MANDA SOBRE TODO LO DEMÁS — NO SALIRSE DE LA HOJA DE RUTA:
-El 2026-09-19 tuve que cortar una deriva. Una revisión de un documento derivó en
-seis commits y cuatro rondas de auditoría sobre partes del sistema que el MVP no
-toca. De los nueve hallazgos de esa deriva, NINGUNO estaba en el camino de la
-pieza en curso.
-La regla: un hallazgo cierto NO es una tarea si no toca la pieza en curso. Va al
-backlog y se sigue. Auditar es obligatorio, pero manda sobre CÓMO se valida lo
-que se hace, no sobre QUÉ se hace. Si una cadena de correcciones empieza a
-auditar correcciones de correcciones, el foco ya se perdió: cortá.
+
+NO EXPLORES, NO MIDAS Y NO INVESTIGUES NADA QUE NO HAGA FALTA PARA EL MVP.
+Mis palabras del 2026-09-19: "no quiero que salgamos de nuestra hoja de ruta y
+medir cosas que seran inutiles, necesito que mantengamos el foco para lo que se
+necesita para el MVP".
+
+Esto vale ANTES de empezar, no sólo al final. Antes de medir algo, de leer un
+volcado, de auditar una parte del sistema o de abrir una investigación,
+preguntate: ¿esto hace falta para la pieza en curso de la hoja de ruta? Si la
+respuesta es no, NO LO HAGAS. Y si creés que hace falta y no es obvio,
+preguntame antes de gastar la sesión en eso.
+
+Por qué está así de fuerte: el 2026-09-19 una revisión de un documento derivó en
+seis commits y cuatro rondas de auditoría sobre el bus de análisis, la matriz y
+la clasificación de claves. Salieron NUEVE hallazgos, todos ciertos, todos
+medidos — y NINGUNO estaba en el camino de la pieza en curso. Media jornada
+gastada en cosas que no me acercan al producto.
+
+La regla que queda: un hallazgo cierto NO es una tarea si no toca la pieza en
+curso. Va al backlog y se sigue. Auditar es obligatorio, pero manda sobre CÓMO
+se valida lo que se hace, no sobre QUÉ se hace. Si una cadena de correcciones
+empieza a auditar correcciones de correcciones, el foco ya se perdió: cortá.
 
 CÓMO QUIERO QUE TRABAJES — esto no es negociable:
 - Preguntame SIEMPRE con preguntas interactivas, nunca con una frase al final de

@@ -22,9 +22,18 @@ sobre el bus de análisis, la matriz y la clasificación de claves. Su frase:
 el camino de la pieza 1.** La auditoría encontraba defectos reales y cada ronda
 encontraba más, pero todos en partes del sistema que el MVP no toca.
 
-**La regla que deja:** un hallazgo cierto no es una tarea si no toca la pieza en
-curso. Va al backlog y se sigue. Auditar sigue siendo obligatorio, pero manda
-sobre **cómo** se valida lo que se hace, no sobre **qué** se hace.
+**La regla que deja, y es más amplia de lo que la primera redacción decía.** Esa
+versión la enunció sólo sobre los hallazgos y las auditorías —qué hacer con algo
+que ya apareció— y el usuario tuvo que preguntar si estaba explícito que
+**tampoco hay que salir a explorar ni medir**. No lo estaba. La regla completa:
+
+- **Antes** de medir algo, leer un volcado, auditar una parte del sistema o abrir
+  una investigación: preguntarse si hace falta para la pieza en curso. Si no,
+  **no se hace**, y si no es obvio, se pregunta antes de gastar la sesión.
+- **Después**: un hallazgo cierto no es una tarea si no toca la pieza en curso.
+  Va al backlog y se sigue.
+- Auditar sigue siendo obligatorio, pero manda sobre **cómo** se valida lo que se
+  hace, no sobre **qué** se hace.
 
 ## Lo que se hizo: tres tareas de la pieza 1, tres commits empujados
 
