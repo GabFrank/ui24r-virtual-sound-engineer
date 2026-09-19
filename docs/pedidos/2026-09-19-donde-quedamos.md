@@ -1,5 +1,7 @@
 # Dónde quedamos — 2026-09-19
 
+> **SUPERADO por [`2026-09-19b-donde-quedamos.md`](2026-09-19b-donde-quedamos.md)**, el segundo cierre del mismo día. Lo que este documento dice sigue siendo cierto de lo que pasó, con **una excepción que importa**: donde dice que «nadie escribe en la tabla `measurement`» y que la rampa se frena por falta de ese dato, eso **dejó de ser cierto ese mismo día** — la pantalla de ganancia ya guarda su ventana y la anota. Para el envío a monitor sigue valiendo, y por otro motivo: ese servicio no mide.
+
 **Para quien retome, en cualquier sesión.** Reemplaza a
 [`2026-09-18-donde-quedamos.md`](2026-09-18-donde-quedamos.md) en lo que cambió.
 Las listas de tareas **siguen viviendo en**

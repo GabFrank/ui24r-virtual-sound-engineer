@@ -1,12 +1,16 @@
-# Prompt para retomar — pegar después de un `/clear`
+# Prompt para retomar — después del segundo cierre del 2026-09-19
 
-> **SUPERADO por [`2026-09-19b-prompt-para-retomar.md`](2026-09-19b-prompt-para-retomar.md)**: cita como pendiente la tarea de guardar las mediciones, que se cerró el mismo día.
+**Para pegar tal cual después de un `/clear`.** Reemplaza a
+[`2026-09-19-prompt-para-retomar.md`](2026-09-19-prompt-para-retomar.md), que
+queda superado: cita como pendiente la tarea de guardar las mediciones, que ya
+está hecha.
 
-```
+---
+
 Proyecto Ui24R Virtual Sound Engineer, rama claude/soundcraft-ui24-assistant-kh8ezj.
 
 ANTES DE TOCAR NADA, en este orden:
-1. Leé docs/pedidos/2026-09-19-donde-quedamos.md — estado, qué se hizo y qué
+1. Leé docs/pedidos/2026-09-19b-donde-quedamos.md — estado, qué se hizo y qué
    quedó abierto. Las listas de tareas viven en 2026-09-17b-donde-quedamos.md:
    leé los dos.
 2. Leé docs/pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md — manda sobre qué
@@ -28,12 +32,6 @@ volcado, de auditar una parte del sistema o de abrir una investigación,
 preguntate: ¿esto hace falta para la pieza en curso de la hoja de ruta? Si la
 respuesta es no, NO LO HAGAS. Y si creés que hace falta y no es obvio,
 preguntame antes de gastar la sesión en eso.
-
-Por qué está así de fuerte: el 2026-09-19 una revisión de un documento derivó en
-seis commits y cuatro rondas de auditoría sobre el bus de análisis, la matriz y
-la clasificación de claves. Salieron NUEVE hallazgos, todos ciertos, todos
-medidos — y NINGUNO estaba en el camino de la pieza en curso. Media jornada
-gastada en cosas que no me acercan al producto.
 
 La regla que queda: un hallazgo cierto NO es una tarea si no toca la pieza en
 curso. Va al backlog y se sigue. Auditar es obligatorio, pero manda sobre CÓMO
@@ -63,6 +61,12 @@ CÓMO QUIERO QUE TRABAJES — esto no es negociable:
   con entradas BIEN FORMADAS prueba que lo que hay alcanza. Y probá la CADENA
   COMPLETA: el error más caro del 2026-09-18 fue medir funciones sueltas y
   concluir sobre el sistema, con la suite entera en verde.
+- Y CUIDADO CON LAS JUSTIFICACIONES: el 2026-09-19 una auditoría de fidelidad
+  encontró ONCE afirmaciones falsas en un solo commit mío, casi todas de la misma
+  forma — un motivo convincente al lado de una decisión correcta. Una de ellas
+  contradecía una medición que el propio repositorio tenía archivada, y otra
+  estaba en el mensaje de un test. Antes de escribir "esto no se midió" o "esto no
+  puede pasar", comprobalo.
 - Avisame cuando la sesión se esté poniendo larga y dejá todo preparado para
   cerrar: árbol limpio, rama empujada y el documento de dónde quedamos escrito.
   El corte va después de un commit empujado, nunca a mitad de una tarea.
@@ -88,39 +92,47 @@ DETALLES PRÁCTICOS DE ESTA MÁQUINA:
   nunca borres los snapshots guardados: es la única prohibición absoluta.
 
 DÓNDE ESTAMOS:
-Pieza 1 de la hoja de ruta, la pantalla de monitor. El 2026-09-19 se cerraron
-TRES de las cuatro partes: las mediciones ya llegan al motor, la cuña apagada se
-puede levantar, y el asistente ya sabe subir además de bajar.
+Pieza 1 de la hoja de ruta, la pantalla de monitor. De las cuatro partes se
+cerraron TRES el 2026-09-19 y una CUARTA ese mismo día, en la segunda sesión: las
+mediciones llegan al motor, la cuña apagada se puede levantar, el asistente sabe
+subir, y AHORA LA APLICACIÓN GUARDA LO QUE ESCUCHA Y LO ANOTA EN LA TRANSACCIÓN.
 
-FALTA UNA SOLA COSA: LA PANTALLA POR MÚSICO.
-Se elige a alguien y se ve su cuña con todo lo que le llega, su propio
-instrumento primero. Es la que trae el acto de marcar "así está bien".
+Eso último tuvo efecto medible: antes, un segundo ajuste de ganancia sobre el
+mismo canal se rechazaba SIEMPRE por falta de escucha, aunque el músico hubiera
+tocado. Ahora no.
 
-UN REQUISITO SUYO QUE SALIÓ DE LA AUDITORÍA DEL CIERRE: con pasos fijos de 2 dB
-NOMINAL ES INALCANZABLE. La rampa medida llega hasta 0,138 dB por debajo y ahí el
-asistente frena, porque rechaza en vez de recortar. La pantalla tiene que saber
-PEDIR EL RESTO en el último paso.
+Y trajo una decisión mía que hay que respetar: lo que cuenta como "el músico
+estaba tocando" es que EL MEDIDOR SE HAYA MOVIDO y haya estado por encima del
+piso de ruido; y la escucha que se declara es CUÁNTO SONÓ LA MÚSICA, no cuánto
+duró la ventana. En la práctica el músico tiene que tocar al menos diez de los
+dieciocho segundos.
 
-Y es la que cierra los dos huecos que quedan, los dos son DATOS que faltan, no
-código:
-1. Nadie marca todavía un nivel como establecido, así que toda cuña vive
-   permanentemente en la primera operación: sin presupuesto acumulado, con techo
-   en nominal, 2 dB por paso y escucha obligatoria entre pasos.
-2. Nadie ESCRIBE en la tabla measurement. La lectura ya está hecha y cableada;
-   falta que la pantalla guarde la medición y anote su identificador en la
-   transacción. Hasta entonces la rampa se frena en el segundo paso, ahora por
-   falta de dato y no por falta de código. El servicio de ganancia tiene la
-   misma mitad suelta: ya vuelve a medir después de aplicar y no guarda lo que
-   mide.
+FALTA LA PANTALLA POR MÚSICO, que son dos cosas y las dos son la misma pantalla:
+1. Se elige a alguien y se ve su cuña con todo lo que le llega, su propio
+   instrumento primero. Tiene que saber PEDIR EL RESTO en el último paso, porque
+   con pasos fijos de 2 dB nominal es inalcanzable: la rampa se queda a 0,138 dB.
+   Eso NO necesita tocar el motor — el asistente ya acepta cualquier subida hasta
+   2 dB, así que pedir los últimos 0,138 es una cuenta de la pantalla.
+2. El acto de marcar "así está bien", que es lo que hoy no existe. Mientras no
+   exista, toda cuña vive permanentemente en la primera operación: sin presupuesto
+   acumulado, con techo en nominal, 2 dB por paso y escucha obligatoria.
+
+Y OJO CON ESTO, que es lo que queda a medias: la escritura de mediciones está
+hecha para la GANANCIA y no para el MONITOR, y no por falta de código —el
+servicio de envío a monitor NO MIDE—. Quien va a capturar ahí es esta pantalla.
 
 LO QUE HAY ABIERTO FUERA DE LA PIEZA 1:
-Las listas están en el documento 2026-09-17b. Y hay nueve hallazgos del
-2026-09-18 en docs/backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md,
-uno cerrado. NINGUNO está en el camino de la pieza 1: por eso quedaron anotados
-y no se tocan hasta que la hoja de ruta los pida. El más accionable el día que
-se retomen: el compresor y la puerta de los auxiliares, 190 claves, se rechazan
-citando un motivo FALSO — que la ruta no se conoce, cuando sí se conoce.
+Las listas están en el documento 2026-09-17b. Hay nueve hallazgos del 2026-09-18
+en docs/backlog/hallazgos-de-la-auditoria-del-censo-2026-09-18.md, uno cerrado, y
+CINCO NUEVOS del 2026-09-19 en
+docs/backlog/hallazgos-de-las-auditorias-de-la-escucha-2026-09-19.md.
+
+NINGUNO está en el camino de la pieza 1. El más grande de los nuevos: una sola
+medición guardada autoriza el segundo paso de las 24 ganancias —96 dB con una
+fila— porque nadie cruza el canal de la medición contra la ruta. No está expuesto
+por la pantalla de hoy, pero pasó de inalcanzable a estar a una línea. Y de los
+del 18, el más accionable sigue siendo el compresor y la puerta de los auxiliares,
+190 claves, que se rechazan citando un motivo FALSO.
 
 Preguntame por dónde arrancar antes de empezar, y si al leer encontrás que algo
-de lo que dice la documentación ya no es cierto, decímelo primero.
-```
+de lo que dice la documentación ya no es cierto, decime primero.
