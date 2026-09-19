@@ -34,8 +34,9 @@
  * `rutasConMedicionPosterior` contesta *«¿se escuchó después del último cambio
  * de esta ruta?»*, y es lo que convierte una serie de escrituras en una rampa.
  * Sale de `EntradaDiario.medicionPosteriorId`, que se agregó junto con este
- * módulo: la columna estaba en la base desde el esquema inicial y **nunca tuvo
- * quien la llenara**.
+ * módulo: la columna estaba en la base desde el esquema inicial y no tuvo quien
+ * la llenara **hasta el 2026-09-19**, cuando la pantalla de ganancia empezó a
+ * guardar su ventana de verificación y a anotarla acá.
  *
  * **Mira sólo la última transacción que tocó cada ruta**, no si alguna vez hubo
  * una medición. Haber escuchado hace tres pasos no autoriza el cuarto.

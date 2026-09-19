@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { Measurement } from '@vse/domain';
 import { DatabaseService } from './database.service';
-import { CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION } from './sql-de-mediciones.ts';
+import { CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION, valoresDeLaMedicion } from './sql-de-mediciones.ts';
 
 /**
  * Las mediciones de una sesión, leídas y escritas en la base.
@@ -43,13 +43,26 @@ export class MedicionesService {
    * tocado los dieciocho segundos que la pantalla le pidió. La aplicación sabía
    * que había escuchado y no se lo decía al motor.
    *
-   * **Sin sesión no se guarda, y el llamador tiene que haberlo resuelto antes.**
-   * `session_id` es una clave foránea a `sound_session`, pero **la aplicación
-   * nunca ejecuta `PRAGMA foreign_keys = ON`** —está escrito en el repositorio y
-   * una auditoría del 2026-09-19 corrigió la afirmación contraria—, así que la
-   * base **no** rechazaría una medición huérfana: la aceptaría en silencio y la
-   * lectura por sesión nunca la encontraría. Una fila que no se puede leer es
-   * peor que ninguna, porque ocupa el lugar de la escucha que hacía falta.
+   * **Esta comprobación tapa UN caso y no la fila huérfana, y el motivo que
+   * estaba escrito acá era falso.** Decía que una fila huérfana «la aceptaría en
+   * silencio y la lectura por sesión nunca la encontraría». La segunda mitad no es
+   * cierta: **quien pregunte por ese mismo identificador la encuentra**, y con ella
+   * el motor concede. Lo midió una auditoría adversarial el 2026-09-19 con la base
+   * como corre en la tablet —`sessionId` en `'   '` o en una sesión borrada entra,
+   * se lee y autoriza el paso siguiente—.
+   *
+   * Lo que sí es cierto, y hay que decirlo porque cambia quién protege qué:
+   * `session_id` es una clave foránea a `sound_session` y **la aplicación nunca
+   * ejecuta `PRAGMA foreign_keys = ON`**, así que la base no rechaza nada. En los
+   * tests sí las rechaza, porque `node:sqlite` las activa por omisión: o sea que
+   * esa garantía **existe en el test y no en el aparato**, y es la tercera vez que
+   * este repositorio corrige esa misma confusión.
+   *
+   * **Lo que de verdad evita la fila huérfana hoy es el llamador**, que no guarda
+   * nada sin sesión abierta. Esto es el último cierre, y tapa sólo la cadena
+   * vacía: `''` sería un identificador válido para la lectura por sesión, y con él
+   * el permiso de escucha viviría en una sesión que no existe. Un identificador
+   * inventado pero no vacío pasa, y eso **queda como tarea**.
    */
   async guardar(m: Measurement): Promise<void> {
     if (m.sessionId === '') {
@@ -58,10 +71,10 @@ export class MedicionesService {
         'no la encontraría nadie. Quien captura tiene que esperar a que haya sesión.',
       );
     }
-    await this.db.ejecutar(INSERCION_DE_MEDICION, [
-      m.id, m.sessionId, m.timestamp, m.signalType, m.channelId, m.posicion,
-      m.paComponent, m.calibrationStateId, JSON.stringify(m),
-    ]);
+    // El orden de los parámetros sale de `valoresDeLaMedicion` y no se escribe
+    // acá: es lo único que un test puede ejercitar, y escrito acá no lo ejercitaba
+    // nadie.
+    await this.db.ejecutar(INSERCION_DE_MEDICION, valoresDeLaMedicion(m));
   }
 
   /**

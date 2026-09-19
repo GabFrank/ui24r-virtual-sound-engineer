@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { MIGRACIONES } from '@vse/store';
-import { CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION } from '../src/app/core/sql-de-mediciones.ts';
+import {
+  CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION, valoresDeLaMedicion,
+} from '../src/app/core/sql-de-mediciones.ts';
 import { historialDeLaSesion } from '@vse/safety';
 import type { EntradaDiario } from '@vse/safety';
 import type { Measurement } from '@vse/domain';
@@ -110,10 +112,7 @@ test('la fila se guarda y se lee de la tabla measurement', () => {
   // versión lo tenía escrito acá, así que la escritura de producción no la
   // ejercitaba nadie: es el mismo defecto por el que el `SELECT` ya vive en su
   // propio archivo, cometido en el renglón de al lado.
-  db.prepare(INSERCION_DE_MEDICION).run(
-    m.id, m.sessionId, m.timestamp, m.signalType, null, null, null,
-    m.calibrationStateId, JSON.stringify(m),
-  );
+  db.prepare(INSERCION_DE_MEDICION).run(...(valoresDeLaMedicion(m) as never[]));
 
   // **La consulta REAL del servicio, importada, no una copia.** Escribirla de
   // nuevo acá dejaba la consulta de producción sin nadie que la ejercitara.

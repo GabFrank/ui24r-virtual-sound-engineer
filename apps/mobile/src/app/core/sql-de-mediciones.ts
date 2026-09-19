@@ -51,3 +51,40 @@ export const INSERCION_DE_MEDICION =
      (id, session_id, timestamp, signal_type, channel_id, posicion,
       pa_component, calibration_state_id, datos)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+/**
+ * Los valores de una medición, en el orden exacto que `INSERCION_DE_MEDICION`
+ * espera.
+ *
+ * **Existe porque el test decía ejercitar este orden y no lo ejercitaba.** El
+ * `INSERT` salía de producción, sí, pero la lista de parámetros era una **copia a
+ * mano** en el test: una auditoría del 2026-09-19 permutó `channelId` con
+ * `posicion` y `paComponent` con `calibrationStateId` en el servicio y la suite
+ * entera quedó en verde. O sea el mismo defecto que este archivo vino a arreglar
+ * —el SQL duplicado en el test— cometido en el renglón de al lado, sobre la mitad
+ * que nadie miró.
+ *
+ * Con esto el orden vive en un solo sitio y el test lo usa, así que permutar dos
+ * columnas rompe algo.
+ *
+ * **Qué se rompe si se permutan, para que se entienda por qué importa aunque hoy
+ * no cambie ningún veredicto:** el motor lee el JSON de `datos`, no las columnas,
+ * así que una permutación no afloja ninguna guarda. Lo que queda mal es la tabla:
+ * `channel_id` guardaría la posición, y esas columnas existen justamente para
+ * poder consultarlas sin abrir el JSON.
+ */
+export function valoresDeLaMedicion(m: {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly timestamp: string;
+  readonly signalType: string;
+  readonly channelId: string | null;
+  readonly posicion: string | null;
+  readonly paComponent: string | null;
+  readonly calibrationStateId: string;
+}): readonly unknown[] {
+  return [
+    m.id, m.sessionId, m.timestamp, m.signalType, m.channelId, m.posicion,
+    m.paComponent, m.calibrationStateId, JSON.stringify(m),
+  ];
+}

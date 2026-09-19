@@ -24,7 +24,24 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   como no confiable para eso a propósito.
   **Y si no hubo nadie tocando, no cuenta.** Una ventana en silencio se guarda
   igual —es información— pero no habilita el paso siguiente: si nadie tocó, nadie
-  escuchó. Lo mismo con una ventana cortada antes de los diez segundos.
+  escuchó.
+  **Lo que cuenta como «el músico estaba tocando», que lo elegiste vos:** que el
+  medidor se haya movido y haya estado por encima del piso de ruido. Con eso pasan
+  dos cosas que antes salían mal, las dos medidas:
+  - **Si la consola se cae, la aplicación ya no se engaña.** Cuando la conexión se
+    corta sola, los medidores quedan congelados en su último valor y la ventana de
+    verificación parecía una fuente perfectamente estable: se guardaba como
+    dieciocho segundos de música con **cero segundos de música**. Ahora un medidor
+    que no se movió ni un escalón no es nadie tocando, y además la aplicación no
+    guarda una escucha si la consola no está conectada al terminar.
+  - **El canal que entró muy bajo ahora sí cuenta**, que es el canal para el que el
+    asistente existe. Antes, todo lo que no llegara al nivel mínimo para analizar
+    se guardaba como silencio, así que el canal flojo era justamente el que no
+    podía subir en dos pasos.
+  **Y lo que se mide es la música, no el reloj.** Si el músico toca tres de los
+  dieciocho segundos, la aplicación anota tres, no dieciocho. **En la práctica:
+  tenés que hacerlo tocar al menos diez de los dieciocho**, y si no, la aplicación
+  te pide otra vuelta en vez de dejarte seguir.
   **Las cuñas de monitor todavía no**: ahí no hay nada que mida, y eso llega con
   la pantalla por músico.
 

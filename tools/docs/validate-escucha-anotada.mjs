@@ -27,6 +27,25 @@
  * Es del mismo género que `validate-mediciones-al-historial.mjs`, y por el mismo
  * motivo escrito: una comprobación que llega después del hecho es un reproche, no
  * una guarda. Ésta corre con `verificar`.
+ *
+ * ## Lo que esta guarda NO caza, dicho con todas las letras
+ *
+ * **Porque mira texto y no flujo**, y decirlo importa más que ampliarla: una
+ * guarda que se lee como defensa y no puede disparar manda al que audita a buscar
+ * protección donde no hay ninguna. Una auditoría adversarial del 2026-09-19 la
+ * burló por varias vías; dos se taparon —la mención en una cadena de texto y el
+ * `//` pegado a dos puntos— y **estas dos no tienen arreglo por texto**:
+ *
+ * - **La llamada está y siempre pasa `null`.** `anotarEscucha(res.id, null)`
+ *   cuenta como llamada y no anota nunca nada. Es la regresión **más plausible**
+ *   de las dos, porque se parece a un arreglo.
+ * - **La llamada está pero dentro de código muerto**, por ejemplo un `if (false)`,
+ *   o pasando la medición **anterior** al cambio en vez de la posterior.
+ *
+ * Las tres pasan además la suite entera, porque ningún test monta el inyector de
+ * Angular. Lo que sí las caza es leer las diez líneas de `aplicar()` en la
+ * pantalla de ganancia, y por eso están nombradas acá: para que quien las lea
+ * sepa qué mirar.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -95,6 +114,27 @@ const MITADES = [
  */
 const CAMPO = 'medicionPosteriorId';
 
+/**
+ * Y la cuarta, que es una regla de convivencia: **quien guarda una escucha tiene
+ * que haber mirado si la consola estaba ahí**.
+ *
+ * **El defecto que cierra, medido el 2026-09-19.** `MixerService` sólo vacía la
+ * lista de canales cuando el usuario desconecta a propósito. Si la conexión se cae
+ * sola, los últimos niveles quedan ahí y la captura muestrea dieciocho segundos de
+ * un número muerto: eso se guardaba como una escucha de 17,95 segundos y el motor
+ * autorizaba el paso siguiente **con cero segundos de música**.
+ *
+ * Se tapó por dos lados —el dato, exigiendo que el medidor se haya movido; y la
+ * causa, no guardando nada si la consola no está conectada al terminar— y **este
+ * segundo lado no lo cubre ningún test**, porque vive en un servicio con decorador
+ * de Angular. De ahí la regla: el archivo que llama a `guardarLaEscucha` tiene que
+ * consultar también `permiteEscribir`. Comprobar que existan por separado no
+ * alcanzaría —hay otro sitio que consulta la conexión, así que el conteo global
+ * nunca llegaría a cero—, y es la misma forma de agujero que esta guarda ya se
+ * comió una vez contando definiciones como llamadas.
+ */
+const GUARDA_DE_CONEXION = /\.\s*permiteEscribir\s*\(/;
+
 /** Los `.ts` de una carpeta, recursivo, sin `node_modules` ni tests. */
 function archivos(dir) {
   const salida = [];
@@ -120,17 +160,32 @@ function archivos(dir) {
 }
 
 /**
- * El texto sin comentarios.
+ * El texto sin comentarios **ni cadenas**.
  *
  * **Es lo que impide que la guarda se satisfaga con una mención.** La guarda de al
  * lado se conformaba con una línea de comentario que nombrara la función: se podía
  * renombrar la función de verdad, dejar el comentario, y la guarda volvía a verde
  * comprobando cero llamadas.
+ *
+ * **Y las cadenas se sacan desde el 2026-09-19, porque una auditoría adversarial
+ * burló esto por ahí**: borrada la llamada de verdad, dejar
+ * `"...this.aplicador.anotarEscucha(...)"` dentro de un literal de texto en
+ * cualquier archivo dejaba la guarda en verde. Una mención en una cadena es
+ * exactamente lo mismo que una mención en un comentario.
+ *
+ * **Lo del esquema de URL también salió de ahí.** Esto excluía todo `//`
+ * precedido de dos puntos, para no comerse `https://`; la misma auditoría escribió
+ * `a:// await this.aplicador.anotarEscucha(...)`, que comenta la línea de verdad y
+ * la guarda no la sacaba. Ahora se excluye sólo lo que tiene forma de esquema.
  */
-function sinComentarios(texto) {
+function sinComentariosNiCadenas(texto) {
   return texto
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    .replace(/(^|[^:\w])\/\/[^\n]*/g, '$1')
+    .replace(/(^|[^:\w])[a-z][a-z0-9+.-]*:\/\/[^\n]*/gi, '$1')
+    .replace(/`(?:\\.|[^`\\])*`/g, "''")
+    .replace(/'(?:\\.|[^'\\\n])*'/g, "''")
+    .replace(/"(?:\\.|[^"\\\n])*"/g, "''");
 }
 
 const problemas = [];
@@ -139,11 +194,13 @@ const ok = intentar(() => {
   let mirados = 0;
   const encontrados = new Map(MITADES.map((m) => [m.que, 0]));
   let campoEscrito = 0;
+  let guardanEscucha = 0;
+  const sinMirarLaConexion = [];
 
   for (const zona of ZONAS) {
     for (const ruta of archivos(join(RAIZ, zona))) {
       mirados++;
-      const texto = sinComentarios(readFileSync(ruta, 'utf8'));
+      const texto = sinComentariosNiCadenas(readFileSync(ruta, 'utf8'));
 
       for (const mitad of MITADES) {
         for (const linea of texto.split('\n')) {
@@ -156,6 +213,12 @@ const ok = intentar(() => {
       // El campo, escrito y no sólo declarado. `packages/safety` lo declara y lo
       // nace en nulo: lo que hace falta es que **la aplicación** lo escriba.
       if (zona === 'apps' && texto.includes(CAMPO)) campoEscrito++;
+
+      // Y la convivencia: quien guarda una escucha mira la conexión.
+      if (MITADES[0].patron.test(texto)) {
+        guardanEscucha++;
+        if (!GUARDA_DE_CONEXION.test(texto)) sinMirarLaConexion.push(relative(RAIZ, ruta));
+      }
     }
   }
 
@@ -172,6 +235,23 @@ const ok = intentar(() => {
     }
   }
 
+  for (const ruta of sinMirarLaConexion) {
+    problemas.push(
+      `${ruta} guarda una escucha y no consulta permiteEscribir(). Con la consola ` +
+      'caída los medidores quedan congelados en su último valor y la ventana parece ' +
+      'una fuente estable: medido, se guardaba como 17,95 s de música con cero ' +
+      'segundos de música, y el motor autorizaba el paso siguiente.',
+    );
+  }
+
+  if (guardanEscucha === 0) {
+    problemas.push(
+      'ningún archivo de producción guarda una escucha, así que la regla de mirar la ' +
+      'conexión no se comprobó en ninguno. O se renombró la función, o se movió el ' +
+      'código: en los dos casos hay que decidir quién protege eso ahora.',
+    );
+  }
+
   if (campoEscrito === 0) {
     problemas.push(
       `ningún archivo de la aplicación menciona ${CAMPO}. El campo lo declara el ` +
@@ -183,7 +263,8 @@ const ok = intentar(() => {
   console.log(
     `guarda de la escucha: ${mirados} archivo(s) de producción, ` +
     MITADES.map((m) => `${m.que}: ${encontrados.get(m.que)} llamada(s)`).join(', ') +
-    `, ${CAMPO} en ${campoEscrito} archivo(s) de la aplicación.`,
+    `, ${CAMPO} en ${campoEscrito} archivo(s) de la aplicación`
+    + `, ${guardanEscucha} que guarda(n) escucha y mira(n) la conexión.`,
   );
 }, (e) => problemas.push(e.message));
 

@@ -9,6 +9,7 @@ import { MixerService } from '../core/mixer.service';
 import { BandService } from '../core/band.service';
 import { MedicionesService } from '../core/mediciones.service';
 import { SesionService } from '../core/sesion.service';
+import { ConnectionStateService } from '../core/connection.state';
 import { medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS } from '../core/medicion-de-la-captura.ts';
 
 export type EstadoCaptura = 'INACTIVA' | 'CUENTA_REGRESIVA' | 'CAPTURANDO' | 'LISTA';
@@ -54,6 +55,7 @@ export class GainAssistantService {
   private readonly banda = inject(BandService);
   private readonly mediciones = inject(MedicionesService);
   private readonly sesion = inject(SesionService);
+  private readonly conexion = inject(ConnectionStateService);
 
   readonly estado = signal<EstadoCaptura>('INACTIVA');
   readonly segundosRestantes = signal(0);
@@ -106,19 +108,35 @@ export class GainAssistantService {
     // el motor en vez de adivinarle una, y con razón —medido, una medición de un
     // minuto antes de la escritura quedaba tres horas después—.
     //
-    // **Queda hasta 50 ms antes de la primera muestra**, que es un tiempo de
-    // muestreo: la ventana declarada es la real corrida ese tanto hacia atrás,
-    // cuatro órdenes de magnitud menos que los diez segundos de escucha mínima, y
-    // corre hacia el lado de declarar la escucha más temprano y más corta.
+    // **Queda antes de la primera muestra, y NO hay cota por arriba.** La primera
+    // redacción decía «hasta 50 ms», «cuatro órdenes de magnitud menos que los
+    // diez segundos» y «corre hacia el lado más seguro»: las tres eran falsas, y
+    // las corrigió una auditoría el 2026-09-19. El muestreo sólo empuja si la
+    // consola ya publicó ese canal, así que la primera muestra puede llegar
+    // arbitrariamente más tarde; 10 s contra 50 ms son 200 veces, o sea dos
+    // órdenes y pico, no cuatro; y adelantar el inicio **afloja** la condición de
+    // que la ventana haya terminado, aunque endurece la de que la medición no sea
+    // anterior a la escritura.
+    //
+    // Sigue siendo despreciable contra los diez segundos, y ahora eso está dicho
+    // sin adornarlo: es un desfase chico de dirección mixta, no un margen seguro.
     const empezoEl = new Date().toISOString();
 
     await this.recolectar();
 
-    // **La ventana se toma por referencia una sola vez**, porque lo que sigue
-    // tiene un `await`: `cancelar()` vacía `this.muestras` y la captura siguiente
-    // la reasigna, así que mirarla dos veces podría analizar una cosa y guardar
-    // otra. Es la misma forma del defecto que ya costó una recomendación
-    // calculada sobre dos canales mezclados.
+    // **La ventana se toma por referencia una sola vez.** El motivo que estaba
+    // escrito acá --que `cancelar()` podía entrar en el medio y dejar que se
+    // analizara una cosa y se guardara otra-- **describía algo que no puede
+    // pasar**, y citaba mal su precedente: entre este análisis y la lectura de las
+    // muestras adentro de `medicionDeLaCaptura` no hay ningún `await`, así que no
+    // hay dónde entrar; y `cancelar()` **reasigna** el arreglo en vez de mutarlo,
+    // de modo que una referencia local no lo habría salvado de nada. Lo cazó una
+    // auditoría de fidelidad el 2026-09-19.
+    //
+    // Queda porque nombrar la ventana una vez es más claro que mirar dos veces un
+    // campo mutable, no porque tape un peligro vivo. Justificar una decisión
+    // inocua con un peligro inventado es la forma de defecto que este repositorio
+    // persigue, y por eso se corrige en vez de borrarse.
     const muestras = this.muestras;
     const analisis = analizarVentana(muestras);
     const perfil = this.banda.perfilDe(asignacion);
@@ -181,20 +199,6 @@ export class GainAssistantService {
   }
 
   /**
-   * Cancela la captura en curso.
-   *
-   * Limpia **los dos** temporizadores y resuelve la promesa de la cuenta
-   * atrás. Antes solo limpiaba el de la cuenta: el muestreo, que corre cada
-   * 50 ms, se limpiaba en el `finally` de esa promesa, y como la promesa
-   * nunca se resolvía, el `finally` no se ejecutaba. El muestreo seguía vivo
-   * y, como `capturar()` reasigna el arreglo de muestras al empezar la
-   * siguiente, **el muestreo huérfano del canal cancelado empujaba muestras
-   * dentro de la ventana del canal nuevo**. Quien cancelaba porque se
-   * equivocó de canal y medía el correcto obtenía una recomendación calculada
-   * sobre dos canales mezclados, presentada con su confianza y su evidencia
-   * como si fuera fiable.
-   */
-  /**
    * Guarda la ventana como medición y devuelve su identificador.
    *
    * **Es la mitad que faltaba del lazo.** La aplicación medía, le contaba al
@@ -221,6 +225,26 @@ export class GainAssistantService {
     analisis: AnalisisDeGanancia,
     muestras: readonly MuestraVu[],
   ): Promise<string | null> {
+    // **Con la consola desconectada no hay escucha que guardar, y esto tapa la
+    // causa de lo que `elMedidorSeMovio` tapa por el dato.** `MixerService` sólo
+    // vacía la lista de canales cuando el usuario desconecta a propósito: si la
+    // conexión se cae sola, la captura muestrea dieciocho segundos del último
+    // número conocido. Medido el 2026-09-19: eso se guardaba como una escucha de
+    // 17,95 segundos y autorizaba el paso siguiente con cero segundos de música.
+    //
+    // **Lo que esta mitad alcanza, exacto:** la ventana que TERMINA con la consola
+    // caída. Una caída que empieza y termina adentro de la ventana no la ve ni
+    // ésta ni la otra; para eso hay que mirar la frescura de las tramas, y es una
+    // tarea aparte, anotada.
+    //
+    // **Medir sigue funcionando**: lo que no se guarda es el permiso.
+    if (!this.conexion.permiteEscribir()) {
+      this.log.info('audio', 'escucha_sin_consola', {
+        canal: asignacion.ui24rInputIndex, estado: this.conexion.estado(),
+      });
+      return null;
+    }
+
     const sessionId = this.sesion.actual()?.sesion.id ?? null;
     if (sessionId === null) {
       // **No es un fallo y no se registra como tal.** Sin sesión abierta no hay
@@ -258,6 +282,20 @@ export class GainAssistantService {
     return id;
   }
 
+  /**
+   * Cancela la captura en curso.
+   *
+   * Limpia **los dos** temporizadores y resuelve la promesa de la cuenta
+   * atrás. Antes solo limpiaba el de la cuenta: el muestreo, que corre cada
+   * 50 ms, se limpiaba en el `finally` de esa promesa, y como la promesa
+   * nunca se resolvía, el `finally` no se ejecutaba. El muestreo seguía vivo
+   * y, como `capturar()` reasigna el arreglo de muestras al empezar la
+   * siguiente, **el muestreo huérfano del canal cancelado empujaba muestras
+   * dentro de la ventana del canal nuevo**. Quien cancelaba porque se
+   * equivocó de canal y medía el correcto obtenía una recomendación calculada
+   * sobre dos canales mezclados, presentada con su confianza y su evidencia
+   * como si fuera fiable.
+   */
   cancelar(): void {
     this.detenerTemporizadores();
     this.estado.set('INACTIVA');

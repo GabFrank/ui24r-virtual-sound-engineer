@@ -63,27 +63,6 @@ export class AplicarGananciaService {
   private readonly log = inject(Logger);
 
   /**
-   * Si el botón de aplicar tiene que estar habilitado, y si no, por qué.
-   *
-   * Devuelve el motivo aunque no se pueda: una pantalla que apaga un botón sin
-   * decir por qué obliga al usuario a adivinar, y en este producto el motivo
-   * casi siempre es accionable —conectá la consola, volvé a medir, pasá a
-   * configuración de canales—.
-   */
-  /**
-   * Si el botón tiene que estar habilitado, y si no, por qué.
-   *
-   * Las reglas viven en `@vse/assistants`, donde se prueban; acá se junta el
-   * estado disperso —sesión, seguridad, conexión— y se pregunta.
-   */
-  /**
-   * Si el botón tiene que estar habilitado, y si no, por qué.
-   *
-   * Toma solo la confianza porque el resto —estado de sesión, paro, conexión—
-   * lo sabe este servicio. La pantalla no tiene por qué juntar ese estado para
-   * preguntar si se puede.
-   */
-  /**
    * Anota en la transacción que después de ella hubo una escucha.
    *
    * **Es la otra mitad de guardar la medición**, y sin ella guardarla no sirve de
@@ -101,10 +80,13 @@ export class AplicarGananciaService {
    * identificadores que no existían.
    *
    * **Y que la medición sea de verdad una escucha no lo decide esto**: el motor
-   * comprueba siete cosas sobre ella —que exista, que sea de esta sesión, que
-   * hubiera señal, que durara lo que su clase de parámetro pide, que empezara
-   * después de que la escritura llegara al cable y que su ventana haya
-   * terminado—. Acá sólo se dice cuál fue.
+   * comprueba **siete** cosas sobre ella —que exista; que sea de esta sesión; que
+   * hubiera señal; que durara lo que su clase de parámetro pide; que **todos** los
+   * cambios verificados de la transacción traigan fecha de envío utilizable; que
+   * no sea anterior a la más tardía de ellas; y que su ventana haya terminado—.
+   * Acá sólo se dice cuál fue. (Una primera redacción decía siete y enumeraba
+   * seis: se comía la de las fechas, que es la que cierra que un cambio sin fecha
+   * no se la preste un hermano.)
    */
   async anotarEscucha(idTransaccion: string, medicionId: string | null): Promise<void> {
     if (medicionId === null) {
@@ -125,6 +107,24 @@ export class AplicarGananciaService {
     }
   }
 
+  /**
+   * Si el botón tiene que estar habilitado, y si no, por qué.
+   *
+   * Devuelve el motivo aunque no se pueda: una pantalla que apaga un botón sin
+   * decir por qué obliga al usuario a adivinar, y en este producto el motivo casi
+   * siempre es accionable —conectá la consola, volvé a medir, pasá a
+   * configuración de canales—.
+   *
+   * Toma sólo la confianza porque el resto —estado de sesión, paro, conexión— lo
+   * sabe este servicio. Las reglas viven en `@vse/assistants`, donde se prueban;
+   * acá se junta el estado disperso y se pregunta.
+   *
+   * **Estaban los mismos tres docblocks apilados acá, y este commit los dejó
+   * además encima de la función de al lado**: al insertar `anotarEscucha` entre
+   * ellos y `puedeAplicar`, los tres pasaron a describir otra cosa y ésta quedó sin
+   * ninguno. Lo cazó una auditoría de fidelidad el 2026-09-19. Los tres decían lo
+   * mismo con otras palabras, así que queda uno.
+   */
   puedeAplicar(confianza: Confidence, canal?: number): { readonly puede: boolean; readonly motivo: string | null } {
     const permiso = this.seguridad.permiteEscritura('PREAMP_GAIN');
     const v = puedeAplicarGanancia({

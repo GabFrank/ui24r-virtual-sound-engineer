@@ -1,4 +1,4 @@
-import type { AnalisisDeGanancia, MuestraVu } from '@vse/assistants';
+import { PISO_DE_RUIDO_DB, type AnalisisDeGanancia, type MuestraVu } from '@vse/assistants';
 import type { Measurement, MeasurementMetrics, SignalType } from '@vse/domain';
 
 /**
@@ -91,34 +91,130 @@ export interface CapturaParaGuardar {
 }
 
 /**
+ * Las muestras en que **entró algo**, por encima del piso de ruido del medidor.
+ *
+ * **`PISO_DE_RUIDO_DB` y no `UMBRAL_SILENCIO_DB`, y la diferencia es el defecto
+ * que esta función existe para no repetir.** El proyecto separó las dos cosas el
+ * 2026-09-09: «no entró nada» y «entró muy bajo» llevan a consejos opuestos, la
+ * primera a revisar el cable y la segunda a subir la ganancia del previo. El
+ * umbral de −50 es el que decide si hay señal **suficiente para recomendar**; el
+ * piso de −60 es el que decide si **entró algo**.
+ *
+ * Para la pregunta de esta pieza —¿el músico estaba sonando mientras yo
+ * escuchaba?— el que corresponde es el piso. Un canal que entró a −54 es un
+ * músico tocando bajo, no un músico ausente, **y es el caso principal del
+ * asistente de ganancia**: usar el umbral de −50 dejaba sin rampa justamente al
+ * canal que el asistente existe para levantar.
+ */
+function conSonido(muestras: readonly MuestraVu[]): readonly MuestraVu[] {
+  return muestras.filter((m) => Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB);
+}
+
+/**
+ * ¿El medidor **se movió**?
+ *
+ * **Es lo que separa a un músico de una consola caída, y medirlo costó una
+ * auditoría.** `MixerService` sólo vacía la lista de canales cuando el usuario
+ * desconecta a propósito: si la conexión se cae sola, los últimos niveles
+ * conocidos se quedan ahí, y la captura muestrea dieciocho segundos de un número
+ * muerto. Medido el 2026-09-19 con la cadena entera: una ventana con la consola
+ * caída y el último nivel en −14,6 dB se guardaba como `PERFORMANCE` de 17,95
+ * segundos y **el motor autorizaba el paso siguiente**, con cero segundos de
+ * música.
+ *
+ * Un medidor congelado no se mueve **ni un escalón** en dieciocho segundos. Uno
+ * con un instrumento delante, sí.
+ *
+ * **La comparación es contra cero y no contra un margen**, porque un margen
+ * habría que medirlo y nadie lo midió: cualquier número inventado acá sería la
+ * clase de constante que este repositorio pasa el tiempo retractando. Lo que
+ * **esto no caza, dicho con todas las letras**: una conexión que se cae y vuelve
+ * dentro de la misma ventana deja dos valores distintos, así que el medidor «se
+ * movió» y esta prueba concede. Para eso está la otra mitad, en
+ * `guardarLaEscucha`, que se niega a guardar una escucha si la consola no estaba
+ * conectada al terminar; y ninguna de las dos alcanza a una caída que empieza y
+ * termina adentro de la ventana. Eso se cierra mirando la frescura de las tramas,
+ * y es una tarea aparte.
+ */
+function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
+  if (sonando.length === 0) return false;
+  let minimo = Infinity;
+  let maximo = -Infinity;
+  for (const m of sonando) {
+    if (m.db < minimo) minimo = m.db;
+    if (m.db > maximo) maximo = m.db;
+  }
+  return maximo > minimo;
+}
+
+/**
  * ¿Hubo alguien tocando?
  *
- * **Es la única de las siete condiciones del motor que esta función decide**, y
- * decide bien o miente: `signalType` entra a una lista blanca —`PINK`, `SWEEP`,
- * `SINE`, `BURST`, `PERFORMANCE`— y `SILENCE` queda afuera a propósito, porque si
- * nadie tocó, nadie oyó.
+ * **Es la única de las condiciones del motor que esta función decide**, y decide
+ * bien o miente: `signalType` entra a una lista blanca —`PINK`, `SWEEP`, `SINE`,
+ * `BURST`, `PERFORMANCE`— y `SILENCE` queda afuera a propósito, porque si nadie
+ * tocó, nadie oyó.
  *
- * El criterio sale del propio análisis y no de un umbral repetido acá: cuando la
- * ventana no juntó suficientes muestras por encima del umbral de silencio,
- * `analizarVentana` devuelve el pico en `-Infinity`. Un pico finito es un medidor
- * que se movió.
+ * **La primera versión se apoyaba en `analisis.picoDb` y fallaba en las DOS
+ * direcciones**, medido el 2026-09-19: decía que sí con la consola caída y el
+ * medidor congelado, y decía que no con un canal que entró a −54 dB. O sea que
+ * mentía a favor y en contra, y la frase «un pico finito es un medidor que se
+ * movió» era falsa: un pico finito es un número por encima de −50, se haya movido
+ * o no.
+ *
+ * Hoy son dos preguntas y las dos tienen que dar que sí: **entró algo** —por
+ * encima del piso de ruido— y **el medidor se movió**.
  *
  * **Es `PERFORMANCE` y no `SINE` ni `PINK`** porque lo que suena es el
  * instrumento de alguien, no un generador: la aplicación no reproduce audio
  * todavía.
  */
-function senal(analisis: AnalisisDeGanancia): SignalType {
-  return Number.isFinite(analisis.picoDb) ? 'PERFORMANCE' : 'SILENCE';
+function senal(sonando: readonly MuestraVu[]): SignalType {
+  return elMedidorSeMovio(sonando) ? 'PERFORMANCE' : 'SILENCE';
+}
+
+/**
+ * Cuánto tiempo **sonó de verdad** la fuente, en segundos.
+ *
+ * **Es la música y no el reloj, y es una decisión del usuario del 2026-09-19**,
+ * entre tres opciones. La ventana dura dieciocho segundos pase lo que pase; lo
+ * que el motor tiene que juzgar es la escucha, y una escucha es el tiempo en que
+ * hubo algo que escuchar.
+ *
+ * **Medido antes de cambiarlo:** un músico que tocaba tres de los dieciocho
+ * segundos declaraba **17,95 segundos** de escucha, indistinguible de uno que
+ * tocó los dieciocho. Con eso la garantía de diez segundos que el usuario eligió
+ * el 2026-09-18 no era la que regía: lo que el motor comprobaba era «pasaron
+ * dieciocho segundos de reloj y en algún momento hubo señal».
+ *
+ * Sale de contar muestras y no de restar la primera a la última **porque un
+ * músico que toca al principio y al final deja un hueco en el medio**, y esa
+ * resta lo contaría como tiempo tocado.
+ *
+ * **Lo que se pierde, dicho con todas las letras:** la duración de la ventana ya
+ * no queda registrada en ningún campo. Es aceptable porque el único consumidor de
+ * `duracionS` es la comprobación de escucha; el día que alguien necesite saber
+ * cuánto duró la captura, eso pide un campo propio y no reinterpretar éste.
+ */
+function cuantoSono(sonando: readonly MuestraVu[]): number {
+  return (sonando.length * INTERVALO_DE_MUESTREO_MS) / 1000;
 }
 
 /**
  * Las métricas de lo que el medidor vio, o nada.
  *
- * **Devuelve `null` cuando no hubo señal, y no un objeto con `-Infinity`.** No es
- * cosmética: `JSON.stringify(-Infinity)` es `"null"`, así que un pico infinito
- * guardado como JSON vuelve de la base como `null` en un campo declarado
- * `number`. El registro quedaría mintiéndole al tipo. Y de un silencio no hay
- * métricas que dar: no tenerlas es el dato.
+ * **Devuelve `null` cuando el análisis no pudo calcularlas, y no un objeto con
+ * `-Infinity`.** No es cosmética: `JSON.stringify(-Infinity)` es `"null"`, así que
+ * un pico infinito guardado como JSON vuelve de la base como `null` en un campo
+ * declarado `number`. El registro quedaría mintiéndole al tipo.
+ *
+ * **«Sin métricas» NO es «no sonó nadie», y una primera redacción decía que sí.**
+ * Son dos preguntas distintas y las decide gente distinta: `senal()` pregunta si
+ * el medidor se movió por encima del piso de ruido, y esto pregunta si hubo señal
+ * **suficiente para recomendar una ganancia**, que es lo que `analizarVentana`
+ * calcula. Un canal que entró a −54 dB es un músico tocando bajo: se guarda como
+ * `PERFORMANCE` y **sin métricas**, porque no hay margen que afirmar sobre él. Lo
+ * marcó una auditoría el 2026-09-19.
  */
 function metricas(c: CapturaParaGuardar): MeasurementMetrics | null {
   const a = c.analisis;
@@ -147,10 +243,13 @@ function metricas(c: CapturaParaGuardar): MeasurementMetrics | null {
     // exactamente la clase de dato que después se cita.
     ruidoFondoDb: null,
     snrDb: null,
-    // **Tramas del medidor que llegaron al fondo de escala.** Se cuentan acá y
-    // no se derivan de `probabilidadDeSaturacion`, que es otra cosa: esa es la
-    // fracción de muestras en zona de RIESGO, unos decibeles antes del techo.
-    // Contar riesgo como saturación diría que saturó algo que no saturó.
+    // **Muestras sondeadas que llegaron al fondo de escala** --no tramas: entre
+    // una lectura y otra puede haber llegado más de una trama `VU2` o ninguna,
+    // porque la aplicación sondea cada 50 ms y las tramas llegan cada ~34-44 ms,
+    // medido--. Se cuentan acá y no se derivan de `probabilidadDeSaturacion`, que
+    // es otra cosa: esa es la fracción de muestras en zona de RIESGO, unos
+    // decibeles antes del techo. Contar riesgo como saturación diría que saturó
+    // algo que no saturó.
     eventosSaturacion: c.muestras.filter((m) => Number.isFinite(m.db) && m.db >= 0).length,
     // Un medidor de barras no tiene espectro, ni función de transferencia, ni
     // coherencia, ni retardo. Van en nulo las cuatro: «no se sabe» y «es cero»
@@ -164,19 +263,26 @@ function metricas(c: CapturaParaGuardar): MeasurementMetrics | null {
 }
 
 export function medicionDeLaCaptura(c: CapturaParaGuardar): Measurement {
+  const sonando = conSonido(c.muestras);
   return {
     id: c.id,
     sessionId: c.sessionId,
     timestamp: c.empezoEl,
-    signalType: senal(c.analisis),
-    // **En nulo, y es una decisión y no un olvido.** Los cuatro valores de
-    // `AnalysisReferenceMode` describen desde qué envío de la consola se toma la
-    // referencia eléctrica para una medición acústica (ADR-003), y esto no es
-    // eso: es el medidor propio de la consola. De él se sabe, medido el
-    // 2026-09-09, que está **antes del proceso dinámico**; dónde cae respecto
-    // del fader **no se midió**. Declarar `RAW_INPUT` sería afirmar la mitad que
-    // nadie comprobó, y la regla 1 del repositorio dice que nada se asume del
-    // protocolo.
+    signalType: senal(sonando),
+    // **En nulo, y el motivo que estaba escrito acá era FALSO.** Decía que
+    // «dónde cae el medidor respecto del fader no se midió», y está medido desde
+    // el 2026-09-09: el fader está **aguas abajo** del byte que esta captura lee
+    // --`docs/compromisos/99b-el-medidor-contra-la-salida-real.md` lo usa como su
+    // testigo fuerte, y `protocol-spec.md` lo verificó con música por las RCA--.
+    // O sea que ese byte está después del previo y **antes de todo** el
+    // procesamiento del canal, fader incluido. Lo cazó una auditoría de fidelidad
+    // el 2026-09-19, y la frase estaba además en el mensaje de un test.
+    //
+    // El motivo verdadero es otro y es más simple: los cuatro valores de
+    // `AnalysisReferenceMode` nombran desde qué **envío** de la consola se toma la
+    // referencia eléctrica para una medición acústica (ADR-003), y esto no es un
+    // envío: es el medidor propio de la consola. Ninguno de los cuatro lo
+    // describe, así que declarar uno sería declarar un camino que no se usó.
     referenceMode: null,
     paComponent: null,
     channelId: c.channelId,
@@ -186,19 +292,34 @@ export function medicionDeLaCaptura(c: CapturaParaGuardar): Measurement {
     micProfileId: null,
     calibrationStateId: SIN_CALIBRACION,
     snapshotRef: null,
-    // **La cadencia del medidor, porque las muestras de esta medición son
-    // tramas del medidor.** No son 48 000: no hay audio. Escribir la frecuencia
-    // de muestreo del audio acá sería describir una captura que no ocurrió.
+    // **La cadencia con que la aplicación SONDEA el medidor**, veinte veces por
+    // segundo. No son 48 000: no hay audio, y escribir la frecuencia de muestreo
+    // del audio acá sería describir una captura que no ocurrió.
+    //
+    // **Y no es la cadencia del medidor, que es otra y está medida**: las tramas
+    // `VU2` llegan con media 44,3 ms y mediana 34 ms, así que sondeando cada 50 ms
+    // una trama se cuenta dos veces o se saltea. Una redacción anterior de esta
+    // línea las confundía.
     sampleRate: 1000 / INTERVALO_DE_MUESTREO_MS,
-    // **La duración MEDIDA —de la primera muestra a la última— y no los
-    // dieciocho segundos que la ventana declara.** El motor exige diez segundos
-    // de escucha para esta clase de parámetro y compara contra este campo; si la
-    // captura se cortó antes, decir dieciocho sería declarar una escucha que no
-    // pasó. Una ventana corta tiene que quedar corta.
-    duracionS: c.analisis.duracionS,
+    // **Cuánto sonó la fuente, no cuánto duró la ventana.** Ver `cuantoSono`: es
+    // una decisión del usuario del 2026-09-19, y antes de ella tres segundos de
+    // música en una ventana de dieciocho declaraban 17,95 segundos de escucha.
+    duracionS: cuantoSono(sonando),
     directRef: null,
     acousticRef: null,
     consoleTelemetry: metricas(c),
     archivoAudio: null,
+    // **La aserción está y hay que decir qué apaga, que es lo que faltaba.**
+    // `id`, `sessionId`, `channelId` y `calibrationStateId` son tipos marcados
+    // --`MeasurementId`, `SessionId`, `ChannelAssignmentId`, `CalibrationStateId`--
+    // y acá entran cadenas: sin la aserción, `tsc` da cuatro errores. O sea que
+    // esto **desactiva la comprobación de los cuatro identificadores** y además
+    // dejaría pasar en silencio un campo obligatorio nuevo de `Measurement`.
+    //
+    // Se deja porque este repositorio no tiene constructores de identificadores
+    // marcados --nadie genera un `MeasurementId` en ninguna parte-- y el resto del
+    // código hace lo mismo. Lo que no se deja es sin decir: era la única decisión
+    // de este archivo sin una línea al lado, en un archivo que explica por qué
+    // `picoRealDb` va en nulo. Lo marcó una auditoría el 2026-09-19.
   } as Measurement;
 }

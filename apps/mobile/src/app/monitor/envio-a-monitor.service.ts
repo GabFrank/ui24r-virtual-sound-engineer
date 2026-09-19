@@ -160,10 +160,18 @@ export class EnvioAMonitorService {
     //
     // El compilador no lo cazaba: una lista vacía es una lista válida.
     //
-    // **Sigue faltando quien escriba en `measurement`**, que es la pantalla de
-    // monitor. Hasta que exista, esto devuelve vacío y el comportamiento es el
-    // mismo; lo que cambia es que el día que la pantalla anote una medición, la
-    // rampa avanza sin tocar este archivo.
+    // **Y esto decía tres cosas que dejaron de ser ciertas el 2026-09-19.** Decía
+    // que seguía faltando quien escribiera en `measurement`, que iba a ser la
+    // pantalla de monitor, y que hasta entonces esta lista volvía vacía. Ya hay
+    // quien escribe --la pantalla de **ganancia**, que captura dieciocho segundos
+    // después de aplicar-- así que en una sesión donde se midió ganancia esta
+    // lista **ya trae filas**.
+    //
+    // Lo que sí sigue en pie es el comportamiento de ESTE camino, y por otro
+    // motivo: `EnvioAMonitorService` **no mide**, así que nadie anota
+    // `medicionPosteriorId` en una transacción de monitor y ninguna cuña queda con
+    // escucha comprobada. Quien va a capturar acá es la pantalla por músico, y
+    // cuando lo haga la rampa avanza sin tocar este archivo.
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.
