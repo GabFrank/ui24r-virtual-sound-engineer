@@ -80,8 +80,24 @@ mirar la frescura de las tramas y era una tarea aparte.** No: `permiteEscribir()
 cualquier estado que no sea conectado y no vuelve hasta un volcado completo—. Lo
 que falla es que la captura lo consulta **una sola vez, al final**, mientras el
 muestreo ya corre cada 50 ms. Consultarlo ahí cierra el caso **sin ningún
-mecanismo nuevo**. El comentario falso ya se corrigió; la línea no se escribió
-porque cambia el comportamiento y no era la tarea en curso.
+mecanismo nuevo**. La línea no se escribió porque cambia el comportamiento y no
+era la tarea en curso.
+
+**Y esta frase decía «el comentario falso ya se corrigió», que era falso de la
+misma forma que el comentario.** Se corrigió **uno** de cinco. La frase
+retractada seguía escrita en el molde de la escucha, en el asistente de
+ganancia, en ADR-036 y en el hallazgo 2 de la tanda anterior —donde además
+proponía el mecanismo caro con nombre y apellido—. Las cuatro quedaron marcadas
+como retractadas el 2026-09-19, en su sitio y con qué las hizo caer, que es lo
+que este repositorio pide en vez de borrarlas.
+
+**La lección no es «corregir mejor».** Es que **una corrección no se declara
+hecha sin contar las copias**, y contarlas es un `grep` de un término que no
+aparece en ningún otro contexto —acá, «frescura»—. La frase que se retractó
+había llegado a cinco lugares por copia; la que decía haberla arreglado se
+escribió mirando uno. Es la misma forma de la sesión de la mañana, donde una
+afirmación falsa vivía en cinco sitios: **lo que se repite se pudre en bloque, y
+el que lo corrige ve sólo el sitio que tenía abierto.**
 
 Variante igual de barata: que deje de llegar **la cola** de la trama mientras el
 canal sigue actualizándose. Cuña realmente medida 2,0 s de 18 → 18,00 s

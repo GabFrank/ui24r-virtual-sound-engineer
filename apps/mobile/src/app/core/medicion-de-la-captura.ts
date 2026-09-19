@@ -188,8 +188,20 @@ function conSonido(muestras: readonly MuestraVu[]): readonly MuestraVu[] {
  * movió» y esta prueba concede. Para eso está la otra mitad, en
  * `guardarLaEscucha`, que se niega a guardar una escucha si la consola no estaba
  * conectada al terminar; y ninguna de las dos alcanza a una caída que empieza y
- * termina adentro de la ventana. Eso se cierra mirando la frescura de las tramas,
- * y es una tarea aparte.
+ * termina adentro de la ventana.
+ *
+ * **Retractado el 2026-09-19.** Acá decía que esa caída «se cierra mirando la
+ * frescura de las tramas, y es una tarea aparte», y es falso. Lo midió una
+ * auditoría adversarial del mismo día: `ConnectionStateService` **ya ve la
+ * caída** —`fijarEstado` invalida el estado confirmado con cualquier estado que
+ * no sea `CONNECTED`, y no vuelve hasta un volcado completo—, así que
+ * `permiteEscribir()` es falso durante toda la caída. Lo que falla no es que
+ * falte el dato: es que la captura lo consulta **una sola vez, al final**,
+ * mientras el muestreo ya corre cada `INTERVALO_DE_MUESTREO_MS` y podría
+ * consultarlo en cada muestra. No hace falta ningún mecanismo de frescura.
+ *
+ * Sigue abierto, pero vale una línea y no una tarea aparte. Los números están en
+ * `docs/backlog/hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`.
  */
 function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
   if (sonando.length === 0) return false;

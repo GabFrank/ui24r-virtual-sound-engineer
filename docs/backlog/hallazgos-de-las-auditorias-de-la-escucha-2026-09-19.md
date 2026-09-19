@@ -50,10 +50,21 @@ escucha si la consola no está conectada al terminar la ventana—.
 
 **Lo que ninguna de las dos alcanza:** una conexión que se cae y vuelve *adentro*
 de la misma ventana. Deja dos valores distintos, así que el medidor «se movió», y
-al terminar la consola está conectada. Se cierra mirando la **frescura de las
-tramas** —cuántos milisegundos hace que llegó la última `VU2`— en vez del estado
-de la conexión. El adaptador ya lleva esa cuenta (`ultimaTramaVuMs`) y no la
-expone.
+al terminar la consola está conectada.
+
+**Cómo se cierra: RETRACTADO el 2026-09-19.** Acá decía que se cierra mirando la
+**frescura de las tramas** —cuántos milisegundos hace que llegó la última `VU2`—
+en vez del estado de la conexión, y que el adaptador ya lleva esa cuenta
+(`ultimaTramaVuMs`, privada) sin exponerla. Las dos frases sobre el adaptador son
+ciertas; **la conclusión es falsa, y es la que importaba**, porque presentaba
+como un mecanismo nuevo algo que ya está. Lo midió una auditoría adversarial de
+la tanda siguiente: `ConnectionStateService` **ya ve la caída** —`fijarEstado`
+invalida el estado confirmado con cualquier estado que no sea `CONNECTED`, y no
+vuelve hasta un volcado completo—, así que `permiteEscribir()` es falso durante
+toda la caída. Lo que falla es **dónde se pregunta**: una sola vez, al final,
+mientras el muestreo ya corre en cada muestra. Los números, y lo que el agujero
+compra mientras tanto, están en
+[`hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`](hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md).
 
 ---
 

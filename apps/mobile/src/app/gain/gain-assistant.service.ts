@@ -242,8 +242,18 @@ export class GainAssistantService {
     //
     // **Lo que esta mitad alcanza, exacto:** la ventana que TERMINA con la consola
     // caída. Una caída que empieza y termina adentro de la ventana no la ve ni
-    // ésta ni la otra; para eso hay que mirar la frescura de las tramas, y es una
-    // tarea aparte, anotada.
+    // ésta ni la otra.
+    //
+    // **Retractado el 2026-09-19.** Acá decía que para eso «hay que mirar la
+    // frescura de las tramas, y es una tarea aparte», y es falso. Lo midió una
+    // auditoría adversarial del mismo día: `ConnectionStateService` **ya ve la
+    // caída** --`fijarEstado` invalida el estado confirmado con cualquier estado
+    // que no sea `CONNECTED`, y no vuelve hasta un volcado completo--, así que
+    // `permiteEscribir()` es falso durante toda la caída. Lo que falla es que
+    // esto lo consulta **una sola vez, al final**, mientras la captura ya
+    // muestrea cada 50 ms. No hace falta ningún mecanismo de frescura, y el
+    // agujero es el mismo para la ganancia que para la cuña: arreglarlo una vez
+    // arregla las dos.
     //
     // **Medir sigue funcionando**: lo que no se guarda es el permiso.
     if (!this.conexion.permiteEscribir()) {
