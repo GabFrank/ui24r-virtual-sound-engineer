@@ -33,6 +33,27 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   pantalla y no se enteraba nunca más, mientras los dos medidores de arriba sí se
   movían. Lo encontró una auditoría, y ahora hay una guarda que lo comprueba.
 
+  **A una cuña le entran 32 caminos y ahora se ven los 32.** No son sólo los 24
+  canales: también las dos entradas de línea, los dos del reproductor y **los
+  cuatro retornos de efecto**. Ese último es el que importa: la reverb de un
+  cantante en su propia cuña es lo más común que hay, y antes no aparecía —con
+  los canales cerrados, la pantalla llegaba a decirte que a esa cuña no le
+  llegaba nada—. De esos ocho la aplicación te dice **que mandan, no cuánto**:
+  la ley que traduce a decibeles se midió sobre un canal y sobre nada más, y
+  suponerle la misma a un efecto sería inventar un número. Van marcados **«lo
+  movés vos»**, porque la aplicación sólo puede mover los canales.
+
+  **Y abajo hay una línea que rinde cuentas**: «de los 32 caminos que entran a
+  esta cuña, tantos mandan algo, tantos están cerrados». La tabla esconde lo
+  cerrado a propósito, y una tabla que esconde sin decirlo es justamente lo que
+  te hacía creer que a una cuña no le llegaba nada.
+
+  **Dos correcciones más, de mirar los bordes.** Un envío puesto justo en
+  nominal decía, en ámbar, que estaba «0.0 dB por encima del techo» —una frase
+  que se contradice sola, y en el caso central: es exactamente donde tiene que
+  quedar—. Y si declarás dos monitores sobre el mismo auxiliar (una cuña de piso
+  más unos intraurales, por ejemplo), elegías uno y veías el otro.
+
   **Todavía no sube nada ni podés marcar «así está bien»**: eso es lo que sigue.
   Elegiste vos empezar por ver, y elegiste que cuando suba lo haga de a un envío
   por vez.

@@ -42,21 +42,51 @@ interface FilaDeLaCuna {
   readonly tono: TonoDeInsignia;
   /** Si de este camino no se pudo leer nada. Decide el aviso de arriba. */
   readonly sinLeer: boolean;
+  /** Si la aplicación puede mover este camino. Sólo los 24 canales. */
+  readonly laMueveLaAplicacion: boolean;
 }
 
 /** Cómo se dice cada nivel, y con qué tono. La cuenta está en el módulo puro. */
+/**
+ * Cuánto tiene que separarse de nominal para que se diga que no está en nominal.
+ *
+ * **Una décima de decibel, que es lo que la columna imprime.** Sin tolerancia,
+ * un envío puesto en 0 dB desde la consola --crudo 0,7647, el `zeroDbPos` del
+ * cliente-- daba `3,1e-14` dB y la pantalla lo anunciaba en ámbar como «0.0 dB
+ * POR ENCIMA del techo», que es una frase que se contradice sola. Y del otro
+ * lado imprimía «−0.0 dB». Justo en el caso central de ADR-034: el envío llegó
+ * exactamente a donde tenía que llegar.
+ */
+const EN_NOMINAL_DB = 0.05;
+
+/** Sin cero negativo: «−0.0 dB» ya llegó a la tablet una vez. */
+function dbDeTabla(db: number): string {
+  const x = Math.abs(db) < EN_NOMINAL_DB ? 0 : db;
+  return `${x.toFixed(1)} dB`;
+}
+
 function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 'tono'> {
   switch (n.tipo) {
-    case 'EN_DB':
+    case 'EN_DB': {
+      if (Math.abs(n.aNominalDb) < EN_NOMINAL_DB) {
+        return { nivel: dbDeTabla(n.db), detalle: 'en el techo', tono: 'ok' };
+      }
       return {
-        nivel: `${n.db.toFixed(1)} dB`,
-        detalle: n.aNominalDb >= 0
+        nivel: dbDeTabla(n.db),
+        detalle: n.aNominalDb > 0
           ? `${n.aNominalDb.toFixed(1)} dB hasta el techo`
           : `${(-n.aNominalDb).toFixed(1)} dB por encima del techo`,
-        tono: n.aNominalDb >= 0 ? 'neutro' : 'aviso',
+        tono: n.aNominalDb > 0 ? 'neutro' : 'aviso',
       };
+    }
     case 'EN_SILENCIO':
       return { nivel: 'Cerrado', detalle: 'no le llega nada por este camino', tono: 'neutro' };
+    case 'MANDA_SIN_LEY':
+      return {
+        nivel: 'Manda',
+        detalle: 'la ley de este camino no está medida: se sabe que le llega, no cuánto',
+        tono: 'aviso',
+      };
     case 'FUERA_DEL_TRAMO_MEDIDO':
       return {
         nivel: 'Muy abajo',
@@ -130,8 +160,8 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
         <ui-card titulo="Cuál" subtitulo="Por qué auxiliar sale su monitor">
           <div class="racimo">
             @for (c of cunas(); track c.componenteId) {
-              <ui-button [variante]="c.auxiliar === auxiliar() ? 'primario' : 'secundario'"
-                         (pulsado)="elegirCuna(c.auxiliar)">{{ c.nombre }}</ui-button>
+              <ui-button [variante]="c.componenteId === cunaElegida()?.componenteId ? 'primario' : 'secundario'"
+                         (pulsado)="elegirCuna(c.componenteId)">{{ c.nombre }}</ui-button>
             }
           </div>
           @if (cunaElegida(); as c) {
@@ -172,7 +202,7 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
 
         @if (filas().length === 0) {
           <ui-empty icono="canales" titulo="A esta cuña no le llega nada"
-            detalle="Ningún canal manda a este auxiliar, y el músico elegido no tiene ninguno asignado. Revisá a quién pertenece esta cuña." />
+            detalle="Ninguno de los 32 caminos que entran a este auxiliar manda algo —ni los canales, ni las entradas de línea, ni el reproductor, ni los efectos— y el músico elegido no tiene ningún canal asignado." />
         } @else {
           <div class="desplaza-x ancho">
             <table>
@@ -189,6 +219,9 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                     <td class="izq">
                       <span class="idx num">{{ f.canal }}</span> {{ f.que }}
                       @if (f.esSuyo) { <ui-badge tono="ok">Su instrumento</ui-badge> }
+                      @if (!f.laMueveLaAplicacion) {
+                        <ui-badge tono="neutro">Lo movés vos</ui-badge>
+                      }
                     </td>
                     <td class="num">{{ f.nivel }}</td>
                     <td class="izq det">{{ f.detalle }}</td>
@@ -203,6 +236,9 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
               <ui-card [titulo]="f.que" [subtitulo]="'Entrada ' + f.canal">
                 <div class="racimo-insignias">
                   @if (f.esSuyo) { <ui-badge tono="ok">Su instrumento</ui-badge> }
+                  @if (!f.laMueveLaAplicacion) {
+                    <ui-badge tono="neutro">Lo movés vos</ui-badge>
+                  }
                   <ui-badge [tono]="f.tono">{{ f.nivel }}</ui-badge>
                 </div>
                 <p class="det">{{ f.detalle }}</p>
@@ -210,6 +246,17 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
             }
           </div>
         }
+
+        @if (cuenta(); as c) {
+          <p class="nota-cierre">{{ c }}</p>
+        }
+
+        <p class="nota-cierre">
+          De los canales ajenos se muestran sólo los que le mandan algo. Las
+          entradas de línea, el reproductor y los efectos entran a la misma cuña
+          y <strong>los movés vos</strong>: la aplicación sólo puede mover los
+          canales, que es lo único con la ley medida contra tu consola.
+        </p>
 
         <p class="nota-cierre">
           Todavía no se puede subir nada desde acá, y tampoco marcar «así está
@@ -304,7 +351,17 @@ export class MonitoresComponent {
   recargar(): void { void this.datos.recargar(); }
 
   private readonly musicoId = signal<string | null>(null);
-  private readonly auxiliarElegido = signal<number | null>(null);
+  /**
+   * Cuál cuña se está mirando, **por identificador del componente**.
+   *
+   * La primera versión guardaba el número de auxiliar, y el editor de perfiles
+   * deja declarar dos monitores sobre el mismo --una cuña de piso más unos
+   * intraurales en la misma mezcla es lo más común que hay--. Con eso, tocar el
+   * segundo mostraba el primero: el título decía el nombre del otro, la insignia
+   * «Intraural» desaparecía, y los dos botones quedaban encendidos a la vez. Los
+   * decibeles no mentían --es el mismo auxiliar-- pero la identidad sí.
+   */
+  private readonly cunaElegidaId = signal<string | null>(null);
 
   /** Los integrantes que tienen al menos un canal: de los demás no hay cuña que mirar. */
   readonly musicos = computed<readonly BandMember[]>(() => {
@@ -343,8 +400,8 @@ export class MonitoresComponent {
 
   readonly cunaElegida = computed<CunaElegible | null>(() => {
     const lista = this.cunas();
-    const elegida = this.auxiliarElegido();
-    return lista.find((c) => c.auxiliar === elegida) ?? lista[0] ?? null;
+    const elegida = this.cunaElegidaId();
+    return lista.find((c) => c.componenteId === elegida) ?? lista[0] ?? null;
   });
 
   readonly auxiliar = computed(() => this.cunaElegida()?.auxiliar ?? null);
@@ -396,10 +453,10 @@ export class MonitoresComponent {
   readonly saleDeLaCuna = computed(() => dbLegible(this.laCuna()?.nivelDb));
   readonly llegaAlAuxiliar = computed(() => dbLegible(this.laCuna()?.nivelAntesDelFaderDb));
 
-  readonly filas = computed<readonly FilaDeLaCuna[]>(() => {
+  private readonly loQueLlega = computed(() => {
     const aux = this.auxiliar();
-    if (aux === null) return [];
-    const caminos = loQueLlegaALaCuna(
+    if (aux === null) return null;
+    return loQueLlegaALaCuna(
       aux,
       (this.musico()?.id as string | undefined) ?? null,
       this.mixer.canales().map((c) => ({ indice: c.indice, nombre: c.nombre })),
@@ -410,7 +467,27 @@ export class MonitoresComponent {
       })),
       this.volcado(),
     );
-    return caminos.map(aFila);
+  });
+
+  readonly filas = computed<readonly FilaDeLaCuna[]>(
+    () => this.loQueLlega()?.caminos.map(aFila) ?? []);
+
+  /**
+   * El recuento de los 32 caminos, para que la pantalla rinda cuentas.
+   *
+   * **Existe porque la tabla esconde cosas a propósito** --lo cerrado de los
+   * demás, y lo ilegible cuando no se leyó nada-- y una tabla que esconde sin
+   * decirlo es la que hacía creer que a una cuña no le llegaba nada. Acá se
+   * cuentan los 32, se muestren o no, así que se puede comprobar que no falta
+   * ninguno.
+   */
+  readonly cuenta = computed(() => {
+    const c = this.loQueLlega()?.cuenta;
+    if (c === undefined) return null;
+    const partes = [`${c.mandan} mandan algo`];
+    if (c.cerrados > 0) partes.push(`${c.cerrados} cerrados`);
+    if (c.sinLeer > 0) partes.push(`${c.sinLeer} sin poder leer`);
+    return `De los ${c.total} caminos que entran a esta cuña: ${partes.join(', ')}.`;
   });
 
   /**
@@ -429,13 +506,14 @@ export class MonitoresComponent {
   });
 
   elegirMusico(id: BandMember['id']): void { this.musicoId.set(id as string); }
-  elegirCuna(auxiliar: number): void { this.auxiliarElegido.set(auxiliar); }
+  elegirCuna(componenteId: string): void { this.cunaElegidaId.set(componenteId); }
 }
 
 function aFila(c: CaminoALaCuna): FilaDeLaCuna {
   return {
     canal: c.canal, que: c.que, esSuyo: c.esSuyo,
     sinLeer: c.nivel.tipo === 'SIN_LEER',
+    laMueveLaAplicacion: c.laMueveLaAplicacion,
     ...comoSeDice(c.nivel),
   };
 }

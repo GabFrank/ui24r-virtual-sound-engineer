@@ -1,5 +1,8 @@
 import { LIMITES } from '@vse/domain';
-import { entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
+import {
+  CANALES_DE_ENTRADA, entrada, esEnvioAUnAuxiliar, esNivelDeEnvioAMonitor,
+  FUENTES_DE_UN_AUXILIAR,
+} from '@vse/mixer-adapter';
 
 /**
  * Qué le llega a la cuña de un músico, leído del estado confirmado.
@@ -66,10 +69,11 @@ export function rutaDelEnvio(canal: number, auxiliar: number): string | undefine
 /**
  * En qué nivel está un envío, o por qué no se puede decir.
  *
- * **Los cuatro casos son distintos para el que mira, y ésa es la razón de que
- * sean cuatro.** «Está en silencio» invita a subir; «no lo pude leer» invita a
- * mirar la conexión; y «está por debajo del tramo medido» dice que el número
- * existe pero que ponerlo en decibeles sería inventarlo.
+ * **Cada caso es distinto para el que mira, y ésa es la razón de que sean
+ * cinco.** «Está en silencio» invita a subir; «no lo pude leer» invita a mirar
+ * la conexión; «fuera del tramo medido» dice que el número existe pero que
+ * ponerlo en decibeles sería inventarlo; y «manda, sin ley medida» dice que ese
+ * camino le está llegando al músico y que **nadie midió cuánto vale su escala**.
  */
 export type NivelDelEnvio =
   | {
@@ -102,6 +106,20 @@ export type NivelDelEnvio =
    * crudo, que es el dato que de verdad se tiene.
    */
   | { readonly tipo: 'FUERA_DEL_TRAMO_MEDIDO'; readonly crudo: number }
+  /**
+   * Manda algo, y la ley de **esa familia** no está medida.
+   *
+   * Es el caso de las entradas de línea, el reproductor y los retornos de
+   * efecto: entran a la misma cuña que los canales y el ítem 104 midió **sólo**
+   * `i.9.aux.4.value`. Suponerles la misma curva sería lo que la regla 1 del
+   * repositorio prohíbe, así que se dice lo que se sabe --que ese camino está
+   * abierto-- y no lo que no.
+   *
+   * **Y se dice, en vez de esconderlo, que es lo que hacía la primera versión.**
+   * Un retorno de reverb abierto en la cuña de un cantante es lo más común que
+   * hay, y la pantalla llegaba a decir «a esta cuña no le llega nada».
+   */
+  | { readonly tipo: 'MANDA_SIN_LEY'; readonly crudo: number }
   /** La consola no publicó esa clave, o publicó algo que no es un número. */
   | { readonly tipo: 'SIN_LEER' };
 
@@ -129,14 +147,27 @@ export function leerNivelDelEnvio(
   // este repositorio ya nombró en `puedeSubirEnvioAMonitor`: el nombre mentía.
   // Lo encontró el test de esta pieza, que daba por sentado que `i.0.gate.depth`
   // no tenía ley.
-  if (!esNivelDeEnvioAMonitor(ruta)) return { tipo: 'SIN_LEER' };
-  const e = entrada(ruta);
-  if (e === undefined) return { tipo: 'SIN_LEER' };
+  if (!esEnvioAUnAuxiliar(ruta)) return { tipo: 'SIN_LEER' };
   const leido = volcado.get(ruta);
   if (leido === undefined || !Number.isFinite(leido.valor)) return { tipo: 'SIN_LEER' };
   const crudo = leido.valor;
+  // **El crudo cero es lo único que se puede afirmar sin ley**: es el extremo
+  // del control, no un valor convertido. De ahí para arriba, sin ley no hay
+  // decibeles que decir.
   if (crudo === 0) return { tipo: 'EN_SILENCIO' };
-  if (crudo < e.rawMin || crudo > e.rawMax) return { tipo: 'FUERA_DEL_TRAMO_MEDIDO', crudo };
+  // La ley está medida para la familia `i` y nada más (ítem 104). Se pregunta
+  // por la **escritura**, que es la que exige ley, y no por la lectura.
+  const e = esNivelDeEnvioAMonitor(ruta) ? entrada(ruta) : undefined;
+  if (e === undefined) return { tipo: 'MANDA_SIN_LEY', crudo };
+  if (crudo < e.rawMin || crudo > e.rawMax) {
+    // **Los dos bordes son distintos y la primera versión los colapsó.** Un
+    // crudo por encima del tope decía «muy abajo», sobre el camino que más
+    // fuerte estaba mandando. Arriba del tramo medido se sabe algo útil: está
+    // al máximo o cerca, así que va por «manda» y no por «fuera del tramo».
+    return crudo > e.rawMax
+      ? { tipo: 'MANDA_SIN_LEY', crudo }
+      : { tipo: 'FUERA_DEL_TRAMO_MEDIDO', crudo };
+  }
   const db = e.fromRaw(crudo);
   // La ley puede devolver algo no finito en los bordes; si pasa, se dice que no
   // se pudo leer en vez de imprimir «−∞ dB» en una tabla, que es lo que llegó a
@@ -169,7 +200,30 @@ export interface CaminoALaCuna {
   readonly que: string;
   /** Si este canal es del músico que se está mirando. */
   readonly esSuyo: boolean;
+  /**
+   * Si la aplicación puede mover este camino.
+   *
+   * Sólo los 24 canales: es lo que ADR-028 abrió y lo único con ley medida. Las
+   * entradas de línea, el reproductor y los efectos **entran a la misma cuña y
+   * son del usuario**. Decirlo en la fila evita la pregunta «¿y por qué a éste
+   * no me lo sube?» tres minutos antes de empezar.
+   */
+  readonly laMueveLaAplicacion: boolean;
   readonly nivel: NivelDelEnvio;
+}
+
+/** El recuento de los 32 caminos, para que la pantalla pueda rendir cuentas. */
+export interface CuentaDeLaCuna {
+  readonly total: number;
+  readonly mandan: number;
+  readonly cerrados: number;
+  readonly sinLeer: number;
+}
+
+/** Lo que la pantalla necesita de una cuña: las filas y el recuento. */
+export interface LoQueLlega {
+  readonly caminos: readonly CaminoALaCuna[];
+  readonly cuenta: CuentaDeLaCuna;
 }
 
 /**
@@ -209,19 +263,21 @@ export function loQueLlegaALaCuna(
   canales: readonly CanalParaLaCuna[],
   asignaciones: readonly AsignacionParaLaCuna[],
   volcado: ReadonlyMap<string, { readonly valor: number }>,
-): readonly CaminoALaCuna[] {
+): LoQueLlega {
   const porEntrada = new Map(asignaciones.map((a) => [a.entrada, a]));
   const porIndice = new Map(canales.map((c) => [c.indice, c]));
-  // **La lista sale de la UNIÓN de lo que publica la consola y lo que la banda
-  // tiene asignado, y no sólo de la consola.** Con la consola desconectada
-  // `canales` viene vacío, así que recorrerla sola dejaba la pantalla sin una
-  // sola fila --ni siquiera el instrumento del propio músico-- mientras el aviso
-  // de arriba prometía «lo que se ve abajo es quién manda a esta cuña, no
-  // cuánto». El aviso decía una cosa y la tabla mostraba otra. Se encontró
-  // probando la cadena entera, no con un test de la función.
-  const indices = [...new Set([...porIndice.keys(), ...porEntrada.keys()])];
+  // **Se censan los 24 canales, siempre, y la consola sólo aporta los nombres.**
+  // La primera versión recorría lo que la consola publicaba, así que con la
+  // consola desconectada no quedaba una sola fila --ni el instrumento del propio
+  // músico-- mientras el aviso de arriba prometía «quién manda a esta cuña, no
+  // cuánto». La segunda recorría la unión con las asignaciones, que arreglaba
+  // eso y dejaba el recuento mintiendo: decía «de los 12 caminos» cuando a un
+  // auxiliar le entran 32. Un canal que la consola no publicó **sigue siendo un
+  // camino a esa cuña**; lo que falta es el dato, no el camino.
+  const indices = Array.from({ length: CANALES_DE_ENTRADA }, (_, k) => k + 1);
   const suyos: CaminoALaCuna[] = [];
   const ajenos: CaminoALaCuna[] = [];
+  const todos: CaminoALaCuna[] = [];
 
   for (const indice of indices) {
     const ruta = rutaDelEnvio(indice, auxiliar);
@@ -239,32 +295,93 @@ export function loQueLlegaALaCuna(
       // músico sin identificador se quedaría con todos los canales que tampoco
       // lo tienen, y la fila «tu instrumento» mostraría el bombo de otro.
       esSuyo: integranteId !== null && a !== undefined && a.integranteId === integranteId,
+      laMueveLaAplicacion: true,
       nivel: leerNivelDelEnvio(ruta, volcado),
     };
+    todos.push(camino);
     if (camino.esSuyo) suyos.push(camino);
     else if (camino.nivel.tipo !== 'EN_SILENCIO') ajenos.push(camino);
   }
 
+  // **Las otras tres familias, que entran a la misma cuña y la primera versión
+  // no miraba.** Son ocho caminos más --dos de línea, dos del reproductor y
+  // cuatro retornos de efecto-- y el que importa es el último: la reverb de un
+  // cantante en su propia cuña es lo más común que hay, y sin esto la pantalla
+  // llegaba a decir «a esta cuña no le llega nada». No son de nadie --nadie las
+  // asigna a un integrante-- y la aplicación no las puede mover.
+  for (const f of FUENTES_DE_UN_AUXILIAR) {
+    if (f.familia === 'i') continue;
+    for (let n = 1; n <= f.cuantas; n++) {
+      const ruta = `${f.familia}.${n - 1}.aux.${auxiliar - 1}.value`;
+      if (!esEnvioAUnAuxiliar(ruta)) continue;
+      const camino: CaminoALaCuna = {
+        // Se numeran por debajo de cero para que no choquen con los canales al
+        // ordenar y al seguir la lista: son otra familia, no el canal 25.
+        canal: -(FUENTES_DE_UN_AUXILIAR.indexOf(f) * 100 + n),
+        ruta,
+        que: `${f.comoSeLlama} ${n}`,
+        esSuyo: false,
+        laMueveLaAplicacion: false,
+        nivel: leerNivelDelEnvio(ruta, volcado),
+      };
+      todos.push(camino);
+      if (camino.nivel.tipo !== 'EN_SILENCIO') ajenos.push(camino);
+    }
+  }
+
   // Si de esta cuña no se leyó ni un envío, los ajenos desconocidos son ruido:
   // lo que hay que decir --una sola vez, arriba-- es que la cuña no se leyó.
-  const seLeyoAlgo = [...suyos, ...ajenos].some((c) => c.nivel.tipo !== 'SIN_LEER');
+  const seLeyoAlgo = todos.some((c) => c.nivel.tipo !== 'SIN_LEER');
   const ajenosVisibles = seLeyoAlgo
     ? ajenos
     : ajenos.filter((c) => c.nivel.tipo !== 'SIN_LEER');
 
   suyos.sort((x, y) => x.canal - y.canal);
-  ajenosVisibles.sort((x, y) => cuantoManda(y.nivel) - cuantoManda(x.nivel) || x.canal - y.canal);
-  return [...suyos, ...ajenosVisibles];
+  ajenosVisibles.sort((x, y) => certeza(y.nivel) - certeza(x.nivel)
+    || cuantoManda(y.nivel) - cuantoManda(x.nivel)
+    || x.canal - y.canal);
+
+  // **El recuento cubre los 32, incluidos los que no se muestran.** Es lo que
+  // permite que la pantalla rinda cuentas en vez de prometer completitud: quien
+  // mira puede ver que no falta nada escondido. Se cuenta sobre `todos`, que es
+  // el censo, y no sobre las filas visibles.
+  return {
+    caminos: [...suyos, ...ajenosVisibles],
+    cuenta: {
+      total: todos.length,
+      mandan: todos.filter((c) => c.nivel.tipo === 'EN_DB'
+        || c.nivel.tipo === 'MANDA_SIN_LEY'
+        || c.nivel.tipo === 'FUERA_DEL_TRAMO_MEDIDO').length,
+      cerrados: todos.filter((c) => c.nivel.tipo === 'EN_SILENCIO').length,
+      sinLeer: todos.filter((c) => c.nivel.tipo === 'SIN_LEER').length,
+    },
+  };
 }
 
 /**
  * Con qué criterio se ordenan los ajenos.
  *
- * Lo que no está en decibeles se va al final **sin inventarle un número**: lo
- * que no se pudo leer y lo que cae fuera del tramo medido comparten el último
- * lugar, y entre ellos desempata el número de canal. Darle `-Infinity` a lo que
- * no se leyó sería afirmar que manda poco, que es justo lo que no se sabe.
+ * **Se ordena por CERTEZA y después por nivel, y no todo junto.** No hay un
+ * orden total honesto: un retorno de efecto abierto y un canal en −30 dB no se
+ * pueden comparar, porque la ley de la familia del efecto no está medida.
+ * Colapsarlos en un número obligaría a inventarle un valor a uno de los dos, y
+ * cualquiera de las dos invenciones miente en el caso que importa --mandar la
+ * reverb del cantante al fondo de la lista, o ponerla arriba de todo--.
+ *
+ * Así que primero van los que se saben en decibeles, de mayor a menor; después
+ * los que mandan sin ley medida; después los que caen por debajo del tramo; y al
+ * final los que no se pudieron leer. La columna de detalle dice cuál es cuál.
  */
+function certeza(n: NivelDelEnvio): number {
+  switch (n.tipo) {
+    case 'EN_DB': return 3;
+    case 'MANDA_SIN_LEY': return 2;
+    case 'FUERA_DEL_TRAMO_MEDIDO': return 1;
+    default: return 0;
+  }
+}
+
+/** Dentro de los que se saben en decibeles, el que más manda va arriba. */
 function cuantoManda(n: NivelDelEnvio): number {
   return n.tipo === 'EN_DB' ? n.db : Number.NEGATIVE_INFINITY;
 }

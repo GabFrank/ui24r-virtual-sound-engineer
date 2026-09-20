@@ -76,6 +76,18 @@ const DELIBERADAS = new Map<string, string>([
     + '`i.03.aux.1.value`: es la misma banda y el estado se indexa por cadena cruda'],
   ['m.eq.otracosa.l.7', 'una ruta MAL FORMADA a proposito: un numero despues de `l` que '
     + 'NO viene de `peak` no es una banda, y tiene que fallar cerrado'],
+
+  // **Los bordes de las otras tres familias que entran a un auxiliar**, del
+  // 2026-09-20. A una cuna le entran 32 caminos y la pantalla por musico los
+  // lista; `esEnvioAUnAuxiliar` acota cada familia con su censo del inventario,
+  // y hay que probar que el de arriba se rechace. Que no esten en el inventario
+  // ES el punto, igual que `a.10.eq.peak.0`.
+  ['l.2.aux.0.value', 'hay 2 entradas de linea, 0 y 1: prueba que el borde de arriba se '
+    + 'rechace. Censadas en el inventario del 2026-09-11: 20 envios de linea / 10 aux'],
+  ['p.2.aux.0.value', 'hay 2 canales del reproductor, 0 y 1: el mismo borde. 20 envios '
+    + 'del reproductor sobre 10 auxiliares'],
+  ['f.4.aux.0.value', 'hay 4 retornos de efecto, 0 a 3: el mismo borde. 40 envios de '
+    + 'retorno sobre 10 auxiliares'],
   ['m.l.7', 'idem, en su forma mas corta'],
 
   // **Las cinco de abajo existen para probar que NO se escriben.** Son las que

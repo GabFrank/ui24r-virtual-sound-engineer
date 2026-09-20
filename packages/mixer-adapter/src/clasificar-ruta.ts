@@ -273,6 +273,59 @@ export const AUXILIARES = 10;
 export const BANDAS_DEL_GRAFICO = 31;
 
 /**
+ * Las otras fuentes que entran a un bus auxiliar, además de los 24 canales.
+ *
+ * **Censadas en el aparato del usuario**, inventario del 2026-09-11: de los
+ * envíos `*.aux.*.value` observados hay **240 de canales, 20 de línea, 20 del
+ * reproductor y 40 de retornos de efecto** — o sea **32 fuentes por auxiliar**,
+ * repartidas en cuatro familias, no 24 en una.
+ *
+ * **Están acá porque una pantalla que muestre 24 le miente al músico.** La
+ * primera versión de la pantalla por músico listaba sólo la familia `i`, así que
+ * la reverb de un cantante —un retorno de efecto abierto en su cuña, lo más
+ * común que hay— no aparecía, y con el resto cerrado la pantalla llegaba a
+ * decir «a esta cuña no le llega nada». Lo encontró una auditoría adversarial el
+ * 2026-09-20 contando las claves del inventario.
+ *
+ * **Y no abren ninguna escritura.** {@link esNivelDeEnvioAMonitor} sigue
+ * aceptando sólo `i.N.aux.M.value`, que es lo que ADR-028 abrió y lo único con
+ * ley medida. Estas familias son para **leer**.
+ */
+export const ENTRADAS_DE_LINEA = 2;
+export const CANALES_DEL_REPRODUCTOR = 2;
+export const RETORNOS_DE_EFECTO = 4;
+
+/** Qué familias entran a un auxiliar, cuántas hay de cada una y cómo se llaman. */
+export const FUENTES_DE_UN_AUXILIAR = [
+  { familia: 'i', cuantas: CANALES_DE_ENTRADA, comoSeLlama: 'Canal' },
+  { familia: 'l', cuantas: ENTRADAS_DE_LINEA, comoSeLlama: 'Entrada de línea' },
+  { familia: 'p', cuantas: CANALES_DEL_REPRODUCTOR, comoSeLlama: 'Reproductor' },
+  { familia: 'f', cuantas: RETORNOS_DE_EFECTO, comoSeLlama: 'Efecto' },
+] as const;
+
+/**
+ * Si una ruta es el nivel de un envío a un auxiliar, **de cualquiera de las
+ * cuatro familias**, en forma canónica y dentro del rango real.
+ *
+ * **Es para LEER, y la distinción con {@link esNivelDeEnvioAMonitor} es toda la
+ * gracia.** Aquélla decide si la aplicación puede **escribir** ahí, y sigue
+ * aceptando sólo la familia `i`: es lo que ADR-028 abrió y lo único con ley
+ * medida contra el aparato (ítem 104). Ésta sólo dice «esto entra a esa cuña».
+ * Confundirlas abriría tres familias a la escritura sin decisión y sin ley.
+ */
+export function esEnvioAUnAuxiliar(ruta: string): boolean {
+  const m = /^([ilpf])\.(\d+)\.aux\.(\d+)\.value$/.exec(ruta);
+  if (m === null) return false;
+  const [familia, fuente, aux] = [m[1]!, m[2]!, m[3]!];
+  // Forma canónica: el número tiene que volver a escribirse igual. Mismo motivo
+  // que en `esNivelDeEnvioAMonitor` — `03` y `3` serían dos rutas para el estado.
+  if (String(Number(fuente)) !== fuente || String(Number(aux)) !== aux) return false;
+  const cuantas = FUENTES_DE_UN_AUXILIAR.find((f) => f.familia === familia)?.cuantas;
+  if (cuantas === undefined) return false;
+  return Number(fuente) < cuantas && Number(aux) < AUXILIARES;
+}
+
+/**
  * Si una ruta es **exactamente** un nivel de envío a monitor de esta consola.
  *
  * **Por qué no alcanza la expresión regular del clasificador.** Los patrones de
