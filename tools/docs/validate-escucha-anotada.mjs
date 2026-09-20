@@ -181,20 +181,55 @@ const GUARDA_DE_CONEXION = /\.\s*permiteEscribir\s*\(/;
  * arreglo; y lo que la caza es leer `recolectar` en el servicio de la cuña, que
  * empuja las dos en el mismo tic.
  */
-const SERIE_DE_LA_CUNA = /\bmuestrasDeLaCuna\s*\??\s*:/;
+const SERIE_DE_LA_CUNA = /\bmuestrasDeLaCuna\b/;
 
 /**
- * Lo que convierte una coincidencia en una declaración y no en un pase.
+ * Dónde tiene que aparecer la serie para que pasarla signifique algo: **dentro
+ * de los argumentos de la llamada** a `medicionDeLaCaptura`.
  *
- * **El punto y coma, y no la palabra de adelante.** Un miembro de interfaz y un
- * campo de clase terminan en `;`; una propiedad de objeto literal, en `,`. No
- * depende de que nadie conserve un `readonly`, y **no produce el falso positivo**
- * que la versión anterior daba con un pase escrito `… as readonly MuestraVu[],`.
+ * **Se mira la llamada y no el archivo, y es la cuarta forma de esta regla.** Las
+ * tres anteriores distinguían una declaración de un pase por el texto de la línea
+ * --primero por la palabra de adelante, después por si terminaba en `;`-- y las
+ * tres se burlaron. La última la midió una auditoría adversarial el 2026-09-19:
+ * una declaración partida en dos líneas, que es formato perfectamente normal,
+ * deja de terminar en `;` y **contaba como pase**; con eso, borrar el pase real
+ * dejaba la guarda en verde.
+ *
+ * Acá no hay heurística de línea: se busca la **llamada**, se emparejan sus
+ * paréntesis, y la serie tiene que estar adentro. Una declaración --en una línea o
+ * en cinco--, un campo privado o una clave de registro quedan afuera por
+ * construcción, no por un patrón que adivine.
+ *
+ * **La definición no cuenta como llamada**, que era el otro medio agujero: el
+ * archivo que define `medicionDeLaCaptura` calificaba como candidato sólo por
+ * definirla.
  */
-const ES_DECLARACION = /;\s*$/;
+const LLAMADA_AL_DESTINO = /(^|[^\w.])medicionDeLaCaptura\s*\(/g;
+const DEFINICION_DEL_DESTINO = /\bfunction\s+medicionDeLaCaptura\s*\(/;
 
-/** Adonde la serie tiene que llegar para que pasarla signifique algo. */
-const DESTINO_DE_LA_SERIE = /\bmedicionDeLaCaptura\s*\(/;
+/**
+ * Los argumentos de cada llamada a `medicionDeLaCaptura` en un texto.
+ *
+ * Empareja paréntesis contando, que es lo único que no se puede burlar con un
+ * salto de línea. El texto ya viene sin comentarios ni cadenas, así que un
+ * paréntesis suelto dentro de un literal no descuadra la cuenta.
+ */
+function argumentosDelDestino(texto) {
+  const salida = [];
+  for (const m of texto.matchAll(LLAMADA_AL_DESTINO)) {
+    const abre = texto.indexOf('(', m.index);
+    if (abre === -1) continue;
+    let nivel = 0;
+    for (let i = abre; i < texto.length; i++) {
+      if (texto[i] === '(') nivel++;
+      else if (texto[i] === ')') {
+        nivel--;
+        if (nivel === 0) { salida.push(texto.slice(abre, i + 1)); break; }
+      }
+    }
+  }
+  return salida;
+}
 
 /**
  * Y la sexta: **la conexión se consulta DENTRO del bucle de muestreo, no al
@@ -224,14 +259,34 @@ const CADENCIA_DEL_MUESTREO = /setInterval\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*INTER
  *
  * Devuelve `null` si no se la puede aislar, y **eso es un problema y no un
  * pase**: una guarda que no encuentra qué mirar está ciega, no en verde.
+ *
+ * **Se exige que el bucle y su función sean ÚNICOS en el archivo, y eso salió de
+ * dos ataques medidos el 2026-09-19.** La versión anterior se quedaba con la
+ * **primera** coincidencia de las dos cosas, así que había dos señuelos:
+ *
+ * - **El señuelo del `setInterval`:** poner antes otro
+ *   `setInterval(pulso, INTERVALO_DE_MUESTREO_MS)` cuyo cuerpo sí mirara la
+ *   conexión, y vaciar el bucle de verdad. Verde con el defecto puesto.
+ * - **El señuelo del nombre:** declarar en otro método un
+ *   `const recoger = () => this.conexion.permiteEscribir();` y sacar la consulta
+ *   del bucle real. La guarda leía el señuelo. Verde con el defecto puesto.
+ *
+ * **Con «único» las dos se caen, y se caen del lado correcto:** dos bucles con esa
+ * cadencia, o dos declaraciones de ese nombre, dan `null` --o sea, problema-- en
+ * vez de elegir uno. Si algún día hace falta un segundo muestreo de verdad en el
+ * mismo archivo, la guarda obliga a decir quién vigila cuál, que es exactamente lo
+ * que hay que decidir en ese momento.
  */
 function cuerpoDelMuestreo(texto) {
-  const cadencia = CADENCIA_DEL_MUESTREO.exec(texto);
-  if (cadencia === null) return null;
-  const nombre = cadencia[1];
-  const declara = new RegExp(`\\b(?:const|let|var|function)\\s+${nombre}\\b`);
-  const donde = declara.exec(texto);
-  if (donde === null) return null;
+  const cadencias = [...texto.matchAll(new RegExp(CADENCIA_DEL_MUESTREO, 'g'))];
+  // Cero es que el muestreo cambió de forma; dos o más es un señuelo, o un
+  // segundo muestreo que nadie declaró cuál es. Las dos cosas son problema.
+  if (cadencias.length !== 1) return null;
+  const nombre = cadencias[0][1];
+  const declara = new RegExp(`\\b(?:const|let|var|function)\\s+${nombre}\\b`, 'g');
+  const declaraciones = [...texto.matchAll(declara)];
+  if (declaraciones.length !== 1) return null;
+  const donde = declaraciones[0];
   const abre = texto.indexOf('{', donde.index);
   if (abre === -1) return null;
   let nivel = 0;
@@ -287,11 +342,19 @@ function archivos(dir) {
  * precedido de dos puntos, para no comerse `https://`; la misma auditoría escribió
  * `a:// await this.aplicador.anotarEscucha(...)`, que comenta la línea de verdad y
  * la guarda no la sacaba. Ahora se excluye sólo lo que tiene forma de esquema.
+ *
+ * **Y el mismo agujero seguía abierto por el otro lado de la clase negada**,
+ * medido por una auditoría adversarial el 2026-09-19: la clase era `[^:\w]`, así
+ * que un `//` pegado a un carácter de palabra tampoco se sacaba. Con
+ * `debugger// const vivo = this.conexion.permiteEscribir();` la línea está
+ * comentada para JavaScript y **viva para la guarda**. Es la tercera vez que este
+ * stripper se parchea por un caso y deja el de al lado: hoy sólo se excluyen los
+ * dos puntos, que es lo único que `https://` necesita.
  */
 function sinComentariosNiCadenas(texto) {
   return texto
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:\w])\/\/[^\n]*/g, '$1')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
     .replace(/(^|[^:\w])[a-z][a-z0-9+.-]*:\/\/[^\n]*/gi, '$1')
     .replace(/`(?:\\.|[^`\\])*`/g, "''")
     .replace(/'(?:\\.|[^'\\\n])*'/g, "''")
@@ -332,15 +395,13 @@ const ok = intentar(() => {
       // nace en nulo: lo que hace falta es que **la aplicación** lo escriba.
       if (zona === 'apps' && texto.includes(CAMPO)) campoEscrito++;
 
-      // **La serie de la cuña: se busca PASARLA, línea por línea.** Mirar el
-      // archivo entero contaba la declaración del campo privado del propio
-      // servicio, así que borrar el pase dejaba la guarda en verde. Se acota a
-      // `apps` porque quien captura es la aplicación.
-      if (zona === 'apps' && DESTINO_DE_LA_SERIE.test(texto)) {
-        for (const linea of texto.split('\n')) {
-          if (SERIE_DE_LA_CUNA.test(linea) && !ES_DECLARACION.test(linea)) {
-            pasanLaSerieDeLaCuna++;
-          }
+      // **La serie de la cuña: se busca dentro de los ARGUMENTOS de la llamada.**
+      // Mirar el archivo, o la línea, contaba declaraciones como pases --tres
+      // versiones, tres burlas--. Se acota a `apps` porque quien captura es la
+      // aplicación, y la definición no cuenta como llamada.
+      if (zona === 'apps' && !DEFINICION_DEL_DESTINO.test(texto)) {
+        for (const args of argumentosDelDestino(texto)) {
+          if (SERIE_DE_LA_CUNA.test(args)) pasanLaSerieDeLaCuna++;
         }
       }
 

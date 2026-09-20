@@ -409,3 +409,24 @@ test('LÍMITE ESCRITO: la cuña movida por OTRA fuente sigue concediendo', () =>
     'la cuña pudo haberla movido otro músico y esto no lo distingue',
   );
 });
+
+test('un tiempo que no es número no devuelve el criterio viejo entero', () => {
+  // **Medido por una auditoría adversarial el 2026-09-19, y fallaba ABIERTO.** La
+  // vecindad se acota comparando tiempos, y esa comparación con `NaN` da falso: la
+  // muestra no se descartaba, la vecindad pasaba a ser la ventana entera, y el
+  // criterio colapsaba al `max > min` sobre los 360 instantes que esta pieza vino a
+  // cerrar. Una fuente PLANA con una sola muestra rara declaraba 17,95 s y concedía.
+  //
+  // No es alcanzable desde la captura --ahí el tiempo sale del reloj-- pero el
+  // mapeo es una función exportada y probable, y es la sexta vez que este
+  // repositorio se come un no-número que concede.
+  const planaConUnaRara = (): MuestraVu[] => Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i === 5 ? Number.NaN : i * INTERVALO_DE_MUESTREO_MS,
+    db: i === 5 ? -90 : -30,
+    reduccionDb: 0,
+  }));
+  const m = medicionDe(planaConUnaRara(), planaConUnaRara());
+
+  assert.equal(m.signalType, 'SILENCE', 'una fuente plana es una fuente plana');
+  assert.equal(m.duracionS, 0, `declaró ${m.duracionS.toFixed(2)} s`);
+});

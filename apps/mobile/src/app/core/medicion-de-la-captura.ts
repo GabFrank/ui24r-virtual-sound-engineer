@@ -330,7 +330,16 @@ export function indicesConMusica(muestras: readonly MuestraVu[]): ReadonlySet<nu
   const radioMs = VECINDAD_DE_MOVIMIENTO_MS / 2;
   for (let i = 0; i < muestras.length; i++) {
     const m = muestras[i];
-    if (m === undefined || !Number.isFinite(m.db)) continue;
+    // **`tMs` también se comprueba, y no es cosmética.** La vecindad se acota con
+    // `Math.abs(v.tMs - m.tMs) > radioMs`, y esa comparación con `NaN` o
+    // `Infinity` da falso: la muestra **no se descarta**, la vecindad pasa a ser la
+    // ventana entera, y el criterio colapsa exactamente al `max > min` sobre los
+    // 360 instantes que esta pieza vino a cerrar. O sea que fallaba **abierto, y
+    // hacia la versión vieja del defecto**. Lo midió una auditoría adversarial el
+    // 2026-09-19; no es alcanzable desde `recolectar` --ahí `tMs` es
+    // `Date.now() - inicio`-- pero esta función es exportada y probable, y es la
+    // sexta vez que este repositorio se come un no-número que concede.
+    if (m === undefined || !Number.isFinite(m.db) || !Number.isFinite(m.tMs)) continue;
     if (m.db <= PISO_DE_RUIDO_DB) continue;
     if (m.db < pico - DISTANCIA_AL_PICO_DB) continue;
 
@@ -341,7 +350,7 @@ export function indicesConMusica(muestras: readonly MuestraVu[]): ReadonlySet<nu
     let maximo = -Infinity;
     for (let j = 0; j < muestras.length; j++) {
       const v = muestras[j];
-      if (v === undefined || !Number.isFinite(v.db)) continue;
+      if (v === undefined || !Number.isFinite(v.db) || !Number.isFinite(v.tMs)) continue;
       if (Math.abs(v.tMs - m.tMs) > radioMs) continue;
       if (v.db < minimo) minimo = v.db;
       if (v.db > maximo) maximo = v.db;

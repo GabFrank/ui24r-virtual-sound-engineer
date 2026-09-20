@@ -84,7 +84,12 @@ export interface ResultadoEscucha {
   /** Si con esto alcanza para que el motor conceda otro paso. */
   readonly alcanzaParaOtroPaso: boolean;
   /**
-   * Cuántos segundos de la ventana se perdieron porque la consola no estaba.
+   * Cuántos segundos de la ventana **no se pudieron oír**.
+   *
+   * Se llamaba `segundosSinConsola` y contaba sólo la consola caída; una auditoría
+   * midió el 2026-09-19 que el tic perdido con la consola arriba --porque no
+   * publicó el canal o el auxiliar-- no lo contaba nadie, que es justo el caso que
+   * este campo existe para no confundir.
    *
    * **Es lo que separa «no te escuché» de «no tocaste».** Los instantes con el
    * enlace caído no se registran --ver `recolectar`-- así que salen solos
@@ -96,7 +101,7 @@ export interface ResultadoEscucha {
    * así que una ventana con un corte corto puede juntar igual los segundos que el
    * motor pide.
    */
-  readonly segundosSinConsola: number;
+  readonly segundosNoOidos: number;
 }
 
 /**
@@ -133,8 +138,8 @@ export class EscuchaDeLaCunaService {
   /** Las dos series, alineadas por índice: se empujan en el mismo tic. */
   private muestrasDelCanal: MuestraVu[] = [];
   private muestrasDeLaCuna: MuestraVu[] = [];
-  /** Cuántos tics se perdieron porque la consola no estaba. Ver `recolectar`. */
-  private instantesSinConsola = 0;
+  /** Cuántos tics no se pudieron oír, por lo que sea. Ver `recolectar`. */
+  private instantesNoOidos = 0;
   private temporizador: ReturnType<typeof setInterval> | null = null;
   private muestreo: ReturnType<typeof setInterval> | null = null;
   private resolverCuenta: (() => void) | null = null;
@@ -152,7 +157,7 @@ export class EscuchaDeLaCunaService {
     this.cunaEnCurso.set(c.auxiliar);
     this.muestrasDelCanal = [];
     this.muestrasDeLaCuna = [];
-    this.instantesSinConsola = 0;
+    this.instantesNoOidos = 0;
 
     this.estado.set('CUENTA_REGRESIVA');
     await this.cuentaAtras(CUENTA_REGRESIVA_S);
@@ -189,18 +194,18 @@ export class EscuchaDeLaCunaService {
       // **Queda en el registro cuánto no se pudo oír**, porque una escucha corta
       // por un corte de red y una escucha corta porque el músico no tocó se leen
       // igual en el resto de la línea.
-      segundosSinConsola: Number(
-        ((this.instantesSinConsola * INTERVALO_DE_MUESTREO_MS) / 1000).toFixed(1),
+      segundosNoOidos: Number(
+        ((this.instantesNoOidos * INTERVALO_DE_MUESTREO_MS) / 1000).toFixed(1),
       ),
       guardada: medicionId !== null,
     });
 
-    const segundosSinConsola = (this.instantesSinConsola * INTERVALO_DE_MUESTREO_MS) / 1000;
+    const segundosNoOidos = (this.instantesNoOidos * INTERVALO_DE_MUESTREO_MS) / 1000;
 
     return {
       medicionId,
       sonoS,
-      segundosSinConsola,
+      segundosNoOidos,
       // **Se compara contra lo que el motor exige, no contra un número de acá.**
       // Sirve para poder decirle al músico «tocá un poco más» antes de que el
       // motor rechace el paso siguiente; el veredicto sigue siendo del motor.
@@ -299,7 +304,7 @@ export class EscuchaDeLaCunaService {
     // mezclados en una recomendación.
     this.muestrasDelCanal = [];
     this.muestrasDeLaCuna = [];
-    this.instantesSinConsola = 0;
+    this.instantesNoOidos = 0;
     this.resolverCuenta?.();
     this.resolverCuenta = null;
     this.log.info('audio', 'escucha_de_cuna_cancelada');
@@ -328,7 +333,6 @@ export class EscuchaDeLaCunaService {
       // pasó. Es la decisión del usuario del 2026-09-19: descontar lo que no oyó
       // y seguir, en vez de abortar la escucha ante cualquier corte.
       const consolaViva = this.conexion.permiteEscribir();
-      if (!consolaViva) this.instantesSinConsola++;
       // **Las dos o ninguna, y eso es deliberado.** Las series se cruzan por
       // índice para preguntar si sonaron a la vez; empujar una sola cuando la otra
       // falta las desalinearía, y a partir de ahí la posición `i` de una y de la
@@ -337,7 +341,18 @@ export class EscuchaDeLaCunaService {
       // que registrar: nada. Vale igual para la consola caída: no se empuja un
       // cero --que afirmaría que no sonó-- ni el último valor conocido --que
       // afirmaría que sigue sonando--.
-      if (!consolaViva || canal === undefined || cuna === undefined) return;
+      if (!consolaViva || canal === undefined || cuna === undefined) {
+        // **Se cuenta CUALQUIER tic que no se pudo oír, no sólo el de la consola
+        // caída.** Una auditoría lo midió el 2026-09-19: con la consola arriba
+        // pero sin publicar el canal o el auxiliar en ese tic, la muestra no se
+        // empujaba y el segundo perdido no se contaba en ninguna parte --con el
+        // 30 % de los tics perdidos, una ventana con música los dieciocho segundos
+        // declaraba 12,10 s y `segundosNoOidos` en cero--. Al músico se le
+        // decía «tocaste poco» cuando lo que pasó fue que no se lo pudo escuchar,
+        // que es exactamente la confusión que este contador existe para evitar.
+        this.instantesNoOidos++;
+        return;
+      }
       const tMs = Date.now() - inicio;
       // `nivelPreProcesoDb` y no `nivelDb`: el segundo llega con el compresor
       // encima. Es el mismo byte que muestrea la captura de ganancia.

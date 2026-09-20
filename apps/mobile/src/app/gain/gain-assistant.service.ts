@@ -38,7 +38,11 @@ export interface ResultadoCaptura {
    */
   readonly medicionId: string | null;
   /**
-   * Cuántos segundos de la ventana se perdieron porque la consola no estaba.
+   * Cuántos segundos de la ventana **no se pudieron oír**.
+   *
+   * Se llamaba `segundosSinConsola` y contaba sólo la consola caída; una auditoría
+   * midió el 2026-09-19 que el tic perdido con la consola arriba --porque no
+   * publicó el canal-- no lo contaba nadie.
    *
    * **Es lo que separa «no te escuché» de «no tocaste».** Los instantes con el
    * enlace caído no se registran --ver `recolectar`--, así que salen solos de la
@@ -48,7 +52,7 @@ export interface ResultadoCaptura {
    * Cero es el caso normal. Que sea mayor que cero **no invalida la captura**: la
    * decisión del usuario del 2026-09-19 fue descontar lo que no se oyó y seguir.
    */
-  readonly segundosSinConsola: number;
+  readonly segundosNoOidos: number;
 }
 
 /**
@@ -87,8 +91,8 @@ export class GainAssistantService {
   );
 
   private muestras: MuestraVu[] = [];
-  /** Cuántos tics se perdieron porque la consola no estaba. Ver `recolectar`. */
-  private instantesSinConsola = 0;
+  /** Cuántos tics no se pudieron oír, por lo que sea. Ver `recolectar`. */
+  private instantesNoOidos = 0;
   private temporizador: ReturnType<typeof setInterval> | null = null;
   /** El muestreo de niveles. Vive aparte de la cuenta atrás. */
   private muestreo: ReturnType<typeof setInterval> | null = null;
@@ -111,7 +115,7 @@ export class GainAssistantService {
     const indice = asignacion.ui24rInputIndex;
     this.canalEnCurso.set(indice);
     this.muestras = [];
-    this.instantesSinConsola = 0;
+    this.instantesNoOidos = 0;
 
     await this.contarRegresiva();
 
@@ -196,7 +200,7 @@ export class GainAssistantService {
       propuesta,
       capturadaEl: new Date().toISOString(),
       medicionId: await this.guardarLaEscucha(empezoEl, asignacion, analisis, muestras),
-      segundosSinConsola: (this.instantesSinConsola * INTERVALO_DE_MUESTREO_MS) / 1000,
+      segundosNoOidos: (this.instantesNoOidos * INTERVALO_DE_MUESTREO_MS) / 1000,
     };
 
     this.resultados.update((prev) => [
@@ -371,7 +375,6 @@ export class GainAssistantService {
       // Se cuenta aparte lo que se pierde, porque **«no te escuché» y «no tocaste»
       // son cosas distintas** y al usuario hay que decirle la que pasó.
       const consolaViva = this.conexion.permiteEscribir();
-      if (!consolaViva) this.instantesSinConsola++;
       // **`nivelPreProcesoDb` y no `nivelDb`.** El segundo es el que la consola
       // dibuja en su tira y el que muestra la pantalla de Consola, pero llega
       // con el compresor encima: aconsejar ganancia sobre él es aconsejar sobre
@@ -383,7 +386,13 @@ export class GainAssistantService {
       // Un instante del que no se sabe nada no se registra: ni un cero, que
       // sería afirmar que no sonó, ni el último valor conocido, que sería
       // afirmar que sigue sonando.
-      if (!consolaViva || canal === undefined) return;
+      if (!consolaViva || canal === undefined) {
+        // Cualquier tic que no se pudo oír, no sólo el de la consola caída: con la
+        // consola arriba pero sin publicar el canal, el segundo perdido no se
+        // contaba y se leía como que el músico tocó poco. Medido el 2026-09-19.
+        this.instantesNoOidos++;
+        return;
+      }
       this.muestras.push({
         tMs: Date.now() - inicio,
         db: canal.nivelPreProcesoDb,

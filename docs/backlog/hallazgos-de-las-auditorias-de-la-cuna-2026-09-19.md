@@ -268,6 +268,46 @@ comprobable; sin ella, no.
 
 ---
 
+## 8. El límite «una fuente quieta no cuenta» vale menos de lo que dice
+
+**MEDIDO el 2026-09-19.** El límite está escrito como «una fuente perfectamente
+quieta no cuenta, aunque suene», y el test lo prueba con una fuente **continua**.
+Medido: la misma fuente plana de −35 dB, sin un decibel de textura propia,
+**encendida 500 ms y apagada 250 ms declara 11,75 s y concede**; 600/200 da 11,00
+y concede; 300/200 da 10,75 y concede. Continua, en cambio, da silencio.
+
+El motivo: el movimiento se mide **contra el silencio de al lado**, no contra la
+textura de la fuente. El mínimo y el máximo de la vecindad incluyen muestras que
+están excluidas de **contar** pero no de **medir**. O sea que la tercera pregunta
+no comprueba «la fuente hizo algo» sino «este valor es distinto del de al lado».
+
+**No es explotable por sí solo** --una compuerta que abre y cierra es alguien
+haciendo ruido-- pero el límite está escrito con más alcance del que tiene.
+
+## 9. `duracionS` son muestras × 50 ms, y nada lo ata al reloj
+
+**MEDIDO.** 400 muestras en una ventana de 18 s declaran **20,00 s** y conceden;
+720 declaran 36,00 y conceden. **No es alcanzable hoy** --`setInterval` no encola
+disparos perdidos, así que el muestreo no puede sobrepasar los 360 tics-- pero la
+condición del motor que comprueba que la ventana terminó usa ese número **como
+tiempo transcurrido**, y el invariante «muestras ≤ ventana ÷ intervalo» no está
+asertado en ningún lado ni tiene test. Es el mismo género que la auditoría del
+2026-09-18 ya explotó con `duracionS` declarado.
+
+## 10. Cancelar una escucha igual guarda una fila y deja la pantalla en «lista»
+
+**LECTURA DE CÓDIGO, no medido.** `cancelar()` resuelve la cuenta regresiva, así
+que el `await` de `escuchar()` **continúa**: sigue con las series vacías, pone el
+estado en `LISTA` --pisando el `INACTIVA` que acababa de poner `cancelar`-- y
+guarda una medición de silencio de 0 s. El veredicto **falla cerrado**, así que no
+es un agujero de seguridad; lo que queda mal es la pantalla --cancelar termina
+mostrando «lista»-- y una fila espuria por cancelación. Además, entre el cancelar y
+el final de la cola, una segunda escucha puede arrancar y la cola de la primera le
+pisa el estado.
+
+**Lo estrena la pantalla por músico**, que es la que va a tener el botón de
+cancelar.
+
 ## Lo que las auditorías confirmaron que está bien
 
 Vale anotarlo, porque un ataque refutado también es información:
