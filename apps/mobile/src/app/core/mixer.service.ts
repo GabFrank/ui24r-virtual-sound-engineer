@@ -76,8 +76,64 @@ export class MixerService {
     return this.adapter.leer(ruta)?.value ?? null;
   }
 
+  /**
+   * El camino para escribir en la consola, envuelto para que **avise**.
+   *
+   * **El defecto que esto cierra lo encontró la tablet del usuario el
+   * 2026-09-20, con la suite en verde.** `revisionDelEstado` se tocaba cuando
+   * cambiaba **otro** operador, cuando llegaba el volcado y al conectar, pero
+   * **no cuando escribía la propia aplicación**: el almacén marca esas como
+   * `LOCAL`, así que `alCambiarExterno` no dispara. En el campo se vio así: la
+   * pantalla de monitores encendió una cuña, escribió `0,25` en la consola,
+   * escuchó dieciocho segundos, lo anotó... y la fila seguía diciendo
+   * «Cerrado», con el recuento en «0 mandan algo». La aplicación se enteraba de
+   * todo el mundo menos de sí misma.
+   *
+   * **Se envuelve acá y no se avisa desde cada servicio**, que es lo que la
+   * primera idea proponía. `escribir` es el único embudo por el que pasa toda
+   * escritura --ganancia, monitor y lo que venga-- así que puesto acá ninguna
+   * pantalla futura tiene que acordarse. Es la regla que este repositorio ya
+   * tiene escrita: cuando algo se repite, la pregunta no es «cómo me acuerdo la
+   * próxima» sino «dónde se pone para que no dependa de que me acuerde».
+   *
+   * **Avisa pase lo que pase con la escritura, y es deliberado.** Un conflicto
+   * también significa que el estado confirmado aprendió algo --el valor real,
+   * que es por lo que el conflicto se detectó--. Un refresco de más cuesta un
+   * recálculo; uno de menos le muestra un número viejo a quien está decidiendo
+   * sobre la cuña de un músico.
+   */
   api(): MixerDomainAPI | null {
-    return this.conexion.estado() === 'CONNECTED' ? this.adapter : null;
+    if (this.conexion.estado() !== 'CONNECTED') return null;
+    const adapter = this.adapter;
+    if (adapter === null) return null;
+    if (this.apiEnvuelta?.base !== adapter) {
+      this.apiEnvuelta = { base: adapter, envuelta: this.queAvise(adapter) };
+    }
+    return this.apiEnvuelta.envuelta;
+  }
+
+  /** La envoltura, memorizada por adaptador para no rehacerla en cada llamada. */
+  private apiEnvuelta: { base: MixerDomainAPI; envuelta: MixerDomainAPI } | null = null;
+
+  private queAvise(base: MixerDomainAPI): MixerDomainAPI {
+    return new Proxy(base, {
+      get: (obj, prop) => {
+        // **El receptor es el objeto real, no el proxy.** Con el proxy como
+        // receptor, cualquier campo privado del adaptador revienta al leerse
+        // desde un método heredado.
+        const v = Reflect.get(obj, prop, obj);
+        if (prop !== 'escribir' || typeof v !== 'function') {
+          return typeof v === 'function' ? v.bind(obj) : v;
+        }
+        return async (...args: Parameters<MixerDomainAPI['escribir']>) => {
+          try {
+            return await (v as MixerDomainAPI['escribir']).apply(obj, args);
+          } finally {
+            this.tocarEstado();
+          }
+        };
+      },
+    });
   }
 
   readonly canales = signal<readonly EstadoCanal[]>([]);

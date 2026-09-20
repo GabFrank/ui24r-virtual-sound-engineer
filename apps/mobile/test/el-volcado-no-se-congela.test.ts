@@ -159,3 +159,68 @@ test('el servicio toca la revisión en los momentos en que el estado cambia', ()
   assert.match(fuente, /this\.adapter = null;\s*\n\s*this\.tocarEstado\(\);/,
     'no se toca la revisión al desconectar');
 });
+
+// --- 3. Y que la aplicación se entere de sus PROPIAS escrituras --------------
+
+test('escribir por el camino de la aplicación toca la revisión', async () => {
+  // **El defecto que la tablet del usuario encontró el 2026-09-20.** La
+  // revisión se tocaba con el volcado, con un cambio ajeno y al conectar, pero
+  // no cuando escribía la propia aplicación: el almacén marca esas como LOCAL y
+  // `alCambiarExterno` no dispara. En el campo la pantalla encendió una cuña,
+  // escribió en la consola, escuchó, lo anotó, y la fila seguía diciendo
+  // «Cerrado».
+  //
+  // Se reproduce la envoltura con la misma forma: un `escribir` envuelto que
+  // avisa en un `finally`. Lo que ata esta copia a producción es la guarda de
+  // fuente de abajo.
+  const avisos: number[] = [];
+  const base = {
+    escribir: async () => ({ status: 'OK' }),
+    leer: () => null,
+    otraCosa: () => 'sin avisar',
+  };
+  const envuelta = new Proxy(base, {
+    get: (obj, prop) => {
+      const v = Reflect.get(obj, prop, obj);
+      if (prop !== 'escribir' || typeof v !== 'function') {
+        return typeof v === 'function' ? v.bind(obj) : v;
+      }
+      return async (...args: unknown[]) => {
+        try { return await (v as (...a: unknown[]) => unknown).apply(obj, args); }
+        finally { avisos.push(1); }
+      };
+    },
+  }) as typeof base;
+
+  await envuelta.escribir();
+  assert.equal(avisos.length, 1, 'escribir no avisó');
+  // Y lo que no es escribir pasa derecho, sin avisar de más.
+  assert.equal(envuelta.otraCosa(), 'sin avisar');
+  assert.equal(avisos.length, 1);
+});
+
+test('la envoltura avisa AUNQUE la escritura falle', async () => {
+  // Un conflicto también significa que el estado confirmado aprendió algo --el
+  // valor real, que es por lo que el conflicto se detectó--. Un refresco de más
+  // cuesta un recálculo; uno de menos muestra un número viejo.
+  const avisos: number[] = [];
+  const envuelto = async () => {
+    try { throw new Error('la consola cortó'); } finally { avisos.push(1); }
+  };
+  await assert.rejects(envuelto);
+  assert.equal(avisos.length, 1, 'no avisó cuando la escritura falló');
+});
+
+test('el camino para escribir sale envuelto, y el embudo es uno solo', () => {
+  const fuente = sinComentarios(readFileSync(join(APP, 'core', 'mixer.service.ts'), 'utf8'))
+    .replace(/\s+/g, ' ');
+  const api = fuente.slice(fuente.indexOf('api(): MixerDomainAPI | null'));
+  assert.ok(api.length > 0, 'ya no existe api()');
+  assert.match(api.slice(0, 400), /this\.queAvise\(adapter\)|this\.apiEnvuelta/,
+    'api() devuelve el adaptador pelado: las escrituras propias no van a refrescar nada');
+  // La envoltura tiene que tocar la revisión, y sobre `escribir`, que es por
+  // donde pasa TODA escritura --ganancia, monitor y lo que venga--.
+  const envoltura = fuente.slice(fuente.indexOf('private queAvise('));
+  assert.match(envoltura.slice(0, 600), /prop !== 'escribir'/);
+  assert.match(envoltura.slice(0, 600), /this\.tocarEstado\(\)/);
+});
