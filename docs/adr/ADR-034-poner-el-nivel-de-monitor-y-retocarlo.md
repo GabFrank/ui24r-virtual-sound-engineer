@@ -12,9 +12,12 @@ mismo archivo, ya registraba «Salir del silencio: sí, desde el 2026-09-19», e
 fila justo anterior a la consecuencia. Después se corrigió a «falta SÓLO la
 pantalla» y **esa misma noche la pantalla se construyó**, así que la corrección
 quedó falsa en horas, contra el cuerpo de este mismo archivo. Lo que falta hoy es
-el **encadenado**. La consecuencia sí sigue en pie: **nadie marca todavía un
-nivel como establecido**, porque eso lo marca la pantalla y la pantalla todavía
-no lo hace, así que toda cuña vive en la primera operación.
+el **encadenado**. Y esa consecuencia --«nadie marca todavía un nivel como
+establecido»-- **dejó de ser cierta el 2026-09-20**, que es cuando la pantalla
+por músico aprendió a marcarlo: **esta decisión está implementada de punta a
+punta**, las dos operaciones y el paso de una a la otra. Es la cuarta redacción
+de este encabezado en un día y las tres anteriores describieron el estado de
+hace unas horas.
 **Origen:** **Decisión del usuario**, eligiendo entre opciones el 2026-09-17, al
 empezar la primera pieza de la hoja de ruta de
 [`pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md`](../pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
@@ -167,36 +170,46 @@ lo que falta afloja:
 | Retocar mide desde el ancla | sí: establecer el nivel pone el acumulado de esa ruta en cero |
 | 2 dB por paso, y escuchar entre pasos | sí, sin cambios: es lo que hace de esto una rampa |
 | Salir del silencio | **sí, desde el 2026-09-19**: la atadura lo nombra y el motor lo concede sólo hacia el mínimo escribible y sólo para el envío a monitor |
-| **Quién marca el nivel como establecido** | **nadie todavía** |
+| **Quién marca el nivel como establecido** | **la pantalla por músico, desde el 2026-09-20**, de dos formas que el usuario eligió: en la fila del envío, y un botón que cierra la cuña entera. Sólo alcanza a lo que la aplicación movió y verificó en esta sesión |
 
-**Esa última fila es la que hay que tener presente.** Marcar el nivel es un acto
-del usuario —la aplicación no puede saber cuándo el músico está conforme— y lo va
-a anotar la pantalla de monitor, que es la tercera pieza. Hasta entonces **ninguna
-ruta se establece**, así que el envío a monitor vive permanentemente en la primera
-operación: sin presupuesto acumulado, acotado por el techo de nominal, los 2 dB
-por paso y la escucha obligatoria entre uno y otro.
+**Esa última fila era la que había que tener presente, y se cerró el
+2026-09-20.** Marcar el nivel es un acto del usuario —la aplicación no puede
+saber cuándo el músico está conforme— y lo anota la pantalla por músico. Mientras
+una ruta no se marca sigue en la primera operación: sin presupuesto acumulado,
+acotada por el techo de nominal, los 2 dB por paso y la escucha obligatoria entre
+uno y otro. Al marcarla vuelven los 4 dB por sesión, contados desde ese nivel.
+
+**Y volver a moverla le saca la marca**, que no estaba dicho en ninguna parte y
+es la única forma de que el ancla no quede apuntando a un nivel que ya no está
+puesto.
 
 **Que eso no esté expuesto hoy es cierto y no es una defensa.** El servicio de
 monitor no lo llama ninguna pantalla, así que nada de esto corre todavía en la
 tablet. Pero la pantalla es justamente lo que sigue, y llega con el acto de
 marcar el nivel o llega abriendo un hueco.
 
-**Al 2026-09-20 la pantalla existe y todavía no cierra el hueco, que es la
-distinción que este párrafo pide hacer.** `monitor/monitores.component.ts`
-muestra la cuña de un músico --quién le manda, en qué nivel, su instrumento
-primero-- y **desde esa misma noche también sube**: encadena subir, escuchar y
-anotar, un envío por vez, con la cuenta regresiva a la vista y un botón de
-cancelar. **La rampa de esta decisión existe.** El último paso pide lo que falta
-en vez de 2 dB, así que llega a nominal exacto --con pasos fijos se quedaba a
-0,138 dB y ahí se trababa--: diecisiete pasos desde el mínimo escribible, con su
-test. Lo que sigue sin existir es **marcar el nivel como establecido**, así que
-la fila de arriba sigue diciendo la verdad y toda cuña vive en la primera
-operación. *(La primera redacción decía «no llama a ningún servicio», y
-llama a cuatro --sesión, banda, consola y almacén--, todos de lectura. Lo cazó una
-auditoría de fidelidad.)* O sea
-que la fila de arriba sigue diciendo la verdad, «nadie todavía», y el envío a
-monitor sigue viviendo en la primera operación. Lo que cambió es que dejó de ser
-invisible: antes de mover una cuña se puede ver en qué estado está.
+**Al 2026-09-20 el hueco se cerró, y este párrafo se reescribe entero porque
+había acumulado tres correcciones del mismo día y terminó contradiciéndose.**
+`monitor/monitores.component.ts` muestra la cuña de un músico --quién le manda,
+en qué nivel, su instrumento primero, los 32 caminos-- **la sube** encadenando
+subir, escuchar y anotar, un envío por vez, con la cuenta regresiva a la vista y
+un botón de cancelar, y **marca el nivel como establecido**, de dos formas que el
+usuario eligió: en la fila del envío y un botón que cierra la cuña entera.
+
+El último paso pide lo que falta en vez de 2 dB, así que la rampa llega a nominal
+exacto --con pasos fijos se quedaba a 0,138 dB y ahí se trababa--: diecisiete
+pasos desde el mínimo escribible, con su test.
+
+**Lo que sigue acotado, y no es un hueco sino la decisión misma:** sólo se puede
+marcar lo que la aplicación movió y verificó en esta sesión. Un envío que el
+usuario movió a mano en la consola no se puede marcar, porque el motor no tiene
+con qué probar dónde quedó — y la autodeclaración es justo lo que una auditoría
+del 2026-09-17 midió moviendo 30 dB de ganancia con el acumulado siempre en cero.
+La pantalla lo dice con todas las letras.
+
+*(Las redacciones anteriores de este párrafo dijeron, en orden: que la pantalla
+no llamaba a ningún servicio --llama a cuatro, todos de lectura--, que no subía,
+y que no marcaba. Las tres fueron ciertas y las tres duraron horas.)*
 
 ## Qué se descartó, y por qué importa que quede escrito
 

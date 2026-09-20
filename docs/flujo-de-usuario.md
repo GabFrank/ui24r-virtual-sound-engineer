@@ -16,7 +16,7 @@ Sesión
        ├─ Avanzar de estado según la tabla de transiciones del dominio
        ├─ Canales ───────── qué entrada es qué instrumento
        ├─ Ganancia ──────── cuánto margen tiene cada canal
-       ├─ Monitores ─────── qué le llega a la cuña de cada músico (sólo lectura)
+       ├─ Monitores ─────── la cuña de cada músico: verla, subirla escuchando y fijarla
        └─ Cerrar ────────── irreversible, con confirmación
 Historial
   └─ Detalle ───────────── solo lectura, exportable
@@ -101,10 +101,15 @@ del envío hay servicio escrito y probado sin llamador --la pantalla de Monitore
 desde el 2026-09-20, **lee** la cuña pero todavía no la mueve-- y del silencio no
 hay camino de producción.
 
-**Y lo que la pantalla de Monitores todavía no hace, dicho con todas las
-letras:** no sube ningún envío, no encadena la escucha, y **no existe el acto de
-marcar «así está bien»**, así que ninguna cuña llega a tener nivel establecido y
-todas viven en la primera operación de ADR-034.
+**Lo que la pantalla de Monitores hace desde el 2026-09-20**: muestra los 32
+caminos que entran a una cuña, sube de a un envío por vez encadenando subir,
+escuchar y anotar, y marca el nivel como establecido. ADR-034 queda implementada.
+
+**Y lo que no se pudo probar todavía, dicho con todas las letras:** la escritura
+contra el aparato. El diario y la tabla de mediciones van directo a SQLite de
+Capacitor, o sea **sólo Android**; en el navegador la cadena se frena antes de
+escribir. Se comprobó contra la consola del usuario el 2026-09-20 --ninguna clave
+quedó tocada-- así que la rampa sólo se puede ejercitar en la tablet.
 
 ## Cómo se verifica
 

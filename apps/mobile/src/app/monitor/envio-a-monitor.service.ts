@@ -119,6 +119,67 @@ export class EnvioAMonitorService {
   private readonly techos = signal<ReadonlyMap<string, number>>(new Map());
 
   /**
+   * La última transacción de esta sesión que movió cada ruta, y si ya se marcó.
+   *
+   * **Hace falta porque marcar «así está bien» ocurre DESPUÉS, y sobre otra
+   * cosa.** El nivel establecido no lo declara quien propone: sale del diario y
+   * `historialDeLaSesion` lo cruza contra lo que esa transacción de verdad
+   * movió y verificó. O sea que para marcar hay que saber **cuál** transacción
+   * dejó la cuña donde está, y eso sólo lo sabe quien la aplicó.
+   *
+   * Un `signal` para que la pantalla pueda apagar el botón de lo que ya marcó,
+   * por el mismo motivo que `techos`: un estado que el usuario no ve lo va a
+   * sorprender.
+   */
+  private readonly ultimoCambio = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly marcadas = signal<ReadonlySet<string>>(new Set());
+
+  /** Las rutas que esta sesión marcó como «así está bien». */
+  readonly nivelesMarcados = this.marcadas.asReadonly();
+
+  /** Si esta ruta se puede marcar: la aplicación la movió y todavía no se marcó. */
+  sePuedeMarcar(ruta: string): boolean {
+    return this.ultimoCambio().has(ruta) && !this.marcadas().has(ruta);
+  }
+
+  /**
+   * Marca el nivel de una ruta como el de trabajo: el «así está bien» de ADR-034.
+   *
+   * **Es lo único que le faltaba a la pieza 1**, y lo que hace que una cuña
+   * salga de la primera operación: desde acá el presupuesto acumulado vuelve a
+   * correr, pero **medido desde este nivel** y no desde donde estaba la cuña al
+   * empezar la sesión.
+   *
+   * **La aplicación sólo puede marcar lo que ella movió y verificó**, y no es
+   * una limitación de esta función: `historialDeLaSesion` exige que esa misma
+   * transacción haya movido la ruta, que el cambio esté verificado, que el tipo
+   * declare techo y que la ruta no estuviera ya establecida. Marcar un envío que
+   * el usuario movió a mano en la consola no tendría con qué probarse, y la
+   * autodeclaración es justo lo que una auditoría del 2026-09-17 midió moviendo
+   * 30 dB de ganancia con el acumulado siempre en cero.
+   *
+   * Devuelve si quedó marcada, para que la pantalla pueda decirlo.
+   */
+  async marcarAsiEstaBien(ruta: string): Promise<{ readonly ok: boolean; readonly motivo: string | null }> {
+    const idTransaccion = this.ultimoCambio().get(ruta);
+    if (idTransaccion === undefined) {
+      return { ok: false, motivo: 'la aplicación no movió este envío en esta sesión, '
+        + 'así que no tiene con qué probar dónde quedó' };
+    }
+    if (this.marcadas().has(ruta)) return { ok: false, motivo: 'ya estaba marcado' };
+    try {
+      await this.diario.actualizar(idTransaccion, { nivelEstablecidoEn: [ruta] });
+    } catch (e) {
+      const motivo = e instanceof Error ? e.message : String(e);
+      this.log.warn('transaction', 'nivel_no_marcado', { ruta, transaccion: idTransaccion, motivo });
+      return { ok: false, motivo };
+    }
+    this.marcadas.update((m) => new Set([...m, ruta]));
+    this.log.info('transaction', 'nivel_establecido', { ruta, transaccion: idTransaccion });
+    return { ok: true, motivo: null };
+  }
+
+  /**
    * Anota en la transacción que después de ella hubo una escucha.
    *
    * **Es la otra mitad de guardar la medición, y sin ella guardarla no sirve de
@@ -430,6 +491,17 @@ export class EnvioAMonitorService {
     // paso, no este registro.
 
     if (r.estado === 'APLICADA') {
+      // **Se recuerda CUÁL transacción dejó la cuña acá**, que es lo que hace
+      // falta para poder marcarla después. Se pisa a propósito: si hay otro
+      // paso, el nivel de trabajo es el que deje el último, no el primero.
+      this.ultimoCambio.update((m) => new Map([...m, [e.ruta, r.id]]));
+      // Y se olvida la marca vieja: volver a mover una ruta ya marcada la saca
+      // de su nivel de trabajo, y dejar la marca diría que el nivel es uno que
+      // ya no está puesto.
+      this.marcadas.update((m) => {
+        if (!m.has(e.ruta)) return m;
+        const n = new Set(m); n.delete(e.ruta); return n;
+      });
       return {
         estado: 'APLICADA', id: r.id, quedoEnDb: v.destinoDb,
         salioDelSilencio: v.saleDelSilencio,

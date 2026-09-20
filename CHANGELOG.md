@@ -72,9 +72,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   **De a un envío por vez, como elegiste**: mientras un paso está en curso los
   demás botones se apagan.
 
-  **Todavía no podés marcar «así está bien»**: eso es lo único que le falta a
-  esta pieza. Hasta que exista, cada cuña vive en la primera operación —el techo
-  es nominal y no hay presupuesto por sesión—.
+  **Y ya podés marcar «así está bien»**, de las dos formas que elegiste: en la
+  fila del envío, o con un botón que cierra la cuña entera del músico de una vez.
+  Desde que marcás, ese envío sale de la primera operación: se retoca de a 2 dB
+  con 4 en toda la sesión, pero contados **desde ese nivel** y no desde donde
+  estaba la cuña cuando empezaste. **Si volvés a moverlo, pierde la marca** —si
+  no, el punto de referencia quedaría apuntando a un nivel que ya no está puesto.
+
+  **Sólo se puede marcar lo que la aplicación movió.** De un envío que tocaste a
+  mano en la consola no tiene con qué probar dónde quedó, y la pantalla te lo
+  dice en vez de marcarlo igual.
+
+  **Lo que todavía no se probó, y conviene que lo sepas antes de usarlo:** el
+  paso que escribe en la consola **sólo corre en la tablet**. La libreta donde la
+  aplicación anota lo que hizo es de Android, así que desde una computadora la
+  cadena se frena antes de escribir. Se comprobó contra tu consola el 2026-09-20
+  y no quedó ninguna clave tocada — pero quiere decir que **la primera vez que la
+  rampa escriba de verdad va a ser en tu tablet**.
   Elegiste vos empezar por ver, y elegiste que cuando suba lo haga de a un envío
   por vez.
 

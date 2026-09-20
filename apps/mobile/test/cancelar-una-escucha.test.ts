@@ -227,3 +227,56 @@ test('la pantalla sube un envío por vez', () => {
   // el usuario no lo ve hasta que aprieta.
   assert.match(fuente, /\[deshabilitado\]="enCurso\(\) !== null \|\| escuchando\(\)"/);
 });
+
+// --- 4. «Así está bien», que es lo último que le faltaba a la pieza 1 --------
+
+const SERVICIO_ENVIO = join(
+  AQUI, '..', 'src', 'app', 'monitor', 'envio-a-monitor.service.ts',
+);
+
+test('sólo se puede marcar lo que la aplicación movió en esta sesión', () => {
+  // **No es una comodidad: es lo que el motor exige.** `historialDeLaSesion`
+  // cruza `nivelEstablecidoEn` contra lo que esa transacción de verdad movió y
+  // verificó. Marcar un envío que el usuario movió a mano no tendría con qué
+  // probarse, y la autodeclaración es lo que una auditoría del 2026-09-17 midió
+  // moviendo 30 dB de ganancia con el acumulado siempre en cero.
+  const fuente = sinComentarios(readFileSync(SERVICIO_ENVIO, 'utf8')).replace(/\s+/g, ' ');
+  const cuerpo = fuente.slice(fuente.indexOf('async marcarAsiEstaBien('));
+  assert.match(cuerpo.slice(0, 400), /this\.ultimoCambio\(\)\.get\(ruta\)/,
+    'no se busca la transacción que movió esa ruta');
+  assert.match(cuerpo.slice(0, 500), /return \{ ok: false/,
+    'no se rechaza cuando la aplicación no movió esa ruta');
+  // Y lo que se escribe es la ruta que se marca, no una lista declarada afuera.
+  assert.match(cuerpo, /nivelEstablecidoEn: \[ruta\]/);
+});
+
+test('mover otra vez una ruta marcada le saca la marca', () => {
+  // Si no, la pantalla diria que el nivel de trabajo es uno que ya no está
+  // puesto, y el motor contaría el presupuesto desde un ancla que se movió.
+  // **Anclado dentro de `subir`, y la primera versión no lo estaba.** Buscaba
+  // el primer `if (r.estado === 'APLICADA')` del archivo, que es el de `bajar`:
+  // la guarda fallaba sobre el arreglo ya puesto, apuntando a la función
+  // equivocada. Dos funciones hermanas con la misma forma son exactamente donde
+  // una búsqueda por texto se va al vecino.
+  const fuente = sinComentarios(readFileSync(SERVICIO_ENVIO, 'utf8')).replace(/\s+/g, ' ');
+  const subir = fuente.slice(fuente.indexOf('async subir(e: EnvioASubir'));
+  assert.ok(subir.length > 0, 'ya no existe subir()');
+  const i = subir.indexOf("if (r.estado === 'APLICADA')");
+  assert.ok(i > 0, 'subir() ya no tiene la rama de aplicada');
+  const bloque = subir.slice(i, i + 500);
+  assert.match(bloque, /this\.ultimoCambio\.update/, 'no se recuerda qué transacción la movió');
+  assert.match(bloque, /this\.marcadas\.update/, 'no se olvida la marca al volver a mover');
+});
+
+test('la pantalla tiene las dos formas de marcar, y las dos se apagan igual', () => {
+  const fuente = sinComentarios(readFileSync(PANTALLA, 'utf8')).replace(/\s+/g, ' ');
+  // Decisión del usuario del 2026-09-20: por envío y por cuña.
+  assert.match(fuente, /async marcar\(f: FilaDeLaCuna\)/, 'falta marcar un envío');
+  assert.match(fuente, /async marcarLaCuna\(\)/, 'falta marcar la cuña entera');
+  // Y ninguna corre con un paso en curso: marcar en medio de una rampa anclaría
+  // el nivel a un envío que se está moviendo.
+  for (const m of ['async marcar(f: FilaDeLaCuna)', 'async marcarLaCuna()']) {
+    const cuerpo = fuente.slice(fuente.indexOf(m), fuente.indexOf(m) + 300);
+    assert.match(cuerpo, /this\.enCurso\(\) !== null/, `${m} no se frena con un paso en curso`);
+  }
+});

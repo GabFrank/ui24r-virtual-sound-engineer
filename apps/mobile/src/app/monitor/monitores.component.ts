@@ -60,6 +60,10 @@ interface FilaDeLaCuna {
    * decisión que la pantalla de ganancia tomó por el mismo motivo.
    */
   readonly porQueNoSube: string;
+  /** Si el botón de «así está bien» va habilitado en esta fila. */
+  readonly sePuedeMarcar: boolean;
+  /** Si esta ruta ya quedó marcada en esta sesión. */
+  readonly marcada: boolean;
 }
 
 /** Cómo se dice cada nivel, y con qué tono. La cuenta está en el módulo puro. */
@@ -214,6 +218,13 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
               El techo es hasta dónde puede llevarla la aplicación: de ahí para
               arriba lo subís vos.
             </p>
+            @if (porMarcar().length > 0) {
+              <ui-button acciones variante="primario"
+                         [deshabilitado]="enCurso() !== null || escuchando()"
+                         (pulsado)="marcarLaCuna()">
+                La cuña de {{ musico()?.nombre }} está lista ({{ porMarcar().length }})
+              </ui-button>
+            }
           </ui-card>
         }
 
@@ -251,6 +262,13 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                       } @else if (f.laMueveLaAplicacion) {
                         <span class="det">{{ f.porQueNoSube }}</span>
                       }
+                      @if (f.marcada) {
+                        <ui-badge tono="ok">Así está bien</ui-badge>
+                      } @else if (f.sePuedeMarcar) {
+                        <ui-button variante="secundario"
+                                   [deshabilitado]="enCurso() !== null || escuchando()"
+                                   (pulsado)="marcar(f)">Así está bien</ui-button>
+                      }
                     </td>
                   </tr>
                 }
@@ -276,6 +294,13 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                 } @else if (f.laMueveLaAplicacion) {
                   <p class="det">{{ f.porQueNoSube }}</p>
                 }
+                @if (f.marcada) {
+                  <ui-badge tono="ok">Así está bien</ui-badge>
+                } @else if (f.sePuedeMarcar) {
+                  <ui-button acciones variante="secundario"
+                             [deshabilitado]="enCurso() !== null || escuchando()"
+                             (pulsado)="marcar(f)">Así está bien</ui-button>
+                }
               </ui-card>
             }
           </div>
@@ -294,9 +319,12 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
 
         <p class="nota-cierre">
           Cada paso sube, escucha y anota, de a un envío por vez: mientras uno
-          está en curso los demás botones se apagan. Todavía <strong>no se puede
-          marcar «así está bien»</strong>, así que esta cuña sigue en la primera
-          operación: el techo es nominal y no hay presupuesto por sesión.
+          está en curso los demás botones se apagan. Cuando el músico dice que
+          así está bien, <strong>marcalo</strong>: desde ahí ese envío se retoca
+          de a 2 dB contados <strong>desde ese nivel</strong>, en vez de desde
+          donde estaba al empezar. Sólo se puede marcar lo que la aplicación
+          movió: de lo que tocaste a mano en la consola no tiene con qué probar
+          dónde quedó.
         </p>
       }
     </div>
@@ -531,8 +559,14 @@ export class MonitoresComponent {
     );
   });
 
-  readonly filas = computed<readonly FilaDeLaCuna[]>(
-    () => this.loQueLlega()?.caminos.map(aFila) ?? []);
+  readonly filas = computed<readonly FilaDeLaCuna[]>(() => {
+    const marcadas = this.envio.nivelesMarcados();
+    return this.loQueLlega()?.caminos.map(
+      (c) => aFila(c, this.envio.sePuedeMarcar(c.ruta), marcadas.has(c.ruta))) ?? [];
+  });
+
+  /** Las rutas de esta cuña que la aplicación movió y todavía no se marcaron. */
+  readonly porMarcar = computed(() => this.filas().filter((f) => f.sePuedeMarcar));
 
   /**
    * El recuento de los 32 caminos, para que la pantalla rinda cuentas.
@@ -668,11 +702,49 @@ export class MonitoresComponent {
 
   cancelarEscucha(): void { this.escucha.cancelar(); }
 
+  /**
+   * «Así está bien» sobre un envío: su nivel pasa a ser el de trabajo.
+   *
+   * Desde acá esa cuña sale de la primera operación de ADR-034: vuelve el
+   * presupuesto de 4 dB por sesión, **medido desde este nivel** y no desde
+   * donde estaba al empezar.
+   */
+  async marcar(f: FilaDeLaCuna): Promise<void> {
+    if (!f.sePuedeMarcar || this.enCurso() !== null) return;
+    const r = await this.envio.marcarAsiEstaBien(f.camino.ruta);
+    this.aviso.set(r.ok
+      ? `${f.que}: así queda. Desde acá se retoca de a 2 dB, contados desde este nivel.`
+      : `${f.que}: no se pudo marcar — ${r.motivo}`);
+  }
+
+  /**
+   * «La cuña de esta persona está lista»: marca de una todo lo que se movió.
+   *
+   * **Sólo alcanza a lo que la aplicación movió en esta sesión**, y la pantalla
+   * lo dice: un envío que tocaste a mano en la consola no se puede marcar,
+   * porque el motor no tiene con qué probar dónde quedó. Es la misma razón por
+   * la que el nivel establecido sale del diario y no de lo que alguien declare.
+   */
+  async marcarLaCuna(): Promise<void> {
+    const pendientes = this.porMarcar();
+    if (pendientes.length === 0 || this.enCurso() !== null) return;
+    const hechas: string[] = [];
+    const fallidas: string[] = [];
+    for (const f of pendientes) {
+      const r = await this.envio.marcarAsiEstaBien(f.camino.ruta);
+      (r.ok ? hechas : fallidas).push(f.que);
+    }
+    const partes: string[] = [];
+    if (hechas.length > 0) partes.push(`Quedaron con su nivel: ${hechas.join(', ')}.`);
+    if (fallidas.length > 0) partes.push(`No se pudieron marcar: ${fallidas.join(', ')}.`);
+    this.aviso.set(partes.join(' '));
+  }
+
   elegirMusico(id: BandMember['id']): void { this.musicoId.set(id as string); }
   elegirCuna(componenteId: string): void { this.cunaElegidaId.set(componenteId); }
 }
 
-function aFila(c: CaminoALaCuna): FilaDeLaCuna {
+function aFila(c: CaminoALaCuna, sePuedeMarcar: boolean, marcada: boolean): FilaDeLaCuna {
   const pasoDb = c.laMueveLaAplicacion ? proximoPasoDb(c.nivel) : null;
   return {
     ...comoSeDice(c.nivel),
@@ -693,6 +765,8 @@ function aFila(c: CaminoALaCuna): FilaDeLaCuna {
       : c.nivel.tipo === 'EN_DB' ? 'Ya está en el techo: de acá para arriba lo subís vos'
       : c.nivel.tipo === 'SIN_LEER' ? 'No se sabe dónde está, así que no hay desde dónde subir'
       : 'Está fuera del tramo que se midió: subirlo sería inventar el punto de partida',
+    sePuedeMarcar,
+    marcada,
   };
 }
 
