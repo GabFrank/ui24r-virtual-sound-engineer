@@ -1,9 +1,28 @@
-# Hallazgo: el diario y las mediciones son de Android, así que la escritura no se puede probar sin la tablet
+# Hallazgo: el diario y las mediciones son de Android, así que la escritura sólo se ejercita en la tablet
 
 **Medido el 2026-09-20 contra la consola del usuario**, en la primera prueba de
 campo de la rampa de monitor. Evidencia: la corrida dejó la pantalla mostrando
 `la base no está abierta: llamar a abrir() primero`, y las cuatro claves de la
 consola se releyeron por HTTP después y **ninguna había cambiado**.
+
+> ## CORREGIDO EL MISMO DÍA: el daño era MENOR de lo que esta nota decía
+>
+> **Esta nota dijo «la primera vez que la rampa escriba de verdad va a ser con el
+> usuario y su consola delante, sin nadie que lo haya visto antes», y se escribió
+> unas horas antes de que eso dejara de ser cierto.** El usuario preguntó si se
+> podía entrar a la tablet por `adb`, y se puede: con depuración inalámbrica y el
+> puente `tools/tablet/cdp.mjs` --que este repositorio ya tenía-- la aplicación se
+> conduce desde la máquina, se le aprietan los botones y se leen las pantallas.
+> La rampa se probó así el 2026-09-20 contra la consola del usuario, de punta a
+> punta, y encontró un defecto real.
+>
+> Lo que sigue siendo cierto está más abajo: el diario tiene una sola
+> implementación de almacenamiento. Lo que ya no: que eso impida probar la
+> escritura. **Impide probarla sin la tablet, que es otra cosa** --y la tablet es
+> alcanzable por red--.
+>
+> La lección, que es la de siempre en este repositorio: la frase cómoda era la
+> que dejaba el problema grande y sin salida. Buscar la salida costó una pregunta.
 
 > ## ESTE HALLAZGO ESPERA AL CAMPO
 >
@@ -37,15 +56,23 @@ mediciones usan SQL. Arreglarlo es trabajo real sobre una pieza sensible.
 **No es un defecto de producto.** En la tablet, que es donde el usuario la usa,
 funciona. El daño no está ahí.
 
-**El daño es que la cadena que escribe en la consola no se puede ejercitar sin un
+~~**El daño es que la cadena que escribe en la consola no se puede ejercitar sin un
 aparato Android.** Ni una prueba automática, ni el recorrido visual, ni una
 prueba de campo desde esta máquina. O sea que la primera vez que la rampa escriba
 de verdad va a ser con el usuario y su consola delante, sin nadie que lo haya
-visto antes.
+visto antes.~~
+
+**Corregido el 2026-09-20, unas horas después.** El daño real es más chico: la
+cadena no se puede ejercitar **sin la tablet**, y la tablet se alcanza por red. Se
+vincula una vez por depuración inalámbrica, se instala con `adb install -r` y se
+conduce con `tools/tablet/cdp.mjs`. Lo que queda afuera es lo **automático**: los
+tests y el recorrido visual siguen sin poder tocar el camino de escritura, así que
+una regresión ahí no la caza nadie hasta que alguien corra la tablet a mano.
 
 Y explica algo que el proyecto ya se venía preguntando: **por qué esta pieza
 llegó tan lejos sin contacto con el campo.** No era sólo que faltara la pantalla;
-es que el camino de escritura no tiene forma de correrse fuera de la tablet.
+es que nadie había montado el camino para correr la tablet desde la máquina,
+aunque el puente estuviera escrito desde antes.
 
 Vale igual para la pantalla de ganancia, que aplica y anota desde el 2026-09-19:
 también es Android o nada.
