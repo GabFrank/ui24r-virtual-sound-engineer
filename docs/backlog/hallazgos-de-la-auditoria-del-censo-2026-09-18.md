@@ -9,6 +9,15 @@ el prompt para retomar.** El volcado no se commitea: trae los valores enteros y
 el identificador de la unidad. Los conteos se reproducen pidiendo el estado y
 contando con `grep`, y cada hallazgo dice con qué.
 
+
+> ## ESTOS HALLAZGOS ESPERAN AL CAMPO
+>
+> **Decidido el 2026-09-20**, y está en «La regla que manda sobre esta tabla» de
+> [`2026-09-17-recapitulacion-y-hoja-de-ruta.md`](../pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
+> Están medidos y anotados, que es casi todo lo que rinden. Ninguno es una tarea
+> hasta que aparezca en un soundcheck de verdad, y **mientras haya una pieza de la
+> hoja de ruta que todavía no existe, esa gana**.
+
 ---
 
 ## 1. Hay 170 caminos a los buses que no publican `post`, y ADR-035 iba a leer `post`

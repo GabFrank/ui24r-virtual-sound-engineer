@@ -14,6 +14,22 @@ usuario.**
 cuña. Pero los tres primeros se activan **con la pieza que sigue**, no en un
 futuro lejano.
 
+
+> ## ESTOS HALLAZGOS ESPERAN AL CAMPO
+>
+> **Decidido el 2026-09-20, y está en la hoja de ruta.** Todo lo que sigue está
+> **medido, con sus números y su daño máximo**. Eso es casi todo lo que un hallazgo
+> rinde. Lo que decide si además hay que **arreglarlo** no es leerlo de nuevo: es
+> que aparezca en un soundcheck de verdad.
+>
+> **Ninguno de éstos es una tarea hasta entonces.** El motor acota el envío a
+> monitor a 4 dB por sesión con techo en nominal, así que el daño de los peores es
+> **dos pasos de 2 dB** sobre una cuña, con el usuario parado ahí escuchando.
+>
+> **Mientras haya una pieza de la hoja de ruta que todavía no existe, esa gana.**
+> Ver «La regla que manda sobre esta tabla» en
+> [`2026-09-17-recapitulacion-y-hoja-de-ruta.md`](../pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
+
 ---
 
 ## 1. Un escalón basta, y el ambiente entre frases cuenta como música

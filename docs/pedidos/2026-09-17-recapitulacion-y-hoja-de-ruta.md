@@ -122,12 +122,70 @@ mezcla cambia los monitores que ya quedaron bien.
 4. **La primera pieza después de arreglar lo que miente es la pantalla de
    monitor.**
 
+## La regla que manda sobre esta tabla — escrita el 2026-09-20
+
+**Esta sección se escribió porque el proyecto se estaba martillando en el lugar
+equivocado, y el usuario lo preguntó de frente.** Va antes de la tabla a propósito:
+la tabla dice **qué** sigue; esto dice **cuándo algo entra en la tabla**.
+
+### El cuello de botella es cablear, no medir ni defender
+
+El 2026-09-20 la mecánica de la cuña estaba **entera, probada y auditada** --el
+medidor del auxiliar, la escucha con dos medidores, el criterio de qué cuenta como
+música, la anotación en el motor-- y **ninguna pantalla la llamaba**. Fuera de su
+propia carpeta, lo único que nombraba a esos servicios era un comentario.
+
+Al mismo tiempo había **siete decisiones aceptadas y sin implementar**.
+
+O sea: **lo construido estaba sobre-defendido y lo que falta era casi todo lo que
+el usuario toca en un soundcheck.**
+
+### Un hallazgo medido y anotado NO es una tarea
+
+**Es la regla nueva, y es la que había que escribir.** Un agujero medido, con sus
+números y su documento, **ya rindió casi todo lo que iba a rendir**: está anotado y
+esperando. Lo que decide si además hay que **arreglarlo** no es el razonamiento: es
+que aparezca en un soundcheck de verdad.
+
+**Por qué, con el caso que lo produjo.** El 2026-09-19 se midió que una sala viva,
+sin que nadie toque, le compra a la aplicación un paso de 2 dB sobre una cuña. Es
+cierto. Y el daño máximo son **dos pasos de 2 dB con techo en nominal**, porque el
+motor acota el envío a monitor a 4 dB por sesión. Contra eso se estuvo por
+construir una pieza nueva --una ventana de referencia por músico, con un paso más
+antes de empezar-- **para un flujo donde el usuario está parado ahí, apretando el
+botón entre paso y paso y escuchando el resultado**. Se estaba diseñando contra un
+escenario que nadie vivió, porque **nadie usó nunca la herramienta**.
+
+### Las tres preguntas antes de tomar una tarea que no está en la tabla
+
+1. **¿Esto lo va a encontrar el usuario en un soundcheck?** Si la respuesta es «no,
+   porque haría falta que alguien lo escriba a propósito», no es una tarea: es una
+   nota. La guarda de la escucha se burló y se arregló cinco veces; la regresión
+   realista sigue siendo «alguien borra la línea», que la primera regla caza desde
+   el principio.
+2. **¿Cuál es el daño máximo si no se arregla?** Si el motor ya lo acota --topes
+   por paso, acumulado por sesión, techo absoluto--, decir el número y seguir.
+3. **¿Hay algo en la tabla que todavía no existe?** Mientras la respuesta sea sí,
+   **eso gana**. Una pieza que nadie puede usar no se mejora: se termina.
+
+### Lo que esto NO afloja
+
+**El rigor no se toca: se apunta.** Las auditorías de esos días encontraron un
+agujero grave con la suite en verde, y después que el arreglo no alcanzaba. Sin
+eso, la pantalla se habría construido sobre una escucha que miente. La disciplina
+de medir, de auditar y de retractar **se queda entera**; lo que cambia es dónde se
+gasta: **en lo que todavía no existe, no en la sexta capa de lo que ya existe.**
+
+Y lo que se deja abierto se deja **escrito, con sus números y su daño máximo**, en
+`docs/backlog/`. No es deuda olvidada: es deuda **esperando a que el campo diga si
+existe**.
+
 ## La hoja de ruta
 
 | Orden | Pieza | Herramientas | Necesita consola |
 |---|---|---|---|
 | 0 | **Arreglar lo que miente** — hecho el 2026-09-17: la tabla del recorrido, el alcance, la contradicción de los efectos | — | no |
-| 1 | **Pantalla de monitor**. El techo desde silencio **ya estaba decidido** (ADR-028: si la app no bajó, no hay techo). Lo que apareció al empezar: el asistente sólo sabe bajar, el presupuesto de 4 dB por sesión hace imposible la rampa, y el silencio queda fuera del tramo medido. Decidido en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | 9, 3 | no |
+| 1 | **Pantalla de monitor**. **Al 2026-09-20 le falta SÓLO la pantalla**: subir, escuchar y anotar están enteros, probados y auditados, y nadie los llama.  El techo desde silencio **ya estaba decidido** (ADR-028: si la app no bajó, no hay techo). Lo que apareció al empezar: el asistente sólo sabe bajar, el presupuesto de 4 dB por sesión hace imposible la rampa, y el silencio queda fuera del tramo medido. Decidido en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | 9, 3 | no |
 | 2 | **Ecualizador de canal**: decisión, asistente con criterio (espectro contra curva objetivo y banda útil del perfil), servicio, pantalla | 4 | para verificar |
 | 3 | **Puerta y compresor por lazo cerrado**: topes, servicio, pantalla | 5, 6 | para verificar |
 | 4 | **Preparar el show** y **nivel de referencia** | 1, 3 | no |
