@@ -203,16 +203,23 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   ambiente de la sala está por encima del piso, así que dos segundos de música
   rodeados de ambiente se declaraban como dieciocho de escucha, y la rampa seguía
   subiendo.
-  **Ahora cuenta instante por instante, y pide dos cosas a la vez**: que el medidor
-  se esté moviendo ahí, y que el nivel esté cerca del momento más fuerte de esa
-  misma escucha. **Lo elegiste vos en tres preguntas** (ADR-037), y la segunda es
-  la que hace el trabajo fino: como la vara se compara contra vos mismo y no contra
-  un número fijo, **el que toca bajo no queda afuera** --que es justamente el canal
-  que la herramienta de ganancia existe para levantar--.
-  **Lo que todavía no distingue, dicho de frente:** una fuente sostenida y pareja
-  --un tono largo--, un escenario donde el ambiente esté a menos de 20 dB del
-  músico, y si tu cuña se movió **por vos** o por el que toca al lado. Ese último
-  es una tarea aparte, anotada.
+  **Ahora cuenta instante por instante, y pide tres cosas a la vez**: que haya
+  entrado algo, que el nivel esté cerca del momento más fuerte de esa misma
+  escucha, y que el medidor se esté moviendo ahí. **Lo elegiste vos en tres
+  preguntas** (ADR-037), y la del medio es la que hace el trabajo fino: como la
+  vara se compara contra vos mismo y no contra un número fijo, **el que toca bajo
+  no queda afuera** --que es justamente el canal que la herramienta de ganancia
+  existe para levantar--.
+  **Lo que esto mejora, exacto:** el ambiente que está **por debajo** tuyo ya no
+  cuenta. Dos segundos de música rodeados de ambiente declaran dos.
+  **Y lo que NO arregla, que hay que decir de frente: si no tocás nada y la sala
+  está viva, la aplicación todavía te da el paso.** Una auditoría lo midió el mismo
+  día: con nadie tocando, el momento más fuerte de la ventana **es** la sala, así
+  que la vara relativa no tiene contra qué comparar. Desde un solo medidor, «el
+  músico tocó» y «su micrófono tomó a la banda» se ven iguales. **Lo que sigue es
+  que la aplicación escuche primero unos segundos con vos callado a propósito**,
+  para saber cómo suena tu sala antes de juzgar si tocaste.
+  Tampoco distingue todavía si tu cuña se movió por vos o por el que toca al lado.
   **Vale para las dos herramientas**, la de ganancia y la de cuñas.
 
 - **Si se cortaba el WiFi con la consola mientras la aplicación te escuchaba, esos
@@ -226,9 +233,10 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   música compraban un paso de 2 dB.
   **Ahora pregunta en cada lectura, veinte veces por segundo**, y lo que no pudo
   oír no lo cuenta. Un corte corto te cuesta esos segundos y nada más; si igual
-  llegaste a tocar lo suficiente, la escucha vale. **Y la aplicación sabe ahora
-  cuánto no pudo oír**, que es lo que le permite decirte «se cortó la consola» en
-  vez de «no tocaste» —son cosas distintas y llevan a hacer cosas distintas—.
+  llegaste a tocar lo suficiente, la escucha vale. **Y la aplicación guarda ahora
+  cuánto no pudo oír** —todavía no lo muestra ninguna pantalla; es el dato que le
+  va a permitir decirte «se cortó la consola» en vez de «no tocaste», que son cosas
+  distintas y llevan a hacer cosas distintas—.
   Lo elegiste vos entre tres opciones: descontar lo que no oyó y seguir, en vez de
   cortar la escucha y hacerte tocar de nuevo cada vez que parpadea la red.
   **Vale para las dos herramientas**, la de ganancia y la de cuñas: era el mismo

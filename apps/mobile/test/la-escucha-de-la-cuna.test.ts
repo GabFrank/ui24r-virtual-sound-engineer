@@ -33,11 +33,24 @@ import {
  *
  * Decisión del usuario del 2026-09-19 entre tres opciones, ADR-036.
  *
- * **Ocho de los nueve recorren la cadena entera; el noveno no, y hay que decirlo.**
- * El último —«la ganancia sigue escuchando sobre un solo medidor»— es una guarda de
- * regresión sobre el mapeo y no abre la base ni llega al motor. El mensaje del
+ * **Casi todos recorren la cadena entera, y los que no están dichos en su propio
+ * comentario.** «La ganancia sigue escuchando sobre un solo medidor» es una guarda
+ * de regresión sobre el mapeo y no abre la base ni llega al motor. El mensaje del
  * commit `7ab9c59` dijo «los nueve», y era falso: lo cazó una auditoría de
- * fidelidad el mismo día.
+ * fidelidad el mismo día. **Acá había un conteo escrito a mano --«ocho de los
+ * nueve»-- que se pudrió en cuanto este archivo creció**, que es la trampa que el
+ * propio repositorio documenta: un número que nada comprueba no se corrige, se
+ * deja de afirmar.
+ *
+ * **Y una corrección del mensaje de `593da56`, que no se puede editar:** dijo que
+ * «siete tests fallan sin el arreglo, comprobado revirtiéndolo». **Son cuatro**,
+ * medidos por una auditoría de fidelidad revirtiendo el mapeo y corriendo la suite
+ * entera. El siete salió de correr los dos archivos por separado y sumar los
+ * rojos, sin descontar que dos eran los tests de **límite** --que pasan igual con
+ * el código viejo, porque describen lo que la regla no hace-- y dos, los que
+ * cambiaron su dato. **Un número de mutación es justo con lo que este repositorio
+ * dice «esto está probado de verdad»**, así que equivocarlo es de la familia
+ * cara.
  */
 
 const SESION = 'ses-cuna';
@@ -302,11 +315,16 @@ test('dos segundos de música con ambiente alrededor son dos, no dieciocho', () 
   assert.equal(concedeOtroPaso(m), false, 'y dos segundos no compran el paso');
 });
 
-test('el ambiente solo, sin nadie tocando, no declara nada', () => {
-  // La misma ventana sin los dos segundos de música: ahora el pico ES el
-  // ambiente, así que la vara relativa no lo saca. Lo que lo saca es que un
-  // ambiente de sala no se mueve como un instrumento... y por eso este test
-  // existe: **si alguna vez pasa a PERFORMANCE, la vara relativa quedó sola.**
+test('una sala QUIETA, sin nadie tocando, no declara nada', () => {
+  // Con nadie tocando el pico de la ventana **es** el ambiente, así que la vara
+  // relativa no filtra nada: lo único que decide es el movimiento. Una sala
+  // quieta --2 dB de recorrido-- no llega a los 3 dB que se piden.
+  //
+  // **El mensaje de esta aserción decía «se mueve menos de un escalón», y era
+  // falso**: 2 dB son seis escalones del medidor. Lo que la rechaza es la vara
+  // elegida de 3 dB, no la resolución del instrumento --que es justamente el
+  // argumento que se retiró al elegir la vara--. Lo cazó una auditoría de
+  // fidelidad el 2026-09-19.
   const ambiente = (): MuestraVu[] => Array.from({ length: CUANTAS }, (_, i) => ({
     tMs: i * INTERVALO_DE_MUESTREO_MS, db: -58 + (i % 5) * 0.5, reduccionDb: 0,
   }));
@@ -314,7 +332,40 @@ test('el ambiente solo, sin nadie tocando, no declara nada', () => {
 
   assert.equal(
     m.duracionS, 0,
-    `un ambiente que se mueve menos de un escalón no es música; declaró ${m.duracionS.toFixed(2)} s`,
+    `una sala que recorre 2 dB no llega a la vara de 3; declaró ${m.duracionS.toFixed(2)} s`,
+  );
+});
+
+test('AGUJERO ABIERTO: una sala VIVA, sin nadie tocando, concede el paso', () => {
+  // **Esto NO es una garantía: es el defecto, escrito para que se vea.** Una
+  // auditoría adversarial lo midió el 2026-09-19 sobre la cadena completa, con
+  // ambientes correlacionados como se mueve un medidor de sala de verdad: una sala
+  // viva declara entre 11 y 16 segundos de música y **el motor concede el paso de
+  // 2 dB, sin que nadie haya tocado una nota**.
+  //
+  // **El test hermano de arriba no lo veía porque su ambiente es más manso que la
+  // realidad** --2 dB, justo por debajo del corte--. Ése es el género de agujero
+  // que este repositorio ya pagó, y estaba cometido dentro de la defensa contra
+  // él. Por eso el caso de verdad vive acá, en rojo conceptual y en verde
+  // mecánico: **el día que esto pase a `false`, el agujero se cerró.**
+  //
+  // Lo que sigue es comparar contra una ventana de referencia del mismo canal con
+  // el músico callado. Decisión del usuario del 2026-09-19.
+  const salaViva = (desfase: number): MuestraVu[] => Array.from(
+    { length: CUANTAS },
+    (_, i) => ({
+      tMs: i * INTERVALO_DE_MUESTREO_MS,
+      db: -45 + ((i + desfase) % 5),
+      reduccionDb: 0,
+    }),
+  );
+  const m = medicionDe(salaViva(0), salaViva(2));
+
+  assert.equal(m.signalType, 'PERFORMANCE', 'nadie tocó, y la aplicación dice que sí');
+  assert.ok(m.duracionS >= 10, `declaró ${m.duracionS.toFixed(2)} s de música que no hubo`);
+  assert.equal(
+    concedeOtroPaso(m), true,
+    'AGUJERO ABIERTO: cuando esto pase a false, borrar el test y cerrar el hallazgo 1',
   );
 });
 
@@ -340,7 +391,18 @@ test('LÍMITE ESCRITO: la cuña movida por OTRA fuente sigue concediendo', () =>
   // voz adentro, las dos cosas pasan a la vez siempre. Es la misma familia que
   // ADR-035 --«el tope es por clave y el oído es por parlante»-- y está anotado en
   // el hallazgo 1 de la tanda de la cuña.
-  const m = medicionDe(sonando(), sonando());
+  //
+  // **Las dos series son DISTINTAS a propósito**, y una auditoría lo marcó: usar
+  // la misma para las dos era el dato menos discriminante posible. Acá el canal y
+  // la cuña se mueven con ritmos que no tienen nada que ver, que es justamente el
+  // caso «la cuña la mueve otro», y el motor concede igual.
+  const canal = Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -30 + (i % 7) * 2, reduccionDb: 0,
+  }));
+  const otraFuente = Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -20 + (i % 11), reduccionDb: 0,
+  }));
+  const m = medicionDe(canal, otraFuente);
 
   assert.equal(
     concedeOtroPaso(m), true,

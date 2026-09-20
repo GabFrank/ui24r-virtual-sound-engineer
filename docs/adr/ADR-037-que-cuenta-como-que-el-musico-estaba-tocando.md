@@ -1,10 +1,17 @@
 # ADR-037 — Qué cuenta como que el músico estaba tocando
 
 **Fecha:** 2026-09-19
-**Estado:** **decidida e implementada, sin quien la dispare.** Cambia el mapeo que
-las dos herramientas que escuchan usan --la ganancia y el envío a monitor--, así
-que la pantalla de ganancia **sí** la estrena; el envío a monitor la estrena
-cuando exista la pantalla por músico.
+**Estado:** **decidida e implementada, y NO alcanza para lo que la motivó.** El
+mapeo lo usan las dos herramientas que escuchan, y la pantalla de ganancia **la
+dispara hoy** --`gain.component.ts` llama a `capturar()`--; el envío a monitor la
+estrenará con la pantalla por músico. Pero una auditoría adversarial del mismo día
+midió que **una sala viva, sin que nadie toque, sigue concediendo el paso**: ver
+«Qué falta». La decisión se deja escrita porque lo que decidió sigue valiendo y es
+la base de lo que sigue; lo que no vale es la promesa de que cierra el agujero.
+
+**Una línea anterior de este Estado decía «sin quien la dispare» y se contradecía
+sola dos renglones después.** Corregido el mismo día por una auditoría de
+fidelidad.
 **Origen:** **Decisión del usuario**, en tres preguntas encadenadas el 2026-09-19,
 más una cuarta que apareció implementando.
 **Relacionada:** [ADR-036](ADR-036-la-escucha-de-una-cuna-se-comprueba-sobre-dos-medidores.md),
@@ -57,6 +64,10 @@ propia ventana, la vara se acomoda sola a cada micrófono, instrumento y sala.
 
 ### 3. La distancia al pico son 20 dB
 
+**Y «a 20 dB o menos», no «a menos de 20 dB»:** el instante que está exactamente
+20 dB bajo el pico **cuenta**. Lo dice el código y lo comprobó una auditoría en el
+borde exacto; la primera redacción prometía una garantía más estricta que la real.
+
 Se le ofrecieron 12, 20 y 30, y eligió como ingeniero de sonido: es la dinámica
 que tiene una frase cantada o tocada de verdad. Más estricto haría repetir la
 escucha a un instrumento de dinámica ancha; más generoso deja entrar el ambiente
@@ -79,10 +90,17 @@ la resolución del instrumento. **Se remide cuando se pueda**: hace falta una
 ventana con alguien tocando por un micrófono en la sala donde está la MacBook,
 contra otra de la sala sola, y hoy ahí no hay nadie que pueda tocar.
 
-El tramo de medio segundo sí tiene sus dos cotas apoyadas en algo medido: por
-abajo tiene que abarcar varias tramas del medidor —llegan con media 44,3 ms y
-mediana 34 ms—, y por arriba tiene que ser más corto que una frase musical, o el
-silencio entre dos notas se mezcla con las notas.
+El tramo de medio segundo tiene **una** cota apoyada en algo medido y otra que no,
+y la primera redacción decía «las dos». Por abajo, medida: tiene que abarcar varias
+tramas del medidor, que llegan con media 44,3 ms y mediana 34 ms. Por arriba,
+**oficio**: tiene que ser más corto que una frase musical, o el silencio entre dos
+notas se mezcla con las notas —y no hay ninguna medición de duración de frase en
+este repositorio—.
+
+**La corrección importa más de lo que parece**, y la hizo una auditoría de
+fidelidad el mismo día: esta decisión **se apoya entera** en distinguir lo medido
+de lo elegido, y presentaba como medida la mitad que no lo está, justo al lado de
+los 3 dB marcados con mayúsculas como elegidos.
 
 ## Qué falta, dicho con todas las letras
 
@@ -99,6 +117,16 @@ silencio entre dos notas se mezcla con las notas.
   decisión**.
 - **La vara de movimiento es elegida.** Repetido acá a propósito: es el único
   número de esta decisión que no tiene medición detrás.
+- **Y lo que de verdad falta, medido el mismo día: una sala viva sin nadie
+  tocando SIGUE concediendo el paso.** Con nadie tocando el pico de la ventana es
+  el ambiente, así que la vara relativa no filtra y queda sola la de movimiento,
+  que un micrófono abierto con gente alrededor supera. Los números están en el
+  hallazgo 1 de
+  [`hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md`](../backlog/hallazgos-de-las-auditorias-de-la-cuna-2026-09-19.md).
+  **Desde un solo medidor las dos cosas se ven iguales**, así que lo que sigue es
+  comparar contra una **ventana de referencia** del mismo canal con el músico
+  callado --decisión del usuario del 2026-09-19--, y eso es una pieza nueva, no un
+  número mejor.
 
 ## Trabajo previo
 
@@ -106,9 +134,13 @@ silencio entre dos notas se mezcla con las notas.
 memoria, en los mismos commits que el inventario declara.
 
 **Ninguno de los cuatro decide si alguien está tocando a partir del medidor.** Lo
-único que aparece con la palabra «umbral» es el parámetro de la puerta y del
-compresor de la propia consola —un valor que se lee y se escribe—, que es otra
-cosa. La fila quedó agregada en
+único que aparece al grepear `threshold` fuera de un JSON de ejemplo son dos campos
+del modelo de estado de `fmalcher`: el umbral del **compresor** y el del
+**de-esser** —valores que se leen y se escriben—, que es otra cosa. **Una primera
+redacción decía «la puerta y el compresor», y era falso**: el campo de la puerta se
+llama `thresh` y esa búsqueda no lo alcanza. Lo cazó una auditoría de fidelidad el
+mismo día. La conclusión no cambia; lo que cambia es que el detalle citado como
+grepeado ahora es el que el grep devuelve. La fila quedó agregada en
 [`trabajo-previo-de-terceros.md`](../referencia/trabajo-previo-de-terceros.md).
 
 **Que no haya precedente es un dato: pide más cuidado, no menos.** Es parte de por

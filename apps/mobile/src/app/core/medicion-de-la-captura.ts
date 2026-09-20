@@ -163,24 +163,43 @@ export interface CapturaParaGuardar {
  * instrumento de dinámica ancha; más generoso deja entrar el ambiente de entre
  * frases.
  *
+ * **Y es «a 20 dB o menos», no «a menos de 20 dB»:** el instante que está
+ * exactamente 20 dB bajo el pico **cuenta**. Comprobado en el borde por una
+ * auditoría; una primera redacción prometía más estricto de lo que el código hace.
+ *
  * **Lo que NO alcanza, dicho con todas las letras:** un escenario donde el
- * ambiente esté a menos de 20 dB del músico. Ahí esta mitad no filtra nada y la
- * que sostiene sola es {@link VECINDAD_DE_MOVIMIENTO_MS}. Se eligió sabiéndolo.
+ * ambiente esté a 20 dB o menos del músico. Ahí esta mitad no filtra nada y la que
+ * sostiene sola es {@link MOVIMIENTO_MINIMO_DB} --no la vecindad, que es sólo el
+ * ancho del tramo; el enlace estaba mal--.
+ *
+ * **Y el caso peor no es ése: es que NADIE toque.** Ahí el pico de la ventana
+ * **es** el ambiente, así que esta mitad no filtra nada por construcción. Una
+ * auditoría adversarial lo midió el 2026-09-19: una sala viva declara entre 11 y
+ * 16 segundos de música y **el motor concede el paso**. Ver
+ * {@link MOVIMIENTO_MINIMO_DB}.
  */
 export const DISTANCIA_AL_PICO_DB = 20;
 
 /**
  * El tramo alrededor de un instante en el que se mira si el medidor se movió.
  *
- * **Dos cotas, y las dos vienen de algo medido, no del gusto.** Por abajo tiene
- * que abarcar varias tramas del medidor, porque las `VU2` llegan con media
- * 44,3 ms y mediana 34 ms: un tramo más corto dejaría que una sola trama decida
- * si hubo movimiento. Por arriba tiene que ser **más corto que una frase
- * musical**, porque si no el silencio entre dos notas se mezcla con las notas y
- * cuenta como movimiento.
+ * **Una cota viene de algo medido y la otra es oficio, y hay que decir cuál es
+ * cuál.** Por abajo, **medida**: tiene que abarcar varias tramas del medidor,
+ * porque las `VU2` llegan con media 44,3 ms y mediana 34 ms, y un tramo más corto
+ * dejaría que una sola trama decida si hubo movimiento. Por arriba, **elegida**:
+ * tiene que ser más corto que una frase musical, o el silencio entre dos notas se
+ * mezcla con las notas y cuenta como movimiento --y en este repositorio no hay
+ * ninguna medición de cuánto dura una frase--.
  *
  * Medio segundo cumple las dos: abarca una decena de tramas y ningún músico hace
  * una frase entera en ese tiempo.
+ *
+ * **Acá decía «las dos vienen de algo medido», y era falso.** Lo cazó una
+ * auditoría de fidelidad el 2026-09-19, el mismo día. Importa más de lo que
+ * parece: toda esta pieza se apoya en distinguir lo medido de lo elegido --la
+ * vara de {@link MOVIMIENTO_MINIMO_DB} está marcada con mayúsculas como
+ * elegida-- y presentar como medida la mitad que no lo está debilita justamente
+ * la distinción que hace útil a la otra marca.
  */
 export const VECINDAD_DE_MOVIMIENTO_MS = 500;
 
@@ -211,10 +230,30 @@ export const VECINDAD_DE_MOVIMIENTO_MS = 500;
  * porque nadie vuelve a mirarla.
  *
  * **Lo que esto deja afuera, dicho con todas las letras:** una fuente sostenida y
- * pareja --un tono, un acorde de órgano tenido-- durante más de medio segundo. Un
- * instrumento tocado no lo hace; un generador sí, y la aplicación no reproduce
- * audio todavía. El día que reproduzca tonos para medir, esta regla hay que
- * volver a mirarla.
+ * pareja --un tono, un acorde de órgano tenido-- durante más de medio segundo,
+ * **y sólo si es continua**: la misma fuente plana encendida y apagada cada medio
+ * segundo sí cuenta, porque el movimiento se mide contra el silencio de al lado y
+ * no contra la textura de la fuente. Un instrumento tocado no da una meseta
+ * continua; un generador sí, y la aplicación no reproduce audio todavía. El día
+ * que reproduzca tonos para medir, esta regla hay que volver a mirarla.
+ *
+ * ## Y LO PRINCIPAL: ESTA VARA NO ALCANZA PARA LO QUE SE PUSO
+ *
+ * **Medido el 2026-09-19 por una auditoría adversarial, con la cadena completa y
+ * ambientes correlacionados como se mueve un medidor de sala de verdad: una sala
+ * viva, SIN QUE NADIE TOQUE, declara entre 11 y 16 segundos de música y el motor
+ * concede el paso de 2 dB.** La frontera está entre 3,8 y 4,0 dB pico a pico con
+ * ambiente uniforme, y el nivel absoluto es irrelevante --el mismo ambiente a −55
+ * o a −25 da el mismo veredicto--, porque con nadie tocando el pico **es** el
+ * ambiente y {@link DISTANCIA_AL_PICO_DB} no filtra nada.
+ *
+ * **Lo que la auditoría mostró y decide qué sigue:** lo que delata a una sala
+ * tranquila no es cuánto se mueve sino **qué tan despacio**. Una sala viva se
+ * mueve rápido, igual que un instrumento. **Desde un solo medidor las dos cosas
+ * se ven iguales, y ninguna vara sobre esta serie las separa.** Subir el número no
+ * arregla nada: lo que hace falta es comparar contra una **ventana de referencia**
+ * del mismo canal tomada con el músico callado a propósito. Decisión del usuario
+ * del 2026-09-19, y es una pieza nueva.
  */
 export const MOVIMIENTO_MINIMO_DB = 3;
 
@@ -266,12 +305,17 @@ export const MOVIMIENTO_MINIMO_DB = 3;
  * parte instructiva: **presentar como caro algo que cuesta una línea es lo que
  * hace que esa línea no se escriba**, y estuvo un día entero logrando eso.
  *
- * **Trabajo previo:** ninguno de los cuatro proyectos de terceros que hablan este
- * protocolo decide si alguien está tocando a partir del medidor. Comprobado el
- * 2026-09-19 clonando y grepeando; lo único que aparece con ese nombre es el
- * umbral de la puerta y del compresor de la propia consola, que es otra cosa. Ver
- * `docs/referencia/trabajo-previo-de-terceros.md`. **Que no haya precedente es un
- * dato: pide más cuidado, no menos.**
+ * **Trabajo previo:** ninguno de los cuatro proyectos de terceros que este
+ * repositorio mira decide si alguien está tocando a partir del medidor.
+ * Comprobado el 2026-09-19 clonando y grepeando; lo único que aparece al buscar
+ * `threshold` son el umbral del **compresor** y el del **de-esser** de la propia
+ * consola, que es otra cosa. Ver `docs/referencia/trabajo-previo-de-terceros.md`.
+ * **Que no haya precedente es un dato: pide más cuidado, no menos.**
+ *
+ * Dos correcciones de una auditoría de fidelidad del mismo día: acá decía «la
+ * puerta y el compresor» --el campo de la puerta se llama distinto y esa búsqueda
+ * no lo alcanza-- y «los cuatro proyectos que hablan este protocolo», cuando uno
+ * de los cuatro no lo habla: es una inyección en el cliente oficial.
  */
 export function indicesConMusica(muestras: readonly MuestraVu[]): ReadonlySet<number> {
   const cuentan = new Set<number>();
@@ -418,7 +462,9 @@ export function cuantoSono(sonando: readonly MuestraVu[]): number {
  *
  * **«Sin métricas» NO es «no sonó nadie», y una primera redacción decía que sí.**
  * Son dos preguntas distintas y las decide gente distinta: `senal()` pregunta si
- * el medidor se movió por encima del piso de ruido, y esto pregunta si hubo señal
+ * hubo algún instante con música --tres condiciones, ver `indicesConMusica`; esta
+ * línea decía «si el medidor se movió por encima del piso de ruido» y quedó vieja
+ * en el mismo commit que la invalidó--, y esto pregunta si hubo señal
  * **suficiente para recomendar una ganancia**, que es lo que `analizarVentana`
  * calcula. Un canal que entró a −54 dB es un músico tocando bajo: se guarda como
  * `PERFORMANCE` y **sin métricas**, porque no hay margen que afirmar sobre él. Lo

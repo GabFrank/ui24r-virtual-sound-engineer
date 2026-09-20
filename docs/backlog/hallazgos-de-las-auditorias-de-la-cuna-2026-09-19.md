@@ -18,23 +18,55 @@ futuro lejano.
 
 ## 1. Un escalón basta, y el ambiente entre frases cuenta como música
 
-> **CERRADO el 2026-09-19 en sus dos primeras filas; la tercera sigue abierta.**
-> Un instante cuenta como música si **el medidor se estaba moviendo ahí** --3 dB
-> dentro de medio segundo-- **y** el nivel está a menos de **20 dB del pico de esa
-> misma escucha**. La vara relativa es lo que saca el ambiente de entre frases sin
-> castigar al que toca bajo. Decisión del usuario en tres preguntas,
-> [ADR-037](../adr/ADR-037-que-cuenta-como-que-el-musico-estaba-tocando.md).
+> **NO CERRADO. Se intentó el 2026-09-19 y la auditoría adversarial midió que no
+> alcanza.** Lo que sí quedó cerrado es la fila del medio --el ambiente **por
+> debajo** del músico ya no cuenta: dos segundos de música con ambiente abajo
+> declaran dos--. Lo que **no**: la ventana en que **nadie toca y hay sala viva**.
 >
-> **La tercera fila NO la cierra** --la cuña movida por otra fuente--: es la misma
-> familia que ADR-035 y sigue en el hallazgo 3. Hay un test que la deja escrita en
-> vez de dejarla suponer.
+> **Medido con la cadena completa, ambientes correlacionados como se mueve un
+> medidor de sala de verdad, sin que nadie toque una nota:**
 >
-> **Y la vara de movimiento es ELEGIDA, NO MEDIDA**, dicho así en el código y en
-> la ADR. La primera versión se apoyaba en la resolución del propio medidor para
-> no elegir un número, y **no servía**: el ruido parejo de una sala se mueve varias
-> veces un escalón sin que nadie toque, así que la ventana con nadie tocando seguía
-> declarando dieciocho. Medirla pide alguien tocando por un micrófono en la sala
-> donde está la MacBook, y hoy ahí no hay nadie.
+> | la sala sola | declara | motor |
+> |---|---|---|
+> | canal −45 dB, cuña −30 dB | 14,00 s | **concede** |
+> | canal −40 dB, cuña −25 dB | 16,25 s | **concede** |
+> | canal −50 dB, cuña −35 dB | 13,40 s | **concede** |
+> | canal −38 dB, cuña −28 dB | 11,75 s | **concede** |
+>
+> **Por qué.** Con nadie tocando, el pico de la ventana **es** el ambiente, así
+> que la vara relativa de 20 dB no filtra nada --está escrito como límite
+> conocido-- y queda sola la de movimiento, y 3 dB en medio segundo los recorre
+> cualquier micrófono abierto con gente alrededor. **La frontera está entre 3,8 y
+> 4,0 dB pico a pico** con ambiente uniforme. El nivel absoluto es irrelevante: el
+> mismo ambiente a −55, −45, −35 y −25 da el mismo veredicto. **Y funciona igual
+> por el camino de la ganancia**, con un solo medidor: canal −45 dB → 14,40 s.
+>
+> **Y una variante con un solo tic de música:** un golpe a −14 dB con la sala a
+> −31 dB --17 dB de distancia, combinación normal de escenario-- declara
+> **17,95 s** y concede. Con la sala a −45 o −58 el ataque se cae, o sea que el
+> corte relativo sí trabaja; lo que no alcanza es él solo.
+>
+> **El test que tenía que cazarlo no lo caza, y es la parte instructiva.** Está
+> escrito en él mismo: «si alguna vez pasa a PERFORMANCE, la vara relativa quedó
+> sola». Ya está sola. No se ve porque ese test eligió un ambiente de 2 dB pico a
+> pico, **justo por debajo del corte**: el dato de prueba es más manso que la
+> realidad. Es el mismo género de agujero que este repositorio ya pagó, cometido
+> al escribir la defensa contra él.
+>
+> **Lo que la auditoría también mostró, y decide qué sigue:** lo que separa a una
+> sala tranquila no es cuánto se mueve sino **qué tan despacio** --una deriva lenta
+> no pasa ni con mucho recorrido; una sala viva pasa con poco--. O sea que **desde
+> un solo medidor, «el músico tocó» y «su micrófono tomó la banda» se ven
+> iguales**, y ninguna vara sobre esa serie los separa.
+>
+> **Decisión del usuario del 2026-09-19, y es lo que sigue:** comparar contra una
+> **ventana de referencia** del mismo canal, tomada con el músico callado a
+> propósito antes de empezar. Es «primero medir, después corregir» aplicado bien, y
+> es una pieza nueva.
+>
+> **El radio de daño mientras tanto, para dimensionarlo:** el motor acota el envío
+> a monitor a 4 dB por sesión con techo en nominal, así que son **dos pasos de 2 dB**
+> concedidos sobre una escucha que no existió, no la rampa entera.
 
 **MEDIDO, y es HEREDADO de la escucha de ganancia, no lo trajo esta pieza.**
 
@@ -210,6 +242,29 @@ cabecera 24/2/6/4/1 aux, trama cortada en 169 bytes
 **Plausibilidad baja** —pide una trama truncada y una cabecera con pocos
 auxiliares; con los diez de esta consola no se manifiesta— pero la garantía
 escrita es más fuerte que la que el código da.
+
+---
+
+## 7. La cuña pudo haberla movido OTRO músico, y nada lo distingue
+
+**MEDIDO, y es hallazgo propio desde el 2026-09-19.** Estaba nombrado dentro del
+hallazgo 1 como «su tercera fila» y una corrección lo mandaba a leer al hallazgo 3,
+**que trata de otra cosa** --que el motor no cruza el canal de la medición contra
+la ruta--. Son la misma familia, ADR-035, pero no el mismo hallazgo, y mandar al
+lector a un sitio que no lo dice es peor que no mandarlo: lo cazó una auditoría de
+fidelidad.
+
+El medidor del auxiliar es **la suma del bus**. Que el músico toque y que su cuña
+se mueva **a la vez** no dice que una cosa haya causado la otra, y en una cuña con
+una voz adentro pasan a la vez siempre. Medido con dos series que no tienen nada
+que ver entre sí --canal y cuña moviéndose con ritmos distintos--: **concede igual**.
+
+Hay un test que lo deja escrito, `LÍMITE ESCRITO: la cuña movida por OTRA fuente
+sigue concediendo`, para que se vea en la suite en vez de suponerse.
+
+**Lo cierra la misma pieza que el hallazgo 1**: una ventana de referencia por
+canal. Con la referencia, «este canal subió respecto de su propia sala» es
+comprobable; sin ella, no.
 
 ---
 

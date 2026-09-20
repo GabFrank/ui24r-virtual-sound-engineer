@@ -275,16 +275,34 @@ grepeando: `silen`, `noise floor`, `activity`, `isActive`, `hasSignal`,
 
 | | Decide «hay alguien tocando» a partir del medidor |
 |---|---|
-| `fmalcher/soundcraft-ui` | **No.** Las únicas coincidencias de `threshold` fuera de un JSON de ejemplo son dos campos de su modelo de estado --el umbral de la puerta y el del compresor de la consola--: un parámetro que se lee y se escribe, no una decisión sobre la señal |
+| `fmalcher/soundcraft-ui` | **No.** Las únicas coincidencias de `threshold` fuera de un JSON de ejemplo son dos campos de su modelo de estado --el umbral del **compresor** y el del **de-esser**--: un parámetro que se lee y se escribe, no una decisión sobre la señal |
 | `Dennion/ioBroker.soundcraft` | **No.** Una sola coincidencia en todo el repositorio, y es un comentario de la configuración de sus tests |
 | `ndikanov/ui24` | **No.** Cero coincidencias |
 | `NaturalDevCR/MyUiPro` | **No.** Lo que aparece es un mensaje de «silenciar todos los canales» de su traducción y un registro de cuando la pestaña se oculta |
 
-**Los cuatro publican el medidor; ninguno concluye nada con él.** Es coherente con
-para qué están hechos: son clientes y puentes de domótica, que muestran el número
-o lo reexportan. Preguntarle al medidor si el músico estaba tocando es una
-pregunta que aparece recién cuando algo **escribe** en la consola y necesita
-saber si puede volver a escribir.
+**Dos de los cuatro publican el medidor y no concluyen nada con él; los otros dos
+ni lo leen.** Lo dice la tabla de «Medidor del auxiliar en vivo» de más arriba:
+`ndikanov/ui24` es una inyección en el cliente oficial y el medidor lo dibuja el
+cliente, y `NaturalDevCR/MyUiPro` tiene la biblioteca disponible y cero uso.
+
+> **Acá decía «los cuatro publican el medidor», y era falso.** Lo cazó una
+> auditoría de fidelidad el 2026-09-19, el mismo día que se escribió. **Y es
+> exactamente el patrón que este documento existe para impedir**: un motivo que
+> suena bien --«son clientes, muestran el número»-- al lado de una conclusión
+> correcta, cuando **la evidencia verdadera estaba dieciséis líneas más arriba en
+> este mismo archivo y era MÁS FUERTE**: que dos ni lo lean refuerza todavía más
+> que no hay precedente. Es la segunda vez en el día con la misma forma.
+
+Es coherente con para qué están hechos: son clientes y puentes de domótica, que
+muestran el número o lo reexportan. Preguntarle al medidor si el músico estaba
+tocando es una pregunta que aparece recién cuando algo **escribe** en la consola y
+necesita saber si puede volver a escribir.
+
+**Y el término que se grepeó no alcanza a la puerta**, dicho para que nadie repita
+la búsqueda creyendo que sí: en `fmalcher` el campo de la puerta se llama
+`thresh`, no `threshold`. La conclusión no cambia --ese campo tampoco decide nada
+sobre la señal-- pero el detalle que se citaba como grepeado no era el que el grep
+devolvía.
 
 **Que no haya precedente es un dato: pide más cuidado, no menos.** Por eso la vara
 de movimiento de [ADR-037](../adr/ADR-037-que-cuenta-como-que-el-musico-estaba-tocando.md)
