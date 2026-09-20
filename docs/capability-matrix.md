@@ -69,6 +69,18 @@ Un documento que decide qué se puede implementar no puede enterarse último.
 | `i.N.gate.hold` | `2000^desqr(V)` ms — **la primera ley de tiempo medida**, y la fórmula del cliente acertó exacta | 116 | `tiempos-de-la-puerta-2026-09-16.txt` |
 | `i.N.gate.depth` | `60·V − 60` dB — la fórmula del cliente, **acertada al décimo de dB**; medida entre el crudo 0,55 y el 1,00, y no más abajo porque ahí empieza el piso del banco | 120 | `umbral-de-la-puerta-2026-09-17.txt` |
 
+> **Y hay una ausencia que se lee mal si no se dice: las bandas 2, 3 y 4 del
+> ecualizador de canal.** De las cuatro campanas están medidas **las cuatro
+> ganancias**, pero **la frecuencia y el Q sólo de la banda 1**. La aplicación
+> puede subir y bajar las cuatro y **no sabe en qué frecuencia están paradas** las
+> otras tres: ni para mostrarlo ni para moverlas. Es muy probable que compartan la
+> ley de la banda 1 —como pasó con las ganancias, que dieron la misma recta las
+> cuatro— pero probable no es medido. **No es un trofeo: la pieza 2 de la hoja de
+> ruta lo cablea.** Lo encontró el 2026-09-20 el intento de decodificar las curvas
+> del propio usuario, que salieron con la banda 1 en hercios y las otras tres en
+> blanco. *(Esta nota estuvo un rato como fila de la tabla de arriba, que es la de
+> las leyes MEDIDAS, y `validate-rutas-medidas` lo rechazó con razón.)*
+
 **Lo que NO está en esta tabla no tiene ley medida**, por más que su clave exista
 y acepte escritura: el compresor, el deesser, el lado derecho del general y las
 otras treinta bandas de cada gráfico. **De la puerta ya hay dos** —el sostenido y
