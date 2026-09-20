@@ -146,73 +146,165 @@ export interface CapturaParaGuardar {
 }
 
 /**
- * Las muestras en que **entró algo**, por encima del piso de ruido del medidor.
+ * Cuánto por debajo del momento más fuerte de la ventana puede estar un instante
+ * y seguir contando como que el músico estaba tocando.
  *
- * **`PISO_DE_RUIDO_DB` y no `UMBRAL_SILENCIO_DB`, y la diferencia es el defecto
- * que esta función existe para no repetir.** El proyecto separó las dos cosas el
- * 2026-09-09: «no entró nada» y «entró muy bajo» llevan a consejos opuestos, la
- * primera a revisar el cable y la segunda a subir la ganancia del previo. El
- * umbral de −50 es el que decide si hay señal **suficiente para recomendar**; el
- * piso de −60 es el que decide si **entró algo**.
+ * **Es una vara RELATIVA a la propia escucha, y ésa es la decisión.** Una vara
+ * fija en decibeles no se puede elegir sin medir en un escenario con banda —el
+ * único banco que este proyecto tiene es una sala callada— y encima castigaría
+ * al músico que toca bajo, que es justamente el canal que el asistente de
+ * ganancia existe para levantar. Comparando cada instante contra el pico de **su
+ * propia ventana**, la vara se acomoda sola a cada micrófono, a cada instrumento
+ * y a cada sala.
  *
- * Para la pregunta de esta pieza —¿el músico estaba sonando mientras yo
- * escuchaba?— el que corresponde es el piso. Un canal que entró a −54 es un
- * músico tocando bajo, no un músico ausente, **y es el caso principal del
- * asistente de ganancia**: usar el umbral de −50 dejaba sin rampa justamente al
- * canal que el asistente existe para levantar.
+ * **Veinte, y es decisión del usuario del 2026-09-19** entre tres opciones —12,
+ * 20 y 30—, hecha como ingeniero de sonido: es la dinámica que tiene una frase
+ * cantada o tocada de verdad. Más estricto haría repetir la escucha a un
+ * instrumento de dinámica ancha; más generoso deja entrar el ambiente de entre
+ * frases.
+ *
+ * **Lo que NO alcanza, dicho con todas las letras:** un escenario donde el
+ * ambiente esté a menos de 20 dB del músico. Ahí esta mitad no filtra nada y la
+ * que sostiene sola es {@link VECINDAD_DE_MOVIMIENTO_MS}. Se eligió sabiéndolo.
  */
-function conSonido(muestras: readonly MuestraVu[]): readonly MuestraVu[] {
-  return muestras.filter((m) => Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB);
-}
+export const DISTANCIA_AL_PICO_DB = 20;
 
 /**
- * ¿El medidor **se movió**?
+ * El tramo alrededor de un instante en el que se mira si el medidor se movió.
  *
- * **Es lo que separa a un músico de una consola caída, y medirlo costó una
- * auditoría.** `MixerService` sólo vacía la lista de canales cuando el usuario
- * desconecta a propósito: si la conexión se cae sola, los últimos niveles
- * conocidos se quedan ahí, y la captura muestrea dieciocho segundos de un número
- * muerto. Medido el 2026-09-19 con la cadena entera: una ventana con la consola
- * caída y el último nivel en −14,6 dB se guardaba como `PERFORMANCE` de 17,95
- * segundos y **el motor autorizaba el paso siguiente**, con cero segundos de
- * música.
+ * **Dos cotas, y las dos vienen de algo medido, no del gusto.** Por abajo tiene
+ * que abarcar varias tramas del medidor, porque las `VU2` llegan con media
+ * 44,3 ms y mediana 34 ms: un tramo más corto dejaría que una sola trama decida
+ * si hubo movimiento. Por arriba tiene que ser **más corto que una frase
+ * musical**, porque si no el silencio entre dos notas se mezcla con las notas y
+ * cuenta como movimiento.
  *
- * Un medidor congelado no se mueve **ni un escalón** en dieciocho segundos. Uno
- * con un instrumento delante, sí.
- *
- * **La comparación es contra cero y no contra un margen**, porque un margen
- * habría que medirlo y nadie lo midió: cualquier número inventado acá sería la
- * clase de constante que este repositorio pasa el tiempo retractando. Lo que
- * **esto no caza, dicho con todas las letras**: una conexión que se cae y vuelve
- * dentro de la misma ventana deja dos valores distintos, así que el medidor «se
- * movió» y esta prueba concede. Para eso está la otra mitad, en
- * `guardarLaEscucha`, que se niega a guardar una escucha si la consola no estaba
- * conectada al terminar.
- *
- * **Y la caída que empieza y termina adentro de la ventana la cierra una
- * tercera, desde el 2026-09-19: el muestreo pregunta si la consola sigue ahí en
- * CADA tic** y no registra el instante que no pudo oír. Así que esta prueba ya no
- * ve dos valores distintos de los dos lados de una caída: los instantes de la
- * caída no llegan.
- *
- * **Antes acá decía que ese caso «se cierra mirando la frescura de las tramas, y
- * es una tarea aparte», y era falso** —lo midió una auditoría adversarial del
- * mismo día—: `ConnectionStateService` ya veía la caída, así que
- * `permiteEscribir()` era falso durante toda ella y lo único que faltaba era
- * preguntarlo en el bucle en vez de una sola vez al final. Queda escrito porque
- * el error es la parte instructiva: **presentar como caro algo que cuesta una
- * línea es lo que hace que esa línea no se escriba**, y estuvo un día entero
- * logrando exactamente eso.
+ * Medio segundo cumple las dos: abarca una decena de tramas y ningún músico hace
+ * una frase entera en ese tiempo.
  */
-function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
-  if (sonando.length === 0) return false;
-  let minimo = Infinity;
-  let maximo = -Infinity;
-  for (const m of sonando) {
-    if (m.db < minimo) minimo = m.db;
-    if (m.db > maximo) maximo = m.db;
+export const VECINDAD_DE_MOVIMIENTO_MS = 500;
+
+/**
+ * Cuánto tiene que moverse el medidor dentro de {@link VECINDAD_DE_MOVIMIENTO_MS}
+ * para que ahí haya estado pasando algo.
+ *
+ * **ELEGIDO, NO MEDIDO, y la distinción es de este repositorio.** Lo que haría
+ * falta para medirlo es una ventana con alguien tocando por un micrófono en la
+ * misma sala, contra otra de la sala sola; el equipo del usuario está a distancia
+ * y en esa sala no hay nadie que pueda tocar, así que la medición no se puede
+ * hacer hoy. **Se remide cuando se pueda**, y hasta entonces esto es un número
+ * elegido con un argumento, que es distinto de un número medido.
+ *
+ * **El argumento, por si hay que discutirlo:** tres decibeles son el doble de
+ * potencia. Que el medidor recorra eso en medio segundo quiere decir que la
+ * fuente **hizo algo**, no que el número tembló. Y son nueve veces el escalón del
+ * medidor, así que no puede salir de la resolución del instrumento --que es
+ * exactamente de dónde salía el defecto viejo: un escalón de 0,3334 dB en
+ * cualquiera de los 360 instantes declaraba dieciocho segundos de música--.
+ *
+ * **La primera versión de esta vara fue «más de un escalón» y no servía**, y vale
+ * dejarlo escrito porque sonaba principista: usar la resolución del propio
+ * instrumento parecía la elección sin arbitrariedad. Lo que mostró el test es que
+ * el ruido parejo de una sala se mueve varias veces eso sin que nadie toque, así
+ * que la vara principista dejaba pasar justamente lo que venía a filtrar. **Una
+ * constante con buen argumento y mal valor es peor que una declarada a ojo**,
+ * porque nadie vuelve a mirarla.
+ *
+ * **Lo que esto deja afuera, dicho con todas las letras:** una fuente sostenida y
+ * pareja --un tono, un acorde de órgano tenido-- durante más de medio segundo. Un
+ * instrumento tocado no lo hace; un generador sí, y la aplicación no reproduce
+ * audio todavía. El día que reproduzca tonos para medir, esta regla hay que
+ * volver a mirarla.
+ */
+export const MOVIMIENTO_MINIMO_DB = 3;
+
+/**
+ * Los instantes en que el músico **estaba tocando**.
+ *
+ * **Son TRES preguntas y hasta el 2026-09-19 eran una y media.** El criterio
+ * viejo pedía que el medidor se moviera **una vez en toda la ventana** —un
+ * `max > min` sobre los 360 instantes— y después contaba como escucha todo
+ * instante que estuviera sobre el piso de ruido. Medido por una auditoría
+ * adversarial con la cadena completa: **un solo escalón de 0,3334 dB en
+ * cualquiera de los 360 instantes declaraba dieciocho segundos de música**, y
+ * **dos segundos de música con ambiente alrededor, también**. En un escenario
+ * real, con un micrófono abierto entre frase y frase, eso se cumple solo.
+ *
+ * Las tres, y las tres tienen que dar que sí:
+ *
+ * **1. Entró algo.** Por encima del piso de ruido del medidor.
+ * **`PISO_DE_RUIDO_DB` y no `UMBRAL_SILENCIO_DB`**, y la diferencia es un defecto
+ * que este proyecto ya pagó: el 2026-09-09 separó «no entró nada» de «entró muy
+ * bajo» porque llevan a consejos opuestos —revisar el cable contra subir la
+ * ganancia—, y el mapeo los había vuelto a fundir. Un canal que entró a −54 es un
+ * músico tocando bajo.
+ *
+ * **2. Está cerca del momento más fuerte de esta misma escucha**, dentro de
+ * {@link DISTANCIA_AL_PICO_DB}. Es lo que saca el ambiente de entre frases sin
+ * castigar al que toca bajo: la vara se mueve con el músico.
+ *
+ * **3. El medidor se estaba moviendo ahí**, mirando el tramo de
+ * {@link VECINDAD_DE_MOVIMIENTO_MS} alrededor del instante y pidiendo
+ * {@link MOVIMIENTO_MINIMO_DB}. Es la única de las tres con un número **elegido y
+ * no medido**, y ahí está dicho por qué y qué haría falta para medirlo.
+ *
+ * **Lo que esto NO prueba, y ADR-036 promete de más en su prosa:** que la cuña se
+ * haya movido **por este músico**. El medidor del auxiliar es la suma del bus y no
+ * distingue una voz de una guitarra; que las dos cosas pasen a la vez no dice que
+ * una haya causado la otra. La tabla del ADR lo dice bien en su fila del medio.
+ *
+ * **Y lo que ya no hace falta que haga:** distinguir una consola caída. Desde el
+ * 2026-09-19 el muestreo pregunta si la consola sigue ahí en **cada tic** y no
+ * registra el instante que no pudo oír, así que un medidor congelado no llega
+ * hasta acá. Esta función igual lo rechazaría --un valor clavado no se mueve-- y
+ * eso es a propósito: las dos mitades se cubren.
+ *
+ * **Antes acá decía que la caída que empieza y termina adentro de la ventana «se
+ * cierra mirando la frescura de las tramas, y es una tarea aparte», y era falso**
+ * —lo midió una auditoría adversarial del mismo día—: el dato ya estaba y lo único
+ * que faltaba era preguntarlo en el bucle. Queda escrito porque el error es la
+ * parte instructiva: **presentar como caro algo que cuesta una línea es lo que
+ * hace que esa línea no se escriba**, y estuvo un día entero logrando eso.
+ *
+ * **Trabajo previo:** ninguno de los cuatro proyectos de terceros que hablan este
+ * protocolo decide si alguien está tocando a partir del medidor. Comprobado el
+ * 2026-09-19 clonando y grepeando; lo único que aparece con ese nombre es el
+ * umbral de la puerta y del compresor de la propia consola, que es otra cosa. Ver
+ * `docs/referencia/trabajo-previo-de-terceros.md`. **Que no haya precedente es un
+ * dato: pide más cuidado, no menos.**
+ */
+export function indicesConMusica(muestras: readonly MuestraVu[]): ReadonlySet<number> {
+  const cuentan = new Set<number>();
+  if (muestras.length === 0) return cuentan;
+
+  let pico = -Infinity;
+  for (const m of muestras) {
+    if (Number.isFinite(m.db) && m.db > pico) pico = m.db;
   }
-  return maximo > minimo;
+  if (!Number.isFinite(pico)) return cuentan;
+
+  const radioMs = VECINDAD_DE_MOVIMIENTO_MS / 2;
+  for (let i = 0; i < muestras.length; i++) {
+    const m = muestras[i];
+    if (m === undefined || !Number.isFinite(m.db)) continue;
+    if (m.db <= PISO_DE_RUIDO_DB) continue;
+    if (m.db < pico - DISTANCIA_AL_PICO_DB) continue;
+
+    // El tramo alrededor, por tiempo y no por cantidad de muestras: el muestreo
+    // se salta un tic cuando la consola no publicó el canal, así que contar
+    // vecinos por índice miraría un tramo más largo del que dice mirar.
+    let minimo = Infinity;
+    let maximo = -Infinity;
+    for (let j = 0; j < muestras.length; j++) {
+      const v = muestras[j];
+      if (v === undefined || !Number.isFinite(v.db)) continue;
+      if (Math.abs(v.tMs - m.tMs) > radioMs) continue;
+      if (v.db < minimo) minimo = v.db;
+      if (v.db > maximo) maximo = v.db;
+    }
+    if (maximo - minimo >= MOVIMIENTO_MINIMO_DB) cuentan.add(i);
+  }
+  return cuentan;
 }
 
 /**
@@ -230,8 +322,10 @@ function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
  * movió» era falsa: un pico finito es un número por encima de −50, se haya movido
  * o no.
  *
- * Hoy son dos preguntas y las dos tienen que dar que sí: **entró algo** —por
- * encima del piso de ruido— y **el medidor se movió**.
+ * Hoy la pregunta se la hace {@link indicesConMusica}, que son **tres** y no
+ * dos: entró algo, está cerca del momento más fuerte de esta misma escucha, y el
+ * medidor se estaba moviendo ahí. Acá sólo queda traducir «no hubo ningún
+ * instante que contara» a `SILENCE`.
  *
  * **Es `PERFORMANCE` y no `SINE` ni `PINK`** porque lo que suena es el
  * instrumento de alguien, no un generador: la aplicación no reproduce audio
@@ -246,11 +340,11 @@ function elMedidorSeMovio(sonando: readonly MuestraVu[]): boolean {
  * escuchó sobre una cuña muda, paso tras paso, hasta el techo de nominal.
  */
 function senal(
-  sonandoCanal: readonly MuestraVu[],
-  sonandoCuna: readonly MuestraVu[] | undefined,
+  conMusicaCanal: ReadonlySet<number>,
+  conMusicaCuna: ReadonlySet<number> | undefined,
 ): SignalType {
-  if (!elMedidorSeMovio(sonandoCanal)) return 'SILENCE';
-  if (sonandoCuna !== undefined && !elMedidorSeMovio(sonandoCuna)) return 'SILENCE';
+  if (conMusicaCanal.size === 0) return 'SILENCE';
+  if (conMusicaCuna !== undefined && conMusicaCuna.size === 0) return 'SILENCE';
   return 'PERFORMANCE';
 }
 
@@ -269,16 +363,22 @@ function senal(
  * Si una serie es más corta que la otra, los índices que le faltan no cuentan:
  * un instante del que no hay dato de la cuña no es un instante en que se sepa que
  * la cuña sonó.
+ *
+ * **Y desde el 2026-09-19 lo que se cruza son los instantes CON MÚSICA de cada
+ * una, no los que tenían algo por encima del piso.** Preguntar presencia era la
+ * mitad floja del criterio viejo: en una cuña de escenario, con un micrófono
+ * abierto, estar por encima del piso de ruido pasa siempre. Cada serie se juzga
+ * con sus tres preguntas --ver {@link indicesConMusica}-- y contra **su propio**
+ * pico, que es lo correcto: el pico de la cuña es el de la suma del bus y no
+ * tiene por qué parecerse al del canal.
  */
 export function sonaronALaVez(
   canal: readonly MuestraVu[],
   cuna: readonly MuestraVu[],
 ): readonly MuestraVu[] {
-  const conSonidoLaCuna = (m: MuestraVu | undefined): boolean =>
-    m !== undefined && Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB;
-  return canal.filter(
-    (m, i) => Number.isFinite(m.db) && m.db > PISO_DE_RUIDO_DB && conSonidoLaCuna(cuna[i]),
-  );
+  const enCanal = indicesConMusica(canal);
+  const enCuna = indicesConMusica(cuna);
+  return canal.filter((_, i) => enCanal.has(i) && enCuna.has(i));
 }
 
 /**
@@ -372,23 +472,26 @@ function metricas(c: CapturaParaGuardar): MeasurementMetrics | null {
 
 export function medicionDeLaCaptura(c: CapturaParaGuardar): Measurement {
   // **Tres series y no una, y conviene tener claro qué decide cada una.**
-  // `sonandoCanal` prueba que el músico tocó; `sonandoCuna`, que a su parlante le
-  // llegó algo; y `sonando` son los instantes en que las dos cosas pasaron **a la
-  // vez**, que es lo único que se puede declarar como escucha. Para la ganancia
-  // no hay cuña y las tres colapsan en la primera, que es exactamente el
-  // comportamiento anterior.
-  const sonandoCanal = conSonido(c.muestras);
-  const sonandoCuna = c.muestrasDeLaCuna === undefined
+  // `conMusicaCanal` prueba que el músico tocó; `conMusicaCuna`, que a su
+  // parlante le llegó algo; y `sonando` son los instantes en que las dos cosas
+  // pasaron **a la vez**, que es lo único que se puede declarar como escucha.
+  // Para la ganancia no hay cuña y las tres colapsan en la primera.
+  //
+  // **Cada serie se juzga contra su propio pico**, que es lo que `indicesConMusica`
+  // hace al recibirlas por separado: el medidor de la cuña es la suma del bus y no
+  // tiene por qué parecerse al del canal.
+  const conMusicaCanal = indicesConMusica(c.muestras);
+  const conMusicaCuna = c.muestrasDeLaCuna === undefined
     ? undefined
-    : conSonido(c.muestrasDeLaCuna);
+    : indicesConMusica(c.muestrasDeLaCuna);
   const sonando = c.muestrasDeLaCuna === undefined
-    ? sonandoCanal
+    ? c.muestras.filter((_, i) => conMusicaCanal.has(i))
     : sonaronALaVez(c.muestras, c.muestrasDeLaCuna);
   return {
     id: c.id,
     sessionId: c.sessionId,
     timestamp: c.empezoEl,
-    signalType: senal(sonandoCanal, sonandoCuna),
+    signalType: senal(conMusicaCanal, conMusicaCuna),
     // **En nulo, y el motivo que estaba escrito acá era FALSO.** Decía que
     // «dónde cae el medidor respecto del fader no se midió», y está medido desde
     // el 2026-09-09: el fader está **aguas abajo** del byte que esta captura lee

@@ -267,6 +267,30 @@ segundos son muchos o pocos, ni si exigir señal deja fuera un caso legítimo. Y
 vio lo que cuesta: la primera versión de esa guarda tenía cinco condiciones y no
 cerraba el agujero, y lo encontró una auditoría, no un precedente.
 
+## Decidir si alguien está tocando, mirando el medidor
+
+**Buscado el 2026-09-19**, en los mismos commits de la tabla de arriba, clonando y
+grepeando: `silen`, `noise floor`, `activity`, `isActive`, `hasSignal`,
+`signalPresent`, `threshold`.
+
+| | Decide «hay alguien tocando» a partir del medidor |
+|---|---|
+| `fmalcher/soundcraft-ui` | **No.** Las únicas coincidencias de `threshold` fuera de un JSON de ejemplo son dos campos de su modelo de estado --el umbral de la puerta y el del compresor de la consola--: un parámetro que se lee y se escribe, no una decisión sobre la señal |
+| `Dennion/ioBroker.soundcraft` | **No.** Una sola coincidencia en todo el repositorio, y es un comentario de la configuración de sus tests |
+| `ndikanov/ui24` | **No.** Cero coincidencias |
+| `NaturalDevCR/MyUiPro` | **No.** Lo que aparece es un mensaje de «silenciar todos los canales» de su traducción y un registro de cuando la pestaña se oculta |
+
+**Los cuatro publican el medidor; ninguno concluye nada con él.** Es coherente con
+para qué están hechos: son clientes y puentes de domótica, que muestran el número
+o lo reexportan. Preguntarle al medidor si el músico estaba tocando es una
+pregunta que aparece recién cuando algo **escribe** en la consola y necesita
+saber si puede volver a escribir.
+
+**Que no haya precedente es un dato: pide más cuidado, no menos.** Por eso la vara
+de movimiento de [ADR-037](../adr/ADR-037-que-cuenta-como-que-el-musico-estaba-tocando.md)
+queda marcada como **elegida y no medida**, en vez de pasar por medida apoyándose
+en que nadie contradice.
+
 ## Cómo se usa este documento
 
 **Antes de escribir «ninguno de los cuatro hace X», buscá X acá.** Si no está,

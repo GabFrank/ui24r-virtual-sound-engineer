@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { MIGRACIONES } from '@vse/store';
 import { analizarVentana, type MuestraVu } from '@vse/assistants';
 import { historialDeLaSesion } from '@vse/safety';
+import { MEDIDOR_RANGO_DB, VU_ESCALA } from '@vse/mixer-adapter';
 import type { EntradaDiario, Veredicto } from '@vse/safety';
 import { medicionEsConfiable, type Measurement, type CalibrationState } from '@vse/domain';
 import {
@@ -116,7 +117,12 @@ function ventanaQueEntroMuyBajo(segundos = 18): MuestraVu[] {
   const cuantas = Math.round((segundos * 1000) / INTERVALO_DE_MUESTREO_MS);
   return Array.from({ length: cuantas }, (_, i) => ({
     tMs: i * INTERVALO_DE_MUESTREO_MS,
-    db: -54 + (i % 3) * 0.5,
+    // **Este dato cambió el 2026-09-19, y hay que decirlo.** Oscilaba 1 dB, y con
+    // la vara de movimiento en 3 dB dejó de pasar. Lo que este test prueba es el
+    // **nivel** --debajo del umbral de análisis, encima del piso de ruido--, no
+    // que el canal se mueva poco: la serie sigue abajo y ahora se mueve como una
+    // fuente real. Cambiar un test para que pase es lo que hay que poder auditar.
+    db: -56 + (i % 5),
     reduccionDb: 0,
   }));
 }
@@ -503,4 +509,40 @@ test('la cadencia del medidor es la que declara la medición', () => {
   // mediciones declarando una cadencia que ya no es la suya.
   const m = medicionDe(ventanaTocando());
   assert.equal(m.sampleRate, 1000 / INTERVALO_DE_MUESTREO_MS);
+});
+
+test('el defecto heredado se cerró también por el camino de la ganancia', () => {
+  // **La auditoría comprobó que los dos agujeros eran heredados de acá**: la
+  // misma ventana por este camino, sin cuña, daba `PERFORMANCE` y 18,00 s. Arreglar
+  // el mapeo los arregla en las dos herramientas, y este test es el que lo sostiene:
+  // si alguien hace la regla nueva exclusiva de la cuña, esto se pone en rojo.
+  const cuantas = Math.round((18 * 1000) / INTERVALO_DE_MUESTREO_MS);
+
+  // Un solo escalón del medidor en toda la ventana.
+  const unEscalon = Array.from({ length: cuantas }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS,
+    db: i === 7 ? -20 + MEDIDOR_RANGO_DB * VU_ESCALA : -20,
+    reduccionDb: 0,
+  }));
+  const m1 = medicionDe(unEscalon);
+  assert.equal(m1.signalType, 'SILENCE', 'un escalón en 360 instantes no es un músico');
+  assert.equal(m1.duracionS, 0);
+
+  // Dos segundos de música y el resto ambiente de escenario.
+  const tocando = Math.round((2 * 1000) / INTERVALO_DE_MUESTREO_MS);
+  const conAmbiente = Array.from({ length: cuantas }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS,
+    db: i < tocando ? -18 + (i % 9) : -58 + (i % 5),
+    reduccionDb: 0,
+  }));
+  const m2 = medicionDe(conAmbiente);
+  assert.equal(m2.signalType, 'PERFORMANCE');
+  assert.ok(m2.duracionS > 1 && m2.duracionS < 3, `declaró ${m2.duracionS.toFixed(2)} s`);
+  assert.equal(
+    historialDeLaSesion(
+      [transaccionConEscucha(m2.id)], guardarYLeer(baseConEsquema(), m2), Date.now(),
+    ).rutasConMedicionPosterior.has(RUTA),
+    false,
+    'dos segundos con ambiente alrededor no compran el ajuste siguiente',
+  );
 });

@@ -9,6 +9,7 @@ import type { Measurement } from '@vse/domain';
 import {
   medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS, DURACION_CAPTURA_S,
 } from '../src/app/core/medicion-de-la-captura.ts';
+import { MEDIDOR_RANGO_DB, VU_ESCALA } from '@vse/mixer-adapter';
 import {
   CONSULTA_DE_MEDICIONES, INSERCION_DE_MEDICION, valoresDeLaMedicion,
 } from '../src/app/core/sql-de-mediciones.ts';
@@ -48,6 +49,9 @@ const ENVIADO = new Date(ENVIADO_MS).toISOString();
 const EMPEZO = new Date(ENVIADO_MS + 1000).toISOString();
 
 const CUANTAS = Math.round((DURACION_CAPTURA_S * 1000) / INTERVALO_DE_MUESTREO_MS);
+
+/** Lo más chico que puede cambiar el medidor. Sale del protocolo, no de acá. */
+const ESCALON_DEL_MEDIDOR_DB = MEDIDOR_RANGO_DB * VU_ESCALA;
 
 /** Una serie de medidor que se mueve, como una fuente real. */
 function sonando(segundos = DURACION_CAPTURA_S, desde = 0): MuestraVu[] {
@@ -215,8 +219,16 @@ test('una cuña que entró bajo pero suena SÍ cuenta, igual que el canal flojo'
   // sonando bajo —que es exactamente la que hay que levantar—, no una cuña muda.
   // Es la misma distinción que el proyecto separó el 2026-09-09 y que una primera
   // versión de la escucha de ganancia volvió a fundir.
+  //
+  // **El dato de este test cambió el 2026-09-19, y hay que decirlo.** Oscilaba
+  // 1 dB, y con la vara de movimiento en 3 dB dejó de pasar. Lo que el test
+  // prueba es el **nivel** bajo --por debajo del umbral de análisis y por encima
+  // del piso de ruido--, no que la cuña se mueva poco, así que la serie sigue
+  // abajo y ahora se mueve como una fuente real. Cambiar un test para que pase es
+  // exactamente lo que hay que poder auditar: queda escrito qué se cambió, por
+  // qué, y qué sigue probando.
   const bajito = Array.from({ length: CUANTAS }, (_, i) => ({
-    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -54 + (i % 3) * 0.5, reduccionDb: 0,
+    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -56 + (i % 5), reduccionDb: 0,
   }));
   const m = medicionDe(sonando(), bajito);
 
@@ -235,4 +247,103 @@ test('la ganancia sigue escuchando sobre un solo medidor, sin cambio de veredict
 
   assert.equal(soloCanal.signalType, 'PERFORMANCE');
   assert.ok(soloCanal.duracionS >= 10);
+});
+
+/**
+ * Lo que sigue son los dos escenarios que una auditoría adversarial midió el
+ * 2026-09-19 y que **la suite entera en verde no cazaba**, porque el criterio
+ * viejo preguntaba presencia y no música.
+ */
+
+/** Las dos series planas, con UN solo escalón del medidor en la muestra 7. */
+function unSoloEscalon(): MuestraVu[] {
+  return Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS,
+    db: i === 7 ? -20 + ESCALON_DEL_MEDIDOR_DB : -20,
+    reduccionDb: 0,
+  }));
+}
+
+/**
+ * El músico toca dos segundos y el resto es ambiente de escenario.
+ *
+ * El ambiente **no es plano** a propósito: si lo fuera, lo rechazaría la pregunta
+ * del movimiento y este test no probaría lo que dice probar. Oscila más de un
+ * escalón, así que lo único que lo saca es estar lejos del pico de la ventana.
+ */
+function dosSegundosYAmbiente(): MuestraVu[] {
+  const tocando = Math.round((2 * 1000) / INTERVALO_DE_MUESTREO_MS);
+  return Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS,
+    db: i < tocando ? -18 + (i % 9) : -58 + (i % 5),
+    reduccionDb: 0,
+  }));
+}
+
+test('un solo escalón en toda la ventana NO es nadie tocando', () => {
+  // **Medido antes de arreglarlo: declaraba 18,00 s y el motor daba el paso.** El
+  // criterio viejo era `max > min` sobre la ventana entera, así que un único
+  // escalón en cualquiera de los 360 instantes la satisfacía, y a partir de ahí
+  // todo instante sobre el piso de ruido contaba como escucha.
+  const m = medicionDe(unSoloEscalon(), unSoloEscalon());
+
+  assert.equal(m.signalType, 'SILENCE');
+  assert.equal(m.duracionS, 0, `declaró ${m.duracionS.toFixed(2)} s`);
+  assert.equal(concedeOtroPaso(m), false);
+});
+
+test('dos segundos de música con ambiente alrededor son dos, no dieciocho', () => {
+  // **El caso que se cumple solo en un escenario real**, con un micrófono abierto
+  // entre frase y frase. Medido antes de arreglarlo: 18,00 s y paso concedido.
+  const m = medicionDe(dosSegundosYAmbiente(), dosSegundosYAmbiente());
+
+  assert.equal(m.signalType, 'PERFORMANCE', 'tocó: poco, pero tocó');
+  assert.ok(m.duracionS > 1 && m.duracionS < 3, `declaró ${m.duracionS.toFixed(2)} s`);
+  assert.equal(concedeOtroPaso(m), false, 'y dos segundos no compran el paso');
+});
+
+test('el ambiente solo, sin nadie tocando, no declara nada', () => {
+  // La misma ventana sin los dos segundos de música: ahora el pico ES el
+  // ambiente, así que la vara relativa no lo saca. Lo que lo saca es que un
+  // ambiente de sala no se mueve como un instrumento... y por eso este test
+  // existe: **si alguna vez pasa a PERFORMANCE, la vara relativa quedó sola.**
+  const ambiente = (): MuestraVu[] => Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -58 + (i % 5) * 0.5, reduccionDb: 0,
+  }));
+  const m = medicionDe(ambiente(), ambiente());
+
+  assert.equal(
+    m.duracionS, 0,
+    `un ambiente que se mueve menos de un escalón no es música; declaró ${m.duracionS.toFixed(2)} s`,
+  );
+});
+
+test('LÍMITE ESCRITO: una fuente perfectamente quieta no cuenta, aunque suene', () => {
+  // **No es un defecto encontrado: es el precio de la decisión, y va escrito para
+  // que el que lo encuentre sepa que estaba previsto.** Pedir que el medidor se
+  // mueva deja afuera una fuente que entregue un nivel absolutamente constante
+  // --un tono sostenido, un generador--. Un instrumento real no lo hace, y la
+  // aplicación no reproduce audio todavía; el día que reproduzca tonos para medir,
+  // esta regla hay que volver a mirarla.
+  const quieta = (): MuestraVu[] => Array.from({ length: CUANTAS }, (_, i) => ({
+    tMs: i * INTERVALO_DE_MUESTREO_MS, db: -12, reduccionDb: 0,
+  }));
+  const m = medicionDe(quieta(), quieta());
+
+  assert.equal(m.signalType, 'SILENCE', 'previsto, no descubierto');
+});
+
+test('LÍMITE ESCRITO: la cuña movida por OTRA fuente sigue concediendo', () => {
+  // **Este agujero NO lo cierra esta tarea, y decirlo importa más que taparlo.**
+  // El medidor del auxiliar es la suma del bus: que el músico toque y que su cuña
+  // se mueva **a la vez** no dice que se haya movido por él. En una cuña con una
+  // voz adentro, las dos cosas pasan a la vez siempre. Es la misma familia que
+  // ADR-035 --«el tope es por clave y el oído es por parlante»-- y está anotado en
+  // el hallazgo 1 de la tanda de la cuña.
+  const m = medicionDe(sonando(), sonando());
+
+  assert.equal(
+    concedeOtroPaso(m), true,
+    'la cuña pudo haberla movido otro músico y esto no lo distingue',
+  );
 });

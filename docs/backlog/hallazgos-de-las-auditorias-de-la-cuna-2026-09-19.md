@@ -18,6 +18,24 @@ futuro lejano.
 
 ## 1. Un escalón basta, y el ambiente entre frases cuenta como música
 
+> **CERRADO el 2026-09-19 en sus dos primeras filas; la tercera sigue abierta.**
+> Un instante cuenta como música si **el medidor se estaba moviendo ahí** --3 dB
+> dentro de medio segundo-- **y** el nivel está a menos de **20 dB del pico de esa
+> misma escucha**. La vara relativa es lo que saca el ambiente de entre frases sin
+> castigar al que toca bajo. Decisión del usuario en tres preguntas,
+> [ADR-037](../adr/ADR-037-que-cuenta-como-que-el-musico-estaba-tocando.md).
+>
+> **La tercera fila NO la cierra** --la cuña movida por otra fuente--: es la misma
+> familia que ADR-035 y sigue en el hallazgo 3. Hay un test que la deja escrita en
+> vez de dejarla suponer.
+>
+> **Y la vara de movimiento es ELEGIDA, NO MEDIDA**, dicho así en el código y en
+> la ADR. La primera versión se apoyaba en la resolución del propio medidor para
+> no elegir un número, y **no servía**: el ruido parejo de una sala se mueve varias
+> veces un escalón sin que nadie toque, así que la ventana con nadie tocando seguía
+> declarando dieciocho. Medirla pide alguien tocando por un micrófono en la sala
+> donde está la MacBook, y hoy ahí no hay nadie.
+
 **MEDIDO, y es HEREDADO de la escucha de ganancia, no lo trajo esta pieza.**
 
 Las dos preguntas que deciden si hubo escucha se apoyan en cosas distintas y

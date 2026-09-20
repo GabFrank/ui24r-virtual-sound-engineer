@@ -193,6 +193,28 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Corregido
 
+- **Dos segundos de música declaraban dieciocho: la aplicación confundía «hay algo
+  entrando» con «el músico está tocando».** Para darse permiso de dar otro paso,
+  la aplicación mira si hubo escucha entre paso y paso. Lo comprobaba con dos
+  preguntas flojas: que el medidor se hubiera movido **una vez en toda la ventana**
+  --un solo escaloncito de un tercio de decibel, en cualquier momento de los
+  dieciocho segundos-- y que después el nivel estuviera por encima del piso de
+  ruido. Con eso, **un micrófono abierto entre frase y frase ya cumplía**: el
+  ambiente de la sala está por encima del piso, así que dos segundos de música
+  rodeados de ambiente se declaraban como dieciocho de escucha, y la rampa seguía
+  subiendo.
+  **Ahora cuenta instante por instante, y pide dos cosas a la vez**: que el medidor
+  se esté moviendo ahí, y que el nivel esté cerca del momento más fuerte de esa
+  misma escucha. **Lo elegiste vos en tres preguntas** (ADR-037), y la segunda es
+  la que hace el trabajo fino: como la vara se compara contra vos mismo y no contra
+  un número fijo, **el que toca bajo no queda afuera** --que es justamente el canal
+  que la herramienta de ganancia existe para levantar--.
+  **Lo que todavía no distingue, dicho de frente:** una fuente sostenida y pareja
+  --un tono largo--, un escenario donde el ambiente esté a menos de 20 dB del
+  músico, y si tu cuña se movió **por vos** o por el que toca al lado. Ese último
+  es una tarea aparte, anotada.
+  **Vale para las dos herramientas**, la de ganancia y la de cuñas.
+
 - **Si se cortaba el WiFi con la consola mientras la aplicación te escuchaba, esos
   segundos se contaban como si hubieras tocado.** Cuando el enlace se cae, los
   medidores de la consola **quedan clavados en el último valor que llegó**, y la
