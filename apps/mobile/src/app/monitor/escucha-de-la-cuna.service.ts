@@ -72,6 +72,17 @@ export type EstadoEscucha = 'INACTIVA' | 'CUENTA_REGRESIVA' | 'ESCUCHANDO' | 'LI
 
 export interface ResultadoEscucha {
   /**
+   * Si la escucha se cortó antes de terminar, porque alguien apretó cancelar o
+   * porque arrancó otra encima.
+   *
+   * **Con esto en `true` no hay nada que interpretar**: no se guardó medición,
+   * no hay segundos que contar y no se concede ningún paso. Va como campo y no
+   * como excepción porque cancelar **no es un error**: es una cosa que el músico
+   * hace, y la pantalla tiene que poder decirle «listo, no pasó nada» en vez de
+   * mostrar un fallo.
+   */
+  readonly cancelada: boolean;
+  /**
    * La medición que quedó guardada, o `null` si no quedó.
    *
    * **Es lo que permite decirle al motor «acá se escuchó».** `null` cuando no
@@ -122,6 +133,20 @@ export interface ResultadoEscucha {
  */
 const ESCUCHA_MINIMA_S = LIMITES.MONITOR_AUX_SEND?.escuchaMinimaS ?? 0;
 
+/**
+ * Lo que devuelve una escucha cortada.
+ *
+ * **Todo en el lado que no concede nada**: sin medición, cero segundos y sin
+ * permiso para otro paso. No hace falta que el llamador mire `cancelada` para
+ * estar a salvo --si la ignora, lee «no se guardó» y se frena, que es lo
+ * correcto--; el campo está para poder decirle al músico que no pasó nada en vez
+ * de mostrarle un fallo.
+ */
+const CANCELADA: ResultadoEscucha = {
+  cancelada: true, medicionId: null, sonoS: 0, alcanzaParaOtroPaso: false,
+  segundosNoOidos: 0,
+};
+
 @Injectable({ providedIn: 'root' })
 export class EscuchaDeLaCunaService {
   private readonly log = inject(Logger);
@@ -142,6 +167,23 @@ export class EscuchaDeLaCunaService {
   private muestrasDeLaCuna: MuestraVu[] = [];
   /** Cuántos tics no se pudieron oír, por lo que sea. Ver `recolectar`. */
   private instantesNoOidos = 0;
+  /**
+   * Cuál escucha está en curso. Cancelar la invalida, y empezar otra también.
+   *
+   * **Es el arreglo del hallazgo 10, y sin él cancelar hacía tres cosas mal.**
+   * `cancelar()` resuelve la cuenta regresiva para no dejar una promesa colgada,
+   * así que el `await` de `escuchar` **continúa**: seguía con las series vacías,
+   * ponía el estado en `LISTA` --pisando el `INACTIVA` que acababa de poner
+   * `cancelar`-- y guardaba una medición de silencio de 0 s. El veredicto falla
+   * cerrado, así que no era un agujero de seguridad; lo que quedaba mal es que
+   * **cancelar terminaba mostrando «lista»** y dejaba una fila espuria por cada
+   * cancelación. Y entre el cancelar y el final de la cola, una segunda escucha
+   * podía arrancar y la cola de la primera le pisaba el estado.
+   *
+   * Un número y no una bandera, justamente por lo tercero: con una bandera, la
+   * cola de la primera no puede distinguir «me cancelaron» de «ya empezó otra».
+   */
+  private generacion = 0;
   private temporizador: ReturnType<typeof setInterval> | null = null;
   private muestreo: ReturnType<typeof setInterval> | null = null;
   private resolverCuenta: (() => void) | null = null;
@@ -156,6 +198,7 @@ export class EscuchaDeLaCunaService {
   async escuchar(c: CunaAEscuchar, sessionId: string): Promise<ResultadoEscucha> {
     if (this.escuchando()) throw new Error('ya hay una escucha en curso');
 
+    const mia = ++this.generacion;
     this.cunaEnCurso.set(c.auxiliar);
     this.muestrasDelCanal = [];
     this.muestrasDeLaCuna = [];
@@ -163,6 +206,11 @@ export class EscuchaDeLaCunaService {
 
     this.estado.set('CUENTA_REGRESIVA');
     await this.cuentaAtras(CUENTA_REGRESIVA_S);
+    // **Se comprueba después de CADA espera, no sólo al final.** Cancelar
+    // durante la cuenta regresiva y cancelar durante la ventana son dos momentos
+    // distintos y los dos tienen que cortar acá: seguir de largo es exactamente
+    // lo que guardaba la fila espuria.
+    if (mia !== this.generacion) return CANCELADA;
 
     this.estado.set('ESCUCHANDO');
     this.log.info('audio', 'escucha_de_cuna_iniciada', {
@@ -177,6 +225,7 @@ export class EscuchaDeLaCunaService {
     const empezoEl = new Date().toISOString();
 
     await this.recolectar(c);
+    if (mia !== this.generacion) return CANCELADA;
 
     const delCanal = this.muestrasDelCanal;
     const deLaCuna = this.muestrasDeLaCuna;
@@ -205,6 +254,7 @@ export class EscuchaDeLaCunaService {
     const segundosNoOidos = (this.instantesNoOidos * INTERVALO_DE_MUESTREO_MS) / 1000;
 
     return {
+      cancelada: false,
       medicionId,
       sonoS,
       segundosNoOidos,
@@ -297,6 +347,11 @@ export class EscuchaDeLaCunaService {
 
   /** Corta la escucha en curso y limpia los dos temporizadores. */
   cancelar(): void {
+    // **Primero se invalida y después se destraba.** Al revés, `resolverCuenta`
+    // puede despertar la cola de `escuchar` antes de que la generación cambie, y
+    // entonces la comprobación la deja pasar: es la misma carrera que esta
+    // guarda existe para cerrar.
+    this.generacion++;
     this.detenerTemporizadores();
     this.estado.set('INACTIVA');
     this.cunaEnCurso.set(null);

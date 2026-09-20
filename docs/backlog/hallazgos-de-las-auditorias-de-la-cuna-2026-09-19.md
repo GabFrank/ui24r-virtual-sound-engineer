@@ -310,7 +310,18 @@ tiempo transcurrido**, y el invariante «muestras ≤ ventana ÷ intervalo» no 
 asertado en ningún lado ni tiene test. Es el mismo género que la auditoría del
 2026-09-18 ya explotó con `duracionS` declarado.
 
-## 10. Cancelar una escucha igual guarda una fila y deja la pantalla en «lista»
+## 10. ~~Cancelar una escucha igual guarda una fila y deja la pantalla en «lista»~~ — **ARREGLADO el 2026-09-20**
+
+> **Entró porque el campo lo trajo, que es la regla.** Se anotó y se dejó abierto
+> el 2026-09-19 porque nadie podía cancelar: ninguna pantalla llamaba al
+> servicio. Entró el 2026-09-20 al construir la rampa de la pantalla por músico,
+> que es la que estrena el botón de cancelar. Lo cierra una generación: cancelar
+> la invalida, `escuchar` corta **después de cada espera**, y el resultado
+> cancelado no concede nada. Los tres defectos --el estado, la fila espuria y la
+> cola que le pisa el estado a la escucha siguiente-- con su test.
+
+**Lo que decía, para poder auditar la corrección:**
+
 
 **LECTURA DE CÓDIGO, no medido.** `cancelar()` resuelve la cuenta regresiva, así
 que el `await` de `escuchar()` **continúa**: sigue con las series vacías, pone el
