@@ -366,7 +366,25 @@ export class MonitoresComponent {
     return `${c.nombre} — ${m.nombre}`;
   });
 
-  private readonly volcado = computed(() => this.mixer.volcadoDelEstado());
+  /**
+   * El estado confirmado de la consola, y **la señal que lo hace vivir**.
+   *
+   * `volcadoDelEstado()` es un método, no una señal: devuelve una copia del
+   * almacén. La primera versión de esta línea era
+   * `computed(() => this.mixer.volcadoDelEstado())` a secas, y con eso el
+   * `computed` **no leía ninguna señal**, así que Angular no lo recalculaba
+   * nunca. Medido el 2026-09-20 con el motor de señales real: la tabla quedaba
+   * congelada en el primer instante --llegaba el volcado, llegaban los
+   * medidores, alguien movía el envío en la consola, y nada--, mientras los dos
+   * medidores de arriba sí se movían. Parecía viva.
+   *
+   * `revisionDelEstado()` se lee **antes** y ése es todo el arreglo. Va primero
+   * y no dentro de una condición para que no se lo pueda saltear.
+   */
+  private readonly volcado = computed(() => {
+    this.mixer.revisionDelEstado();
+    return this.mixer.volcadoDelEstado();
+  });
   readonly hayVolcado = computed(() => this.volcado().size > 0);
 
   private readonly laCuna = computed(() => {

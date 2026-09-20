@@ -27,6 +27,12 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   decibeles. Y si la consola no publicó ese dato, dice que no lo leyó en vez de
   decir que está cerrado.
 
+  **Sigue a la consola en vivo**: si alguien mueve un envío desde la consola, o
+  si la consola todavía estaba mandando su estado cuando entraste, la tabla se
+  entera. La primera versión no: mostraba la foto del instante en que abrías la
+  pantalla y no se enteraba nunca más, mientras los dos medidores de arriba sí se
+  movían. Lo encontró una auditoría, y ahora hay una guarda que lo comprueba.
+
   **Todavía no sube nada ni podés marcar «así está bien»**: eso es lo que sigue.
   Elegiste vos empezar por ver, y elegiste que cuando suba lo haga de a un envío
   por vez.

@@ -101,6 +101,28 @@ export class MixerService {
    * fidelidad el 2026-09-19.*
    */
   readonly auxiliares = signal<readonly EstadoAuxiliar[]>([]);
+  /**
+   * Cuántas veces cambió el estado confirmado. Para que una pantalla lo siga.
+   *
+   * **Existe porque `volcadoDelEstado()` es un método, no una señal**, y eso
+   * convirtió en trampa lo que parecía el cableado obvio. Una pantalla escribió
+   * `computed(() => this.mixer.volcadoDelEstado())` y quedó **congelada para
+   * siempre**: ese `computed` no lee ninguna señal, así que Angular no lo
+   * recalcula nunca. Medido el 2026-09-20 con el motor de señales real: llegaba
+   * el volcado entero, llegaban las tramas de medidores, alguien movía un envío
+   * en la consola, y la pantalla seguía mostrando la foto del primer instante
+   * --diciendo «la consola no está conectada» con la consola publicando--.
+   *
+   * Lo peor era que **parecía viva**: los medidores de arriba sí salen de
+   * señales y se movían con la música, encima de una tabla muerta.
+   *
+   * Se toca en los cuatro momentos en que el estado confirmado deja de ser el
+   * que era: cuando termina el volcado inicial, cuando alguien más mueve algo,
+   * cuando llega una avalancha, y al conectar o desconectar.
+   */
+  private readonly _revisionDelEstado = signal(0);
+  readonly revisionDelEstado = this._revisionDelEstado.asReadonly();
+
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);
   readonly cambioMasivo = signal<BulkExternalChange | null>(null);
   readonly conectando = signal(false);
@@ -145,9 +167,23 @@ export class MixerService {
     return () => quitar(this.oyentesConexion, cb);
   }
 
-  /** El estado confirmado entero. Vacío si no hay conexión. */
+  /**
+   * El estado confirmado entero. Vacío si no hay conexión.
+   *
+   * **No es una señal y no puede serlo barato**: devuelve una copia del almacén
+   * del adaptador, y copiarlo en cada trama para tenerlo como señal costaría más
+   * de lo que vale. Quien lo lea en un `computed` **tiene que leer antes
+   * {@link revisionDelEstado}**, o su `computed` no se va a recalcular nunca.
+   * Hay un test que lo comprueba sobre las pantallas que lo usan, porque esto no
+   * lo caza el compilador.
+   */
   volcadoDelEstado(): ReadonlyMap<string, { readonly valor: number }> {
     return this.adapter?.volcadoDelEstado() ?? new Map();
+  }
+
+  /** Avisa que el estado confirmado dejó de ser el que era. */
+  private tocarEstado(): void {
+    this._revisionDelEstado.update((n) => n + 1);
   }
 
   async infoDispositivo(): Promise<{ modelo: string; firmware: string } | null> {
@@ -216,6 +252,7 @@ export class MixerService {
       });
 
       adapter.alVolcadoCompleto(() => {
+        this.tocarEstado();
         this.conexion.volcadoCompletoRecibido();
         this.log.info('mixer', 'volcado_completo', {});
         for (const cb of this.oyentesVolcado) cb();
@@ -232,6 +269,7 @@ export class MixerService {
       });
 
       adapter.alCambiarExterno((parametro, valor) => {
+        this.tocarEstado();
         this.cambiosExternos.update((prev) => [
           { parametro, valor, cuando: new Date().toISOString() },
           ...prev,
@@ -240,12 +278,14 @@ export class MixerService {
       });
 
       adapter.alCambioMasivo((e) => {
+        this.tocarEstado();
         this.cambioMasivo.set(e);
         this.conexion.invalidarPorCambioMasivo();
         this.log.warn('mixer', 'cambio_masivo', { ...e });
       });
 
       await adapter.conectar(url);
+      this.tocarEstado();
       this.direccion.set(url);
       this.canales.set(adapter.canales());
       this.auxiliares.set(adapter.auxiliares());
@@ -281,6 +321,7 @@ export class MixerService {
     this.detenerReintento();
     await this.adapter?.desconectar();
     this.adapter = null;
+    this.tocarEstado();
     this.canales.set([]);
     // **Las dos listas se vacían juntas, y hay que decir qué NO arregla eso.**
     // Vaciar al desconectar a propósito es lo que este servicio ya hacía con los
