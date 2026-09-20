@@ -6,7 +6,7 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
-- **Hay una pantalla de Monitores, y por ahora sólo mira.** Entrás desde la
+- **Hay una pantalla de Monitores.** Entrás desde la
   sesión, elegís al músico y elegís cuál de tus monitores es su cuña; la pantalla
   te muestra **todo lo que le llega a esa cuña, con su propio instrumento
   primero y marcado**. De cada cosa dice en qué nivel está el envío y cuánto le

@@ -133,7 +133,7 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
   template: `
     <div class="pagina">
       <ui-page-header titulo="Monitores"
-        descripcion="Qué le llega a la cuña de cada músico, su propio instrumento primero. Por ahora esta pantalla sólo mira: no le escribe nada a la consola." />
+        descripcion="Qué le llega a la cuña de cada músico, su propio instrumento primero, y cómo subirla de a un paso escuchando entre uno y otro. Sólo mueve los envíos de los canales, hasta nominal." />
 
       @if (sinSesion()) {
         <ui-empty icono="sesion" titulo="No hay ninguna sesión abierta"
