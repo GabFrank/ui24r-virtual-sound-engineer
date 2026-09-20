@@ -16,6 +16,7 @@ Sesión
        ├─ Avanzar de estado según la tabla de transiciones del dominio
        ├─ Canales ───────── qué entrada es qué instrumento
        ├─ Ganancia ──────── cuánto margen tiene cada canal
+       ├─ Monitores ─────── qué le llega a la cuña de cada músico (sólo lectura)
        └─ Cerrar ────────── irreversible, con confirmación
 Historial
   └─ Detalle ───────────── solo lectura, exportable
@@ -96,8 +97,14 @@ reproduce audio.
 pantalla de ganancia aplica la ganancia de entrada y la verifica (ADR-026). El
 motor además admite el silencio de canal para diagnosticar (ADR-027) y el nivel
 del envío a monitor (ADR-028), pero **ninguna pantalla los dispara todavía**:
-del envío hay servicio escrito y probado sin llamador, y del silencio no hay
-camino de producción.
+del envío hay servicio escrito y probado sin llamador --la pantalla de Monitores,
+desde el 2026-09-20, **lee** la cuña pero todavía no la mueve-- y del silencio no
+hay camino de producción.
+
+**Y lo que la pantalla de Monitores todavía no hace, dicho con todas las
+letras:** no sube ningún envío, no encadena la escucha, y **no existe el acto de
+marcar «así está bien»**, así que ninguna cuña llega a tener nivel establecido y
+todas viven en la primera operación de ADR-034.
 
 ## Cómo se verifica
 

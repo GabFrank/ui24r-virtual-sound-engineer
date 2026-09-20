@@ -178,6 +178,14 @@ monitor no lo llama ninguna pantalla, así que nada de esto corre todavía en la
 tablet. Pero la pantalla es justamente lo que sigue, y llega con el acto de
 marcar el nivel o llega abriendo un hueco.
 
+**Al 2026-09-20 la pantalla existe y todavía no cierra el hueco, que es la
+distinción que este párrafo pide hacer.** `monitor/monitores.component.ts`
+muestra la cuña de un músico --quién le manda, en qué nivel, su instrumento
+primero-- y **no llama a ningún servicio**: ni sube, ni escucha, ni marca. O sea
+que la fila de arriba sigue diciendo la verdad, «nadie todavía», y el envío a
+monitor sigue viviendo en la primera operación. Lo que cambió es que dejó de ser
+invisible: antes de mover una cuña se puede ver en qué estado está.
+
 ## Qué se descartó, y por qué importa que quede escrito
 
 ### Sobre el presupuesto

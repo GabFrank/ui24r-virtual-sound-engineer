@@ -1,0 +1,266 @@
+import { LIMITES } from '@vse/domain';
+import { entrada, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
+
+/**
+ * Qué le llega a la cuña de un músico, leído del estado confirmado.
+ *
+ * **Es sólo lectura y a propósito.** Esta es la primera mitad de la pantalla por
+ * músico: elegir a alguien y **ver** su cuña antes de que nada se mueva. Subir,
+ * escuchar y anotar están enteros desde el 2026-09-19 en los dos servicios de al
+ * lado, y hasta esta pantalla no los llamaba nadie.
+ *
+ * ## Por qué es un archivo sin decoradores
+ *
+ * El mismo motivo que [`ley-del-envio.ts`](./ley-del-envio.ts): el modo de
+ * eliminación de tipos de Node —con el que corren los tests— no parsea un
+ * decorador de Angular, así que lo que viva dentro del componente no se puede
+ * probar. Y lo que hay acá **hay que probarlo**: cada una de estas funciones ya
+ * tiene una forma de fallar que este repositorio pagó antes.
+ *
+ * ## Trabajo previo
+ *
+ * **La consola ya tiene una pantalla por músico y se llama MOREME**, y estaba en
+ * el manual archivado de este repositorio sin que ningún documento la citara
+ * —`docs/referencia/manual-ui24r-v1.0.txt`, secciones 6.2, 3.3 y 3.4—. El músico
+ * se asigna su propio canal («ASSIGN ME») y su propio auxiliar («ME OUT»), y
+ * arma **su mezcla personal**; su canal va **resaltado en naranja**. Eso valida
+ * dos decisiones de esta pantalla: que la unidad sea el músico y no el auxiliar,
+ * y que **su propio instrumento vaya primero y marcado**.
+ *
+ * Lo que MOREME no hace es lo que esta pantalla agrega: no mide, no tiene techo,
+ * no distingue poner el nivel de retocarlo y no escucha entre paso y paso. Y es
+ * para el teléfono del músico; ésta es para la tablet del que opera, con el
+ * músico enfrente.
+ *
+ * De los cuatro repositorios de terceros, el único con algo parecido es el
+ * banco de pruebas de `fmalcher/soundcraft-ui` —`auxbus/:bus`, que lista los
+ * caminos que entran a un auxiliar—, y es un banco de pruebas: cablea cuatro
+ * canales de ejemplo a mano. Detalle y citas en
+ * [`trabajo-previo-de-terceros.md`](../../../../../docs/referencia/trabajo-previo-de-terceros.md).
+ */
+
+/** El techo de ADR-034: nominal. Sale de la tabla del motor, no se escribe acá. */
+export const NOMINAL_DB = LIMITES.MONITOR_AUX_SEND?.techoAbsoluto ?? 0;
+
+/**
+ * La ruta del envío de un canal a una cuña, en la forma que publica la consola.
+ *
+ * **Los índices que se ven son base uno y los del protocolo son base cero**, y
+ * ésa es toda la razón de que esta conversión tenga nombre propio en vez de
+ * estar escrita en el componente: la pantalla habla de «el canal 1» y la consola
+ * de `i.0`. Un desfase de uno acá no se rompe ruidosamente, muestra el envío del
+ * vecino.
+ *
+ * Devuelve `undefined` cuando el par no existe en este aparato, y lo decide
+ * `esNivelDeEnvioAMonitor` —la misma función que el asistente usa para aceptar o
+ * rechazar una ruta— en vez de una comparación propia contra 24 y 10. Dos
+ * copias del rango serían dos verdades, y la que se pudre es siempre la de la
+ * pantalla.
+ */
+export function rutaDelEnvio(canal: number, auxiliar: number): string | undefined {
+  if (!Number.isInteger(canal) || !Number.isInteger(auxiliar)) return undefined;
+  const ruta = `i.${canal - 1}.aux.${auxiliar - 1}.value`;
+  return esNivelDeEnvioAMonitor(ruta) ? ruta : undefined;
+}
+
+/**
+ * En qué nivel está un envío, o por qué no se puede decir.
+ *
+ * **Los cuatro casos son distintos para el que mira, y ésa es la razón de que
+ * sean cuatro.** «Está en silencio» invita a subir; «no lo pude leer» invita a
+ * mirar la conexión; y «está por debajo del tramo medido» dice que el número
+ * existe pero que ponerlo en decibeles sería inventarlo.
+ */
+export type NivelDelEnvio =
+  | {
+      readonly tipo: 'EN_DB';
+      readonly db: number;
+      /**
+       * Cuánto falta para el techo de nominal, en dB.
+       *
+       * Negativo significa que el envío ya está **por encima** del techo, que es
+       * posible: la ley llega a +10 dB y el techo lo pone ADR-034, no el
+       * aparato. Un envío así lo dejó alguien a mano, y la aplicación no lo va a
+       * poder subir más — conviene que se vea antes de que el motor lo rechace.
+       */
+      readonly aNominalDb: number;
+    }
+  /** La consola publica el crudo cero: el envío está cerrado. */
+  | { readonly tipo: 'EN_SILENCIO' }
+  /**
+   * Hay un valor, pero cae fuera del tramo que la 104 midió.
+   *
+   * **No se traduce a decibeles, y es deliberado.** `fromRaw` contesta un número
+   * para cualquier crudo —con 0,1 devuelve −52,9 dB— pero por debajo de 0,25 lo
+   * que se midió fue una fuga del banco y no la ley (ítem 105). Mostrar ese
+   * número sería exactamente lo que la regla 1 del repositorio prohíbe: afirmar
+   * sobre el protocolo donde nadie midió. Se dice el crudo, que es el dato que
+   * de verdad se tiene.
+   */
+  | { readonly tipo: 'FUERA_DEL_TRAMO_MEDIDO'; readonly crudo: number }
+  /** La consola no publicó esa clave, o publicó algo que no es un número. */
+  | { readonly tipo: 'SIN_LEER' };
+
+/**
+ * Lee un envío del volcado del estado confirmado y lo pasa a decibeles.
+ *
+ * **La clave ausente no es silencio.** Un `Map` que no tiene la clave y un envío
+ * cerrado se parecen —los dos «no mandan nada»— y son cosas opuestas: el primero
+ * significa que no sé, el segundo que sé. Confundirlos haría que una cuña
+ * invisible por falta de volcado se viera como una cuña lista para subir, con el
+ * músico enfrente.
+ *
+ * **Y el crudo que no es un número tampoco es silencio.** Es la familia de
+ * defecto que este motor ya tapó tres veces: `NaN` sobrevive a toda comparación
+ * y sale por el lado permisivo. Acá sale por `SIN_LEER`.
+ */
+export function leerNivelDelEnvio(
+  ruta: string,
+  volcado: ReadonlyMap<string, { readonly valor: number }>,
+): NivelDelEnvio {
+  // **Se exige que sea un envío a monitor, y no sólo que tenga ley.** Sin esta
+  // línea la función convertía alegremente cualquier ruta de la tabla --la
+  // profundidad de la puerta, por ejemplo, que está medida desde el 2026-09-17--
+  // y devolvía un número correcto para la pregunta equivocada. Es el defecto que
+  // este repositorio ya nombró en `puedeSubirEnvioAMonitor`: el nombre mentía.
+  // Lo encontró el test de esta pieza, que daba por sentado que `i.0.gate.depth`
+  // no tenía ley.
+  if (!esNivelDeEnvioAMonitor(ruta)) return { tipo: 'SIN_LEER' };
+  const e = entrada(ruta);
+  if (e === undefined) return { tipo: 'SIN_LEER' };
+  const leido = volcado.get(ruta);
+  if (leido === undefined || !Number.isFinite(leido.valor)) return { tipo: 'SIN_LEER' };
+  const crudo = leido.valor;
+  if (crudo === 0) return { tipo: 'EN_SILENCIO' };
+  if (crudo < e.rawMin || crudo > e.rawMax) return { tipo: 'FUERA_DEL_TRAMO_MEDIDO', crudo };
+  const db = e.fromRaw(crudo);
+  // La ley puede devolver algo no finito en los bordes; si pasa, se dice que no
+  // se pudo leer en vez de imprimir «−∞ dB» en una tabla, que es lo que llegó a
+  // la tablet la última vez que esto no se filtró.
+  if (!Number.isFinite(db)) return { tipo: 'SIN_LEER' };
+  return { tipo: 'EN_DB', db, aNominalDb: NOMINAL_DB - db };
+}
+
+/** Un canal de la consola, con lo mínimo que hace falta para nombrarlo. */
+export interface CanalParaLaCuna {
+  /** Base uno, como lo muestra la consola. */
+  readonly indice: number;
+  /** El nombre que publica la consola, para los canales que nadie asignó. */
+  readonly nombre: string;
+}
+
+/** Una asignación, traída a la forma mínima para poder probar esto sin la base. */
+export interface AsignacionParaLaCuna {
+  /** La entrada física, base uno. */
+  readonly entrada: number;
+  readonly instrumento: string;
+  readonly integranteId: string | null;
+}
+
+/** Un camino que entra a la cuña, ya resuelto: la plantilla no calcula nada. */
+export interface CaminoALaCuna {
+  readonly canal: number;
+  readonly ruta: string;
+  /** Qué es, dicho como lo diría el usuario: el instrumento, o el nombre del canal. */
+  readonly que: string;
+  /** Si este canal es del músico que se está mirando. */
+  readonly esSuyo: boolean;
+  readonly nivel: NivelDelEnvio;
+}
+
+/**
+ * Qué caminos se muestran, y en qué orden.
+ *
+ * **Su propio instrumento va primero, siempre, esté como esté.** Es lo que hace
+ * el MOREME de la consola resaltándolo en naranja, y es lo que pide el
+ * soundcheck del usuario: el músico se escucha a sí mismo antes que a nadie. Un
+ * orden por nivel lo mandaría al final justo en el caso que importa —la cuña
+ * arranca en silencio— y ahí es donde hay que mirarlo.
+ *
+ * **De los demás se muestra sólo lo que suena**, y por sitio: veinticuatro filas
+ * en una tablet, a un metro y con poca luz, esconden las cuatro que importan. Un
+ * canal ajeno cerrado no le llega al músico, así que no es parte de su cuña.
+ *
+ * **Un ajeno que no se pudo leer se muestra sólo si de esta cuña se leyó algo.**
+ * La regla tiene dos mitades porque hay dos situaciones que se ven iguales y no
+ * lo son. Si de la cuña se leyeron otros envíos, uno que falta **es una
+ * anomalía**: no saber no es lo mismo que saber que no llega, y esconderlo
+ * convertiría una conexión a medias en una cuña que se ve limpia. Pero si no se
+ * leyó **ninguno**, lo que pasa no es una anomalía por canal sino que esa cuña
+ * entera no está publicada, y listar veinticuatro filas de «no lo publicó» es
+ * ruido que tapa las que importan.
+ *
+ * **Salió de mirar la pantalla y no de pensarla.** Con el simulador conectado
+ * --que no modela los envíos a auxiliar-- la tabla salía con las veinticuatro,
+ * y arriba decía «conectado». La primera versión sólo miraba si el volcado
+ * estaba vacío, y el volcado estaba lleno de otras cosas.
+ *
+ * Entre los ajenos, **el que más manda va arriba**. Es «cuánto le manda este
+ * canal a tu cuña» y no «cuánto se oye»: lo segundo depende además de cuánto
+ * esté sonando la fuente, y eso esta pantalla no lo afirma.
+ */
+export function loQueLlegaALaCuna(
+  auxiliar: number,
+  integranteId: string | null,
+  canales: readonly CanalParaLaCuna[],
+  asignaciones: readonly AsignacionParaLaCuna[],
+  volcado: ReadonlyMap<string, { readonly valor: number }>,
+): readonly CaminoALaCuna[] {
+  const porEntrada = new Map(asignaciones.map((a) => [a.entrada, a]));
+  const porIndice = new Map(canales.map((c) => [c.indice, c]));
+  // **La lista sale de la UNIÓN de lo que publica la consola y lo que la banda
+  // tiene asignado, y no sólo de la consola.** Con la consola desconectada
+  // `canales` viene vacío, así que recorrerla sola dejaba la pantalla sin una
+  // sola fila --ni siquiera el instrumento del propio músico-- mientras el aviso
+  // de arriba prometía «lo que se ve abajo es quién manda a esta cuña, no
+  // cuánto». El aviso decía una cosa y la tabla mostraba otra. Se encontró
+  // probando la cadena entera, no con un test de la función.
+  const indices = [...new Set([...porIndice.keys(), ...porEntrada.keys()])];
+  const suyos: CaminoALaCuna[] = [];
+  const ajenos: CaminoALaCuna[] = [];
+
+  for (const indice of indices) {
+    const ruta = rutaDelEnvio(indice, auxiliar);
+    if (ruta === undefined) continue;
+    const a = porEntrada.get(indice);
+    const c = porIndice.get(indice);
+    const camino: CaminoALaCuna = {
+      canal: indice,
+      ruta,
+      // El instrumento gana sobre el nombre de la consola: «Voz de Ana» dice más
+      // que «CH3». Y si la consola no publicó nada, se nombra con el número, que
+      // es lo único que se sabe con certeza de ese canal.
+      que: a?.instrumento ?? c?.nombre ?? `Canal ${indice}`,
+      // **`null` no es de nadie, y no puede ser de todos.** Sin esta guarda, un
+      // músico sin identificador se quedaría con todos los canales que tampoco
+      // lo tienen, y la fila «tu instrumento» mostraría el bombo de otro.
+      esSuyo: integranteId !== null && a !== undefined && a.integranteId === integranteId,
+      nivel: leerNivelDelEnvio(ruta, volcado),
+    };
+    if (camino.esSuyo) suyos.push(camino);
+    else if (camino.nivel.tipo !== 'EN_SILENCIO') ajenos.push(camino);
+  }
+
+  // Si de esta cuña no se leyó ni un envío, los ajenos desconocidos son ruido:
+  // lo que hay que decir --una sola vez, arriba-- es que la cuña no se leyó.
+  const seLeyoAlgo = [...suyos, ...ajenos].some((c) => c.nivel.tipo !== 'SIN_LEER');
+  const ajenosVisibles = seLeyoAlgo
+    ? ajenos
+    : ajenos.filter((c) => c.nivel.tipo !== 'SIN_LEER');
+
+  suyos.sort((x, y) => x.canal - y.canal);
+  ajenosVisibles.sort((x, y) => cuantoManda(y.nivel) - cuantoManda(x.nivel) || x.canal - y.canal);
+  return [...suyos, ...ajenosVisibles];
+}
+
+/**
+ * Con qué criterio se ordenan los ajenos.
+ *
+ * Lo que no está en decibeles se va al final **sin inventarle un número**: lo
+ * que no se pudo leer y lo que cae fuera del tramo medido comparten el último
+ * lugar, y entre ellos desempata el número de canal. Darle `-Infinity` a lo que
+ * no se leyó sería afirmar que manda poco, que es justo lo que no se sabe.
+ */
+function cuantoManda(n: NivelDelEnvio): number {
+  return n.tipo === 'EN_DB' ? n.db : Number.NEGATIVE_INFINITY;
+}

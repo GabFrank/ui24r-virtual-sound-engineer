@@ -91,6 +91,11 @@ import { ESTADOS, ESTADOS_EN_VIVO } from './estados';
                 }
               </ui-card>
             </a>
+            <a class="atajo" routerLink="/sesion/monitores">
+              <ui-card titulo="Monitores" subtitulo="Qué le llega a la cuña de cada músico">
+                <p class="dato">Sólo lectura</p>
+              </ui-card>
+            </a>
             <a class="atajo" routerLink="/consola">
               <ui-card titulo="Consola" subtitulo="Medidores en vivo">
                 <p class="dato">Solo lectura</p>

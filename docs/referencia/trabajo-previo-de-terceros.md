@@ -309,6 +309,71 @@ de movimiento de [ADR-037](../adr/ADR-037-que-cuenta-como-que-el-musico-estaba-t
 queda marcada como **elegida y no medida**, en vez de pasar por medida apoyándose
 en que nadie contradice.
 
+## La pantalla por músico: la tiene la propia consola, y se llama MOREME
+
+**Mirado el 2026-09-20**, al construir la primera mitad de la pantalla por
+músico. La pregunta era cómo presenta cada uno **la mezcla de monitor de una
+persona**: elegir a alguien y ver lo que le llega a su cuña.
+
+**El precedente más fuerte no está en los cuatro repositorios: está en el manual
+del fabricante que este repositorio tiene archivado desde hace semanas, y que
+ningún documento citaba.**
+
+> *«MOREME allows users to assign their own personal channel, and create a
+> personal monitoring mix with a single large fader. MOREME channel names are
+> highlighted in orange. To assign an input channel to the MOREME fader,
+> long-press a channel name and select the ASSIGN ME function. Use the same
+> process to assign an Aux bus as 'ME OUT'.»*
+>
+> — `manual-ui24r-v1.0.txt`, secciones 6.2, 3.3 y 3.4. En el teléfono es una
+> pantalla principal; en la tablet, el panel lateral o la vista vertical.
+
+O sea: **la Ui24R ya tiene una pantalla por músico**, con la misma unidad de
+cuenta —la persona, no el auxiliar—, la misma pareja de datos —su canal y su
+auxiliar— y **el propio instrumento resaltado**. Las dos decisiones de forma que
+esta pieza iba a tomar ya estaban tomadas por el aparato, y el usuario las conoce
+porque son las de su consola.
+
+Lo que MOREME **no** hace es lo que la aplicación agrega, y conviene tenerlo
+separado para no creer que el trabajo ya está hecho: no mide, no tiene techo, no
+distingue poner el nivel de retocarlo, y no escucha entre un paso y el siguiente.
+Y está pensada para el teléfono del músico; la de la aplicación es para la tablet
+de quien opera, con el músico enfrente.
+
+**Es la tercera vez que este repositorio encuentra la respuesta en su propio
+archivo** --ver [`hallazgo-la-respuesta-estaba-archivada.md`](../backlog/hallazgo-la-respuesta-estaba-archivada.md)--.
+El manual está listado como «tercera fuente, no superior», y eso lo volvió fácil
+de no abrir.
+
+### Y en los cuatro repositorios, una sola cosa parecida
+
+| | Vista de la mezcla de un auxiliar |
+|---|---|
+| `fmalcher/soundcraft-ui` | **Sí, pero es un banco de pruebas.** `packages/testbed` tiene una ruta `auxbus/:bus` --`AuxBusPage`-- que elige un auxiliar por número y muestra, de cada camino que entra, su nivel, su pre/post y su silencio. **Cablea cuatro canales de ejemplo a mano** --`input(2)`, `line(1)`, `player(1)`, `fx(2)`-- para ejercitar la API: no recorre los canales ni sabe de personas. La forma sirve; el contenido no pretende ser un producto |
+| `Dennion/ioBroker.soundcraft` | **El dato sí, la vista no.** Crea un objeto por auxiliar con una carpeta `aux.N.inputs` dentro, o sea que **modela «lo que entra a este auxiliar»** como estructura. Es domótica: no hay pantalla |
+| `NaturalDevCR/MyUiPro` | **No tiene vista propia, y no es que le falte**: es un contenedor de `iframe` con selector de disposición que abre el cliente de la consola. Lo que muestra de monitores es **el MOREME de la consola**, no algo suyo |
+| `ndikanov/ui24` | **No la implementa, pero la nombra.** Es un parche que se inyecta **en el cliente oficial**, así que lo que su código menciona --`E_MODE.MOREME`, `moremeWidget`, `E_MODE.AUX`, `auxWidget`-- es del cliente de la consola y no suyo: no hay ninguna definición de esos widgets en el repositorio. Dicho de otro modo, **confirma que esos modos existen en la interfaz oficial**, y nada más |
+
+**Y ninguno de los cuatro decide cuánto mandar a la cuña de un músico**, que es
+lo que ya decía la sección de la rampa y sigue valiendo: son bibliotecas de
+protocolo, adaptadores y contenedores, no asistentes.
+
+### De yapa, un dato del aparato que esta pantalla todavía no mira
+
+`fmalcher` expone `AuxBus.isMatrix$`: en la Ui24R **un auxiliar se puede convertir
+en una matriz**, y entonces lo que lo alimenta son otras claves --`a.N.mtx.M`-- y
+no los envíos `i.N.aux.M.value`. La clave que lo dice está en la consola del
+usuario: `a.N.matrix`, una por auxiliar, en el inventario del 2026-09-11.
+
+**Este proyecto no la lee, y la pantalla por músico tampoco.** Queda anotado y no
+entra como tarea, por la regla de la hoja de ruta: para que muerda, el usuario
+tiene que convertir un auxiliar en matriz **y además** declararlo como monitor en
+su perfil de amplificación. **Daño máximo hoy: la pantalla muestra una lista de
+envíos que no es la que alimenta esa salida.** No escribe nada --esta pieza es de
+sólo lectura-- así que no hay riesgo para su equipo. **Y el valor de esa clave en
+su aparato no se sabe**: el inventario guarda las claves observadas, no sus
+valores.
+
 ## Cómo se usa este documento
 
 **Antes de escribir «ninguno de los cuatro hace X», buscá X acá.** Si no está,

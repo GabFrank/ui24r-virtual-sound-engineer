@@ -6,6 +6,29 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **Hay una pantalla de Monitores, y por ahora sólo mira.** Entrás desde la
+  sesión, elegís al músico y elegís cuál de tus monitores es su cuña; la pantalla
+  te muestra **todo lo que le llega a esa cuña, con su propio instrumento
+  primero y marcado**. De cada cosa dice en qué nivel está el envío y cuánto le
+  falta para el techo, y arriba te muestra lo que sale hacia el parlante al lado
+  de lo que le llega al auxiliar: esos dos se diferencian en el fader de ese
+  auxiliar, que es lo que explica una cuña que recibe señal y no suena.
+
+  **De los canales que no son suyos sólo aparecen los que le mandan algo**,
+  porque veinticuatro filas en una tablet esconden las cuatro que importan. Los
+  que no se pudieron leer **sí aparecen**: no saber no es lo mismo que saber que
+  no llega, y esconderlos haría que una conexión a medias se vea como una cuña
+  limpia.
+
+  **Dos cosas que no va a decir, a propósito.** Si un envío está por debajo de
+  donde se midió la ley, dice «muy abajo» en vez de inventar un número de
+  decibeles. Y si la consola no publicó ese dato, dice que no lo leyó en vez de
+  decir que está cerrado.
+
+  **Todavía no sube nada ni podés marcar «así está bien»**: eso es lo que sigue.
+  Elegiste vos empezar por ver, y elegiste que cuando suba lo haga de a un envío
+  por vez.
+
 - **La aplicación ya mira el medidor de cada cuña, que es el paso previo a poder
   levantarlas escuchando.** Todavía no lo vas a ver en ninguna pantalla: lo que
   cambió es que la aplicación dejó de tirar esa parte de lo que la consola manda.

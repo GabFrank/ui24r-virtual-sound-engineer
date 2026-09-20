@@ -39,6 +39,12 @@ export const RUTAS: Routes = [
   },
 
   {
+    path: 'sesion/monitores',
+    title: 'Monitores',
+    loadComponent: () => import('./monitor/monitores.component').then((m) => m.MonitoresComponent),
+  },
+
+  {
     path: 'consola',
     title: 'Consola',
     loadComponent: () => import('./telemetry/telemetry.component').then((m) => m.TelemetryComponent),

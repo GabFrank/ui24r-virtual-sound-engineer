@@ -185,7 +185,7 @@ existe**.
 | Orden | Pieza | Herramientas | Necesita consola |
 |---|---|---|---|
 | 0 | **Arreglar lo que miente** — hecho el 2026-09-17: la tabla del recorrido, el alcance, la contradicción de los efectos | — | no |
-| 1 | **Pantalla de monitor**. **Al 2026-09-20 le falta SÓLO la pantalla**: subir, escuchar y anotar están enteros, probados y auditados, y nadie los llama.  El techo desde silencio **ya estaba decidido** (ADR-028: si la app no bajó, no hay techo). Lo que apareció al empezar: el asistente sólo sabe bajar, el presupuesto de 4 dB por sesión hace imposible la rampa, y el silencio queda fuera del tramo medido. Decidido en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | 9, 3 | no |
+| 1 | **Pantalla de monitor**. **Al 2026-09-20 la pantalla existe y sólo mira**: se elige al músico y se ve todo lo que le llega a su cuña, con su instrumento primero. Le falta **encadenar** --subir, escuchar y anotar están enteros y probados y la pantalla todavía no los llama-- y **el acto de marcar «así está bien»**, que no existe en ninguna capa.  El techo desde silencio **ya estaba decidido** (ADR-028: si la app no bajó, no hay techo). Lo que apareció al empezar: el asistente sólo sabe bajar, el presupuesto de 4 dB por sesión hace imposible la rampa, y el silencio queda fuera del tramo medido. Decidido en [ADR-034](../adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | 9, 3 | no |
 | 2 | **Ecualizador de canal**: decisión, asistente con criterio (espectro contra curva objetivo y banda útil del perfil), servicio, pantalla | 4 | para verificar |
 | 3 | **Puerta y compresor por lazo cerrado**: topes, servicio, pantalla | 5, 6 | para verificar |
 | 4 | **Preparar el show** y **nivel de referencia** | 1, 3 | no |
