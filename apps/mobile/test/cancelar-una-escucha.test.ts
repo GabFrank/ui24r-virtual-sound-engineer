@@ -179,3 +179,51 @@ test('el resultado cancelado no concede nada', () => {
   assert.match(bloque, /sonoS: 0/);
   assert.match(bloque, /alcanzaParaOtroPaso: false/);
 });
+
+// --- 3. La cadena de la pantalla, que es quien cancela ------------------------
+
+const PANTALLA = join(
+  AQUI, '..', 'src', 'app', 'monitor', 'monitores.component.ts',
+);
+
+test('la pantalla encadena subir, escuchar y anotar, en ese orden', () => {
+  const fuente = sinComentarios(readFileSync(PANTALLA, 'utf8'));
+  const cuerpo = fuente.slice(fuente.indexOf('async subirUnPaso('));
+  const sube = cuerpo.indexOf('this.envio.subir(');
+  const escucha = cuerpo.indexOf('this.escucha.escuchar(');
+  const anota = cuerpo.indexOf('this.envio.anotarEscucha(');
+  assert.ok(sube > 0 && escucha > 0 && anota > 0, 'la cadena ya no está entera');
+  // El orden no es estético: la escucha ocurre DESPUÉS del cambio --al cerrar la
+  // transacción todavía no hay nada que oír-- y anotar es lo último, porque el
+  // identificador que se anota sale de la escucha.
+  assert.ok(sube < escucha, 'escucha antes de subir: no habría nada que oír');
+  assert.ok(escucha < anota, 'anota antes de escuchar: el identificador no existe todavía');
+});
+
+test('una escucha cancelada no anota nada', () => {
+  const fuente = sinComentarios(readFileSync(PANTALLA, 'utf8')).replace(/\s+/g, ' ');
+  const cuerpo = fuente.slice(fuente.indexOf('async subirUnPaso('));
+  const corte = cuerpo.indexOf('if (e.cancelada)');
+  const anota = cuerpo.indexOf('this.envio.anotarEscucha(');
+  assert.ok(corte > 0, 'la pantalla ya no mira si la escucha se canceló');
+  assert.ok(corte < anota, 'se anota antes de mirar si se canceló');
+  // Y el corte tiene que SALIR, no seguir de largo: anotar una escucha que no
+  // ocurrió compraría el paso siguiente sin que nadie haya oído nada.
+  assert.match(cuerpo.slice(corte, anota), /return;/,
+    'la rama de cancelada no corta: la cadena sigue y anota igual');
+});
+
+test('la pantalla sube un envío por vez', () => {
+  // ADR-035: el motor no cruza el canal de la medición contra la ruta, así que
+  // una sola escucha autoriza todas las rutas que la citen. Esta pantalla tiene
+  // varias rutas del mismo músico a mano, así que lo impone ella.
+  const fuente = sinComentarios(readFileSync(PANTALLA, 'utf8')).replace(/\s+/g, ' ');
+  const cuerpo = fuente.slice(fuente.indexOf('async subirUnPaso('));
+  assert.match(
+    cuerpo.slice(0, 600), /if \(this\.enCurso\(\) !== null \|\| this\.escuchando\(\)\) return;/,
+    'no se frena un segundo paso mientras hay uno en curso',
+  );
+  // Y los botones se apagan, que es la otra mitad: sin esto el freno existe y
+  // el usuario no lo ve hasta que aprieta.
+  assert.match(fuente, /\[deshabilitado\]="enCurso\(\) !== null \|\| escuchando\(\)"/);
+});

@@ -10,9 +10,11 @@ import {
   type TonoDeInsignia,
 } from '../ui';
 import {
-  loQueLlegaALaCuna, NOMINAL_DB,
+  EN_NOMINAL_DB, loQueLlegaALaCuna, NOMINAL_DB, PASO_DB, proximoPasoDb,
   type CaminoALaCuna, type NivelDelEnvio,
 } from './cuna-del-musico.ts';
+import { EnvioAMonitorService } from './envio-a-monitor.service';
+import { EscuchaDeLaCunaService } from './escucha-de-la-cuna.service';
 
 /**
  * Las clases de amplificación que son la cuña de alguien.
@@ -44,21 +46,23 @@ interface FilaDeLaCuna {
   readonly sinLeer: boolean;
   /** Si la aplicación puede mover este camino. Sólo los 24 canales. */
   readonly laMueveLaAplicacion: boolean;
+  /** El camino entero, para que subir no tenga que reconstruirlo. */
+  readonly camino: CaminoALaCuna;
+  /** Cuánto pediría el próximo paso, o `null` si no hay ninguno que pedir. */
+  readonly pasoDb: number | null;
+  /** Lo que dice el botón. Vacío si no hay botón. */
+  readonly textoSubir: string;
+  /**
+   * Por qué no hay botón, cuando la aplicación sí podría mover este camino.
+   *
+   * **Va visible y no en un `title`**: en una tablet no hay puntero que lo
+   * revele, así que un botón que falta sin texto obliga a adivinar. Es la misma
+   * decisión que la pantalla de ganancia tomó por el mismo motivo.
+   */
+  readonly porQueNoSube: string;
 }
 
 /** Cómo se dice cada nivel, y con qué tono. La cuenta está en el módulo puro. */
-/**
- * Cuánto tiene que separarse de nominal para que se diga que no está en nominal.
- *
- * **Una décima de decibel, que es lo que la columna imprime.** Sin tolerancia,
- * un envío puesto en 0 dB desde la consola --crudo 0,7647, el `zeroDbPos` del
- * cliente-- daba `3,1e-14` dB y la pantalla lo anunciaba en ámbar como «0.0 dB
- * POR ENCIMA del techo», que es una frase que se contradice sola. Y del otro
- * lado imprimía «−0.0 dB». Justo en el caso central de ADR-034: el envío llegó
- * exactamente a donde tenía que llegar.
- */
-const EN_NOMINAL_DB = 0.05;
-
 /** Sin cero negativo: «−0.0 dB» ya llegó a la tablet una vez. */
 function dbDeTabla(db: number): string {
   const x = Math.abs(db) < EN_NOMINAL_DB ? 0 : db;
@@ -184,6 +188,19 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
           </p>
         }
 
+        @if (escuchando()) {
+          <ui-card class="acento captura">
+            <p class="etiqueta">Escuchando la cuña</p>
+            <p class="cuenta num">{{ segundosRestantes() }}</p>
+            <p class="instruccion">{{ instruccion() }}</p>
+            <ui-button variante="sutil" (pulsado)="cancelarEscucha()">Cancelar</ui-button>
+          </ui-card>
+        }
+
+        @if (aviso(); as a) {
+          <p class="aviso-paso">{{ a }}</p>
+        }
+
         @if (cunaElegida(); as c) {
           <ui-card [titulo]="tituloDeLaCuna()" subtitulo="Lo que sale hacia el parlante ahora">
             <div class="numeros">
@@ -211,6 +228,7 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                   <th class="izq">Qué le llega</th>
                   <th class="num">Manda</th>
                   <th class="izq">Detalle</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -225,6 +243,15 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                     </td>
                     <td class="num">{{ f.nivel }}</td>
                     <td class="izq det">{{ f.detalle }}</td>
+                    <td>
+                      @if (f.textoSubir) {
+                        <ui-button variante="primario"
+                                   [deshabilitado]="enCurso() !== null || escuchando()"
+                                   (pulsado)="subirUnPaso(f)">{{ f.textoSubir }}</ui-button>
+                      } @else if (f.laMueveLaAplicacion) {
+                        <span class="det">{{ f.porQueNoSube }}</span>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -242,6 +269,13 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
                   <ui-badge [tono]="f.tono">{{ f.nivel }}</ui-badge>
                 </div>
                 <p class="det">{{ f.detalle }}</p>
+                @if (f.textoSubir) {
+                  <ui-button acciones variante="primario"
+                             [deshabilitado]="enCurso() !== null || escuchando()"
+                             (pulsado)="subirUnPaso(f)">{{ f.textoSubir }}</ui-button>
+                } @else if (f.laMueveLaAplicacion) {
+                  <p class="det">{{ f.porQueNoSube }}</p>
+                }
               </ui-card>
             }
           </div>
@@ -259,8 +293,10 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
         </p>
 
         <p class="nota-cierre">
-          Todavía no se puede subir nada desde acá, y tampoco marcar «así está
-          bien». Eso es lo que sigue.
+          Cada paso sube, escucha y anota, de a un envío por vez: mientras uno
+          está en curso los demás botones se apagan. Todavía <strong>no se puede
+          marcar «así está bien»</strong>, así que esta cuña sigue en la primera
+          operación: el techo es nominal y no hay presupuesto por sesión.
         </p>
       }
     </div>
@@ -272,6 +308,12 @@ function comoSeDice(n: NivelDelEnvio): Pick<FilaDeLaCuna, 'nivel' | 'detalle' | 
     .racimo-insignias {
       display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3);
     }
+
+    .captura { text-align: center; margin-bottom: var(--sp-5); }
+    .etiqueta { color: var(--muted); font-size: var(--txt-sm); }
+    .cuenta { font-size: var(--txt-3xl); line-height: 1; color: var(--signal); margin: var(--sp-2) 0; }
+    .instruccion { margin-bottom: var(--sp-4); font-size: var(--txt-lg); }
+    .aviso-paso { margin: 0 0 var(--sp-4); font-size: var(--txt-sm); line-height: var(--alto-linea); }
 
     .aviso {
       margin-bottom: var(--sp-4); padding: var(--sp-3);
@@ -314,6 +356,25 @@ export class MonitoresComponent {
   private readonly banda = inject(BandService);
   private readonly mixer = inject(MixerService);
   private readonly repos = inject(Repositorios);
+  private readonly envio = inject(EnvioAMonitorService);
+  private readonly escucha = inject(EscuchaDeLaCunaService);
+
+  /**
+   * La cuenta regresiva y la ventana, que el músico tiene que ver.
+   *
+   * **Es la razón por la que la orquestación vive acá y no adentro de
+   * `subir()`.** Una llamada que se bloquea veintiún segundos no deja mostrar
+   * nada ni cancelar, y el músico está tocando: tiene que ver cuánto falta y
+   * poder cortar. Está dicho así en ADR-036.
+   */
+  readonly escuchando = this.escucha.escuchando;
+  readonly segundosRestantes = this.escucha.segundosRestantes;
+  readonly estadoEscucha = this.escucha.estado;
+
+  /** El canal cuya rampa está en curso, para apagar los demás botones. */
+  readonly enCurso = signal<number | null>(null);
+  /** Lo último que pasó, en una frase. */
+  readonly aviso = signal<string | null>(null);
 
   readonly techo = NOMINAL_DB.toFixed(0);
 
@@ -464,6 +525,7 @@ export class MonitoresComponent {
         entrada: a.ui24rInputIndex as number,
         instrumento: a.instrumento,
         integranteId: a.bandMemberId as string | null,
+        asignacionId: a.id as string,
       })),
       this.volcado(),
     );
@@ -505,16 +567,132 @@ export class MonitoresComponent {
     return f.length > 0 && f.every((x) => x.sinLeer);
   });
 
+  readonly instruccion = computed(() =>
+    this.estadoEscucha() === 'CUENTA_REGRESIVA'
+      ? 'Pedile que empiece a tocar'
+      : 'Que siga tocando: se está escuchando su cuña');
+
+  /**
+   * Un paso de la rampa: subir, escuchar y anotar, en ese orden.
+   *
+   * **La cadena entera vive acá a propósito.** Los tres servicios existen y
+   * están probados desde el 2026-09-19 y ninguno llama al otro: la orquestación
+   * es de la pantalla porque el músico tiene que ver la cuenta regresiva y poder
+   * cancelar (ADR-036).
+   *
+   * **Un envío por vez, y la pantalla lo impone.** Decisión del usuario del
+   * 2026-09-20, y no es comodidad: el motor no cruza el canal de la medición
+   * contra la ruta, así que **una sola escucha autoriza todas las rutas que la
+   * citen** --medido, ADR-035--. Esta pantalla tiene varias rutas del mismo
+   * músico a mano, así que es justo la que podría cometer ese error. `enCurso`
+   * apaga los demás botones mientras dura el paso.
+   *
+   * **Si la escucha no queda guardada, no se anota nada.** El motor no busca
+   * «alguna medición posterior»: resuelve el identificador que la transacción
+   * declara, y anotar uno inventado es el agujero que se cerró el 2026-09-18.
+   * Lo que se pierde es el permiso para el paso siguiente, que el motor niega
+   * con su propio nombre.
+   */
+  async subirUnPaso(f: FilaDeLaCuna): Promise<void> {
+    const aux = this.auxiliar();
+    const sesion = this.sesion.actual()?.sesion.id ?? null;
+    if (aux === null || sesion === null || f.pasoDb === null) return;
+    if (this.enCurso() !== null || this.escuchando()) return;
+
+    this.aviso.set(null);
+    this.enCurso.set(f.canal);
+    try {
+      const n = f.camino.nivel;
+      const r = await this.envio.subir({
+        canal: f.canal,
+        auxiliar: aux,
+        ruta: f.camino.ruta,
+        // **El nivel y el crudo salen de la misma lectura**, que es lo que el
+        // motor va a atar. Pasar uno de la pantalla y otro de otro lado es
+        // exactamente lo que `verificarAtaduraDelOrigen` existe para cazar.
+        nivelActualDb: n.tipo === 'EN_DB' ? n.db : Number.NEGATIVE_INFINITY,
+        crudoActual: n.tipo === 'EN_DB' ? n.crudo : 0,
+        subirDb: f.pasoDb,
+      }, sesion);
+
+      if (r.estado !== 'APLICADA') {
+        this.aviso.set(r.motivo);
+        return;
+      }
+      this.aviso.set(r.salioDelSilencio
+        ? `La cuña arrancó en ${r.quedoEnDb.toFixed(1)} dB. Escuchando…`
+        : `Quedó en ${r.quedoEnDb.toFixed(1)} dB. Escuchando…`);
+
+      const e = await this.escucha.escuchar({
+        canal: f.canal,
+        auxiliar: aux,
+        channelId: f.camino.channelId,
+      }, sesion);
+
+      if (e.cancelada) {
+        this.aviso.set('Escucha cancelada. El cambio quedó aplicado, pero sin '
+          + 'escuchar no se puede dar otro paso: escuchá antes de seguir.');
+        return;
+      }
+      await this.envio.anotarEscucha(r.id, e.medicionId);
+      this.aviso.set(this.comoSalio(e));
+    } catch (err) {
+      this.aviso.set(err instanceof Error ? err.message : String(err));
+    } finally {
+      this.enCurso.set(null);
+    }
+  }
+
+  /** Qué decirle al músico cuando la escucha terminó. */
+  private comoSalio(e: {
+    readonly medicionId: string | null;
+    readonly sonoS: number;
+    readonly alcanzaParaOtroPaso: boolean;
+    readonly segundosNoOidos: number;
+  }): string {
+    if (e.medicionId === null) {
+      return 'El cambio se aplicó, pero la escucha no se pudo guardar: '
+        + 'el paso siguiente va a pedir escuchar de nuevo.';
+    }
+    // **«No te escuché» y «no tocaste» son cosas distintas.** Decisión del
+    // usuario del 2026-09-19: se descuenta lo que no se oyó y se sigue, pero se
+    // dice, porque si no el músico vuelve a tocar para nada.
+    const corte = e.segundosNoOidos > 0
+      ? ` (${e.segundosNoOidos.toFixed(1)} s no se pudieron oír)`
+      : '';
+    return e.alcanzaParaOtroPaso
+      ? `Sonaron ${e.sonoS.toFixed(1)} s${corte}. Se puede dar otro paso.`
+      : `Sonaron ${e.sonoS.toFixed(1)} s${corte}: hace falta que toque un poco más `
+        + 'para que el motor conceda otro paso.';
+  }
+
+  cancelarEscucha(): void { this.escucha.cancelar(); }
+
   elegirMusico(id: BandMember['id']): void { this.musicoId.set(id as string); }
   elegirCuna(componenteId: string): void { this.cunaElegidaId.set(componenteId); }
 }
 
 function aFila(c: CaminoALaCuna): FilaDeLaCuna {
+  const pasoDb = c.laMueveLaAplicacion ? proximoPasoDb(c.nivel) : null;
   return {
+    ...comoSeDice(c.nivel),
     canal: c.canal, que: c.que, esSuyo: c.esSuyo,
     sinLeer: c.nivel.tipo === 'SIN_LEER',
     laMueveLaAplicacion: c.laMueveLaAplicacion,
-    ...comoSeDice(c.nivel),
+    camino: c,
+    pasoDb,
+    // **El botón dice qué va a pasar, no «subir».** Desde el silencio el
+    // destino no lo elige quien pide --el motor salta al mínimo que la ley sabe
+    // escribir-- y decir «subir 2 dB» ahí sería prometer otra cosa. Y el último
+    // paso pide lo que falta, que es la cuenta de los 0,138 dB de ADR-034.
+    textoSubir: pasoDb === null ? ''
+      : c.nivel.tipo === 'EN_SILENCIO' ? 'Encender'
+      : pasoDb < PASO_DB ? `Subir ${pasoDb.toFixed(2)} dB, hasta el techo`
+      : `Subir ${pasoDb.toFixed(0)} dB`,
+    porQueNoSube: pasoDb !== null ? ''
+      : c.nivel.tipo === 'EN_DB' ? 'Ya está en el techo: de acá para arriba lo subís vos'
+      : c.nivel.tipo === 'SIN_LEER' ? 'No se sabe dónde está, así que no hay desde dónde subir'
+      : 'Está fuera del tramo que se midió: subirlo sería inventar el punto de partida',
   };
 }
 

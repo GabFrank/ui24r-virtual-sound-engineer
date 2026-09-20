@@ -45,6 +45,44 @@ import {
 /** El techo de ADR-034: nominal. Sale de la tabla del motor, no se escribe acá. */
 export const NOMINAL_DB = LIMITES.MONITOR_AUX_SEND?.techoAbsoluto ?? 0;
 
+/** El paso de la rampa. Sale del tope del motor, no se elige acá. */
+export const PASO_DB = LIMITES.MONITOR_AUX_SEND?.porTransaccion ?? 2;
+
+/**
+ * Cuánto tiene que faltar para el techo para que valga la pena otro paso.
+ *
+ * **Una décima de decibel, que es lo que la pantalla imprime.** Sirve para dos
+ * cosas a la vez y por eso es un solo número: que un envío puesto justo en
+ * nominal no se anuncie como «por encima del techo» --daba `3,1e-14` dB y la
+ * pantalla lo decía en ámbar-- y que la rampa no ofrezca un paso de `3,1e-14`
+ * dB, que sería escribirle a la consola de alguien para no mover nada.
+ */
+export const EN_NOMINAL_DB = 0.05;
+
+/**
+ * Cuánto pedir en el próximo paso, o `null` si no hay ninguno que pedir.
+ *
+ * **Es la cuenta de la pantalla que ADR-034 dejó pendiente, y son 0,138 dB.**
+ * Desde el mínimo escribible --−32,14 dB-- con pasos fijos de 2 la rampa se
+ * queda a **0,138 dB del nominal** y ahí se traba: el paso siguiente pasaría el
+ * techo y el motor lo rechaza, con razón. El asistente **ya acepta cualquier
+ * subida hasta 2 dB**, así que el último paso no necesita tocar el motor: es
+ * pedir lo que falta en vez de pedir 2.
+ *
+ * **Y vive acá y no en el componente** porque es una cuenta con un borde, y el
+ * borde es el que se acaba de arreglar dos veces: pedir `3,1e-14` dB es
+ * escribirle a la consola de un músico para no mover nada.
+ */
+export function proximoPasoDb(nivel: NivelDelEnvio): number | null {
+  // Desde el silencio no se elige cuánto: el motor salta al mínimo que la ley
+  // sabe escribir y descarta lo pedido. Se manda el paso entero para que el
+  // número que va al registro sea el de siempre.
+  if (nivel.tipo === 'EN_SILENCIO') return PASO_DB;
+  if (nivel.tipo !== 'EN_DB') return null;
+  if (nivel.aNominalDb < EN_NOMINAL_DB) return null;
+  return Math.min(PASO_DB, nivel.aNominalDb);
+}
+
 /**
  * La ruta del envío de un canal a una cuña, en la forma que publica la consola.
  *
@@ -88,6 +126,8 @@ export type NivelDelEnvio =
        * poder subir más — conviene que se vea antes de que el motor lo rechace.
        */
       readonly aNominalDb: number;
+      /** El crudo del que salió, que es lo que el motor va a querer de vuelta. */
+      readonly crudo: number;
     }
   /** La consola publica el crudo cero: el envío está cerrado. */
   | { readonly tipo: 'EN_SILENCIO' }
@@ -173,7 +213,7 @@ export function leerNivelDelEnvio(
   // se pudo leer en vez de imprimir «−∞ dB» en una tabla, que es lo que llegó a
   // la tablet la última vez que esto no se filtró.
   if (!Number.isFinite(db)) return { tipo: 'SIN_LEER' };
-  return { tipo: 'EN_DB', db, aNominalDb: NOMINAL_DB - db };
+  return { tipo: 'EN_DB', db, aNominalDb: NOMINAL_DB - db, crudo };
 }
 
 /** Un canal de la consola, con lo mínimo que hace falta para nombrarlo. */
@@ -190,6 +230,8 @@ export interface AsignacionParaLaCuna {
   readonly entrada: number;
   readonly instrumento: string;
   readonly integranteId: string | null;
+  /** El identificador de la asignación, que la escucha guarda con la medición. */
+  readonly asignacionId: string;
 }
 
 /** Un camino que entra a la cuña, ya resuelto: la plantilla no calcula nada. */
@@ -200,6 +242,13 @@ export interface CaminoALaCuna {
   readonly que: string;
   /** Si este canal es del músico que se está mirando. */
   readonly esSuyo: boolean;
+  /**
+   * De qué canal asignado es esta medición, o `null` si nadie lo asignó.
+   *
+   * Va con la escucha para poder decir de quién fue. `null` se guarda igual:
+   * una escucha sin dueño sigue siendo una escucha.
+   */
+  readonly channelId: string | null;
   /**
    * Si la aplicación puede mover este camino.
    *
@@ -295,6 +344,7 @@ export function loQueLlegaALaCuna(
       // músico sin identificador se quedaría con todos los canales que tampoco
       // lo tienen, y la fila «tu instrumento» mostraría el bombo de otro.
       esSuyo: integranteId !== null && a !== undefined && a.integranteId === integranteId,
+      channelId: a?.asignacionId ?? null,
       laMueveLaAplicacion: true,
       nivel: leerNivelDelEnvio(ruta, volcado),
     };
@@ -321,6 +371,7 @@ export function loQueLlegaALaCuna(
         ruta,
         que: `${f.comoSeLlama} ${n}`,
         esSuyo: false,
+        channelId: null,
         laMueveLaAplicacion: false,
         nivel: leerNivelDelEnvio(ruta, volcado),
       };

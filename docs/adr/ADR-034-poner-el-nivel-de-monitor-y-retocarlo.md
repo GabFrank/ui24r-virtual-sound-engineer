@@ -184,8 +184,14 @@ marcar el nivel o llega abriendo un hueco.
 **Al 2026-09-20 la pantalla existe y todavía no cierra el hueco, que es la
 distinción que este párrafo pide hacer.** `monitor/monitores.component.ts`
 muestra la cuña de un músico --quién le manda, en qué nivel, su instrumento
-primero-- y **no llama a ningún servicio de monitor y no escribe nada**: ni sube,
-ni escucha, ni marca. *(La primera redacción decía «no llama a ningún servicio», y
+primero-- y **desde esa misma noche también sube**: encadena subir, escuchar y
+anotar, un envío por vez, con la cuenta regresiva a la vista y un botón de
+cancelar. **La rampa de esta decisión existe.** El último paso pide lo que falta
+en vez de 2 dB, así que llega a nominal exacto --con pasos fijos se quedaba a
+0,138 dB y ahí se trababa--: diecisiete pasos desde el mínimo escribible, con su
+test. Lo que sigue sin existir es **marcar el nivel como establecido**, así que
+la fila de arriba sigue diciendo la verdad y toda cuña vive en la primera
+operación. *(La primera redacción decía «no llama a ningún servicio», y
 llama a cuatro --sesión, banda, consola y almacén--, todos de lectura. Lo cazó una
 auditoría de fidelidad.)* O sea
 que la fila de arriba sigue diciendo la verdad, «nadie todavía», y el envío a

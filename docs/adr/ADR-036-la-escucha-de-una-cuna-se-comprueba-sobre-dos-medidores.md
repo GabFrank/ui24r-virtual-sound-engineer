@@ -4,12 +4,11 @@
 **Estado:** **decidida e implementada, sin quien la dispare.** El medidor de la
 cuña llega a la aplicación en marcha, `EscuchaDeLaCunaService` muestrea los dos y
 guarda la medición, y `EnvioAMonitorService.anotarEscucha` la anota en la
-transacción. Lo que falta es **quien encadene los tres pasos**: nadie llama a
-subir ni a bajar una cuña, así que no hay cambio de comportamiento observable.
-**Esta frase decía «la pantalla por músico, que es quien encadena» y «mientras no
-exista», y desde el 2026-09-20 la pantalla existe**: muestra la cuña y no llama a
-ninguno de los tres. Lo que falta es el encadenado, no la pantalla. Ver «Qué
-falta».
+transacción, y **desde el 2026-09-20 la pantalla por músico los encadena**: sube
+un paso, escucha y anota. Así que **sí hay cambio de comportamiento**, y es el
+que esta decisión venía a habilitar. Esta línea dijo dos veces lo contrario --
+primero «mientras esa pantalla no exista» y después «falta quien encadene»-- y
+las dos se corrigieron el mismo día.
 **Origen:** **Decisión del usuario**, eligiendo entre tres opciones el
 2026-09-19, al empezar la pieza que le da escucha al envío a monitor.
 
@@ -128,9 +127,11 @@ vez la de «abierto» contra «alcanzable».
   anotar son tres llamadas, y la orquestación vive afuera **a propósito**: es lo
   que hace el camino de la ganancia, y el motivo es que el músico tiene que ver la
   cuenta regresiva y poder cancelar, cosa que un `subir()` que se bloquea veintiún
-  segundos no permite. **La pantalla existe desde el 2026-09-20 y todavía no
-  encadena** --muestra la cuña y nada más--, así que **nadie llama a subir ni a
-  bajar una cuña** y ninguna queda con escucha comprobada — que es donde
+  segundos no permite. **Hecho el 2026-09-20**: la pantalla orquesta los tres, un
+  envío por vez --el motor no cruza el canal de la medición contra la ruta, así
+  que una sola escucha autorizaría todas las rutas que la citen, ADR-035-- y el
+  botón de cancelar estrena el arreglo del hallazgo 10. Ya no es cierto que
+  nadie llame a subir; lo era hasta ese día — que es donde
   estaba antes de esta decisión, y por eso no hay cambio de comportamiento
   observable todavía.
 - **Y ese encadenado es lo que ningún test puede cubrir**, porque los tres pasos

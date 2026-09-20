@@ -54,7 +54,27 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   quedar—. Y si declarás dos monitores sobre el mismo auxiliar (una cuña de piso
   más unos intraurales, por ejemplo), elegías uno y veías el otro.
 
-  **Todavía no sube nada ni podés marcar «así está bien»**: eso es lo que sigue.
+  **Y ya sube la cuña, escuchando entre paso y paso.** Cada botón hace las tres
+  cosas seguidas: sube un paso, escucha dieciocho segundos con el medidor del
+  músico y el de su cuña a la vez, y deja esa escucha anotada para que el motor
+  te conceda el paso siguiente. Ves la cuenta regresiva y podés **cancelar**:
+  si cancelás, el cambio queda aplicado pero no se anota escucha, así que para
+  seguir subiendo hay que escuchar de nuevo. Cuando termina te dice cuántos
+  segundos sonó de verdad, y si hubo un corte de red te dice cuántos segundos no
+  se pudieron oír —«no te escuché» y «no tocaste» son cosas distintas—.
+
+  **Desde una cuña apagada el primer toque dice «Encender»**, porque ahí el
+  destino no lo elegís vos: la aplicación salta al punto más bajo que sabe
+  escribir. Y **el último paso dice cuánto falta en vez de «subir 2 dB»**: con
+  pasos fijos la rampa se quedaba a 0,138 dB del techo y ahí se trababa, así que
+  el último pide exactamente lo que falta y llega a nominal.
+
+  **De a un envío por vez, como elegiste**: mientras un paso está en curso los
+  demás botones se apagan.
+
+  **Todavía no podés marcar «así está bien»**: eso es lo único que le falta a
+  esta pieza. Hasta que exista, cada cuña vive en la primera operación —el techo
+  es nominal y no hay presupuesto por sesión—.
   Elegiste vos empezar por ver, y elegiste que cuando suba lo haga de a un envío
   por vez.
 

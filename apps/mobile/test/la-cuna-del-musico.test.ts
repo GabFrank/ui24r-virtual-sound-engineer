@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { entrada, esEnvioAUnAuxiliar, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
 import {
-  leerNivelDelEnvio, loQueLlegaALaCuna, rutaDelEnvio, NOMINAL_DB,
+  leerNivelDelEnvio, loQueLlegaALaCuna, proximoPasoDb, rutaDelEnvio, NOMINAL_DB, PASO_DB,
   type AsignacionParaLaCuna, type CanalParaLaCuna,
 } from '../src/app/monitor/cuna-del-musico.ts';
 
@@ -171,9 +171,9 @@ const CANALES: readonly CanalParaLaCuna[] = [
 ];
 
 const ASIGNACIONES: readonly AsignacionParaLaCuna[] = [
-  { entrada: 1, instrumento: 'Voz de Ana', integranteId: 'ana' },
-  { entrada: 2, instrumento: 'Guitarra de Ana', integranteId: 'ana' },
-  { entrada: 3, instrumento: 'Bajo de Beto', integranteId: 'beto' },
+  { entrada: 1, instrumento: 'Voz de Ana', integranteId: 'ana', asignacionId: 'a1' },
+  { entrada: 2, instrumento: 'Guitarra de Ana', integranteId: 'ana', asignacionId: 'a2' },
+  { entrada: 3, instrumento: 'Bajo de Beto', integranteId: 'beto', asignacionId: 'a3' },
 ];
 
 /** Sólo las filas: el recuento se prueba aparte, más abajo. */
@@ -241,9 +241,9 @@ test('si de la cuña se leyó algo, el ajeno que falta SÍ se muestra: es una an
 
 test('entre los ajenos manda el que más manda, y lo que no se sabe va al final', () => {
   const ajenos: readonly AsignacionParaLaCuna[] = [
-    { entrada: 1, instrumento: 'Bombo', integranteId: 'beto' },
-    { entrada: 2, instrumento: 'Bajo', integranteId: 'beto' },
-    { entrada: 3, instrumento: 'Teclado', integranteId: 'beto' },
+    { entrada: 1, instrumento: 'Bombo', integranteId: 'beto', asignacionId: 'a1' },
+    { entrada: 2, instrumento: 'Bajo', integranteId: 'beto', asignacionId: 'a2' },
+    { entrada: 3, instrumento: 'Teclado', integranteId: 'beto', asignacionId: 'a3' },
   ];
   const filas = filasDe(1, 'ana', CANALES, ajenos, volcado({
     [envio(1)]: 0.4,
@@ -259,7 +259,7 @@ test('entre los ajenos manda el que más manda, y lo que no se sabe va al final'
 
 test('un músico sin identificador no se queda con los canales sin asignar', () => {
   const sinDuenio: readonly AsignacionParaLaCuna[] = [
-    { entrada: 1, instrumento: 'Ambiente', integranteId: null },
+    { entrada: 1, instrumento: 'Ambiente', integranteId: null, asignacionId: 'a1' },
   ];
   const filas = filasDe(1, null, CANALES, sinDuenio, volcado({
     [envio(1)]: 0.5, [envio(2)]: 0, [envio(3)]: 0, [envio(4)]: 0,
@@ -398,7 +398,7 @@ test('el recuento cubre los 32, incluidos los que no se muestran', () => {
 
 test('primero lo que se sabe en decibeles, después lo que manda sin ley', () => {
   const ajenas: readonly AsignacionParaLaCuna[] = [
-    { entrada: 1, instrumento: 'Bombo', integranteId: 'beto' },
+    { entrada: 1, instrumento: 'Bombo', integranteId: 'beto', asignacionId: 'a1' },
   ];
   const { caminos } = loQueLlegaALaCuna(1, 'ana', CANALES, ajenas, volcado({
     [envio(1)]: 0.5,
@@ -436,4 +436,74 @@ test('un crudo por encima del tope no se anuncia como «muy abajo»', () => {
   }
   // Y el borde de abajo sigue donde estaba.
   assert.equal(leerNivelDelEnvio(RUTA, volcado({ [RUTA]: 0.1 })).tipo, 'FUERA_DEL_TRAMO_MEDIDO');
+});
+
+// --- La rampa: cuánto pedir en cada paso ------------------------------------
+
+test('la rampa pide de a 2 dB mientras haya lugar', () => {
+  const enMinimo = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: LEY.rawMin }));
+  assert.equal(proximoPasoDb(enMinimo), PASO_DB);
+  const aMitad = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: LEY.toRaw(-10) }));
+  assert.equal(proximoPasoDb(aMitad), PASO_DB);
+});
+
+test('el último paso pide los 0,138 dB que faltan, no 2', () => {
+  // **La cuenta que ADR-034 dejó pendiente.** Desde −32,14 dB con pasos fijos de
+  // 2 la rampa llega a −0,138 y ahí se traba: pedir 2 pasaría el techo y el
+  // motor lo rechaza, con razón. El asistente ya acepta cualquier subida hasta
+  // 2 dB, así que el arreglo es de la pantalla: pedir lo que falta.
+  let db = LEY.fisicoMin;
+  let pasos = 0;
+  while (pasos < 100) {
+    const nivel = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: LEY.toRaw(db) }));
+    const paso = proximoPasoDb(nivel);
+    if (paso === null) break;
+    db += paso;
+    pasos++;
+  }
+  assert.ok(Math.abs(db - NOMINAL_DB) < 0.001, `la rampa terminó en ${db}, no en nominal`);
+  // Dieciséis pasos de 2 dB llevan de −32,14 a −0,138; el decimoséptimo es el
+  // que pide lo que falta. Si este número cambia, cambió la ley o el tope.
+  assert.equal(pasos, 17);
+});
+
+test('en el techo no se ofrece ningún paso, ni uno de 3e-14 dB', () => {
+  // Pedir un paso que no mueve nada es escribirle a la consola de un músico para
+  // nada, y el envío puesto en nominal desde la consola da 3,1e-14 dB.
+  const enNominal = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: LEY.toRaw(NOMINAL_DB) }));
+  assert.equal(proximoPasoDb(enNominal), null);
+  const porEncima = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: LEY.toRaw(5) }));
+  assert.equal(proximoPasoDb(porEncima), null);
+});
+
+test('desde el silencio se pide el paso entero y el destino lo elige el motor', () => {
+  const apagado = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: 0 }));
+  assert.equal(apagado.tipo, 'EN_SILENCIO');
+  assert.equal(proximoPasoDb(apagado), PASO_DB);
+});
+
+test('lo que no se sabe dónde está no ofrece paso: no hay desde dónde subir', () => {
+  const casos: readonly Readonly<Record<string, number>>[] = [
+    {}, { [RUTA]: 0.1 }, { [RUTA]: Number.NaN },
+  ];
+  for (const v of casos) {
+    assert.equal(proximoPasoDb(leerNivelDelEnvio(RUTA, volcado(v))), null, JSON.stringify(v));
+  }
+  // Y a las familias sin ley medida tampoco, aunque manden: no hay punto de
+  // partida en decibeles que el motor pueda atar.
+  const efecto = leerNivelDelEnvio('f.0.aux.0.value', volcado({ 'f.0.aux.0.value': 0.5 }));
+  assert.equal(efecto.tipo, 'MANDA_SIN_LEY');
+  assert.equal(proximoPasoDb(efecto), null);
+});
+
+test('el nivel en decibeles vuelve con su crudo, que es lo que el motor ata', () => {
+  // El motor compara los dos extremos del movimiento y el adaptador ata el
+  // crudo contra el estado confirmado. Que salgan de la MISMA lectura es lo que
+  // impide declarar un origen en decibeles que no se corresponde con el crudo,
+  // que es el salto de 31 dB que `verificarAtaduraDelOrigen` cerró.
+  const crudo = 0.5;
+  const n = leerNivelDelEnvio(RUTA, volcado({ [RUTA]: crudo }));
+  assert.ok(n.tipo === 'EN_DB');
+  assert.equal(n.crudo, crudo);
+  assert.equal(n.db, LEY.fromRaw(crudo));
 });
