@@ -47,7 +47,9 @@ import { LIMITES } from '@vse/domain';
  * anota acá el identificador que esto devuelve.
  *
  * **Y ninguna pantalla lo llama todavía**, igual que el servicio de al lado.
- * Existe el camino y está probado; falta la pantalla por músico.
+ * Existe el camino y está probado; falta **quien lo dispare**. La pantalla por
+ * músico existe desde el 2026-09-20 y sólo muestra la cuña: esta línea decía
+ * «falta la pantalla por músico» y dejó de ser cierta esa noche.
  */
 
 /** Qué cuña escuchar y de quién. */

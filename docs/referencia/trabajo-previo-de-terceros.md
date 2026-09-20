@@ -325,8 +325,16 @@ ningún documento citaba.**
 > long-press a channel name and select the ASSIGN ME function. Use the same
 > process to assign an Aux bus as 'ME OUT'.»*
 >
-> — `manual-ui24r-v1.0.txt`, secciones 6.2, 3.3 y 3.4. En el teléfono es una
-> pantalla principal; en la tablet, el panel lateral o la vista vertical.
+> — `manual-ui24r-v1.0.txt`, **§3.3 (tablet) y §3.4 (teléfono)**, donde el texto
+> está repetido palabra por palabra. En el teléfono es una pantalla principal; en
+> la tablet, el panel lateral o la vista vertical.
+
+**Y la §6.2 dice otra cosa, que conviene no mezclar.** Es la sección que se llama
+MOREME y sostiene lo esencial --canales propios, `ASSIGN ME`, `ASSIGN ME OUT`, un
+fader grande único, «mezclar tu propio sonido contra el de los demás»-- pero
+**no trae el párrafo de arriba y no nombra el naranja en ninguna parte**. La
+primera redacción de esta sección le atribuyó a §6.2 la cita y el resaltado; lo
+cazó una auditoría de fidelidad el mismo día.
 
 O sea: **la Ui24R ya tiene una pantalla por músico**, con la misma unidad de
 cuenta —la persona, no el auxiliar—, la misma pareja de datos —su canal y su
@@ -350,8 +358,8 @@ de no abrir.
 | | Vista de la mezcla de un auxiliar |
 |---|---|
 | `fmalcher/soundcraft-ui` | **Sí, pero es un banco de pruebas.** `packages/testbed` tiene una ruta `auxbus/:bus` --`AuxBusPage`-- que elige un auxiliar por número y muestra, de cada camino que entra, su nivel, su pre/post y su silencio. **Cablea cuatro canales de ejemplo a mano** --`input(2)`, `line(1)`, `player(1)`, `fx(2)`-- para ejercitar la API: no recorre los canales ni sabe de personas. La forma sirve; el contenido no pretende ser un producto |
-| `Dennion/ioBroker.soundcraft` | **El dato sí, la vista no.** Crea un objeto por auxiliar con una carpeta `aux.N.inputs` dentro, o sea que **modela «lo que entra a este auxiliar»** como estructura. Es domótica: no hay pantalla |
-| `NaturalDevCR/MyUiPro` | **No tiene vista propia, y no es que le falte**: es un contenedor de `iframe` con selector de disposición que abre el cliente de la consola. Lo que muestra de monitores es **el MOREME de la consola**, no algo suyo |
+| `Dennion/ioBroker.soundcraft` | **El dato sí, la vista no.** Crea un objeto por auxiliar con una carpeta `aux.N.input` dentro y un hijo por fuente, `aux.N.input.M` --su propio README lo ejemplifica con `aux.3.input.2.faderLevel`--, o sea que **modela «lo que entra a este auxiliar»** como estructura. Es domótica: no hay pantalla. *(La primera redacción escribió `aux.N.inputs`, en plural, que no existe en ese repositorio: una clave inventada en el documento que existe para que las claves no se inventen. La cazó una auditoría de fidelidad el mismo día.)* |
+| `NaturalDevCR/MyUiPro` | **No tiene vista propia, y no es que le falte**: es un contenedor de `iframe` con selector de disposición que empotra `mixer.html` de la consola, y **cero coincidencias de `aux` en su código**. Lo que muestre de monitores será lo que muestre el cliente oficial --pero eso es **inferencia mía y no un hallazgo**: `MOREME` no aparece ni una vez en ese repositorio. La primera redacción lo escribió en negrita como si lo dijera el código— |
 | `ndikanov/ui24` | **No la implementa, pero la nombra.** Es un parche que se inyecta **en el cliente oficial**, así que lo que su código menciona --`E_MODE.MOREME`, `moremeWidget`, `E_MODE.AUX`, `auxWidget`-- es del cliente de la consola y no suyo: no hay ninguna definición de esos widgets en el repositorio. Dicho de otro modo, **confirma que esos modos existen en la interfaz oficial**, y nada más |
 
 **Y ninguno de los cuatro decide cuánto mandar a la cuña de un músico**, que es
@@ -365,7 +373,14 @@ en una matriz**, y entonces lo que lo alimenta son otras claves --`a.N.mtx.M`-- 
 no los envíos `i.N.aux.M.value`. La clave que lo dice está en la consola del
 usuario: `a.N.matrix`, una por auxiliar, en el inventario del 2026-09-11.
 
-**Este proyecto no la lee, y la pantalla por músico tampoco.** Queda anotado y no
+**Este proyecto no la lee, y la pantalla por músico tampoco. Pero ya la tenía
+censada como hueco conocido antes de que `fmalcher` la trajera**:
+`que-entra-al-general.ts` la lista como `{ sufijo: 'matrix', familias: ['a'],
+clase: 'CAMINO' }`, en un módulo cuyo tipo dice literalmente «una ruta que existe
+en la consola y este módulo no lee». O sea que el aporte de `fmalcher` es **el
+uso** --qué cambia cuando vale uno-- y no el dato; presentarlo como hallazgo
+ajeno sería, por segunda vez en esta misma sección, no mirar el archivo propio.
+Queda anotado y no
 entra como tarea, por la regla de la hoja de ruta: para que muerda, el usuario
 tiene que convertir un auxiliar en matriz **y además** declararlo como monitor en
 su perfil de amplificación. **Daño máximo hoy: la pantalla muestra una lista de

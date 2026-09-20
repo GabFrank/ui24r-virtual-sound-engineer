@@ -92,10 +92,14 @@ export type NivelDelEnvio =
    *
    * **No se traduce a decibeles, y es deliberado.** `fromRaw` contesta un número
    * para cualquier crudo —con 0,1 devuelve −52,9 dB— pero por debajo de 0,25 lo
-   * que se midió fue una fuga del banco y no la ley (ítem 105). Mostrar ese
-   * número sería exactamente lo que la regla 1 del repositorio prohíbe: afirmar
-   * sobre el protocolo donde nadie midió. Se dice el crudo, que es el dato que
-   * de verdad se tiene.
+   * que se mide **no es la ley**: es una fuga de 1 kHz que viaja aguas abajo del
+   * fader del general (ítem 105). **De quién es esa fuga no se sabe**, y la
+   * primera redacción de esta línea decía «del banco»: el 105 imprimió `NO SE
+   * IMPRIME VEREDICTO` y dejó sin separar si el cruce ocurre en la Scarlett o en
+   * la etapa de salida de la consola. Para la guarda da igual de quién sea —lo que
+   * importa es que no es la ley— pero adjudicarlo es afirmar lo que no se midió.
+   * Mostrar ese número sería lo que la regla 1 del repositorio prohíbe. Se dice el
+   * crudo, que es el dato que de verdad se tiene.
    */
   | { readonly tipo: 'FUERA_DEL_TRAMO_MEDIDO'; readonly crudo: number }
   /** La consola no publicó esa clave, o publicó algo que no es un número. */

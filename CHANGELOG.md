@@ -16,9 +16,11 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
   **De los canales que no son suyos sólo aparecen los que le mandan algo**,
   porque veinticuatro filas en una tablet esconden las cuatro que importan. Los
-  que no se pudieron leer **sí aparecen**: no saber no es lo mismo que saber que
-  no llega, y esconderlos haría que una conexión a medias se vea como una cuña
-  limpia.
+  que no se pudieron leer **sí aparecen, siempre que de esa cuña se haya leído
+  algo**: ahí falta uno y eso es raro, y esconderlo haría que una conexión a
+  medias se vea como una cuña limpia. Si de la cuña no se leyó **nada**, no es que
+  falte uno --no hay datos de ninguno-- y eso se dice una sola vez arriba en vez
+  de llenar la tabla de filas vacías.
 
   **Dos cosas que no va a decir, a propósito.** Si un envío está por debajo de
   donde se midió la ley, dice «muy abajo» en vez de inventar un número de
@@ -57,8 +59,8 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
   el parlante—. Y se cruzan **por instante**: si el músico toca los primeros nueve
   segundos y la cuña suena los últimos nueve, eso es **cero** segundos de escucha,
   no nueve.
-  **Todavía no lo vas a ver**, porque falta la pantalla por músico, que es la que
-  va a encadenar subir, escuchar y anotar.
+  **Todavía no lo vas a ver**: la pantalla de Monitores ya existe, pero por ahora
+  sólo te muestra la cuña. Falta que **encadene** subir, escuchar y anotar.
 
 - **La pantalla de ganancia ya guarda lo que escucha, y con eso podés ajustar un
   canal dos veces.** Hasta ahora, cuando aplicabas una ganancia, la aplicación

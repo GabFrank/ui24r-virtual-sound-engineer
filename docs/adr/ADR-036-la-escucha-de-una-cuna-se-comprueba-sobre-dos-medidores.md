@@ -4,9 +4,12 @@
 **Estado:** **decidida e implementada, sin quien la dispare.** El medidor de la
 cuña llega a la aplicación en marcha, `EscuchaDeLaCunaService` muestrea los dos y
 guarda la medición, y `EnvioAMonitorService.anotarEscucha` la anota en la
-transacción. Lo que falta es **la pantalla por músico, que es quien encadena los
-tres pasos**: mientras no exista, nadie llama a subir ni a bajar una cuña, así que
-no hay cambio de comportamiento observable. Ver «Qué falta».
+transacción. Lo que falta es **quien encadene los tres pasos**: nadie llama a
+subir ni a bajar una cuña, así que no hay cambio de comportamiento observable.
+**Esta frase decía «la pantalla por músico, que es quien encadena» y «mientras no
+exista», y desde el 2026-09-20 la pantalla existe**: muestra la cuña y no llama a
+ninguno de los tres. Lo que falta es el encadenado, no la pantalla. Ver «Qué
+falta».
 **Origen:** **Decisión del usuario**, eligiendo entre tres opciones el
 2026-09-19, al empezar la pieza que le da escucha al envío a monitor.
 
@@ -125,8 +128,9 @@ vez la de «abierto» contra «alcanzable».
   anotar son tres llamadas, y la orquestación vive afuera **a propósito**: es lo
   que hace el camino de la ganancia, y el motivo es que el músico tiene que ver la
   cuenta regresiva y poder cancelar, cosa que un `subir()` que se bloquea veintiún
-  segundos no permite. Mientras esa pantalla no exista, **nadie llama a subir ni a
-  bajar una cuña**, así que ninguna queda con escucha comprobada — que es donde
+  segundos no permite. **La pantalla existe desde el 2026-09-20 y todavía no
+  encadena** --muestra la cuña y nada más--, así que **nadie llama a subir ni a
+  bajar una cuña** y ninguna queda con escucha comprobada — que es donde
   estaba antes de esta decisión, y por eso no hay cambio de comportamiento
   observable todavía.
 - **Y ese encadenado es lo que ningún test puede cubrir**, porque los tres pasos

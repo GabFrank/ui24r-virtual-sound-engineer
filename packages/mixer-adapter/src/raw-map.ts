@@ -447,9 +447,16 @@ export const RAW_MAP: readonly RawMapEntry[] = [
    * **El tramo declarado es el que se midió, y para abajo. Por qué corta en 0,25.**
    * La corrida siguió midiendo hasta el crudo 0,15 y ahí el residuo se dispara a
    * 0,146 dB. No es la ley: es una **fuga** de 1 kHz que entra por el camino del
-   * general y se suma a lo que se mide (ítem 105). Pero la fuga es del banco, no de
-   * la tabla, así que lo honesto es declarar hasta donde la medición separó una
-   * cosa de la otra. Por debajo de −32 dB de envío, `aRaw` contesta
+   * general y se suma a lo que se mide (ítem 105). **De quién es esa fuga, el 105
+   * no lo pudo decidir, y esta línea decía que sí hasta el 2026-09-20**: decía «la
+   * fuga es del banco», cuando la corrida imprimió `NO SE IMPRIME VEREDICTO:
+   * fallaron G1, G2/E1, G2/E2` y el hallazgo que la resume dice con todas las
+   * letras que **no se separó si el cruce ocurre adentro de la Scarlett o en la
+   * etapa de salida de la consola** —o sea que uno de los dos candidatos es la
+   * consola—. Lo que sí está medido es que viaja **aguas abajo del fader del
+   * general**. Para esta entrada eso alcanza y el argumento no cambia: lo que se
+   * mide por debajo de 0,25 no es la ley, sea de quien sea, así que lo honesto es
+   * declarar hasta donde la medición separó una cosa de la otra. Por debajo de −32 dB de envío, `aRaw` contesta
    * `FUERA_DE_RANGO`, que es exactamente lo correcto.
    *
    * **Lo que esta entrada NO afirma, y hay que leerlo antes de usarla.** La 104 es
