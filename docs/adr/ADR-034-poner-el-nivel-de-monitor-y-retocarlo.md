@@ -3,10 +3,15 @@
 **Fecha:** 2026-09-17
 **Estado:** **decidida, y el motor implementado el 2026-09-17.** El motor ya
 distingue las dos operaciones, suspende el presupuesto mientras la cuña no tiene
-nivel y frena en nominal. **Falta lo de arriba**: el asistente de monitor sólo
-sabe bajar y no hay pantalla, así que **nadie marca todavía un nivel como
-establecido** y en la práctica toda cuña vive en la primera operación. La
-consecuencia está dicha abajo, en «Lo que el motor hace hoy».
+nivel y frena en nominal. **Falta SÓLO la pantalla, y hasta el 2026-09-20 esta
+línea afirmaba de más**: decía que «el asistente de monitor sólo sabe bajar», y
+eso dejó de ser cierto el 2026-09-19 —`puedeSubirEnvioAMonitor` sube de a 2 dB
+con techo en nominal y resuelve el primer paso desde el silencio—. **Lo peor del
+caso es dónde estaba la evidencia**: la tabla «Lo que el motor hace hoy», en este
+mismo archivo, ya registraba «Salir del silencio: sí, desde el 2026-09-19». La
+consecuencia sí sigue en pie, y es la fila siguiente de esa tabla: **nadie marca
+todavía un nivel como establecido**, porque eso lo marca la pantalla, así que en
+la práctica toda cuña vive en la primera operación.
 **Origen:** **Decisión del usuario**, eligiendo entre opciones el 2026-09-17, al
 empezar la primera pieza de la hoja de ruta de
 [`pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md`](../pedidos/2026-09-17-recapitulacion-y-hoja-de-ruta.md).
