@@ -8,6 +8,21 @@
 # La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
 # si hoy no coincide, el
 # archivo es de otra version y lo que diga de si mismo no vale.
+#
+# divergencia reconocida: 7a8d6a14e8552413
+#
+# QUE CONFIGURACION MIDIO ESTA CORRIDA, Y POR QUE NO SE REMIDE.
+# El guion cambio despues: el pico del estimulo paso de ser la constante -27 dBFS
+# a ser un parametro, para poder compensar los 28 dB que el puenteo del compresor
+# del canal se llevaba. Esta corrida es del ANTES: estimulo a -27 dBFS de pico.
+#
+# NO se remide a proposito. Esta corrida no es una medicion de la ley: es el
+# REGISTRO DE UNA FALLA --su control de cierre E6 dio 0,89..1,43 dB contra un
+# limite de 0,5-- y volver a correrla con el estimulo compensado daria otra cosa,
+# que es justamente lo que se quiere poder comparar. La ley quedo medida en las
+# corridas del 2026-09-21 con -8 dBFS, que son las que se publican.
+#
+# Detalle: docs/backlog/el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md
 
 === 101 — LAS CURVAS DEL ECUALIZADOR, MEDIDAS CONTRA EL FILTRO ===
 canal 10 (i.9), BANDA 2, multitono de 104 tonos

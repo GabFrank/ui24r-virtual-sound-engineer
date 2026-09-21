@@ -122,9 +122,23 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // un `CambioPropuesto` para la puerta, y abrirle uno pediria su ADR-- pero deja
   // de estar frenada por la unidad, que es donde se frenan `hold` y las de Hz y Q.
   // Quien agregue ese camino tiene que decidirlo a proposito, no encontrarselo.
+  // **Y las seis del item 121, el 2026-09-21**: la frecuencia y el Q de las
+  // bandas 2, 3 y 4, medidas una corrida por banda contra el filtro real. Con
+  // eso el ecualizador de canal queda medido entero --las doce hojas de sus
+  // cuatro bandas-- y la lista pasa de trece rutas a diecinueve.
+  //
+  // **Ninguna de las seis es de las que el motor puede usar**, y conviene decirlo
+  // acá porque es lo contrario de lo que uno esperaría de una medición: estan en
+  // Hz y en Q, el tope de `CHANNEL_EQ` esta en dB, y INV-004 las rechaza igual
+  // que a las de la banda 1. Medirlas **bajo** la cuenta de rutas escribibles del
+  // motor en 144, porque hasta ahora las contaba el arnes declarando dB para
+  // todo. Lo que desbloquea mover una banda no es otra medicion: es
+  // `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   assert.deepEqual([...rutasProbadas()].sort(),
     ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
-      'i.N.eq.b1.q', 'i.N.eq.b2.gain', 'i.N.eq.b3.gain', 'i.N.eq.b4.gain',
+      'i.N.eq.b1.q', 'i.N.eq.b2.freq', 'i.N.eq.b2.gain', 'i.N.eq.b2.q',
+      'i.N.eq.b3.freq', 'i.N.eq.b3.gain', 'i.N.eq.b3.q',
+      'i.N.eq.b4.freq', 'i.N.eq.b4.gain', 'i.N.eq.b4.q',
       'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'i.N.gate.depth', 'i.N.gate.hold',
       'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');

@@ -4,7 +4,57 @@
 proyecto. Lo que está abajo es lo que se promete y lo que no; los resultados se
 agregan después, y si contradicen esto, el que manda es el resultado.
 
-## Estado al 2026-09-21: TRES corridas de la banda 2, las tres fallan, y ya se sabe por qué
+## CERRADO el 2026-09-21: las tres bandas comparten la ley, y está publicada
+
+**Una corrida por banda, las tres con todos sus controles en verde**, después de
+compensar los 28 dB que el puenteo del compresor se llevaba —ver más abajo—.
+
+| | banda 1, el ítem 101 | banda 2 | banda 3 | banda 4 |
+|---|---|---|---|---|
+| **E3**, error máximo de `f0` contra `20·1102,5^V` | ≤ 0,2 % | **0,25 %** | **0,18 %** | **0,17 %** |
+| **E5**, factor del Q contra `0,05·300^V` | — | **1,02** | **1,02** | **1,02** |
+| **E6**, la vuelta al primer punto | PASA, 0,09 dB | **PASA, 0,15 dB** | **PASA, 0,11 dB** | **PASA, 0,12 dB** |
+| dispersión punto a punto | 0,024 dB | 0,033 dB | 0,027 dB | 0,030 dB |
+
+El criterio del contrato es **5 %**. Las tres bandas entran con veinte veces de
+margen, y **E6 pasa en las tres**, que es lo que las tres corridas anteriores no
+habían conseguido.
+
+Evidencia: [`curvas-banda-2-2026-09-21b.txt`](../spikes/SPK-P0.2b/evidence/curvas-banda-2-2026-09-21b.txt),
+[`curvas-banda-3-2026-09-21.txt`](../spikes/SPK-P0.2b/evidence/curvas-banda-3-2026-09-21.txt),
+[`curvas-banda-4-2026-09-21.txt`](../spikes/SPK-P0.2b/evidence/curvas-banda-4-2026-09-21.txt).
+
+**Publicadas en `RAW_MAP` como `MEDIDO`**, con el tramo acotado a lo barrido:
+crudo **0,25 … 0,90** en frecuencia y **0,35 … 0,70** en Q, igual que la banda 1.
+Fuera de ahí la respuesta es `FUERA_DE_RANGO`, no una extrapolación.
+
+### Y hay que decir que confirmó una hipótesis cómoda, no que era obvio
+
+El contrato lo pidió por escrito antes de medir: *«que si el resultado confirma
+la hipótesis, el documento no se escriba como si siempre hubiera sido obvio»*.
+
+La hipótesis era buena —el cliente de la consola usa la misma función para las
+cuatro bandas, y en la banda 1 coincidía exacto con lo medido— y **salió
+confirmada**. Lo que la vuelve una medición y no una suposición es que **podía
+haber salido que no**: el crudo 0,15 se anula en las tres, la banda 2 dio 1,7 %
+de error en una de las corridas malas, y nada garantizaba que un biquad cerca de
+Nyquist se comportara igual en la banda 4 que en la 1. Lo que se ganó no es la
+fórmula: es el derecho a escribirla.
+
+### Lo que costó, y es la parte instructiva
+
+**Las tres primeras corridas fallaron su control de cierre**, con la ley saliendo
+bien igual, y hubo dos diagnósticos equivocados antes del bueno. La causa era el
+propio instrumento: puentea el compresor del canal —tiene que hacerlo— y con eso
+se llevaba los **28,00 dB** de ganancia que el preajuste `Kick Drum` del usuario
+tiene cargado en el canal 10 desde el 2026-09-15. Se compensó **subiendo el
+estímulo a −8 dBFS**, que es el valor que este guion tenía originalmente y que se
+había bajado a −27 por una cadena que entonces tenía esos 28 dB de más.
+
+Todo el recorrido, con los dos diagnósticos malos y cómo los cortó el usuario,
+en [`el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`](../backlog/el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md).
+
+## Estado al 2026-09-21: las tres corridas que fallaron, y por qué
 
 **La causa está medida y no es el aparato ni el banco: es el instrumento.** Puentea
 el compresor del canal para que no aplaste la punta de la campana, y con eso se

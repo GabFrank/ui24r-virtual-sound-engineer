@@ -120,6 +120,22 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // medir mas leyes del ecualizador no las hace escribibles.
   // Ver `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   //
+  // **834 -> 690 el 2026-09-21, y BAJA por exactamente el mismo motivo que la vez
+  // anterior.** Son exactamente -144: las seis rutas que el item 121 midio
+  // --`eq.b2.freq`, `eq.b2.q`, `eq.b3.freq`, `eq.b3.q`, `eq.b4.freq`, `eq.b4.q`--
+  // por veinticuatro canales, todas en CHANNEL_EQ.
+  //
+  // **Y tampoco se cayeron: nunca habian sido escribibles.** Lo que las contaba
+  // era el arnes con su `unidad: 'dB'` para todo, igual que en el salto anterior.
+  // Con la ley medida, el motor las rechaza por INV-004 --sus leyes estan en Hz
+  // y en Q, el tope de `CHANNEL_EQ` esta en dB-- exactamente como rechaza las de
+  // la banda 1 desde el 2026-09-13.
+  //
+  // **Es la prediccion de arriba cumpliendose al pie de la letra**: «mientras eso
+  // siga asi, medir mas leyes del ecualizador no las hace escribibles». Se
+  // midieron, y no las hizo. Lo que desbloquea mover una banda no es otra
+  // medicion: es resolver `un kind, una unidad`.
+  //
   // **Este test evito que fueran +1200.** `clasificar-ruta` mete cinco hojas
   // bajo `MONITOR_AUX_SEND` --value, mute, pan, post y postproc-- y abrir el
   // `kind` las abria las cinco. El usuario autorizo el nivel; `post` y
@@ -128,8 +144,8 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // ahora rechaza toda hoja que no sea `.value`.
   const n = permitidas().length;
   strictEqual(
-    n, 834,
-    `el motor permite ${n} rutas del inventario y se esperaban 834. `
+    n, 690,
+    `el motor permite ${n} rutas del inventario y se esperaban 690. `
     + 'Si subio, algo que se rechazaba ahora se escribe.',
   );
 });
@@ -154,7 +170,10 @@ const REPARTO_ESPERADO: ReadonlyMap<string, number> = new Map([
   // tienen ley medida en Hz y en Q, y el tope de este `kind` esta en dB. El motor
   // las rechaza por INV-004 y siempre las habria rechazado: lo que las contaba
   // era el arnes, que declaraba dB para todo.
-  ['CHANNEL_EQ', 432],
+  // -144 mas el 2026-09-21, por lo mismo: el item 121 midio la frecuencia y el Q
+  // de las bandas 2, 3 y 4, o sea seis rutas por canal. Medirlas no las abre;
+  // las saca de la cuenta, que es lo honesto.
+  ['CHANNEL_EQ', 288],
   // ADR-028. Veinticuatro canales por diez auxiliares.
   ['MONITOR_AUX_SEND', 240],
   // Solo los filtros del general, nada de bypass ni de recall de preset.
@@ -183,7 +202,7 @@ test('el reparto de lo escribible por categoria es exactamente el declarado', ()
 
   // Y que la suma sea el total que el otro test vigila: si los dos numeros se
   // separan, uno de los dos se actualizo sin mirar.
-  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 834);
+  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 690);
 });
 
 test('lo unico que ADR-028 abrio son los niveles de envio a monitor', () => {

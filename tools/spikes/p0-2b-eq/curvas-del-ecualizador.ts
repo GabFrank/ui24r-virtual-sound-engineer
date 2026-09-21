@@ -20,7 +20,8 @@
  * comoda y este repositorio ya publico cuatro de esas como hecho.
  *
  * Uso:
- *   node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts 10 192.168.0.78 [banda]
+ *   node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts \
+ *     10 192.168.0.78 [banda] [callar] [picoDelEstimuloDbFS]
  */
 import { spawn } from 'node:child_process';
 import { rmSync, mkdtempSync } from 'node:fs';
@@ -62,6 +63,41 @@ const banda = argIndice(4, 'banda', 1, { desde: 1, hasta: 4 });
  */
 const callar = argTexto(5, 'no') === 'callar';
 
+/**
+ * El pico del estimulo, en dBFS. Por omision el que uso el item 101.
+ *
+ * **Por que se vuelve parametro el 2026-09-21.** El guion puentea el compresor
+ * del canal --tiene que hacerlo: un compresor aplasta la punta de la campana, de
+ * donde salen f0, la altura y el Q-- y con eso **se lleva la ganancia de salida
+ * que el compresor tenga cargada**. En el canal del banco eso son **28,00 dB
+ * medidos**, porque el usuario le puso el preajuste `Kick Drum` el 2026-09-15.
+ * Tres corridas de la banda 2 capturaron a -58,8 dBFS y fallaron su control de
+ * cierre por falta de margen, con la ley saliendo bien igual --la curva es una
+ * resta y una perdida de nivel se cancela ahi; la relacion senal a ruido no--.
+ * Todo en `el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`.
+ *
+ * **Y el valor que compensa es el que este guion tenia al principio.** El -27 se
+ * eligio el 2026-09-13 porque con -8 «la linea base llegaria a +0,1 dBFS:
+ * recortaria antes de medir nada» --lo dice el docblock de `PICO_OBJETIVO_DBFS`--
+ * y esa cuenta se hizo sobre una cadena que tenia 28 dB mas. Sin esos 28, -8
+ * aterriza en unos -30,6 dBFS, que es donde capturaba la corrida buena de la
+ * banda 1.
+ *
+ * **No se sube a ciegas.** El guion ya calcula el recorrido que queda antes del
+ * recorte y aborta si se pasa, asi que subir de mas falla ruidosamente en vez de
+ * publicar la curva del limitador de la interfaz.
+ */
+const picoObjetivo = (() => {
+  const crudo = argTexto(6, '');
+  if (crudo === '') return -27;
+  const v = Number(crudo);
+  if (!Number.isFinite(v) || v > -1 || v < -60) {
+    console.error(`pico del estimulo invalido: ${crudo}. Se espera un numero en dBFS entre -60 y -1.`);
+    process.exit(2);
+  }
+  return v;
+})();
+
 const FM = 48000;
 const SEGUNDOS = 4;
 /** El ancho del bin de la ventana del estimulo. `FM` se cancelaba: es 1/segundos. */
@@ -91,7 +127,7 @@ const ANCHO_DEL_BIN = 1 / SEGUNDOS;
  * los 45 que el contrato exige. Bajar el estimulo no cuesta nada; recortar
  * arruina la corrida entera.
  */
-const PICO_OBJETIVO_DBFS = -27;
+const PICO_OBJETIVO_DBFS = picoObjetivo;
 /** Lo que la campana puede subir el pico, medido con +20 dB y Q 0,368. */
 const SUBIDA_MAXIMA_DE_LA_CAMPANA_DB = 12;
 const MARGEN_DE_RECORTE_DB = 3;

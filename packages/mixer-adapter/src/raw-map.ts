@@ -191,6 +191,79 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     (q) => Math.log(q / 0.05) / Math.log(300),
     0.35, 0.70, 'SPK-P0.2b',
   ),
+
+  // **Las bandas 2, 3 y 4 comparten la ley, MEDIDO el 2026-09-21 (item 121).**
+  //
+  // Hasta ese dia estaban medidas la frecuencia y el Q de la banda 1 solamente,
+  // y las cuatro ganancias. O sea que el motor dejaba realzar cualquier banda y
+  // no sabia en que frecuencia estaba parada ninguna salvo la primera, con lo
+  // que la pieza 2 --mover una banda elegida por medicion-- no se podia
+  // construir.
+  //
+  // **La hipotesis era buena y por eso habia que medirla.** El cliente que sirve
+  // la consola usa la MISMA funcion para las cuatro --`FREQtoV` y `QtoV`, sin
+  // indice de banda-- y en la banda 1 coincide exacto con lo que midio el item
+  // 101. Es la clase de hipotesis comoda que este repositorio ya publico como
+  // hecho cuatro veces y tuvo que retractar.
+  //
+  // Una corrida por banda, con el mismo instrumento del 101 parametrizado, cada
+  // una con su banda en el barrido y las otras tres planas:
+  //
+  //   banda   error maximo de f0   factor del Q   control de cierre
+  //   2       0,25 %               1,02           PASA (0,15 dB)
+  //   3       0,18 %               1,02           PASA (0,11 dB)
+  //   4       0,17 %               1,02           PASA (0,12 dB)
+  //
+  // contra la banda 1, que dio 0,2 % y 0,09 dB. El criterio del contrato es 5 %.
+  //
+  // **El tramo publicado es el barrido, no el rango del parametro**: el crudo
+  // 0,15 se anula en las tres porque su campana --f0 en 57 Hz-- se sale por
+  // abajo de la ventana de 40 Hz del estimulo, igual que en la banda 1.
+  //
+  // **Y las tres primeras corridas de este item fallaron su control**, con la ley
+  // saliendo bien igual. No era el aparato: el instrumento puentea el compresor
+  // del canal y se llevaba los 28 dB de ganancia que el preajuste `Kick Drum`
+  // del usuario tiene cargado ahi desde el 2026-09-15. Se compenso subiendo el
+  // estimulo. Ver `docs/backlog/el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`.
+  //
+  // Evidencia: `curvas-banda-{2,3,4}-2026-09-21*.txt` en
+  // `docs/spikes/SPK-P0.2b/evidence/`.
+  medido(
+    'i.N.eq.b2.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b2.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b3.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b3.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b4.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b4.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
   // **El pasa-altos y el pasa-bajos, medidos el 2026-09-13 contra el filtro.**
   //
   // El pasa-altos decia `lineal(20, 400)` en `DESCONOCIDO`: un numero puesto a
