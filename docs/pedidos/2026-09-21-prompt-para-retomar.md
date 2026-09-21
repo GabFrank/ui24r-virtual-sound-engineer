@@ -25,25 +25,30 @@ LA PIEZA 2 ES EL ECUALIZADOR DE CANAL, y ya tiene decisión y plan:
 - La tarea 1 está HECHA: el ecualizador de canal quedó medido entero el
   2026-09-21, las doce hojas de sus cuatro bandas (ítem 121).
 
-LO ÚNICO QUE SIGUE ES LA TAREA 1b, Y ES LO QUE DESBLOQUEA TODO LO DEMÁS:
-«un kind, una unidad». Está en
-docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md, escrito
-desde el 2026-09-13.
+LO ÚNICO QUE SIGUE ES CONSTRUIR LA TAREA 1b, Y ES LO QUE DESBLOQUEA TODO LO
+DEMÁS. La decisión ya está tomada: ADR-039, del 2026-09-21. Leela entera antes
+de tocar código, incluido el recuadro del principio, que dice qué encontró la
+auditoría.
 
-EL PROBLEMA, EN UNA FRASE: medir la frecuencia y el Q de las bandas 2, 3 y 4 NO
-las hizo escribibles, y BAJÓ de 834 a 690 la cuenta de rutas que el motor
-permite. Sus leyes están en hercios y en Q, el tope de CHANNEL_EQ está en
-decibeles, e INV-004 las rechaza — con razón, porque un tope de 4 dB no acota un
-salto de frecuencia. Mientras esto no se resuelva, la aplicación no puede mover
-una banda por más que las doce hojas estén medidas.
+EN UNA FRASE: el motor tiene dos guardas de unidad y cada una mira una tabla
+distinta, así que para una hoja de frecuencia NINGUNA declaración pasa las dos.
+Se arregla separando la unidad de la magnitud —que queda como está— de la
+ESCALA DEL MOVIMIENTO, que es nueva: octavas en la frecuencia, octavas de ancho
+de banda en el Q, decibeles en la ganancia.
 
-NO EMPIECES A PROGRAMAR: esto es una decisión de modelo y pide su ADR. Qué acota
-un salto de frecuencia, en qué unidad, y quién lo decide. Y ANTES DE OFRECER
-OPCIONES, MIRÁ EL TRABAJO PREVIO — es la regla que el usuario cortó el
-2026-09-15, y hay dos documentos que ya lo tienen levantado:
-docs/referencia/trabajo-previo-de-terceros.md y
-docs/referencia/trabajo-previo-ecualizacion-automatica.md. Se agregan filas, no
-se recuerda.
+LOS CUATRO PASOS ESTÁN EN docs/pedidos/2026-09-20c-plan-de-la-pieza-2.md, en la
+1b. Tres cosas que no se pueden pasar por alto:
+- El orden de «poner la banda» es parte de la decisión: LA GANANCIA VA PRIMERO.
+  El ejecutor escribe uno por uno y los intermedios suenan.
+- Leer el tope por hoja CAMBIA LA INTERFAZ PÚBLICA de @vse/domain: el contexto
+  del cambio no lleva la ruta. Son siete sitios que consultan LIMITES, no
+  cuatro, y tres están fuera del motor.
+- El conteo tiene que volver a 930 EXACTO, ni una ruta más.
+
+Y ANTES DE ENCENDER LA EXENCIÓN DEL SALTO LIBRE FALTA UNA MEDICIÓN BARATA:
+correr una campana neutra a lo largo del tramo medido y comprobar que la
+respuesta no se mueve. Lo que hay hoy es una cota sobre una configuración
+quieta. Lo demás se construye sin eso.
 
 DESPUÉS DE 1b, EL PLAN SIGUE ASÍ: decidir si la aplicación puede elegir qué canal
 analiza el analizador de la consola —es una escritura de clase nueva y le cambia

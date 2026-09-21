@@ -34,9 +34,27 @@ escribibles»*. Se midieron, y no las hizo.
 
 **Así que la tarea que sigue no es otra medición: es «un `kind`, una unidad»**
 —[`hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`](../backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md)—,
-y entró al plan como la **1b**, delante de todo lo demás. Mientras no se
-resuelva, la aplicación no puede mover una banda por más que las doce hojas estén
-medidas.
+y entró al plan como la **1b**, delante de todo lo demás.
+
+## Y la 1b ya tiene su decisión: [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)
+
+**Decidida por el usuario el 2026-09-21**, tres preguntas con tres opciones cada
+una. La aplicación mueve las tres hojas de una banda; **el freno viaja con la
+hoja** —la unidad de la magnitud queda como está y se agrega una **escala del
+movimiento**: octavas en la frecuencia, octavas de ancho de banda en el Q—; y
+**poner una banda se hace con la campana en cero**, sin tope al salto, con la
+ganancia escribiéndose **primero**.
+
+**Lo que sigue es construirla**, y los cuatro pasos están en el plan.
+
+**La auditoría adversarial encontró diecinueve cosas y dos eran de fondo**: el
+orden de escritura —sin fijarlo, la frecuencia salía al cable con hasta 4 dB de
+campana puestos— y que la premisa del salto libre **no estaba medida**. Queda
+condicionada a correr una campana neutra por el tramo y comprobarlo; lo demás se
+puede construir sin eso. Y una tercera corrigió trabajo previo: **`fmalcher` sí
+tiene un tope por parámetro**, en la unidad de ese parámetro y distinto por hoja,
+que es la forma que la ADR adopta. La fila decía que ninguno de los cuatro lo
+tenía.
 
 ## Los commits, en orden
 
@@ -49,7 +67,8 @@ medidas.
 | `09b0cbd` | Medir cualquier banda, y por qué la banda 2 no contaba |
 | `b1811a4` | **El banco no estaba roto: el instrumento se comía 28 dB** |
 | `43641d1` | **El ecualizador de canal queda medido entero** |
-| *(este)* | El cierre |
+| `8b4de18` | El cierre de la medición, y la tarea que destapó |
+| `0e77ab5` | **ADR-039**: un salto de frecuencia se cuenta en octavas, y poner una banda se hace con la campana en cero |
 
 Árbol limpio, `npm run verificar` en verde, **ningún PR abierto**: nadie lo pidió.
 
@@ -95,5 +114,5 @@ traba, y que **nunca se borran los snapshots**.
 
 El prompt está en
 [`2026-09-21-prompt-para-retomar.md`](2026-09-21-prompt-para-retomar.md),
-apuntado a la tarea **1b**, que es lo único que desbloquea lo demás. Va también
-escrito en el chat.
+apuntado ahora a **construir la 1b**, que es lo único que desbloquea lo demás. Va
+también escrito en el chat.
