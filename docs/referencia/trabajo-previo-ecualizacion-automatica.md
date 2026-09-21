@@ -244,6 +244,47 @@ escuchar el canal**, que es la familia B.
 
 ---
 
+## En qué unidad se cuenta un movimiento de frecuencia, y cuánto deja mover otro
+
+**Buscado el 2026-09-21**, antes de ofrecerle al usuario las opciones de la tarea
+1b ([ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)).
+Es una pregunta distinta de la de arriba: no **cuándo** se mueve una banda sino
+**con qué freno**, y en qué moneda se mide ese freno.
+
+**La moneda no está en discusión en ninguna fuente: es la octava.** Se ecualiza y
+se analiza en fracciones de octava porque el oído es logarítmico, y un ancho fijo
+en hercios es enorme abajo y despreciable arriba. Las dos fuentes más claras:
+[Prosoundtraining, *Why do we equalize in 1/3-octave bands?*](https://www.prosoundtraining.com/2019/07/26/why-equalize-in-1-3-octave-bands/)
+—de 100 a 200 Hz y de 1 a 2 kHz es la misma octava y son 100 y 1000 hercios— y
+[Rational Acoustics, *Linear and Logarithmic Frequency Scales*](https://support.rationalacoustics.com/support/solutions/articles/150000214526-linear-and-logarithmic-frequency-scales),
+que además explica por qué un ancho de banda en hercios no sirve como control:
+barriendo el centro, el mismo número de hercios pasa de anchísimo a angostísimo.
+
+**Y el precedente de forma —la unidad viaja con el parámetro, no con el módulo—
+está en los formatos de plugin.** CLAP declara para **cada** parámetro su nombre,
+su mínimo, su máximo y su unidad
+([`clap/ext/params.h`](https://github.com/free-audio/clap/blob/main/include/clap/ext/params.h));
+VST3 y AU hacen lo mismo. Ninguno agrupa los parámetros de un ecualizador bajo
+una unidad común. Vale como forma probada, no como verdad: **ninguno de esos
+formatos acota por seguridad cuánto se mueve un parámetro**, porque no escriben
+en el aparato de nadie.
+
+**Lo que NO se encontró, y es lo que más importa de esta sección.** **No hay
+coincidencias en otros proyectos** sobre acotar cuánto puede moverse una banda de
+ecualizador entre una escucha y la siguiente:
+
+- Los cuatro repositorios del protocolo no acotan nada — comprobado clonando y
+  grepeando el mismo día, en [`trabajo-previo-de-terceros.md`](trabajo-previo-de-terceros.md).
+- **Gullfoss** limita **el rango del espectro en el que se le permite actuar**, no
+  el tamaño de cada movimiento. Es otra especie de freno: acota dónde, no cuánto.
+- **soothe2** y **Curves AQ** son procesadores de audio: mueven filtros propios
+  dentro de su propio complemento, sin escribir en un aparato que otra persona
+  está usando, así que la pregunta del freno no se les presenta.
+
+Que no haya precedente significa que hay que tener más cuidado, no menos, y es la
+razón por la que los números del retoque de ADR-039 quedan marcados como
+operacionalización del agente y sujetos a revisión.
+
 ## Qué no se buscó, para que nadie lo dé por buscado
 
 - **No se leyeron los trabajos académicos completos**, sólo sus resúmenes y sus

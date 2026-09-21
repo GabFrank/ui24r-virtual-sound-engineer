@@ -51,19 +51,38 @@ tabla de conversión mide por hoja.
 primero: `LIMITES.MONITOR_AUX_SEND` está en **dB** y la ley medida del envío
 (ítem 104) está en **dB**. Coinciden.
 
-## Lo que habría que decidir
+## DECIDIDO el 2026-09-21: [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)
 
-No lo decido yo de madrugada, porque cambia el modelo del dominio:
+**El usuario eligió la primera de las tres de abajo**, en tres preguntas, y con
+una pieza que ninguna de las tres tenía.
+
+- **El freno viaja con la hoja.** La unidad de la magnitud sigue siendo la de la
+  hoja medida, porque es lo que la ata al crudo; lo que se agrega es la **escala
+  del movimiento**, que en la frecuencia son octavas y en el Q son octavas de
+  ancho de banda.
+- **Y poner una banda no lleva tope al salto**, porque se hace con la campana en
+  cero y eso no se oye: medido en el canal del usuario, el ecualizador entero con
+  sus cuatro campanas neutras aporta menos de dos décimas de decibel. Lo que
+  acota ese movimiento es el destino, que tiene que caer en el tramo medido.
+
+**Lo que este documento predijo se cumplió** antes de que se decidiera: el
+2026-09-21 se midieron seis hojas más y la cuenta bajó otra vez, de 834 a 690.
+Lo que desbloquea mover una banda no era otra medición. *(La frase literal
+«mientras eso siga así, medir más leyes del ecualizador no las hace escribibles»
+está en el test `que-permite-el-motor.test.ts`, no acá; acá dice lo mismo con
+otras palabras, dos párrafos más arriba. Una primera redacción de ADR-039 se la
+atribuyó a este documento.)*
+
+## Lo que había que decidir, y era del usuario
 
 1. **Topes por hoja y no por `kind`.** Lo más fiel: cada parámetro tiene su
-   unidad y su tope. Es el cambio más grande.
+   unidad y su tope. Es el cambio más grande. **Es la que se eligió.**
 2. **Partir los `kind`** en `CHANNEL_EQ_GAIN`, `CHANNEL_EQ_FREQ`, `CHANNEL_EQ_Q`.
    Más chico, pero multiplica las categorías y toca los ADR que razonan sobre
-   `CHANNEL_EQ` como una cosa.
+   `CHANNEL_EQ` como una cosa. **Descartada**: repite el problema con el
+   compresor, que tiene cinco unidades.
 3. **Dejarlo como está y decirlo**: el ecualizador se escribe en dB —o sea sólo
    `gain`— y frecuencia y Q son del usuario. Es una decisión de producto
-   defendible y **hoy es lo que el motor hace**, sólo que sin que nadie lo
-   hubiera elegido.
-
-La tercera es la que está vigente por accidente. Elegirla a propósito, o
-cambiarla, es del usuario.
+   defendible y **era lo que el motor hacía**, sólo que sin que nadie lo hubiera
+   elegido. **Se le ofreció y la descartó**: sin mover la frecuencia no se puede
+   poner una banda encima de una resonancia, que es la fuente 2 de ADR-038.

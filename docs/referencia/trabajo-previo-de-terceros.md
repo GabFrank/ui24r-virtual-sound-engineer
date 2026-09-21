@@ -236,6 +236,56 @@ bytes en el bloque de bus. fmalcher aplica al auxiliar la misma escala lineal de
 −80..0 que al canal, y eso en este repositorio sigue siendo lo que la 102 dejó
 abierto. Vale como hipótesis, que es lo que vale siempre el trabajo previo.
 
+## Acotar cuánto se mueve un parámetro: ninguno de los cuatro, y el `clamp` no cuenta
+
+**Mirado el 2026-09-21**, al decidir en qué unidad se acota un salto de
+frecuencia ([ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)).
+Clonados y grepeados de nuevo ese día, no recordados.
+
+> **La primera versión de esta sección, escrita el mismo día, decía que «ninguno
+> de los cuatro tiene topes por parámetro, ni por familia ni por hoja». Es falsa,
+> y la corrigió una auditoría adversarial unas horas después.** Quinta vez que
+> este repositorio escribe la versión cómoda de un «no encontré». El grep había
+> buscado `maxDelta`, `maxStep`, `rateLimit`, `maxChange` y `clamp`; lo que
+> `fmalcher` tiene se llama `sanitize`. La conclusión de fondo aguanta; la frase
+> no aguantaba.
+
+| | Commit mirado | ¿Tope **por parámetro**? | ¿Tope sobre **cuánto se mueve**? | ¿Toca la frecuencia o el Q del ecualizador? |
+|---|---|---|---|---|
+| `fmalcher/soundcraft-ui` | `2fc297f` (2026-09-17) | **SÍ**, ver abajo | **No** | **No** |
+| `Dennion/ioBroker.soundcraft` | `bc2e0a9` (2025-12-07) | Los de fmalcher, que usa de biblioteca | **No** | **No** |
+| `ndikanov/ui24` | `235fba1` (2020-07-29) | **No**. Es un solo `custom.min.js` inyectado en el cliente oficial | **No** | **No** |
+| `NaturalDevCR/MyUiPro` | `20ad8b1` (2025-07-31) | **Sí**, uno: recorta la ganancia del previo a su rango en decibeles | **No** | **No** |
+
+**El tope por parámetro de `fmalcher`, que es el precedente que la primera
+versión no vio.** `sanitizeDelayValue(ms, maximo)` recorta el retardo a **250 ms
+en un canal de entrada y 500 ms en un auxiliar**: un tope **en la unidad física
+de ese parámetro** y **con un valor distinto por hoja**, que es exactamente la
+forma que [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)
+adopta. Hay más de esa especie: el envío a efectos se recorta a su rango, y sólo
+en `mixer-connection/src` hay **27** sitios de `clamp(...)` o `sanitize…()`, no
+los dos que la primera versión contó.
+
+**Lo que sigue siendo cierto, y es la pregunta de ADR-039: todos esos topes son
+sobre DÓNDE QUEDA el parámetro, ninguno sobre CUÁNTO SE MOVIÓ para llegar.** Son
+la especie de `techoAbsoluto`, no la de `porTransaccion`. Y **ninguno de los
+cuatro acota cuánto se mueve un parámetro entre una escucha y la siguiente**,
+porque ninguno escucha: son bibliotecas de protocolo y clientes. Además recortan
+donde acá se rechaza, que este repositorio ya tenía anotado.
+
+**Y lo que aportan en positivo: la unidad viaja con el parámetro.** `fmalcher` no
+tiene una unidad por módulo: tiene `faderValueToDB`, `vuValueToDB`, el retardo en
+milisegundos, la ganancia del previo en su rango de decibeles y el peso de
+automix en el suyo, cada conversión pegada a su parámetro. Es lo contrario de lo
+que `LIMITES` hacía —una unidad por familia— y coincide con cómo declaran sus
+parámetros los formatos de plugin.
+
+**Y el «no» del ecualizador se comprobó con otras palabras además de las de la
+fila** —`eq`, `equali`, `hpf`, `lpf`, `freq`, `filter`, `b[1-5].(freq|q)`—:
+`fmalcher` modela el ecualizador de entrada como un diccionario sin semántica y
+el de salida sin bandas; los otros tres no lo nombran. Que se haya comprobado con
+palabras distintas es lo que separa este «no» del que la auditoría tumbó.
+
 ## Comprobar que se escuchó entre un cambio y el siguiente: ninguno de los cuatro
 
 **Clonado y grepeado de nuevo la noche del 2026-09-17**, en los mismos commits de la tabla
