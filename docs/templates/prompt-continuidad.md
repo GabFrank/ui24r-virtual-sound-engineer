@@ -8,7 +8,8 @@ el bloque completo en el chat, además de actualizar `docs/estado-actual.md`.
 ```text
 Proyecto Ui24R Virtual Sound Engineer.
 Repositorio: GabFrank/ui24r-virtual-sound-engineer
-Rama: <rama exacta>. Último commit: <SHA que ya existe y está empujado>.
+Rama: <rama exacta>. Último commit: <SHA que ya existe>.
+Publicación: <empujado, o pendiente con motivo y ubicación del parche/bundle>.
 
 Leé AGENTS.md, docs/estado-actual.md y las dos skills breves allí enlazadas.
 Comprobá git status y los cambios posteriores al commit indicado. No corras

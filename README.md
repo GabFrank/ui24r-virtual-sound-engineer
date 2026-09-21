@@ -12,7 +12,7 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 | | |
 |---|---|
-| Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
+| Comprobaciones | Ejecutar según [CONTRIBUTING](CONTRIBUTING.md); el resultado corresponde al árbol comprobado |
 | Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
 | Rutas crudas con conversión medida | 19 —la **frecuencia y el Q de las cuatro bandas** del ecualizador de canal contra el filtro real, medidas una banda por corrida; el pasa-altos y el pasa-bajos; la **ganancia de esas cuatro bandas**, también una por una; el envío a monitor contra la salida del auxiliar; la **ganancia del ecualizador gráfico de salida en sus dos superficies**, un auxiliar y el general; el **sostenido de la puerta**, la primera en el dominio del tiempo; y la **profundidad de la puerta**, acotada a donde el banco llega a verla—, todas con bucle externo. `validate-numeros` las cuenta |
@@ -92,7 +92,8 @@ EP-15 Post-MVP
 
 ```bash
 npm install          # instala el workspace completo
-npm run verificar    # lo mismo que corre la integración continua. Antes de empujar, siempre
+npm run verificar    # suite completa de software; CI compila Android aparte
+npm run verificar:cambio -- --base <commit-inicial>  # antes de cerrar la tarea
 npm run lint         # chequeo de tipos (tsc --noEmit) en los paquetes y compilación de la app
 npm test             # tests unitarios
 npm run validate:docs  # verifica que todo ID referenciado en docs exista

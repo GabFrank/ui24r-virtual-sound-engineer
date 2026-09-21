@@ -1,9 +1,15 @@
 # Estado actual
 
 Actualizado el 2026-09-21. Base de producto contrastada: `8b4de18`, de
-`claude/soundcraft-ui24-assistant-kh8ezj`. La corrección del flujo continúa en
+`claude/soundcraft-ui24-assistant-kh8ezj`. La corrección del flujo está preparada en
 `fix/flujo-de-desarrollo-ligero`. Consultar `git log` para los commits posteriores.
 Este archivo reemplaza la cadena de cierres como entrada de sesión.
+
+**Entrega pendiente de publicar:** `1ec5b8a` aligera el flujo; `dab1d27` agrega
+pruebas sobre servicios reales. Git HTTPS no dispone de credencial y la conexión
+de GitHub rechazó escribir con 403. No asumir que esta rama ya existe en remoto.
+El paquete de entrega contiene un bundle y un parche para recuperar los commits.
+Ver [informe](backlog/auditorias/2026-09-21-flujo-de-desarrollo.md).
 
 ## Producto y siguiente tarea
 
