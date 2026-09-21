@@ -8,6 +8,25 @@
 # La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
 # si hoy no coincide, el
 # archivo es de otra version y lo que diga de si mismo no vale.
+#
+# divergencia reconocida: 767ded75de0a0b4e
+#
+# QUE CAMBIO, Y POR QUE LOS NUMEROS VALEN IGUAL.
+# Horas despues de esta corrida, una auditoria adversarial encontro que
+# `solo-lectura.ts` --uno de los instrumentos que cubre la huella-- dejaba pasar
+# un salto de linea, o sea dos ordenes metidas en una. Se cerro rechazando todo
+# caracter de control, y de paso se corrigieron dos nombres de la lista blanca
+# (`PLISTS` y `PLIST_TRACKS` eran nombres de RESPUESTA; las ordenes de pedido son
+# `MEDIA_GET_PLISTS` y `MEDIA_GET_PLIST_TRACKS`).
+#
+# NINGUNO DE LOS DOS CAMBIOS TOCA LO QUE ESTA CORRIDA HIZO: mando `PRESETLIST` y
+# `READPRESET`, sin un solo caracter de control, y las dos ordenes ya estaban en
+# la lista blanca antes y despues. La validacion nueva las deja pasar igual y la
+# correccion de nombres afecta a ordenes que esta corrida nunca uso.
+#
+# Se anota en vez de remedir porque remedir daria lo mismo y dejaria dos archivos
+# diciendo lo mismo. Si manana cambia algo que SI pueda mover estos numeros, la
+# huella reconocida deja de ser la de hoy y el validador vuelve a marcarlo.
 
 === PREAJUSTES DE LA CONSOLA, LEÍDOS POR EL PROTOCOLO ===
 consola: 192.168.0.78

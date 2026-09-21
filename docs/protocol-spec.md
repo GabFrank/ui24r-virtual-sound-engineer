@@ -223,18 +223,18 @@ De estos, la sesión de medición solo usó `ALIVE` e `INIT`, que son de consult
 
 ### 2.2.1 Preajustes: listar y leer, medido el 2026-09-20
 
-La consola guarda bancos de preajustes por **categoría** —`ch` el canal entero, `eqch` el ecualizador, `dynch` la dinámica, `gate` la puerta, `digi`, `eqaux`, `dynaux`, `eqm`, `dynm`, `chm`, `afs` y los cuatro de efectos— con un banco **de fábrica** y otro **del usuario**.
+La consola guarda bancos de preajustes por **categoría**, con un banco **de fábrica** y otro **del usuario**. El cliente nombra **diecisiete**; se preguntaron las quince de proceso de audio —`ch` el canal entero, `eqch` el ecualizador, `dynch` la dinámica, `gate` la puerta, `digi`, `eqaux`, `dynaux`, `eqm`, `dynm`, `chm`, `afs` y los cuatro de efectos— y **quedaron sin preguntar `ux` y `udp`**, que son preferencias de la interfaz y órdenes por red.
 
 | Operación | Ida | Vuelta |
 |---|---|---|
 | Listar | `PRESETLIST^<categoría>` | `PRESETLIST^<categoría>^<item>^<item>…` |
 | Leer | `READPRESET^<categoría>^<nombre>` | `READPRESET^<categoría>^<nombre>^<JSON>` |
 
-Los nombres vuelven **prefijados**: `f:` los de fábrica y `u:` los del usuario. Las quince categorías contestan, varias con el banco de usuario vacío. Evidencia: [`preajustes-2026-09-20.txt`](spikes/SPK-P0.2b/evidence/preajustes-2026-09-20.txt).
+Los nombres vuelven **prefijados**: `f:` los de fábrica y `u:` los del usuario. Las quince preguntadas contestan, varias con el banco de usuario vacío. La respuesta es de la forma **con clave** —la categoría ocupa la primera posición, antes de las entradas—, igual que `SNAPSHOTLIST` y a diferencia de `SHOWLIST`. Evidencia: [`preajustes-2026-09-20.txt`](spikes/SPK-P0.2b/evidence/preajustes-2026-09-20.txt).
 
 El JSON trae las claves **relativas** a la tira —`.eq.b1.freq`, `.dyn.threshold`, `.gate.depth`— con su valor crudo. Un preajuste de canal trae las tres familias juntas: ecualizador, dinámica y puerta.
 
-**Cargar un preajuste no es un comando.** La consola devuelve el contenido y **el cliente escribe clave por clave**; el suyo, además, aplica sólo las claves que ya existen y omite los nulos. Para esta aplicación eso significa que aplicar un preajuste no se le delega al aparato: son muchas escrituras propias, y pasan enteras por el motor de seguridad.
+**Cargar un preajuste no parece ser un comando, y esto es `INFERIDO`.** La consola devuelve el contenido y **el cliente escribe clave por clave**: leído de `applyPreset` y de los `loadPreset` del cliente que sirve la consola, **sin haber mandado una orden de carga ni medido su ausencia**. El suyo, además, aplica sólo las claves que ya existen y omite los nulos. Si es así, aplicar un preajuste no se le delega al aparato: son muchas escrituras propias, y pasan enteras por el motor de seguridad. *(Este párrafo vivía bajo un título que dice «medido» sin rótulo propio; lo marcó una auditoría de fidelidad el mismo día.)*
 
 **Guardar, renombrar y borrar existen y no se ejercieron**: `WRITEPRESET^<categoría>^u:<nombre>^<JSON>`, `RENAMEPRESET`, `DELETEPRESET`, más `IMPORTPRESETS` y `EXPORTPRESETS`. Quedan `INFERIDO`.
 

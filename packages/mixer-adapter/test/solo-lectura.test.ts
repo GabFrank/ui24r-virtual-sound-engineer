@@ -42,6 +42,19 @@ test('rechaza una escritura, y no la manda', () => {
   deepStrictEqual(t.enviado, [], 'no tiene que haber salido nada al cable');
 });
 
+test('rechaza dos órdenes metidas en una, con un salto de línea', () => {
+  // **Control positivo del agujero real.** La primera versión miraba sólo hasta
+  // el primer `^`, así que esto pasaba entero al cable y la segunda orden era una
+  // escritura. Lo encontró una auditoría adversarial el mismo día. Si alguien
+  // afloja la validación, este test tiene que ponerse rojo.
+  const t = transporteDePrueba();
+  const l = soloLectura(t);
+  throws(() => l.pedir('PRESETLIST^ch\nSETD^i.9.eq.b1.gain^1'), /caracteres de control/);
+  throws(() => l.pedir('PRESETLIST^ch\r\nSETD^i.9.mute^1'), /caracteres de control/);
+  throws(() => l.pedir('PRESETLIST^ch\u0000SETD^i.9.mute^1'), /caracteres de control/);
+  deepStrictEqual(t.enviado, [], 'no tiene que haber salido nada al cable');
+});
+
 test('el mensaje del rechazo dice qué se esperaba', () => {
   const t = transporteDePrueba();
   throws(
@@ -70,6 +83,13 @@ test('el guion de los preajustes no habla con la consola por otro lado', () => {
   // agrega un `.enviar(` directo, el guion vuelve a estar sin cubrir y esta
   // guarda lo dice --la de `restauracion-garantizada` también lo vería, y tener
   // las dos es a propósito: ésta explica por qué.
+  //
+  // **Lo que este test NO ve, dicho para que nadie lo crea más fuerte de lo que
+  // es.** Busca `.enviar(` por texto, igual que la guarda en la que se apoya, así
+  // que `c['enviar'](…)`, una referencia guardada, o hablarle al socket directo
+  // con `c.ws.send(…)` **no coinciden y pasarían**. Una auditoría lo rompió de
+  // las tres formas. La debilidad es del detector y es anterior a este módulo;
+  // queda escrita acá porque es donde alguien la va a leer.
   const ruta = join(import.meta.dirname, '..', '..', '..',
     'tools', 'spikes', 'p0-2b-eq', 'preajustes.ts');
   const codigo = readFileSync(ruta, 'utf8');

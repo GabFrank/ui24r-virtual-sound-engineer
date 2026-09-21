@@ -1,7 +1,8 @@
 # Hallazgo: los preajustes del usuario ya están en su consola, con sus nombres
 
 **Leído del aparato el 2026-09-20**, primero del volcado completo de
-`192.168.0.78` (6.926 líneas) y después **preguntándoselo al protocolo**, que es
+`192.168.0.78` —6.924 líneas ese día; el volcado no se commitea— y después
+**preguntándoselo al protocolo**, que es
 lo que convirtió la mitad de este documento de sospecha en medición. **Sin
 escribir nada.** Apareció al empezar la pieza 2 de la hoja de ruta —el
 ecualizador de canal— mirando primero lo propio antes de salir a buscar afuera, y
@@ -21,7 +22,10 @@ La consola guarda, por canal y por proceso —ecualizador, dinámica y puerta—
 claves de cada una en este aparato, repartidas 49 y 49 y 49 entre los tres
 procesos más cuatro de los efectos.
 
-**Veintiuna tienen nombre**, y el reparto dice más que la cuenta:
+**Veintiuna tienen nombre**, y el reparto dice más que la cuenta. La tabla lista
+los canales con **etiqueta en el ecualizador**; el canal 10 —el bombo— tiene
+etiqueta sólo en la puerta y en la dinámica, `Kick Drum` de fábrica en las dos, y
+por eso no está acá:
 
 | Canal | Nombre en la consola | Etiqueta en el ecualizador | Etiqueta en la puerta |
 |---|---|---|---|
@@ -68,8 +72,10 @@ siempre las mismas tres familias:
 - **el ecualizador**: pasa-altos y pasa-bajos con su pendiente, las cuatro
   bandas con frecuencia, Q y ganancia, la quinta banda —que en esta consola no
   suena— y el conmutador de modo fácil;
-- **la dinámica**: umbral, relación, rodilla, ataque, relajación y ganancia de
-  salida;
+- **la dinámica**: umbral, relación, rodilla, ataque, relajación y **las dos
+  ganancias**, la del compresor y la de salida —son siete, y una primera
+  redacción enumeró seis: las 32 claves sólo cierran con veinte de ecualizador,
+  siete de dinámica y cinco de puerta—;
 - **la puerta**: umbral, ataque, retención, relajación y profundidad.
 
 **No trae** ganancia de previo, fader, silencio, panorama, envíos ni nombre de
@@ -124,8 +130,13 @@ aparato y la tercera avanzó de sospecha a lectura del cliente oficial.
 
 `PRESETLIST^<categoría>` y la consola contesta
 `PRESETLIST^<categoría>^<item>^<item>…`, con los nombres prefijados: `f:` los de
-fábrica y `u:` los del usuario. Se preguntaron las quince categorías que nombra
-el cliente de la consola y **las quince contestaron**.
+fábrica y `u:` los del usuario. Se preguntaron **quince categorías y las quince
+contestaron**.
+
+*El cliente nombra diecisiete*: quedaron fuera `ux` y `udp`, que son preferencias
+de la interfaz y órdenes por red, no proceso de audio. Una primera redacción
+llamó a las quince «las categorías que nombra el cliente», y eran quince de
+diecisiete.
 
 ### 2. Si el protocolo deja leer y guardar: **leer, SÍ, medido; guardar existe y no se ejerció**
 
@@ -145,17 +156,26 @@ tanto pasa entero por el motor de seguridad.
 
 ### 3. Qué significa `prmod`: **sigue INFERIDO, pero ya no es una corazonada**
 
-El cliente que la propia consola sirve lo contesta sin ambigüedad: **cada control
-que se toca escribe un 1** en la marca de su familia —las cuatro bandas, el
-pasa-altos, el pasa-bajos, cada control de la puerta y de la dinámica— y
-**cargar, guardar o reiniciar la escriben en 0**. Es «esto se retocó después de
-cargar el preajuste».
+El cliente que la propia consola sirve lo contesta casi sin ambigüedad: **los
+controles que cambian el sonido escriben un 1** en la marca de su familia —las
+cuatro bandas con su frecuencia, Q y ganancia, el pasa-altos, el pasa-bajos, y
+todos los controles de la puerta y de la dinámica— y **cargar, guardar o
+reiniciar la escriben en 0**. Es «esto se retocó después de cargar el preajuste».
+
+**Y hay tres controles que NO la escriben, comprobado en el cliente**: el
+conmutador de modo fácil y las dos pendientes del pasa-altos y del pasa-bajos
+—más los tres del de-esser—. Los tres primeros **son claves que el preajuste de
+canal guarda**, así que se pueden cambiar dejando la marca en cero. Una primera
+redacción decía «cada control», y era más amplio que lo que el cliente sostiene.
 
 Encaja con lo que se ve: los siete canales que tienen un preajuste cargado en el
 ecualizador —seis suyos y uno de fábrica— **tienen la marca en 1**, o sea que él
 lo retoca siempre después de cargarlo. Y
-hay cinco canales con la marca en 1 **sin ningún preajuste cargado**, que es la
-prueba de que la marca no depende de que haya preajuste.
+hay **cinco canales más con la marca del ecualizador en 1 sin etiqueta de
+ecualizador** —tres de ellos sin ninguna etiqueta en ninguna familia—, que es la
+prueba de que la marca no depende de que haya preajuste. *(Una primera redacción
+decía «cinco sin ningún preajuste cargado»: dos de esos cinco sí tienen etiqueta
+en la dinámica. El argumento se sostiene con tres.)*
 
 **Sigue siendo `INFERIDO` y hay que decirlo así**: sale de leer el cliente, no de
 medir. Lo que falta para volverlo `MEDIDO` es una corrida corta sobre un canal
@@ -175,17 +195,29 @@ rodilla, ataque, relajación y las dos ganancias—, mientras la etiqueta de la
 dinámica sigue diciendo `Male Vocal`, que es un preajuste de fábrica. El
 ecualizador y la puerta de ese mismo canal sí dicen `Voz camila`.
 
-**Un asistente que lea esa etiqueta para saber qué compresión está puesta va a
-leer una mentira**, y la forma correcta es comparar los valores, que es lo que se
-hizo acá.
+**Y la trampa tiene una segunda mitad, que una auditoría encontró y esta página
+no había escrito: la marca de la dinámica tampoco se limpia.** El cargador pone
+en cero la del ecualizador y la de la puerta, y manda la tercera a esa clave que
+no existe. Así que en el canal 12 la dinámica quedó **con los valores del
+preajuste recién cargado y la marca diciendo «retocado»**. O sea que la regla de
+más arriba —«cargar, guardar o reiniciar la escriben en 0»— **tiene una excepción
+en la dinámica cuando lo que se carga es un preajuste de canal**.
+
+**Un asistente que lea esa etiqueta para saber qué compresión está puesta, o esa
+marca para saber si alguien la tocó, va a leer una mentira las dos veces**, y la
+forma correcta es comparar los valores, que es lo que se hizo acá.
 
 ## Lo que esto NO dice
 
-- **No dice que la aplicación pueda usarlos.** Hoy no lee `prname` ni `prmod` en
-  ninguna parte: las dos únicas menciones del repositorio están en la lista de
-  claves que `que-entra-al-general.ts` censa y **no lee**, y en un test que
+- **No dice que la aplicación pueda usarlos.** La aplicación no lee `prname` ni
+  `prmod` en ninguna parte: en el adaptador están en la lista de claves que
+  `que-entra-al-general.ts` censa y **no lee**, y en el dominio hay un test que
   comprueba que un recall de preset del general **no** se considera ecualización
-  permitida.
+  permitida. *(Una primera redacción decía «las dos únicas menciones del
+  repositorio», y es falso: hay diecinueve fuera de la documentación, casi todas
+  en guiones de medición, y uno de ellos —`ley-ganancia-del-eq.ts`— **lee** la
+  marca para exigir que el canal no tenga un preajuste cargado antes de medir.
+  Lo que se sostiene es la afirmación estrecha, sobre la aplicación.)*
 - **No dice que estos nombres ni estos contenidos sean estables.** Son de una
   lectura de un día.
 - **No dice nada sobre escribir preajustes.** Ni `WRITEPRESET` ni ningún `SETD`

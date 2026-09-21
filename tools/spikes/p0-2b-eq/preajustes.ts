@@ -32,8 +32,11 @@ import { soloLectura } from '../solo-lectura.ts';
 const IP_POR_DEFECTO = '192.168.0.78';
 const ip = process.argv[2] ?? IP_POR_DEFECTO;
 
-// Las categorías que el cliente de la consola nombra al abrir su gestor de
-// preajustes: `new PRESET_MENU2(null, "<categoria>", …)`.
+// Las categorías de **proceso de audio**. El cliente nombra diecisiete al abrir
+// su gestor --`new PRESET_MENU2(null, "<categoria>", …)`--; acá faltan `ux` y
+// `udp` a propósito, que son preferencias de la interfaz y órdenes por red. Una
+// primera redacción de este comentario llamó a estas quince «las categorías que
+// el cliente nombra», y eran quince de diecisiete.
 const CATEGORIAS = [
   'ch', 'eqch', 'dynch', 'gate', 'digi',
   'eqaux', 'dynaux', 'eqm', 'dynm', 'chm',

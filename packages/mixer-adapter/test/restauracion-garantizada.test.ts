@@ -77,8 +77,16 @@ const ES_LA_RESTAURACION: ReadonlySet<string> = new Set(['restaurar.ts']);
  * de esta guarda y no su motivo.
  *
  * **La exención no descansa en la buena conducta de quien escriba el guion**, que
- * es lo que la haría inútil: descansa en que el camino alternativo no puede
- * escribir, y eso lo comprueba `solo-lectura.test.ts` con su control positivo.
+ * es lo que la haría inútil: descansa en que por ese camino no se puede escribir,
+ * y eso lo comprueba `solo-lectura.test.ts` con sus controles positivos.
+ *
+ * **Lo que la exención sigue sin cubrir**, porque una auditoría lo rompió el
+ * mismo día en que se escribió: este test busca `.enviar(` por texto, así que un
+ * guion que use `soloLectura` para leer y además le hable al socket por otra
+ * forma --`c['enviar'](…)`, una referencia guardada, `c.ws.send('3:::SETD^…')`--
+ * pasa las dos guardas. Eso es una debilidad del detector, anterior a esta
+ * exención, y queda escrita acá para que no se lea la exención como más fuerte de
+ * lo que es.
  */
 const IMPIDE_ESCRIBIR: ReadonlySet<string> = new Set(['solo-lectura.ts']);
 

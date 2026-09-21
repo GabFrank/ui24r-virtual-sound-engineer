@@ -399,19 +399,27 @@ cuatro árboles enteros, y además `preset` sin distinguir mayúsculas.
 
 | | Preajustes de canal, ecualizador o dinámica |
 |---|---|
-| `fmalcher/soundcraft-ui` | **No.** Ninguno de los cinco comandos aparece. `prname` y `prmod` aparecen **sólo dentro de `example-state.json`** —su volcado de estado de ejemplo, con `"prname": "Male Vocal"` incluido— y **ni una línea de código los lee**. Es exactamente la misma forma que el ecualizador de salida: el dato archivado, la funcionalidad no |
+| `fmalcher/soundcraft-ui` | **No.** Ninguno de los cinco comandos aparece. `prname` y `prmod` aparecen en **dos** archivos: su volcado de estado de ejemplo `example-state.json` —con `"prname": "Male Vocal"` incluido— y **`state/mixer-state.models.ts`**, donde están **declarados como campos opcionales en siete interfaces** generadas del volcado. **Ninguna línea lee el valor**: son tipos, no funcionalidad. Es la misma forma que el ecualizador de salida —el dato archivado, la funcionalidad no— pero el dato llega **hasta el modelo tipado**, no sólo hasta un JSON de ejemplo |
 | `Dennion/ioBroker.soundcraft` | **No.** Cero coincidencias en el código. Lo único es una viñeta de su `README` —«*Preset recall through ioBroker scripts*», en una lista de casos de uso— que promete que **el usuario** puede escribir un script que recupere valores, no que el adaptador hable el vocabulario de preajustes. Decir que «tiene recall de presets» apoyándose en esa línea sería el error de este documento al revés |
 | `ndikanov/ui24` | **No.** Cero coincidencias de `preset` en todo el repositorio |
 | `NaturalDevCR/MyUiPro` | **No.** Cero coincidencias de `preset` en todo el repositorio. Empotra el cliente oficial en un `iframe`, así que el gestor de preajustes que el usuario ve ahí **es el de la consola** |
 
 **Lo que sí hay, y es el precedente útil.** `fmalcher` implementa la **misma
-forma de mensaje** para otra familia: `resource-lists.ts` modela literalmente la
-lista plana `CMD^entrada^entrada…` y la usa con `SHOWLIST`, `SNAPSHOTLIST` y las
-listas del reproductor, con un `requestResourceList` que manda el pedido y
-espera la respuesta por el mismo nombre de comando. `PRESETLIST` es esa misma
-forma. O sea: **la mecánica de pedir una lista y leerla está resuelta por otro**;
-lo que no hay en ningún lado es el vocabulario de preajustes ni nada que decida
-qué preajuste corresponde a qué instrumento.
+forma de mensaje** para otra familia: `resource-lists.ts` distingue dos formas de
+lista de respuesta —**plana**, `CMD^entrada^entrada…`, como `SHOWLIST` y
+`PLISTS`; y **con clave**, `CMD^clave^entrada^entrada…`, como `SNAPSHOTLIST`,
+`CUELIST` y `PLIST_TRACKS`— y su `requestResourceList` manda el pedido y espera la
+respuesta. **`PRESETLIST^<categoría>^item^item…` es de la forma con clave**, la de
+`SNAPSHOTLIST`, no la plana. O sea: **la mecánica de pedir una lista y leerla
+está resuelta por otro**; lo que no hay en ningún lado es el vocabulario de
+preajustes ni nada que decida qué preajuste corresponde a qué instrumento.
+
+*(Una redacción del 2026-09-20 decía «la lista plana» y «espera la respuesta por
+el mismo nombre de comando». Las dos mal: `PRESETLIST` es con clave, y para el
+reproductor el pedido y la respuesta **no** comparten nombre —se pide
+`MEDIA_GET_PLISTS` y vuelve `PLISTS`—. Lo cazó una auditoría de fidelidad el
+mismo día. La conclusión no cambia; la precisión sí, y el error de los nombres se
+había colado además en la lista blanca de `solo-lectura.ts`.)*
 
 **Que no haya precedente es un dato, y pide más cuidado.** Cargar un preajuste
 en esta consola **no es un comando**: el aparato devuelve el contenido y el
@@ -422,7 +430,14 @@ ni en qué orden conviene mandarlas.
 ## Cómo se usa este documento
 
 **Antes de escribir «ninguno de los cuatro hace X», buscá X acá.** Si no está,
-cloná y grepeá otra vez, y agregá la fila. Lo que no vale es una afirmación
+cloná y grepeá otra vez, y agregá la fila.
+
+> **Y grepeá sin truncar.** La afirmación falsa de arriba —«sólo dentro de
+> `example-state.json`»— salió de un `grep … | head -12`: las doce primeras
+> coincidencias eran todas del JSON de ejemplo, y el archivo de modelos venía
+> después del corte. **Una búsqueda truncada leída como completa** es la quinta
+> forma en que este documento se equivocó, y la primera que no fue por elegir mal
+> el término. Lo que no vale es una afirmación
 general sacada de una búsqueda del parámetro del día: es la forma de error que
 este repositorio ya corrigió con `afs.*`, con `eq.peak` y ahora con esto.
 
