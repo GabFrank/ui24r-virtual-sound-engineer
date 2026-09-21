@@ -5,11 +5,14 @@ Actualizado el 2026-09-21. Base de producto contrastada: `8b4de18`, de
 `fix/flujo-de-desarrollo-ligero`. Consultar `git log` para los commits posteriores.
 Este archivo reemplaza la cadena de cierres como entrada de sesión.
 
-**Entrega pendiente de publicar:** `1ec5b8a` aligera el flujo; `dab1d27` agrega
-pruebas sobre servicios reales. Git HTTPS no dispone de credencial y la conexión
-de GitHub rechazó escribir con 403. No asumir que esta rama ya existe en remoto.
-El paquete de entrega contiene un bundle y un parche para recuperar los commits.
-Ver [informe](backlog/auditorias/2026-09-21-flujo-de-desarrollo.md).
+**Entrega publicada:** la rama ya existe en GitHub. `a3f171b` aligera el flujo;
+`a280aab` agrega pruebas sobre servicios reales; `e8ca255` registra el informe.
+El usuario habilitó este repositorio en la instalación de GitHub y se publicaron
+los tres cambios mediante el conector. Se comprobó con Git que sus árboles
+coinciden con los de la entrega local; los identificadores de commit cambiaron.
+El bundle anterior queda como respaldo, no como un paso pendiente de recuperación.
+Ver correspondencia y comprobaciones en el
+[informe](backlog/auditorias/2026-09-21-flujo-de-desarrollo.md).
 
 ## Producto y siguiente tarea
 

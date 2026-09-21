@@ -12,16 +12,31 @@ Se conservaron las protecciones de hardware y los permisos del producto. La
 decisión pendiente de frecuencia/Q de la pieza 2 sigue siendo del usuario; esta
 auditoría no eligió umbrales ni habilitó escrituras.
 
-**Rama local:** `fix/flujo-de-desarrollo-ligero`, creada desde `8b4de18`.
+**Rama publicada:** `fix/flujo-de-desarrollo-ligero`, creada desde `8b4de18`.
 Se consultaron las ramas remotas; era la punta más reciente al iniciar la
 corrección. Incluye los tres commits posteriores a la primera inspección:
 diagnóstico del banco, medición completa de EQ y nuevo cierre.
 
-**Publicación bloqueada:** el push HTTPS no encontró credenciales y la API
-autenticada respondió `403 Resource not accessible by integration` al crear el
-árbol. No se creó una rama remota, PR ni publicación. Los commits quedan en el
-paquete de entrega con bundle, parche, informe y evidencia. Se completó el trabajo
-local para no dejar una propuesta sin revisar por esta limitación de acceso.
+**Publicación completada el 2026-09-21:** al principio, el push HTTPS no encontró
+credenciales y la API respondió `403 Resource not accessible by integration`.
+La lista de repositorios habilitados en la instalación no incluía este proyecto.
+El usuario lo agregó; se comprobó el acceso y se publicaron los tres commits
+mediante el conector. No se abrió PR ni se integró a la rama de origen.
+
+El conector crea nuevos metadatos de commit. Se conservaron los mensajes, el
+orden y la base; cada árbol devuelto coincide con su árbol local. Tras descargar
+la rama publicada, `git diff --exit-code` entre ambas puntas terminó sin cambios.
+
+| Commit del respaldo local | Commit publicado | Contenido |
+|---|---|---|
+| `1ec5b8a` | `a3f171b` | Arranque y verificación por impacto |
+| `dab1d27` | `a280aab` | Pruebas sobre servicios reales |
+| `f9cd164` | `e8ca255` | Informe y entrega inicial |
+
+El paquete anterior con bundle, parche e informe conserva el corte previo a la
+publicación. No hay que aplicarlo sobre esta rama: los cambios ya están presentes.
+Este ajuste de publicación sólo cambia el informe y el estado; corresponde
+comprobar documentación, sin repetir las suites de código sobre árboles iguales.
 
 ## Qué se inspeccionó y cómo
 
