@@ -4,7 +4,7 @@ import { createWriteStream, mkdirSync, mkdtempSync, readFileSync, writeFileSync 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { GRUPOS, COMPLETA, seleccionar } from './impacto.mjs';
+import { GRUPOS, COMPLETA, PARALELOS, seleccionar } from './impacto.mjs';
 import { archivosCambiados, git } from './git.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -36,28 +36,52 @@ try {
       estado: git(raiz, 'status', '--porcelain=v1'),
       modo: cambio ? 'impacto' : 'completa', base, ...seleccion, resultados: [],
     };
-    console.log(`Verificación ${resumen.modo}: ${seleccion.grupos.join(', ')}.`);
-    console.log(`Logs completos: ${carpeta}`);
+    // **Los grupos van en lotes: los de PARALELOS que quedan seguidos corren a
+    // la vez; el resto, de a uno.** El orden de `resultados` y de la salida es
+    // el de la selección, así que un lote paralelo se imprime cuando termina
+    // entero y no a medida que cada uno acaba: la lectura de «FALLO dsp» no
+    // depende de cuál terminó primero.
+    const lotes = [];
     for (const grupo of seleccion.grupos) {
+      const ultimo = lotes.at(-1);
+      if (PARALELOS.includes(grupo) && ultimo?.every((g) => PARALELOS.includes(g))) ultimo.push(grupo);
+      else lotes.push([grupo]);
+    }
+    resumen.paralelos = lotes.filter((l) => l.length > 1);
+    console.log(`Verificación ${resumen.modo}: ${lotes.map((l) => l.join(' ‖ ')).join(', ')}.`);
+    console.log(`Logs completos: ${carpeta}`);
+    const correr = (grupo) => {
       const inicio = performance.now();
       const archivo = join(carpeta, `${grupo}.log`);
       const salida = createWriteStream(archivo);
-      const codigo = await new Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         const hijo = spawn('npm', ['run', GRUPOS[grupo]], { cwd: raiz, stdio: ['ignore', 'pipe', 'pipe'] });
         hijo.stdout.pipe(salida, { end: false });
         hijo.stderr.pipe(salida, { end: false });
         salida.on('error', (error) => { hijo.kill(); reject(error); });
         hijo.on('error', (error) => { salida.end(); reject(error); });
-        hijo.on('close', (code) => salida.end(() => resolve(code ?? 1)));
+        hijo.on('close', (code) => salida.end(() => resolve({
+          grupo, codigo: code ?? 1, log: archivo,
+          segundos: Number(((performance.now() - inicio) / 1000).toFixed(2)),
+        })));
       });
-      const segundos = Number(((performance.now() - inicio) / 1000).toFixed(2));
-      resumen.resultados.push({ grupo, codigo, segundos, log: archivo });
+    };
+    lotes: for (const lote of lotes) {
+      // Un fallo en un lote paralelo no mata al vecino: se deja terminar, se
+      // anotan los dos y recién ahí se corta. Matarlo dejaría un log a medias y
+      // un resultado que no se sabe si era verde.
+      const resultados = await Promise.all(lote.map(correr));
+      for (const r of resultados) {
+        resumen.resultados.push(r);
+        console.log(`${r.codigo === 0 ? 'OK' : 'FALLO'} ${r.grupo}: ${r.segundos}s`);
+      }
       writeFileSync(join(carpeta, 'resumen.json'), JSON.stringify(resumen, null, 2) + '\n');
-      console.log(`${codigo === 0 ? 'OK' : 'FALLO'} ${grupo}: ${segundos}s`);
-      if (codigo !== 0) {
-        console.error(readFileSync(archivo, 'utf8').split('\n').slice(-65).join('\n'));
-        process.exitCode = codigo;
-        break;
+      for (const r of resultados) {
+        if (r.codigo !== 0) {
+          console.error(readFileSync(r.log, 'utf8').split('\n').slice(-65).join('\n'));
+          process.exitCode = r.codigo;
+          break lotes;
+        }
       }
     }
     // El silencio de las suites no convierte una ejecución parcial en completa.

@@ -37,7 +37,8 @@ incluyendo audio y tests de las guardas. No hay caché de aprobaciones: si cambi
 el árbol, volver a seleccionar lo afectado. Una corrida parcial no es una
 comprobación completa ni valida hardware.
 
-La salida muestra el resultado y tiempo de cada grupo. Los logs completos y
+La salida muestra el resultado y tiempo de cada grupo. Señal y audio corren a la
+vez —son dos tercios del tiempo y no se pisan—; el resto, de a uno. Los logs completos y
 `resumen.json` quedan en `.artifacts/verificacion/`, fuera de Git. Si falla algo,
 se muestra el final del log y se conserva el código de error. La guarda de rutas medidas contrasta código/matriz y busca contradicciones en
 README, AGENTS, CONTRIBUTING, skills, Markdown directo de docs, las carpetas

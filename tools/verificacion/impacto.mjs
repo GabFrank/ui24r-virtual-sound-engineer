@@ -12,6 +12,22 @@ export const GRUPOS = Object.freeze({
 });
 export const COMPLETA = Object.freeze(Object.keys(GRUPOS));
 
+/**
+ * Grupos que pueden correr a la vez, y por qué sólo éstos.
+ *
+ * Medido el 2026-09-21 sobre la Mac del usuario: la suite completa tardaba
+ * 265 s y **179 eran señal y audio, uno detrás del otro** --dos tercios--. La
+ * selección por impacto no los toca, porque tres de cada cuatro commits de este
+ * repositorio van a suite completa igual. Correrlos juntos es la palanca grande.
+ *
+ * Son independientes: señal escribe en `tools/spikes/p0-10a-dsp/out` y audio en
+ * el temporal del sistema, y ninguno lee lo que escribe el otro. Los demás
+ * grupos se quedan en serie a propósito: `lint` compila la aplicación, `unit`
+ * corre los tests de todos los workspaces --varios procesos ya--, y `docs`
+ * escribe en `.artifacts`. Poner uno más en paralelo pide medir que no se pisan.
+ */
+export const PARALELOS = Object.freeze(['dsp', 'audio']);
+
 export function seleccionar(archivos) {
   const grupos = new Set();
   const motivos = [];
