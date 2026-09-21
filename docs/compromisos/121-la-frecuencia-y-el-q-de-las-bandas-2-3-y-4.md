@@ -4,6 +4,26 @@
 proyecto. Lo que está abajo es lo que se promete y lo que no; los resultados se
 agregan después, y si contradicen esto, el que manda es el resultado.
 
+## Estado al 2026-09-21: TRES corridas de la banda 2, las tres fallan, y ya se sabe por qué
+
+**La causa está medida y no es el aparato ni el banco: es el instrumento.** Puentea
+el compresor del canal para que no aplaste la punta de la campana, y con eso se
+lleva los **28,00 dB de ganancia de salida** que el preajuste `Kick Drum` del
+usuario tiene cargado en el canal 10 desde el 2026-09-15. Aislado cambiando una
+sola clave, con el retorno interno de la interfaz quieto en −27,00 dBFS las dos
+veces. Todo en
+[`el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`](../backlog/el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md),
+con los dos diagnósticos equivocados que hubo en el medio y cómo los cortó el
+usuario.
+
+La tercera corrida —[`curvas-banda-2-2026-09-21.txt`](../spikes/SPK-P0.2b/evidence/curvas-banda-2-2026-09-21.txt)—
+se hizo **con el banco probado sano un minuto antes** y volvió a capturar a
+−58,3 dBFS, que es lo que confirmó que el problema no era el banco.
+
+**Lo que falta para cerrar el ítem**: compensar esos decibeles —subiendo el
+estímulo o el previo— y repetir las tres bandas. La ley no está en duda; la
+relación señal a ruido sí.
+
 ## Estado al 2026-09-20: dos corridas de la banda 2, y las dos fallan su control
 
 **La ley sale bien las dos veces y NO se publica**, porque el control de cierre

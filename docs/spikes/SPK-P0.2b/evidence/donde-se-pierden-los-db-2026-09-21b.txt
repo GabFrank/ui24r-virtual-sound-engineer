@@ -1,0 +1,65 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-21T03:16:37.961Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/donde-se-pierden-los-db.ts 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/donde-se-pierden-los-db.ts sha256:ca678af06b99c340
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== DONDE SE PIERDEN LOS 29 dB ===
+consola: 192.168.0.78
+fecha:   2026-09-21T03:16:44.167Z
+supresor del general: 1 (se apaga y se devuelve)
+estimulos: multitono pico -27 dBFS, y tono suelto de 1000 Hz a -18 dBFS, el mismo de llega-el-tono
+escrituras a la consola: DOS, m.afs.enabled y i.9.dyn.bypass
+
+supresor apagado y COMPROBADO por HTTP
+
+=== 1. EN SILENCIO, para tener el piso ===
+   silencio:
+      canal 0: pico   -69.52 dBFS | rms   -82.66 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -69.92 dBFS | rms   -82.42 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico  -240.00 dBFS | rms  -240.00 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico  -240.00 dBFS | rms  -240.00 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== 2. CON EL TONO SUELTO, el que llega-el-tono dice que vuelve bien ===
+   tono suelto:
+      canal 0: pico   -21.00 dBFS | rms   -24.03 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -70.55 dBFS | rms   -82.51 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico   -18.00 dBFS | rms   -21.01 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico   -18.00 dBFS | rms   -21.01 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== 3. CON EL MULTITONO, el que captura 29 dB abajo ===
+   104 tonos, -58.2 dBFS por tono, cresta 14.0 dB
+   multitono, compresor del canal COMO ESTA:
+      canal 0: pico   -30.74 dBFS | rms   -44.59 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -70.05 dBFS | rms   -82.64 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico   -27.00 dBFS | rms   -41.03 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico   -27.00 dBFS | rms   -41.03 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== 4. LO MISMO, PUENTEANDO SOLO EL COMPRESOR DEL CANAL ===
+   i.9.dyn.outgain vale 0.7186045126, que por la ley
+   del cliente de la consola --72a-24, INFERIDA, no medida-- son +27,7 dB
+   multitono, compresor del canal PUENTEADO:
+      canal 0: pico   -58.74 dBFS | rms   -72.20 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -70.72 dBFS | rms   -82.55 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico   -27.00 dBFS | rms   -41.03 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico   -27.00 dBFS | rms   -41.03 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== COMO SE LEE ===
+   Los canales 2 y 3 NO pasan por ningun cable: son lo que la computadora
+   transmitio. Si ahi el multitono esta a su nivel y en el canal 0 no,
+   la perdida es del camino analogico. Si tambien esta bajo ahi, la
+   perdida es de la reproduccion y no tiene nada que ver con el banco.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.enabled    esperado 1  leido 1
+   i.9.dyn.bypass   esperado 0  leido 0
+   filtros del supresor: 0 antes, 0 despues
+   Restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0

@@ -1,0 +1,55 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-21T03:02:59.584Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/donde-se-pierden-los-db.ts 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/donde-se-pierden-los-db.ts sha256:98f113e877df2148
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== DONDE SE PIERDEN LOS 29 dB ===
+consola: 192.168.0.78
+fecha:   2026-09-21T03:03:05.786Z
+supresor del general: 1 (se apaga y se devuelve)
+estimulos: multitono pico -27 dBFS, y tono suelto de 1000 Hz a -18 dBFS, el mismo de llega-el-tono
+escrituras a la consola: UNA, m.afs.enabled
+
+supresor apagado y COMPROBADO por HTTP
+
+=== 1. EN SILENCIO, para tener el piso ===
+   silencio:
+      canal 0: pico   -69.51 dBFS | rms   -82.65 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -70.18 dBFS | rms   -82.54 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico  -240.00 dBFS | rms  -240.00 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico  -240.00 dBFS | rms  -240.00 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== 2. CON EL TONO SUELTO, el que llega-el-tono dice que vuelve bien ===
+   tono suelto:
+      canal 0: pico   -21.00 dBFS | rms   -24.04 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -70.94 dBFS | rms   -82.36 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico   -18.00 dBFS | rms   -21.01 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico   -18.00 dBFS | rms   -21.01 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== 3. CON EL MULTITONO, el que captura 29 dB abajo ===
+   104 tonos, -58.2 dBFS por tono, cresta 14.0 dB
+   multitono:
+      canal 0: pico   -32.32 dBFS | rms   -49.49 dBFS   entrada 1 (retorno del general)
+      canal 1: pico   -69.23 dBFS | rms   -82.09 dBFS   entrada 2 (retorno del auxiliar)
+      canal 2: pico   -28.86 dBFS | rms   -45.96 dBFS   retorno interno 1 (lo que la computadora transmitio)
+      canal 3: pico   -28.86 dBFS | rms   -45.96 dBFS   retorno interno 2 (lo que la computadora transmitio)
+
+=== COMO SE LEE ===
+   Los canales 2 y 3 NO pasan por ningun cable: son lo que la computadora
+   transmitio. Si ahi el multitono esta a su nivel y en el canal 0 no,
+   la perdida es del camino analogico. Si tambien esta bajo ahi, la
+   perdida es de la reproduccion y no tiene nada que ver con el banco.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.enabled  esperado 1  leido 1
+   filtros del supresor: 0 antes, 0 despues
+   Restaurado, comprobado por un camino distinto del que escribio.
+
+
+# salida del proceso: 0
