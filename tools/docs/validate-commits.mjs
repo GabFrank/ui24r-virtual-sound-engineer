@@ -21,28 +21,34 @@ function git(...args) {
   return execFileSync('git', args, { cwd: RAIZ, encoding: 'utf8' }).trim();
 }
 
+const args = process.argv.slice(2);
+if (args.length !== 0 && (args.length !== 2 || args[0] !== '--base')) {
+  console.error('Uso: npm run verificar:commits -- [--base <ref>]');
+  process.exit(1);
+}
 let base;
 try {
-  base = git('merge-base', 'origin/main', 'HEAD');
+  base = args.length === 2
+    ? git('rev-parse', '--verify', '--end-of-options', `${args[1]}^{commit}`)
+    : git('merge-base', 'origin/main', 'HEAD');
 } catch {
-  console.log('Sin origin/main a mano: no hay rango que comprobar.');
-  process.exit(0);
+  console.error('No se pudo resolver la base. Obtener origin/main o indicar --base <ref> existente. No se verificaron mensajes.');
+  process.exit(1);
 }
 
 if (base === git('rev-parse', 'HEAD')) {
-  console.log('Esta rama no agrega commits sobre main.');
+  console.log('Esta rama no agrega commits sobre la base indicada.');
   process.exit(0);
 }
 
 try {
-  execFileSync('npx', ['commitlint', '--from', base, '--to', 'HEAD', '--verbose'], {
+  execFileSync('npx', ['--no-install', 'commitlint', '--from', base, '--to', 'HEAD', '--verbose'], {
     cwd: RAIZ, stdio: 'inherit',
   });
 } catch {
   console.error(
     '\nUn commit de esta rama no cumple la convención.\n' +
-    'Si ya está corregido en main, la rama puede llevar todavía la versión vieja:\n' +
-    '  git rebase origin/main',
+    'Comprobar el rango y corregir sólo mensajes propios no publicados; no reescribir historia ajena.\n',
   );
   process.exit(1);
 }

@@ -2,8 +2,13 @@ name: CI
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -20,23 +25,16 @@ jobs:
 
       - run: npm ci
 
-      - name: Validar identificadores de la documentación
-        run: npm run validate:docs
+      - name: Verificación completa (mismo comando que en local)
+        run: npm run verificar
 
-      - name: Validar plantillas de componente
-        run: npm run validate:templates
-
-      - name: Validar limites entre paquetes
-        run: npm run validate:limites
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Tests unitarios
-        run: npm test
-
-      - name: Validación DSP de referencia
-        run: npm run test:dsp
+      - name: Conservar logs de verificación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verificacion
+          path: .artifacts/verificacion/
+          if-no-files-found: ignore
 
   # El complemento nativo no lo compila `npm run lint`: sin este trabajo, un
   # error de tipeo en Java llegaria hasta el momento de publicar, que es cuando

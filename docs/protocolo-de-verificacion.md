@@ -1,5 +1,31 @@
 # Protocolo de verificación
 
+## Alcance operativo — actualizado el 2026-09-21
+
+La revisión se aplica a la tarea terminada y al riesgo del cambio. No se vuelve
+a auditar una entrega sin cambios por abrir una sesión nueva.
+
+| Cambio | Revisión necesaria |
+|---|---|
+| Prosa, navegación documental, prompt y organización sin cambio de contrato | Una revisión del diff, enlaces y afirmaciones; sin expediente ni varios auditores |
+| Comportamiento de software ordinario | Criterio observable, prueba de comportamiento y revisión de conexiones reales; un revisor independiente cuando esté disponible |
+| Medición física, unidades, Safety Engine, escritura, señal o invariantes | El flujo de autor/A/B descrito abajo: expectativas independientes antes de implementar y contraste con fuentes/evidencia |
+
+Usar un agente revisor con contexto nuevo para la revisión independiente cuando
+la tarea lo requiera; no multiplicar revisores por archivo. Comprobar sus
+hallazgos en la fuente antes de corregir. La revisión humana requerida por
+CONTRIBUTING para cambios sensibles sigue vigente antes de integrar/publicar.
+Una prueba simulada no autoriza hardware.
+
+Los comandos y el alcance de las suites están en [CONTRIBUTING](../CONTRIBUTING.md).
+En software, probar la regresión que el cambio resuelve y un caso válido; ampliar
+sólo si aparece un riesgo concreto. No exigir mutaciones a una edición de texto.
+Registrar pendientes y límites sin convertirlos automáticamente en nuevas tareas.
+
+Lo que sigue conserva la motivación y detalla el procedimiento para riesgo alto;
+no es un paquete de lectura obligatorio para todas las ediciones.
+
+
 **De dónde sale este documento.** De una consultoría externa encargada el
 2026-09-11, después de cuatro tandas seguidas en las que el peor hallazgo tuvo
 la misma forma. El informe completo está en el hilo de esa consulta; acá queda
@@ -126,8 +152,9 @@ regresiones conocidas y dejan de contar como evaluación reservada.
 
 ## Dónde se aplica
 
-A cada cambio coherente que introduzca o modifique **compromisos observables**,
-agrupados. No un expediente por función.
+El flujo completo A/B se aplica a cambios de riesgo alto según la tabla de
+alcance operativo. Agrupar compromisos de una tarea; no un expediente por
+función. Para prosa y software ordinario usar la revisión de la misma tabla.
 
 ## La debilidad de la propuesta, dicha por quien la propone
 

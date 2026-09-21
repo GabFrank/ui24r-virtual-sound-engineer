@@ -55,7 +55,6 @@ const HECHOS = [
     afirmaciones: [
       ['docs/flujo-de-usuario.md', /estos (\w+) pasos en dos anchos/],
       ['docs/visual/README.md', /Los (\d+) pasos del camino de usuario/],
-      ['.claude/skills/vse-experto/SKILL.md', /flujo\.mjs\s+# (\d+) pasos/],
     ],
   },
   {
@@ -219,7 +218,8 @@ const DE_LA_CONSOLA = [
  * afirmación, hay que subirlo acá, que es parte de agregarla. Mismo trato que el
  * centinela del inventario en `rutas-de-los-tests.test.ts`.
  */
-const AFIRMACIONES_ESPERADAS = 22;
+// La skill enlaza el recorrido; ya no duplica su cuenta.
+const AFIRMACIONES_ESPERADAS = 21;
 
 /**
  * La evidencia contra la que se comparan las constantes de la consola.
