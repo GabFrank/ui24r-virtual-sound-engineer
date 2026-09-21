@@ -4,6 +4,14 @@
 documento existe para que una afirmación sobre trabajo previo se compruebe
 contra un archivo, y no contra la memoria de quien la escribe.
 
+> **Los cuatro no alcanzan, y el usuario lo dijo el 2026-09-20: «son bibliotecas
+> de protocolo, no asistentes».** Tenía razón, y por eso el trabajo previo sobre
+> **cómo se decide mover una banda** —ecualizadores automáticos, asistentes de
+> mezcla y lo que dicen las fuentes de oficio instrumento por instrumento— vive
+> aparte, en
+> [`trabajo-previo-ecualizacion-automatica.md`](trabajo-previo-ecualizacion-automatica.md).
+> Este documento sigue siendo el de **el protocolo de esta consola**.
+
 **Por qué hacía falta.** El usuario había dejado una instrucción permanente:
 *«recuerda de investigar exactamente lo que vas a medir en los repositorios
 citados como fuentes, necesito que me digas explícitamente que lo hiciste porque
