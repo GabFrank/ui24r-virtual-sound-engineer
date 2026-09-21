@@ -46,10 +46,9 @@ import { LIMITES } from '@vse/domain';
  * escucha y guarda. Quien aplica el cambio es `EnvioAMonitorService`, que después
  * anota acá el identificador que esto devuelve.
  *
- * **Y ninguna pantalla lo llama todavía**, igual que el servicio de al lado.
- * Existe el camino y está probado; falta **quien lo dispare**. La pantalla por
- * músico existe desde el 2026-09-20 y sólo muestra la cuña: esta línea decía
- * «falta la pantalla por músico» y dejó de ser cierta esa noche.
+ * La pantalla de monitores lo llama después de subir un envío y anota el
+ * resultado. Las pruebas de integración importan este servicio real; ver
+ * `docs/desarrollo/pruebas-de-integracion.md` para su alcance.
  */
 
 /** Qué cuña escuchar y de quién. */

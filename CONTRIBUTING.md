@@ -55,6 +55,9 @@ Entregar la [plantilla de continuidad](docs/templates/prompt-continuidad.md)
 completada en el chat.
 
 
+Las pruebas que importan servicios Angular reales se explican en
+[pruebas de integración](docs/desarrollo/pruebas-de-integracion.md).
+
 ## Definition of Done — historia
 
 Una historia (`S-nn.m`) se cierra solo cuando:
