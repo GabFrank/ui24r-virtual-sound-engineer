@@ -8,7 +8,7 @@ interfaz. Contrato escrito **antes** de tocar nada.
 `raw-map.ts` declara, en estado `DESCONOCIDO`:
 
 ```ts
-lineal('i.N.eq.hpf.freq', 'Hz', 20, 400, 'DESCONOCIDO', 'SPK-P0.2b'),
+lineal('i.N.eq.hpf.freq', 'Hz', 20, 400, 'DESCONOCIDO', 'SPK-P0.2b'), // así estaba; hoy PROBADO, MEDIDO por este contrato
 ```
 
 Un número puesto a ojo, y **el manual del fabricante dice otra cosa**: leído el

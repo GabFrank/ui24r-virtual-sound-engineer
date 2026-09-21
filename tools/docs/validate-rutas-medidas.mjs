@@ -174,7 +174,7 @@ const pudo = intentar(() => {
     }
   }
   centinela(mirados, 20, 'documentos revisados por estado contradictorio');
-  console.log(`Estado de rutas: ${mirados} documentos operativos; alcance en tools/docs/documentos-vigentes.mjs. No recorre cierres históricos.`);
+  console.log(`Estado de rutas: ${mirados} documentos operativos; alcance en tools/docs/documentos-vigentes.mjs. Recorre ADR y contratos; no cierres, pedidos ni backlog.`);
 
   centinela(nombradas.size, 8, `filas de «${TITULO}»`);
   console.log(problemas === 0

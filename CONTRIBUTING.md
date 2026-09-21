@@ -40,9 +40,10 @@ comprobación completa ni valida hardware.
 La salida muestra el resultado y tiempo de cada grupo. Los logs completos y
 `resumen.json` quedan en `.artifacts/verificacion/`, fuera de Git. Si falla algo,
 se muestra el final del log y se conserva el código de error. La guarda de rutas medidas contrasta código/matriz y busca contradicciones en
-README, AGENTS, CONTRIBUTING, skills, Markdown directo de docs y las carpetas
-desarrollo/templates. El listado está en `tools/docs/documentos-vigentes.mjs`;
-no recorre cierres ni contratos históricos, ni interpreta toda la prosa.
+README, AGENTS, CONTRIBUTING, skills, Markdown directo de docs, las carpetas
+desarrollo/templates, **las ADR y los contratos**. El listado está en
+`tools/docs/documentos-vigentes.mjs`; no recorre cierres, pedidos ni backlog,
+ni interpreta toda la prosa.
 El validador de trabajo previo comprueba presencia de sección, no calidad de
 investigación: revisar fuentes y alcance al tomar la decisión.
 Consultar el log del grupo fallido; no volcar miles de líneas en el contexto del agente.
