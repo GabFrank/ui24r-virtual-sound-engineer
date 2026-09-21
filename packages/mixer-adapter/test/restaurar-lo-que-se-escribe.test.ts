@@ -67,8 +67,26 @@ const NO_DEVUELVEN_TODO: ReadonlySet<string> = new Set([
  * la cobertura que aparenta, y este repositorio ya se comio una asi. El numero se
  * escribe a mano: si sube, alguien agrego una escritura que esta guarda no mira,
  * y eso hay que verlo aunque no sea un error.
+ *
+ * **Subio a 33 el 2026-09-20, y se miro.** La nueva es el bucle que silencia todo
+ * lo que entra al general salvo el canal que se mide, en
+ * `p0-2b-eq/curvas-del-ecualizador.ts`, agregado porque una corrida fallo su
+ * control de cierre y se sospecho de los microfonos abiertos del usuario. Esta
+ * cubierta por cuatro lados, comprobados uno por uno antes de subir el numero:
+ *
+ * 1. las mismas claves se arman en `MUTES_PREVIOS` **leyendo el valor previo del
+ *    aparato**, no suponiendolo, y entran enteras en `A_RESTAURAR`;
+ * 2. `A_RESTAURAR` es lo que devuelve el `finally` de `conRestauracion`;
+ * 3. queda anotado en disco con `anotarPendiente` **antes** de la primera
+ *    escritura, asi que una muerte por senal deja el rastro;
+ * 4. la relectura final por HTTP incluye esas claves, y el registro en disco
+ *    **solo se borra si todas coinciden**.
+ *
+ * Es justo la clase de escritura para la que esta guarda existe --opaca al
+ * detector y con consecuencias audibles: son los microfonos de su banda-- y por
+ * eso se documenta en vez de subir el numero y seguir.
  */
-const OPACAS_ESPERADAS = 32;
+const OPACAS_ESPERADAS = 33;
 
 const RAIZ = join(import.meta.dirname, '..', '..', '..');
 const GUIONES = join(RAIZ, 'tools', 'spikes');
