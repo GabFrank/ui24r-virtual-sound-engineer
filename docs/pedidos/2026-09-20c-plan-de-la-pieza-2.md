@@ -14,9 +14,16 @@ asistente: se empieza por lo que, si falta, deja todo lo demás sin poder
 ejecutarse. Es el mismo criterio con el que se ordenó la pieza 1, y el que el
 usuario eligió explícitamente cuando se le ofrecieron tres arranques.
 
+> **Actualizado el 2026-09-21.** La tarea 1 está **hecha** y destapó que el
+> verdadero cuello de botella era otro. Las bandas 2, 3 y 4 quedaron medidas
+> —comparten la ley de la banda 1— y **eso no alcanzó para poder moverlas**: el
+> motor las rechaza por una razón de modelo, no de medición. Entra una tarea
+> nueva delante de todas, la **1b**.
+
 | | Tarea | Por qué va acá | ¿Toca la consola? |
 |---|---|---|---|
-| **1** | **Medir la frecuencia y el Q de las bandas 2, 3 y 4** | Sin ley medida, la regla 1 del repositorio prohíbe escribir esas tres bandas. **Todo lo demás depende de esto** | **Sí**, corrida corta con restauración |
+| ~~**1**~~ | ~~**Medir la frecuencia y el Q de las bandas 2, 3 y 4**~~ | **HECHA el 2026-09-21**, ítem 121. Las tres comparten la exponencial de la banda 1, con error de `f0` entre 0,17 % y 0,25 % contra un criterio del 5 % | ya está |
+| **1b** | **Un `kind`, una unidad: que el motor pueda acotar un salto de frecuencia** | **Lo destapó la tarea 1 y es ahora lo primero.** Medir las seis rutas **bajó** de 834 a 690 la cuenta de lo que el motor deja escribir: sus leyes están en Hz y en Q, el tope de `CHANNEL_EQ` está en dB, y INV-004 las rechaza —con razón: un tope de 4 dB no acota un salto de frecuencia—. **Mientras esto no se resuelva, la aplicación no puede mover una banda**, y toda la pieza 2 queda en el aire. El hallazgo está escrito desde el 2026-09-13 en [`hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`](../backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md) | no |
 | **2** | **Decidir si la aplicación puede elegir qué canal analiza** | Sin eso no hay forma de medir un canal, y la elección **es global: le cambia una pantalla al operador**. Es una escritura de clase nueva y necesita decisión del usuario | Decisión primero |
 | **3** | **Leer el espectro de un canal** | Las 122 bandas, convertidas con la escala ya medida, promediadas en una ventana. Sólo lee | No escribe |
 | **4** | **El asistente: qué banda mover y por qué** | El corazón. Necesita su propia decisión sobre **qué cuenta como «sobresale»** y **qué cuenta como «mejoró»** | No: es función pura |
@@ -27,12 +34,19 @@ usuario eligió explícitamente cuando se le ofrecieron tres arranques.
 
 ## Lo que cada tarea deja listo
 
-**1. La ley de las bandas 2, 3 y 4.** Hoy sólo está medida la banda 1 —frecuencia
-y Q— y las cuatro ganancias. El cliente de la consola usa la misma función para
-las cuatro, y en la banda 1 esa función coincide exacto con lo medido, así que la
-hipótesis es buena; **pero probable no es medido**, y la regla no distingue entre
-una hipótesis buena y una mala. Se mide con el mismo método que la banda 1: banda
-puesta en una frecuencia, las otras planas, barrido y lectura del audio.
+**1. La ley de las bandas 2, 3 y 4 — hecha.** Las tres comparten la exponencial
+`20·1102,5^V` y el `0,05·300^V` de la banda 1, medidas una corrida por banda
+contra el filtro real. Detalle en el [ítem 121](../compromisos/121-la-frecuencia-y-el-q-de-las-bandas-2-3-y-4.md).
+Costó tres corridas fallidas: el instrumento puenteaba el compresor del canal y
+se llevaba los 28 dB de ganancia del preajuste que el usuario tiene cargado ahí.
+
+**1b. Un `kind`, una unidad.** `LIMITES` da **una** unidad por categoría, y
+`CHANNEL_EQ` cubre hojas en hercios, en decibeles y en Q a la vez. El motor
+compara el movimiento propuesto contra un tope en decibeles, y contra una ley en
+hercios eso es comparar especies distintas: rechaza, y hace bien. **La
+consecuencia es que la pieza 2 no puede mover una banda hasta que esto se
+resuelva**, por más que las doce hojas estén medidas. Es una decisión de modelo
+y probablemente pida su ADR: qué acota un salto de frecuencia, y en qué unidad.
 
 **2. Quién elige qué canal analiza.** El analizador de la consola es **uno solo**,
 y elegir su fuente es una escritura. No entra en ninguna de las categorías
