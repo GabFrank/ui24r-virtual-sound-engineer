@@ -20,6 +20,10 @@ usuario. Le corresponden autonomía, umbrales con consecuencias audibles y nueva
 clases de operación sobre su equipo. Resolver por oficio las decisiones de
 organización, nombres y pruebas sin trasladarle ese trabajo.
 
+Antes de medir, de implementar sobre el motor o el adaptador, y antes de
+escribir «no hay» o «no se puede», cargar [cicatrices.md](cicatrices.md): el
+caso que produjo cada regla, por tarea y no por sesión.
+
 Antes de proponer una decisión de producto, protocolo o modelo, consultar el
 trabajo previo aplicable en `docs/referencia/`. Reusar la investigación archivada
 si sigue siendo pertinente; buscar sólo lo que falta y registrar fuente, versión

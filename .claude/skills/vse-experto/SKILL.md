@@ -41,7 +41,10 @@ El alcance decidido está en `docs/alcance-mvp.md`.
 | Pruebas y cierre | `CONTRIBUTING.md` y `docs/protocolo-de-verificacion.md` según riesgo |
 | Equipo real | `docs/desarrollo/hardware.md`, antes de operarlo |
 
-Detalles de orientación: [referencia.md](referencia.md). Las leyes y cifras se
+Detalles de orientación: [referencia.md](referencia.md). Las trampas de código
+que ya mordieron —el signo de la ganancia, el `null` de SQL, la invariante
+inerte— están en [cicatrices.md](../vse-disciplina/cicatrices.md); cargarlas
+antes de tocar motor, adaptador, almacén o plantillas. Las leyes y cifras se
 consultan en su fuente, no se mantienen copiadas en esta skill.
 
 ## Convenciones que afectan la implementación

@@ -26,6 +26,7 @@ export function documentosVigentes(raiz) {
     '.claude/skills/vse-experto/SKILL.md',
     '.claude/skills/vse-experto/referencia.md',
     '.claude/skills/vse-disciplina/SKILL.md',
+    '.claude/skills/vse-disciplina/cicatrices.md',
     ...directos('docs'), ...directos('docs/desarrollo'), ...directos('docs/templates'),
     ...directos('docs/adr'), ...directos('docs/compromisos'),
   ];
