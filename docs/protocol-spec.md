@@ -219,6 +219,25 @@ De `parseCommand()` en el `mixer.html` que sirve la consola. Todos observados sa
 
 De estos, la sesión de medición solo usó `ALIVE` e `INIT`, que son de consulta. **`NETCONFIG` devuelve, entre otras cosas, el hash de la contraseña de administrador**: si alguna vez se captura, hay que decidir antes qué se guarda y qué se redacta.
 
+**Esa lista es la de los comandos que la captura vio salir, no el vocabulario entero.** El cliente declara más familias —shows, instantáneas, cues y preajustes—, y la de preajustes se midió el 2026-09-20; está en §2.2.1.
+
+### 2.2.1 Preajustes: listar y leer, medido el 2026-09-20
+
+La consola guarda bancos de preajustes por **categoría** —`ch` el canal entero, `eqch` el ecualizador, `dynch` la dinámica, `gate` la puerta, `digi`, `eqaux`, `dynaux`, `eqm`, `dynm`, `chm`, `afs` y los cuatro de efectos— con un banco **de fábrica** y otro **del usuario**.
+
+| Operación | Ida | Vuelta |
+|---|---|---|
+| Listar | `PRESETLIST^<categoría>` | `PRESETLIST^<categoría>^<item>^<item>…` |
+| Leer | `READPRESET^<categoría>^<nombre>` | `READPRESET^<categoría>^<nombre>^<JSON>` |
+
+Los nombres vuelven **prefijados**: `f:` los de fábrica y `u:` los del usuario. Las quince categorías contestan, varias con el banco de usuario vacío. Evidencia: [`preajustes-2026-09-20.txt`](spikes/SPK-P0.2b/evidence/preajustes-2026-09-20.txt).
+
+El JSON trae las claves **relativas** a la tira —`.eq.b1.freq`, `.dyn.threshold`, `.gate.depth`— con su valor crudo. Un preajuste de canal trae las tres familias juntas: ecualizador, dinámica y puerta.
+
+**Cargar un preajuste no es un comando.** La consola devuelve el contenido y **el cliente escribe clave por clave**; el suyo, además, aplica sólo las claves que ya existen y omite los nulos. Para esta aplicación eso significa que aplicar un preajuste no se le delega al aparato: son muchas escrituras propias, y pasan enteras por el motor de seguridad.
+
+**Guardar, renombrar y borrar existen y no se ejercieron**: `WRITEPRESET^<categoría>^u:<nombre>^<JSON>`, `RENAMEPRESET`, `DELETEPRESET`, más `IMPORTPRESETS` y `EXPORTPRESETS`. Quedan `INFERIDO`.
+
 ---
 
 ## 2.3 Lo que la consola sirve por HTTP

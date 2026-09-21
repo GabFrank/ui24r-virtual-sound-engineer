@@ -66,6 +66,22 @@ const GUIONES = join(RAIZ, 'tools', 'spikes');
  */
 const ES_LA_RESTAURACION: ReadonlySet<string> = new Set(['restaurar.ts']);
 
+/**
+ * Lo que tampoco es un guion: el módulo que **impide** escribir.
+ *
+ * `tools/spikes/solo-lectura.ts` usa `.enviar(` porque es lo que envuelve, y lo
+ * que hace con eso es lo contrario de escribir: rechaza lanzando cualquier orden
+ * que no esté en su lista blanca de las que **piden datos** —listar preajustes,
+ * leer uno, listar shows—. Un guion hecho sólo de ésas no deja nada escrito, así
+ * que envolverlo en una restauración que no restaura nada sería cumplir la forma
+ * de esta guarda y no su motivo.
+ *
+ * **La exención no descansa en la buena conducta de quien escriba el guion**, que
+ * es lo que la haría inútil: descansa en que el camino alternativo no puede
+ * escribir, y eso lo comprueba `solo-lectura.test.ts` con su control positivo.
+ */
+const IMPIDE_ESCRIBIR: ReadonlySet<string> = new Set(['solo-lectura.ts']);
+
 const SIN_CONVERTIR: ReadonlySet<string> = new Set([
   'auditoria/05-testigo-y-fader.ts',
   'auditoria/06-gain-y-techo.ts',
@@ -175,6 +191,7 @@ function clasificar(): { escriben: string[]; conRestauracion: string[] } {
     if (!/\.enviar\(/.test(codigo)) continue;
     const rel = ruta.slice(GUIONES.length + 1);
     if (ES_LA_RESTAURACION.has(rel)) continue;
+    if (IMPIDE_ESCRIBIR.has(rel)) continue;
     escriben.push(rel);
     if (/conRestauracion\(/.test(codigo)) conRestauracion.push(rel);
   }

@@ -389,6 +389,36 @@ sólo lectura-- así que no hay riesgo para su equipo. **Y el valor de esa clave
 su aparato no se sabe**: el inventario guarda las claves observadas, no sus
 valores.
 
+## Los preajustes de la consola: ninguno de los cuatro los toca
+
+**Clonado y grepeado el 2026-09-20**, en los mismos commits de la tabla de
+arriba, al contestar si el protocolo deja listar, leer y guardar preajustes
+(pieza 2, el ecualizador de canal). Se buscaron `PRESETLIST`, `READPRESET`,
+`WRITEPRESET`, `RENAMEPRESET`, `DELETEPRESET`, `prname` y `prmod` sobre los
+cuatro árboles enteros, y además `preset` sin distinguir mayúsculas.
+
+| | Preajustes de canal, ecualizador o dinámica |
+|---|---|
+| `fmalcher/soundcraft-ui` | **No.** Ninguno de los cinco comandos aparece. `prname` y `prmod` aparecen **sólo dentro de `example-state.json`** —su volcado de estado de ejemplo, con `"prname": "Male Vocal"` incluido— y **ni una línea de código los lee**. Es exactamente la misma forma que el ecualizador de salida: el dato archivado, la funcionalidad no |
+| `Dennion/ioBroker.soundcraft` | **No.** Cero coincidencias en el código. Lo único es una viñeta de su `README` —«*Preset recall through ioBroker scripts*», en una lista de casos de uso— que promete que **el usuario** puede escribir un script que recupere valores, no que el adaptador hable el vocabulario de preajustes. Decir que «tiene recall de presets» apoyándose en esa línea sería el error de este documento al revés |
+| `ndikanov/ui24` | **No.** Cero coincidencias de `preset` en todo el repositorio |
+| `NaturalDevCR/MyUiPro` | **No.** Cero coincidencias de `preset` en todo el repositorio. Empotra el cliente oficial en un `iframe`, así que el gestor de preajustes que el usuario ve ahí **es el de la consola** |
+
+**Lo que sí hay, y es el precedente útil.** `fmalcher` implementa la **misma
+forma de mensaje** para otra familia: `resource-lists.ts` modela literalmente la
+lista plana `CMD^entrada^entrada…` y la usa con `SHOWLIST`, `SNAPSHOTLIST` y las
+listas del reproductor, con un `requestResourceList` que manda el pedido y
+espera la respuesta por el mismo nombre de comando. `PRESETLIST` es esa misma
+forma. O sea: **la mecánica de pedir una lista y leerla está resuelta por otro**;
+lo que no hay en ningún lado es el vocabulario de preajustes ni nada que decida
+qué preajuste corresponde a qué instrumento.
+
+**Que no haya precedente es un dato, y pide más cuidado.** Cargar un preajuste
+en esta consola **no es un comando**: el aparato devuelve el contenido y el
+cliente lo escribe clave por clave. Ningún proyecto ajeno ejerció ese camino,
+así que no hay con qué contrastar cuántas escrituras seguidas tolera la consola
+ni en qué orden conviene mandarlas.
+
 ## Cómo se usa este documento
 
 **Antes de escribir «ninguno de los cuatro hace X», buscá X acá.** Si no está,
