@@ -32,9 +32,10 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lectorDe, intentar, centinela, ProblemaDeLaGuarda } from './guarda.mjs';
+import { documentosVigentes } from './documentos-vigentes.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const { leer, listar, textoEjecutando } = lectorDe(RAIZ);
+const { leer, textoEjecutando } = lectorDe(RAIZ);
 
 const MATRIZ = 'docs/capability-matrix.md';
 const TITULO = '## Las rutas crudas con ley medida';
@@ -129,7 +130,7 @@ const pudo = intentar(() => {
     }
   }
 
-  // --- y la MISMA comprobacion en todos los documentos ---------------------
+  // --- la misma comprobación en las entradas operativas declaradas --------
   //
   // **La matriz no era el unico que se quedaba atras, y se vio el mismo dia.** El
   // 2026-09-16, con esta guarda ya extendida a las filas narrativas de la matriz,
@@ -138,18 +139,17 @@ const pudo = intentar(() => {
   // estarlo unas horas antes. La guarda estaba en verde porque solo miraba un
   // archivo.
   //
-  // Cualquier documento que nombre una ruta PROBADA y la describa con una palabra
+  // Un documento vigente que nombre una ruta PROBADA y la describa con una palabra
   // de negacion --«sin probar», «REFUTADA», «desconocida», «INFERIDO»-- esta
   // mintiendo, salvo que en la misma linea diga tambien que esta medida: asi se
   // permiten las lineas que cuentan la historia --«figuraba como REFUTADA y esta
   // MEDIDA»--, que son las que este repositorio quiere que existan.
   const NIEGA = /\bsin probar\b|\bREFUTAD[AO]\b|\bDESCONOCIDO\b|\bINFERIDO\b|desconocida/;
   const AFIRMA = /\bMEDID[AO]\b|\bPROBADO\b|\bCONFIRMADA\b/;
-  const docs = listar('docs').filter((f) => f.endsWith('.md'));
+  const docs = documentosVigentes(RAIZ);
   let mirados = 0;
-  for (const rel of ['README.md', ...docs.map((f) => `docs/${f}`)]) {
-    let texto2;
-    try { texto2 = leer(rel); } catch { continue; }
+  for (const rel of docs) {
+    const texto2 = leer(rel);
     mirados += 1;
     for (const linea of texto2.split('\n')) {
       if (!NIEGA.test(linea) || AFIRMA.test(linea)) continue;
@@ -174,6 +174,7 @@ const pudo = intentar(() => {
     }
   }
   centinela(mirados, 20, 'documentos revisados por estado contradictorio');
+  console.log(`Estado de rutas: ${mirados} documentos operativos; alcance en tools/docs/documentos-vigentes.mjs. No recorre cierres históricos.`);
 
   centinela(nombradas.size, 8, `filas de «${TITULO}»`);
   console.log(problemas === 0

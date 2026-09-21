@@ -1,5 +1,8 @@
 # Dónde quedamos — 2026-09-21
 
+> Registro histórico. Para retomar usar [estado actual](../estado-actual.md).
+> Sus reglas de arranque y comprobación fueron reemplazadas por AGENTS.md y CONTRIBUTING.md.
+
 **Para quien retome.** Reemplaza a
 [`2026-09-20b-donde-quedamos.md`](2026-09-20b-donde-quedamos.md) en lo que cambió
 y lo deja en pie en el resto. Sigue valiendo todo lo que los cierres anteriores

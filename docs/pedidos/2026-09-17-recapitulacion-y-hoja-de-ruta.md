@@ -1,5 +1,8 @@
 # Recapitulación y hoja de ruta rumbo al MVP — 2026-09-17
 
+> Registro histórico. Para retomar usar [estado actual](../estado-actual.md).
+> Sus reglas de arranque y comprobación fueron reemplazadas por AGENTS.md y CONTRIBUTING.md.
+
 **Qué pidió el usuario, textual**, y qué se decidió a partir de eso. Es la
 primera hoja de ruta escrita **desde el soundcheck** y no desde la consola.
 

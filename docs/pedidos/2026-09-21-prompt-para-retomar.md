@@ -1,5 +1,8 @@
 # Prompt para retomar — 2026-09-21
 
+> Registro histórico. Para retomar usar [estado actual](../estado-actual.md).
+> Sus reglas de arranque y comprobación fueron reemplazadas por AGENTS.md y CONTRIBUTING.md.
+
 Pegar tal cual al abrir la próxima sesión.
 
 ---

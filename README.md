@@ -6,13 +6,13 @@ El objetivo no es reemplazar a un ingeniero de sonido. Es que un músico que al 
 
 **Plataforma:** Angular + Capacitor + Android (tablet).
 **Filosofía:** offline-first, measurement-first, safe-by-design.
-**Estado:** Fase 0 en curso, y desde el 2026-09-11 con un alcance decidido: **un asistente de soundcheck**, no de show ([docs/alcance-mvp.md](docs/alcance-mvp.md)). De los catorce pasos de ese camino hay **nueve construidos** —banda, local y amplificación, sesión, canales, el plano del escenario, el recorrido guiado instrumento por instrumento, la ganancia medida y aplicada, la instantánea final y el cierre— y **cinco esperan una pantalla o una ley**: el **ecualizador de canal quedó medido entero** el **2026-09-21** —las doce hojas de sus cuatro bandas, porque son cuatro y no cinco: la ganancia de las cuatro se midió el 2026-09-16, y la frecuencia y el Q de las bandas 2, 3 y 4 el 2026-09-21, que es cuando esa frase dejó de estar adelantada—, del **compresor** está medida la relación y la forma del ataque, y de la **puerta** el sostenido y **la profundidad**, medida el 2026-09-17; siguen sin ley el umbral del compresor, el umbral de la puerta —acotado entre 80 y 100 dB por unidad, sin confirmar los 96 del cliente—, la relajación de la puerta y el envío a efectos. La del envío a monitor se midió el 2026-09-13 y lo que falta ahí es la pantalla.
+**Estado y siguiente tarea:** [docs/estado-actual.md](docs/estado-actual.md). Para trabajar, empezar por [AGENTS.md](AGENTS.md).
 
 **La aplicación escribe en la consola, y conviene decir hasta dónde llega cada permiso.** El motor tiene tres categorías abiertas: la ganancia de entrada (ADR-026, decisión del usuario), el silencio de un canal para diagnosticar fuera del show (ADR-027, **propuesta del agente** que el usuario aceptó con el argumento que lo sostiene) y el nivel del envío a monitor, con techo y nunca durante el show (ADR-028, decisión del usuario). **Lo único que hoy llega a la consola desde una pantalla es la ganancia**: el envío a monitor tiene el camino construido y probado y ninguna pantalla lo llama todavía, y el silencio de canal no tiene camino de producción. Toda escritura pasa por el motor de seguridad y se confirma por una segunda conexión testigo. **No reproduce audio**: todo lo que necesita el micrófono de medición o la interfaz de audio sigue pendiente de los spikes. Ver [docs/flujo-de-usuario.md](docs/flujo-de-usuario.md) para lo que se puede hacer hoy, y la [auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) para el estado real contado desde afuera.
 
 | | |
 |---|---|
-| Tests en verde | Todos. El número exacto lo dice `npm run verificar` |
+| Comprobaciones | Ejecutar según [CONTRIBUTING](CONTRIBUTING.md); el resultado corresponde al árbol comprobado |
 | Spikes cerrados | 0 de 23 |
 | Controles de paso aprobados | 0 de 5 |
 | Rutas crudas con conversión medida | 19 —la **frecuencia y el Q de las cuatro bandas** del ecualizador de canal contra el filtro real, medidas una banda por corrida; el pasa-altos y el pasa-bajos; la **ganancia de esas cuatro bandas**, también una por una; el envío a monitor contra la salida del auxiliar; la **ganancia del ecualizador gráfico de salida en sus dos superficies**, un auxiliar y el general; el **sostenido de la puerta**, la primera en el dominio del tiempo; y la **profundidad de la puerta**, acotada a donde el banco llega a verla—, todas con bucle externo. `validate-numeros` las cuenta |
@@ -71,11 +71,14 @@ EP-15 Post-MVP
 | `docs/field` | Informes de prueba de campo. |
 | `docs/backlog` | Plan final, auditorías, backlog y orden de implementación. |
 | `tools/spikes` | Código de spikes. No requiere tests ni entra en el producto. |
-| `tools/docs` | Seis validadores: identificadores de la documentación, cifras que la documentación afirma, acentos graves y llamadas a función en plantillas, límites entre paquetes y convención de los commits. |
+| `tools/docs` | Validadores de documentación, plantillas, límites y commits; comandos y alcance en CONTRIBUTING.md. |
 | `tools/mixer-sim` | Simulador del protocolo de la consola. Reproduce nuestras hipótesis, no la consola. |
 | `tools/visual` | Capturas contra el simulador y recorrido automático del camino de usuario. |
 
 ## Documentos de entrada
+
+- [Estado actual](docs/estado-actual.md) — siguiente tarea y decisiones vigentes; los planes históricos de abajo no son una cola de trabajo
+- [Flujo de desarrollo](CONTRIBUTING.md) — comprobación por impacto y cierre de tareas
 
 - [Alcance del MVP](docs/alcance-mvp.md) — qué entra y qué no en la primera entrega, decidido con el usuario. Reemplaza la escalera MVP0–MVP4b del plan de abajo
 - [Auditoría externa del 2026-09-15](docs/backlog/auditorias/2026-09-15-auditoria-externa.md) — estado real, trabajo previo publicado y qué corroborar con la consola
@@ -89,7 +92,8 @@ EP-15 Post-MVP
 
 ```bash
 npm install          # instala el workspace completo
-npm run verificar    # lo mismo que corre la integración continua. Antes de empujar, siempre
+npm run verificar    # suite completa de software; CI compila Android aparte
+npm run verificar:cambio -- --base <commit-inicial>  # antes de cerrar la tarea
 npm run lint         # chequeo de tipos (tsc --noEmit) en los paquetes y compilación de la app
 npm test             # tests unitarios
 npm run validate:docs  # verifica que todo ID referenciado en docs exista

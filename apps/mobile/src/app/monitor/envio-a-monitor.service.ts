@@ -39,16 +39,11 @@ import { Logger } from '../core/logger';
  * del usuario, textual: *«Hasta donde estaba antes de que yo lo bajara, y ni un
  * paso más»*.
  *
- * ## Lo que este servicio NO hace, y hay que decirlo
+ * ## Quién lo usa
  *
- * **Ninguna pantalla lo llama todavía.** Existe el camino y está probado; falta
- * quién lo dispare. Decirlo es la diferencia entre una función y la promesa de
- * una función, y este proyecto ya tiene documentado un commit que dijo que la
- * aplicación «lee» algo que no leía.
- *
- * **Y no sube.** Volver a subir es del usuario —*«luego vuelvo a subir de a poco
- * buscando el acople nuevamente»*— y el techo lo hace cumplir el motor. Este
- * servicio sólo aporta el techo; no hay acá un camino que escriba hacia arriba.
+ * La pantalla de monitores llama a `subir`, escucha con el servicio de captura
+ * y anota el identificador. `bajar` conserva el anclaje del techo. Los permisos
+ * siguen siendo del motor; las pruebas de integración no certifican hardware.
  */
 
 export interface EnvioABajar {
@@ -280,10 +275,8 @@ export class EnvioAMonitorService {
     // en el camino de la ganancia— y este archivo **sí** anota, con
     // `anotarEscucha`, unas líneas más arriba.
     //
-    // Lo que sigue en pie, y es lo que hay que saber para leer esta lista: **hasta
-    // que una pantalla llame a subir o bajar, nadie dispara nada**, así que en la
-    // práctica esta lista trae hoy sólo las mediciones de la pantalla de ganancia.
-    // No es lo mismo que «el camino no existe».
+    // Las mediciones de ganancia y monitor llegan por sus servicios de captura.
+    // La pantalla de monitores llama a subir, escuchar y anotar en ese orden.
     //
     // `Date.now()` es el instante contra el que se comprueba que la ventana de
     // escucha haya terminado.

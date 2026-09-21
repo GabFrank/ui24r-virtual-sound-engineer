@@ -37,3 +37,6 @@ tools/audio/bin/
 
 # Estado de una maquina, no del proyecto: lo que una corrida dejo sin restaurar.
 .restauracion-pendiente.json
+
+# Resultados locales de verificación; CI conserva sus propios artefactos.
+.artifacts/
