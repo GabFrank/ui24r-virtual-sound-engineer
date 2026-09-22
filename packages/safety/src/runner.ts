@@ -219,6 +219,10 @@ export class EjecutorDeTransacciones {
         valorPrevio: previos.get(c.path)!,
         valorEsperado: c.valorEsperado,
         valorEnviado: c.valorPropuesto,
+        // En la unidad declarada, que es lo que el historial de la sesión suma.
+        // Los tres de arriba son crudos: ver el porqué en `CambioRegistrado`.
+        magnitudEsperada: c.magnitudEsperada,
+        magnitudEnviada: c.magnitudPropuesta,
         enviadoEl: new Date().toISOString(),
         confirmadoPor: resultado.confirmedBy,
         verificado: resultado.status === 'APPLIED',

@@ -1,0 +1,30 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T18:09:12.447Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/devolver-las-frecuencias.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/devolver-las-frecuencias.ts sha256:cce8bd34c7a860d6
+# la huella cubre 6 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== DEVOLVER LAS FRECUENCIAS DE BANDA DEL CANAL 10 ===
+
+   i.9.eq.b1.freq     ahora   1000 Hz   MOVIDA -> vuelve a 200 Hz
+   i.9.eq.b2.freq     ahora   1000 Hz   ya esta
+   i.9.eq.b3.freq     ahora   1000 Hz   MOVIDA -> vuelve a 4000 Hz
+   i.9.eq.b4.freq     ahora   1000 Hz   MOVIDA -> vuelve a 10000 Hz
+   i.9.eq.b5.freq     ahora  16000 Hz   ya esta
+
+=== RELEIDO POR HTTP ===
+   i.9.eq.b1.freq     esperado 0.3286901902  leido 0.3286901902  OK
+   i.9.eq.b2.freq     esperado 0.5584347738  leido 0.5584347738  OK
+   i.9.eq.b3.freq     esperado 0.7563259869  leido 0.7563259869  OK
+   i.9.eq.b4.freq     esperado 0.887124964  leido 0.887124964  OK
+   i.9.eq.b5.freq     esperado 0.9542171999  leido 0.9542171999  OK
+
+Las cinco bandas del canal 10 vuelven a estar donde estaban.
+
+
+# salida del proceso: 0

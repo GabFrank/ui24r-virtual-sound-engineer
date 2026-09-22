@@ -258,8 +258,17 @@ test('INV-008: la ecualización de salida solo va a los buses declarados', () =>
   const e = new SafetyEngine();
   const permitido: CambioPropuesto = {
     kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-    valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0,
+    // **El crudo y la magnitud tienen que ser coherentes, y hasta el 2026-09-16
+    // nadie podia notar que no lo eran.** Estos fixtures declaraban el crudo -2
+    // como «-2 dB»: mientras el grafico de salida no tenia conversion,
+    // `verificarAtadura` devolvia SIN_LEY_VERIFICADA --que no es un rechazo-- y
+    // la incoherencia pasaba. El item 109 midio la ley del grafico del auxiliar
+    // --`30·V - 15`-- y entonces el crudo -2 pasa a significar -75 dB, asi que
+    // la atadura rechaza ANTES que INV-008 y el test dejaba de probar lo suyo.
+    // Con el crudo correcto de -2 dB, la atadura pasa y el rechazo vuelve a ser
+    // el del bus, que es lo que este test dice comprobar.
+    valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+    magnitudPropuesta: -2, magnitudEsperada: 0,
   };
   assert.equal(e.evaluar([permitido], contexto(), ok).permitido, true);
 
@@ -399,6 +408,11 @@ test('INV-004: un filtro estrecho en un bus PARAMETRICO se rechaza', () => {
 });
 
 test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar', () => {
+  // **El crudo va en `valorPropuesto`, los decibeles en `magnitudPropuesta`.**
+  // Desde el item 112 `m.eq.peak.l.K` tiene ley medida --`30·V − 15`-- asi que la
+  // guarda de coherencia compara las dos cosas: escribir -3 en el crudo seria
+  // pedir -105 dB y dispara antes que la clausula que este test mira. Es el mismo
+  // arreglo que ya se le hizo al grafico del auxiliar el 2026-09-16.
   // **El hallazgo, fijado para que no se olvide.** El ecualizador de salida de
   // esta consola es un grafico de 31 bandas: no tiene factor de calidad, asi que
   // `q` es `undefined` siempre y la regla no se ejecuta nunca. Es la forma nueva
@@ -412,8 +426,8 @@ test('INV-004: sobre el grafico de la Ui24R la clausula de Q no puede disparar',
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -3, valorEsperado: 0,
-  magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
+      valorPropuesto: (-3 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -3, magnitudEsperada: 0, q: 0.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -426,8 +440,8 @@ test('INV-004: la correccion de sala atenua, no realza', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: 3, valorEsperado: 0,
-  magnitudPropuesta: 3, magnitudEsperada: 0, q: 1.4,
+      valorPropuesto: (3 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: 3, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -443,8 +457,8 @@ test('una atenuacion con Q ancho en un bus declarado pasa', () => {
   const v = motor.evaluar(
     [{
       kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
-      valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0, q: 1.4,
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0, q: 1.4,
     }],
     contexto(),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
@@ -467,8 +481,9 @@ test('sin perfil de sala el rechazo lo DICE, no culpa al bus', () => {
   // mensaje mandaba a revisar el bus cuando falta el perfil entero.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0 }],
+    [{ kind: 'OUTPUT_EQ', path: 'm.eq.peak.l.12', unidad: 'dB',
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set() }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );
@@ -485,8 +500,10 @@ test('con perfil, un bus ajeno SI se rechaza por el bus', () => {
   // verdad corresponde.
   const motor = new SafetyEngine();
   const v = motor.evaluar(
-    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB', valorPropuesto: -2, valorEsperado: 0,
-  magnitudPropuesta: -2, magnitudEsperada: 0 }],
+    // Mismo arreglo de coherencia que arriba: el crudo de -2 dB con la ley medida.
+    [{ kind: 'OUTPUT_EQ', path: 'a.5.eq.peak.12', unidad: 'dB',
+      valorPropuesto: (-2 + 15) / 30, valorEsperado: 0.5,
+      magnitudPropuesta: -2, magnitudEsperada: 0 }],
     contexto({ busesDeSalidaPermitidos: new Set(['m']) }),
     { conexionPermiteEscribir: true, snapshotVerificado: true },
   );
@@ -569,13 +586,73 @@ test('ADR-028: con todo abajo al empezar, la app puede levantar', () => {
   //
   // Ahora `techoPorRuta` sólo lleva las rutas que la aplicación bajó. Un envío
   // que nadie bajó no tiene techo.
+  //
+  // **El punto de partida se corrigió el 2026-09-17, y la corrección enseña
+  // algo.** Este test arrancaba en «−90 dB» usando `crudoDeEnvio(-90)`, que
+  // satura en el crudo 0 —el piso absoluto, el silencio—. Por la ley medida ese
+  // crudo no son −90 dB: es −∞. O sea que el test declaraba un punto de partida
+  // que la consola no puede tener, y pasaba porque **nada ataba la magnitud de
+  // partida al crudo de partida**. Al atarla, saltó.
+  //
+  // Lo que este test quiere probar —que una ruta que nadie bajó no tiene techo
+  // y se puede subir— no depende de arrancar en el piso absoluto, así que
+  // arranca **abajo dentro del tramo medido**. El borde del silencio tiene su
+  // propio test, abajo, y su propia tarea: es el pedazo de ADR-034 que el motor
+  // todavía no hace.
   const e = new SafetyEngine();
   const v = e.evaluar([{
     kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
-    valorPropuesto: crudoDeEnvio(-88), valorEsperado: crudoDeEnvio(-90),
-    magnitudPropuesta: -88, magnitudEsperada: -90,
+    valorPropuesto: crudoDeEnvio(-30), valorEsperado: crudoDeEnvio(-32),
+    magnitudPropuesta: -30, magnitudEsperada: -32,
   }], contexto(), ok);
   assert.equal(v.permitido, true, motivos(v).join(', '));
+});
+
+test('INV-004: mentir de dónde venía ya no corre el tope por paso', () => {
+  // **El agujero que una auditoría midió el 2026-09-17, y el commit que lo
+  // cierra.** Los topes de INV-004 no acotan el destino: acotan el movimiento,
+  // que es `magnitudPropuesta - magnitudEsperada`. El destino estaba atado al
+  // crudo desde el 2026-09-13; el punto de partida no estaba atado a nada.
+  //
+  // Así que un salto enorme pasaba el tope de 2 dB por paso con sólo declarar
+  // que venía de un poco más abajo. Acá está medido: **un envío que la consola
+  // tiene en −32 dB, empujado a nominal —32 dB de un saque— declarando que
+  // venía de −2.** El crudo de partida es el real, así que el adaptador no lo
+  // vería como conflicto: el eslabón suelto eran los decibeles.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    // Lo que va al cable: de donde está de verdad, a nominal.
+    valorPropuesto: crudoDeEnvio(0), valorEsperado: crudoDeEnvio(-32),
+    // Lo que se le dice al motor: que es un pasito de 2 dB.
+    magnitudPropuesta: 0, magnitudEsperada: -2,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'un salto de 32 dB no puede pasar por uno de 2');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    `tiene que frenar por el origen, no de rebote: ${JSON.stringify(v.rechazos)}`);
+});
+
+test('INV-004: una cuña en silencio no tiene punto de partida que declarar', () => {
+  // **El borde de −∞, que ahora se alcanza por los dos lados.** El silencio de
+  // una cuña es el crudo 0, y por la ley medida del envío eso es −∞ decibeles:
+  // no hay un número de partida que declarar, y por lo tanto no hay movimiento
+  // que medir. Antes esto pasaba inadvertido —el motor le creía al número
+  // declarado— y ahora se rechaza con su nombre.
+  //
+  // **Rechazar es lo correcto hoy y no es el final de la historia.** El primer
+  // paso desde el silencio es el pedazo de ADR-034 que el motor todavía no
+  // hace, y cuando alguien lo construya va a tener que pasar por acá con su
+  // propio nombre. Hasta entonces, frenar es lo correcto: nadie sabe todavía
+  // proponer ese salto.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-30), valorEsperado: 0,
+    magnitudPropuesta: -30, magnitudEsperada: -90,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false);
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    JSON.stringify(v.rechazos));
 });
 
 test('INV-004: el motor traduce TODO codigo de limite, sin estallar', () => {
@@ -604,4 +681,163 @@ test('INV-004: el motor traduce TODO codigo de limite, sin estallar', () => {
   }], contexto(), ok);
   assert.equal(v.permitido, false);
   assert.ok(motivos(v).includes('INV-004'), motivos(v).join(', '));
+});
+
+/**
+ * El hueco de cobertura que marco la auditoria del 2026-09-17.
+ *
+ * Quitar la guarda de «esto no es un numero» de `verificarLimite` dejaba TODA la
+ * suite de `safety` en verde: solo la cazaban los tests del dominio. Ningun test
+ * le proponia al MOTOR un cambio con magnitud no numerica, que es exactamente la
+ * forma que este repositorio ya se cazo a si mismo dos veces --«ningun test
+ * proponia un cambio con la unidad mal declarada POR EL MOTOR, y la suite quedo
+ * verde»--.
+ *
+ * **Y va sobre una ruta SIN ley medida a proposito.** En una ruta `PROBADO` el
+ * rechazo lo produce `verificarAtadura` antes de llegar a los topes, asi que el
+ * test pasaria igual sin la guarda que quiere probar. `i.N.mute` no esta en la
+ * tabla de conversion, asi que la atadura contesta «no hay con que atar» --que
+ * no es un rechazo-- y el cambio llega hasta `verificarLimite`.
+ */
+test('INV-004: el MOTOR rechaza una magnitud que no es un numero, sin ley medida de por medio', () => {
+  for (const raro of [Number.NaN, null, {}]) {
+    const v = new SafetyEngine().evaluar(
+      [{
+        kind: 'CHANNEL_MUTE', path: 'i.3.mute', unidad: 'canales',
+        valorPropuesto: 1, valorEsperado: 0,
+        magnitudPropuesta: raro as unknown as number, magnitudEsperada: 0,
+      }],
+      contexto({ sessionState: 'CHANNEL_SETUP', aprobacionExplicita: true }),
+      ok,
+    );
+    assert.equal(v.permitido, false, `${String(raro)} tiene que rechazarse en el motor`);
+    assert.ok(
+      !v.permitido && v.rechazos.some((r) => r.codigo === 'MAGNITUD_NO_ATADA'),
+      'y el motivo tiene que ser que el motor no puede juzgar ese numero',
+    );
+  }
+});
+
+test('INV-004: el motor ata el DESTINO al crudo, sobre una ruta con ley medida', () => {
+  // **Este test existe porque una auditoría adversarial mutó la guarda vieja y
+  // la suite no se enteró.** Borrando entera la llamada a `verificarAtadura` del
+  // motor, las 136 pruebas de este paquete quedaban en verde: el caso
+  // fundacional —crudo 0 a 1 declarando −31 a −30 dB— volvía a pasar y nadie lo
+  // veía. El test que lo cubría era la cuenta de rutas escribibles, y dejó de
+  // cubrirlo cuando el ayudante empezó a armar el par crudo/magnitud coherente
+  // para las rutas con ley medida. El único test que nombraba `MAGNITUD_NO_ATADA`
+  // usaba una ruta SIN ley medida, así que llegaba por otro camino.
+  //
+  // **La asimetría es la lección**: al atar el origen se probó el eslabón nuevo
+  // y el viejo quedó sin probar. Una guarda sin un test que muera al romperla no
+  // protege de nada, y esa regla estaba escrita en la disciplina del proyecto.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    // Al cable, el recorrido entero hasta nominal. Al motor, un pasito de 1 dB
+    // con los dos extremos bien lejos de donde de verdad están.
+    valorPropuesto: 1.0, valorEsperado: crudoDeEnvio(-31),
+    magnitudPropuesta: -30, magnitudEsperada: -31,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'el destino inventado tiene que verse');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'MAGNITUD_NO_ATADA'),
+    `tiene que frenar por el destino: ${JSON.stringify(v.rechazos)}`);
+});
+
+test('INV-004: un valor de partida que no es numero no pasa el motor', () => {
+  // La otra mitad del agujero crítico, comprobada desde el motor y no sólo
+  // desde la función: con `valorEsperado: NaN` la atadura decía «atada», el
+  // motor aprobaba, y el salto entero salía al cable.
+  const e = new SafetyEngine();
+  const v = e.evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(0), valorEsperado: NaN,
+    magnitudPropuesta: 0, magnitudEsperada: -1,
+  }], contexto(), ok);
+  assert.equal(v.permitido, false, 'un crudo de partida NaN no puede aprobarse');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'ORIGEN_NO_ATADO'),
+    JSON.stringify(v.rechazos));
+});
+
+test('INV-004: la misma ruta dos veces en una transaccion no multiplica el tope', () => {
+  // **Medido por una auditoría adversarial el 2026-09-17b.** El motor juzga cada
+  // cambio contra un contexto que no se actualiza entre uno y otro, así que
+  // cuatro pasos HONESTOS de 2 dB encadenados sobre la misma cuña pasaban los
+  // cuatro: cada uno cabía en su tope, cada uno era «el primero» de esa ruta —así
+  // que nadie exigía escuchar en el medio— y el movimiento real era de 8 dB con
+  // el tope por transacción en 2. No hace falta mentir ningún número.
+  const cambios = [];
+  let db = -30;
+  for (let i = 0; i < 4; i++) {
+    cambios.push({
+      kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(db + 2), valorEsperado: crudoDeEnvio(db),
+      magnitudPropuesta: db + 2, magnitudEsperada: db,
+    });
+    db += 2;
+  }
+  const v = new SafetyEngine().evaluar(cambios, contexto(), ok);
+  assert.equal(v.permitido, false, '8 dB reales no pueden pasar con el tope en 2');
+  assert.ok(v.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'),
+    `tiene que frenar por la ruta repetida: ${JSON.stringify(v.rechazos)}`);
+
+  // **DOS es la frontera, y probar cuatro no la fija.** Una auditoría mutó la
+  // guarda a «tolerá hasta dos» y a «tolerá hasta tres» y **las dos mutaciones
+  // sobrevivieron con la suite entera en verde**, porque este test ejercía el
+  // caso del hallazgo —cuatro— y no el mínimo. Con dos repeticiones el tope ya
+  // se duplica. Es la trampa que este repositorio tiene escrita: copiá el número
+  // de la regla, no uno parecido; y es la misma forma que INV-005 ya pagó con el
+  // `porTransaccion: 1` que contaba sin contar.
+  const dos = new SafetyEngine().evaluar(cambios.slice(0, 2), contexto(), ok);
+  assert.equal(dos.permitido, false, 'con dos ya se duplica el tope');
+  assert.ok(dos.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'),
+    JSON.stringify(dos.rechazos));
+
+  // El rechazo dice DE QUÉ CUÑA habla: una pantalla que no puede nombrar la ruta
+  // obliga al usuario a adivinar cuál de los cambios fue.
+  assert.equal(dos.rechazos.find((r) => r.codigo === 'RUTA_REPETIDA')?.path,
+    'i.3.aux.1.value');
+
+  // **Y no corta la evaluación**, que es lo que `evaluar` promete: devuelve todos
+  // los motivos y no el primero. Con pasos que además exceden el tope tienen que
+  // salir los dos diagnósticos, y con dos rutas repetidas distintas, las dos.
+  const conExceso = new SafetyEngine().evaluar([
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-25), valorEsperado: crudoDeEnvio(-30),
+      magnitudPropuesta: -25, magnitudEsperada: -30 },
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.3.aux.1.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-20), valorEsperado: crudoDeEnvio(-25),
+      magnitudPropuesta: -20, magnitudEsperada: -25 },
+  ], contexto(), ok);
+  assert.equal(conExceso.permitido, false);
+  assert.ok(conExceso.rechazos.some((r) => r.codigo === 'RUTA_REPETIDA'));
+  assert.ok(conExceso.rechazos.some((r) => r.codigo === 'DELTA_EXCEDIDO'),
+    `la guarda no puede tapar los demás motivos: ${JSON.stringify(conExceso.rechazos)}`);
+
+  const dosRutas = new SafetyEngine().evaluar([
+    ...cambios.slice(0, 2),
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.5.aux.2.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+      magnitudPropuesta: -6, magnitudEsperada: -7 },
+    { kind: 'MONITOR_AUX_SEND' as const, path: 'i.5.aux.2.value', unidad: 'dB',
+      valorPropuesto: crudoDeEnvio(-5), valorEsperado: crudoDeEnvio(-6),
+      magnitudPropuesta: -5, magnitudEsperada: -6 },
+  ], contexto(), ok);
+  assert.equal(dosRutas.permitido, false);
+  assert.equal(dosRutas.rechazos.filter((r) => r.codigo === 'RUTA_REPETIDA').length, 2,
+    `se informan TODAS las rutas repetidas: ${JSON.stringify(dosRutas.rechazos)}`);
+
+  // Y dos rutas DISTINTAS en la misma transacción siguen pasando: la guarda es
+  // sobre repetir una ruta, no sobre tocar varias. Dos cuñas de dos músicos es
+  // exactamente lo que el producto tiene que poder hacer.
+  const dosCunias = new SafetyEngine().evaluar([{
+    kind: 'MONITOR_AUX_SEND', path: 'i.3.aux.1.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }, {
+    kind: 'MONITOR_AUX_SEND', path: 'i.5.aux.2.value', unidad: 'dB',
+    valorPropuesto: crudoDeEnvio(-6), valorEsperado: crudoDeEnvio(-7),
+    magnitudPropuesta: -6, magnitudEsperada: -7,
+  }], contexto(), ok);
+  assert.equal(dosCunias.permitido, true, motivos(dosCunias).join(', '));
 });

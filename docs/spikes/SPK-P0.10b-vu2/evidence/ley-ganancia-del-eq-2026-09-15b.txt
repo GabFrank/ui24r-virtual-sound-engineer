@@ -1,0 +1,179 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T01:55:30.730Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/ley-ganancia-del-eq.ts 10 2 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/ley-ganancia-del-eq.ts sha256:d08203eb401dbe64
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 108 — LA LEY DE LA GANANCIA DEL ECUALIZADOR, CONTRA LA SALIDA REAL ===
+canal 10 (i.9) -> general -> entrada 1 de la interfaz
+se barre i.9.eq.b2.gain | tonos de 1000 Hz y 37 Hz a -18 dBFS
+
+=== ESTADO, LEIDO DEL APARATO ===
+   6665 claves por HTTP
+   i.9.mute                 0
+   i.9.mix                  0.7451777309
+   hw.9.gain                0.2508445026
+   i.9.eq.bypass            0
+   i.9.eq.b2.freq           0.5584347738
+   i.9.eq.b2.q              0.5252185347
+   i.9.eq.b2.gain           0.5
+   i.9.eq.hpf.freq          0
+   i.9.eq.lpf.freq          1
+   i.9.dyn.bypass           0
+   i.9.gate.enabled         1
+   m.mix                    0.6441404487
+   m.afs.enabled            1
+   m.afs.fmode              1
+   las cinco bandas del canal en 0.5, comprobado
+   banda 2 en 1000.0 Hz, Q crudo 0.5252185347 (1.000), se registran y NO se tocan
+   falda de esa campana en el testigo de 37 Hz: 0.059 dB por lado con ±20, o sea 0.117 de RANGO
+   corte en 20 y 22050 Hz: los dos tonos libres
+
+   exigido sin escribir: canal sin mutear, ecualizador activo y sin
+   preset, cinco bandas planas, la banda barrida en 1 kHz, cortes libres
+
+=== LO QUE SE NEUTRALIZA ===
+   compresor, puerta y de-esser del canal: dependen del nivel y el
+   barrido mueve cuarenta decibeles.
+   fader del canal: estaba en 0.7451777309, a 0.5 para hacer lugar al realce. Esta DESPUES del
+   ecualizador, asi que no cambia el nivel al que el filtro trabaja.
+   supresor del general: estaba en 1, apagado mientras suene
+   NO se tocan: la frecuencia ni el Q de la banda, ni las otras cuatro.
+
+=== LOS CONTROLES POSITIVOS ===
+   [captura C0] 8 cuadros VU2 en 3492 ms = 2.3/s
+C0 con el canal muteado: -116.89 dBFS en 1000 Hz
+   ruido del bin en esa captura: -116.02 dBFS
+   PISO EFECTIVO = -116.02 dBFS, el mayor de los dos.
+   [captura C1-puenteado] 8 cuadros VU2 en 3489 ms = 2.3/s
+   [captura C1-plano] 5 cuadros VU2 en 3491 ms = 1.4/s
+
+=== LA CORRIDA FALLO ===
+   la captura «puenteado» de L1 tiene 8 cuadros VU2 y hacen falta 20: el promedio no es un promedio.
+   La consola ya se restauro: `conRestauracion` corrio su finally antes de
+   relanzar. Se sigue hasta la relectura por HTTP y la pila del supresor,
+   que son lo que mas falta hace justo cuando una corrida sale mal.
+
+=== SIN VEREDICTOS: la corrida fallo antes de terminar el barrido ===
+   baja: no existe
+   sube: no existe
+   De el cuelga TODA la ley: la ganancia de cada punto es su nivel menos
+   el del plano. Con la referencia mala, los veintitantos puntos salen
+   sesgados lo mismo y en el mismo sentido, y eso se leeria como una ley
+   corrida, no como un error. Se sigue hasta la restauracion.
+
+=== NO SE IMPRIMEN VEREDICTOS ===
+
+=== LO QUE ESTA CORRIDA NO DICE ===
+   Nada sobre la FORMA de la campana: se mide la altura en el centro.
+   Nada sobre el parametro interno del filtro: se mide el efecto en el audio.
+   Nada sobre la ley INVERSA: esto mide crudo -> dB.
+   Una banda de cinco, un canal de veinticuatro, una frecuencia, un Q.
+   Nada sobre las otras cuatro bandas, ni sobre el ecualizador de salida.
+   Un dia, una frecuencia, un nivel de fuente.
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.9.eq.b2.gain           esperado 0.5            leido 0.5
+   i.9.dyn.bypass           esperado 0              leido 0
+   i.9.gate.enabled         esperado 1              leido 1
+   i.9.deesser.enabled      esperado 0              leido 0
+   i.9.mute                 esperado 0              leido 0
+   i.9.eq.bypass            esperado 0              leido 0
+   m.dyn.bypass             esperado 0              leido 0
+   m.afs.enabled            esperado 1              leido 1
+   i.9.mix                  esperado 0.7451777309   leido 0.7451777309
+   Las 9 claves volvieron, por un camino distinto del que escribio.
+
+   filtros del supresor: 0 antes, 0 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 1
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: 49b8708176f552ce
+================================================================================
+
+Cambio el CODIGO despues de esta corrida, asi que hay que decir que midio.
+
+QUE MIDIO. La version con CUADROS_MINIMOS = 20, que es la que hizo fallar esta
+corrida. Los conteos que este archivo registra --8, 8 y 5 cuadros por captura--
+son el dato que probo que la premisa de esa guarda estaba dada vuelta: la consola
+emite VU2 por cambio, y un tono sostenido casi no lo mueve.
+
+QUE SE ARREGLO DESPUES. El piso bajo a 3 cuadros y se agrego un tope al recorrido
+del medidor dentro de una captura --dos escalones, 0,63 dB--, que es lo que la
+guarda vieja queria comprobar y no comprobaba.
+
+POR QUE VALE IGUAL, Y POR QUE NO SE REMIDE. Lo que se le cita a este archivo son
+los conteos y el hecho de que la corrida se freno ahi. Las dos cosas son de esta
+version y no cambian. Remedirlo con el guion nuevo daria otra cosa --justamente,
+ya no fallaria-- y borraria el registro de por que hubo que cambiar la guarda.
+
+CUARTA ANOTACION, 2026-09-16. El guion cambio otra vez: la ventana del medidor
+ahora se ALARGA hasta juntar sus tres cuadros en vez de anular la captura. La
+huella reconocida de arriba ya es la de esa version. Nada de lo que este archivo
+registra cambia: siguen siendo corridas de antes de ese arreglo.
+
+ANOTACION DEL 2026-09-16 (papelito de restauracion). El guion cambio: ahora deja
+un registro en disco de lo que escribio, ANTES de escribirlo, para que una
+corrida que muera de golpe --SIGKILL, corte de energia-- se pueda deshacer
+despues. `conRestauracion` declaraba ese caso como «no hay vuelta».
+
+POR QUE NO TOCA NADA DE LO MEDIDO. El agregado escribe y borra un archivo local;
+no toca la consola, ni el estimulo, ni la captura, ni ningun umbral ni veredicto.
+La secuencia de escrituras a la consola y las funciones que producen los numeros
+de este archivo son identicas antes y despues. Remedir daria lo mismo, y para las
+corridas que fallaron borraria el registro de por que fallaron.
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: c906029d0f89de70
+================================================================================
+
+QUE CAMBIO EN EL GUION. Hasta hoy EXIGIA que la banda a barrer ya estuviera en
+1000 Hz y abortaba si no. Ahora, si no lo esta, la COLOCA --con la ley de
+frecuencia del item 101-- y despues comprueba releyendo con el mismo margen de
+1 Hz de siempre. Lo pidio el item 113: las bandas 1, 3, 4 y 5 no vienen de
+fabrica en 1 kHz, asi que con la precondicion la corrida se negaba a arrancar, y
+por eso el 108 midio la banda 2 y no otra.
+
+POR QUE NO TOCA NADA DE LO MEDIDO ACA. Esta corrida barrio la BANDA 2, que ya
+estaba en 1000,0 Hz. El codigo nuevo no escribe nada cuando la banda ya esta
+donde tiene que estar: el camino que recorrio esta corrida es identico linea por
+linea. Ninguna escritura a la consola, ningun umbral, ningun control y ningun
+numero de este archivo cambian.
+
+CONFIGURACION QUE MIDIO, dicha explicitamente: canal 10, BANDA 2, en 1000,0 Hz
+de fabrica, Q crudo 0,5252185347, con las otras cuatro bandas planas.
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: e452d1eac231c448
+================================================================================
+
+QUE CAMBIO EN EL GUION DESPUES DE ESTA CORRIDA. Dos cosas, las dos del item 113:
+
+1) `i.N.eq.bK.freq` entro en PREVIO. El guion escribia la frecuencia de la banda
+   --para colocarla en 1000 Hz-- y NO la restauraba. Era un defecto real y se vio
+   en el aparato. Se arreglo, y la consola se devolvio a mano con
+   `devolver-las-frecuencias-2026-09-16.txt`.
+
+2) El fader del canal subio de 0,5 a 0,65, porque dos corridas fallaron C1 por
+   menos de un decibel y la alternativa --bajar el minimo de C1-- habria sido
+   acomodar la regla al resultado. El fader esta DESPUES del ecualizador: sube lo
+   que llega al conversor y no el nivel al que el filtro trabaja.
+
+POR QUE LOS NUMEROS DE ESTE ARCHIVO SIGUEN VALIENDO. Ninguno de los dos cambios
+toca lo que se mide. El primero solo agrega una restauracion al final; el segundo
+cambia el punto de trabajo del CONVERSOR, y esta corrida informa el suyo en su
+propio encabezado. La ley que sale es una relacion entre el crudo y los
+decibeles, y las cuatro bandas dieron la misma con los dos faders.
+
+CONFIGURACION QUE MIDIO ESTA CORRIDA, dicha explicitamente: canal 10, BANDA 2, en sus 1000,0 Hz de fabrica, fader del canal 0,5.

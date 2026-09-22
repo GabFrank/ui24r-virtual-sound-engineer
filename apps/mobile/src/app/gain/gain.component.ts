@@ -580,6 +580,16 @@ export class GainComponent {
       const despues = this.resultados().find((x) => x.indice === fila.indice);
       if (despues === undefined) return;
 
+      // **Y se le dice al motor que acá se escuchó.** Es lo que convierte la
+      // segunda ventana en permiso para un paso más: hasta el 2026-09-19 esta
+      // medición existía, se le mostraba al usuario, y no quedaba anotada en
+      // ninguna parte, así que **un segundo ajuste sobre el mismo canal se
+      // rechazaba siempre** por falta de medición intermedia.
+      //
+      // Va antes de contarle el veredicto y no después: el veredicto es texto y
+      // esto es estado, y si algo falla más abajo lo que importa ya quedó escrito.
+      await this.aplicador.anotarEscucha(res.id, despues.medicionId);
+
       const v = verificarAjuste({
         margenAntesDb: r.analisis.margenDb,
         margenDespuesDb: despues.analisis.margenDb,

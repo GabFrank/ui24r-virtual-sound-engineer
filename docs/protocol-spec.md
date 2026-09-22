@@ -219,6 +219,25 @@ De `parseCommand()` en el `mixer.html` que sirve la consola. Todos observados sa
 
 De estos, la sesión de medición solo usó `ALIVE` e `INIT`, que son de consulta. **`NETCONFIG` devuelve, entre otras cosas, el hash de la contraseña de administrador**: si alguna vez se captura, hay que decidir antes qué se guarda y qué se redacta.
 
+**Esa lista es la de los comandos que la captura vio salir, no el vocabulario entero.** El cliente declara más familias —shows, instantáneas, cues y preajustes—, y la de preajustes se midió el 2026-09-20; está en §2.2.1.
+
+### 2.2.1 Preajustes: listar y leer, medido el 2026-09-20
+
+La consola guarda bancos de preajustes por **categoría**, con un banco **de fábrica** y otro **del usuario**. El cliente nombra **diecisiete**; se preguntaron las quince de proceso de audio —`ch` el canal entero, `eqch` el ecualizador, `dynch` la dinámica, `gate` la puerta, `digi`, `eqaux`, `dynaux`, `eqm`, `dynm`, `chm`, `afs` y los cuatro de efectos— y **quedaron sin preguntar `ux` y `udp`**, que son preferencias de la interfaz y órdenes por red.
+
+| Operación | Ida | Vuelta |
+|---|---|---|
+| Listar | `PRESETLIST^<categoría>` | `PRESETLIST^<categoría>^<item>^<item>…` |
+| Leer | `READPRESET^<categoría>^<nombre>` | `READPRESET^<categoría>^<nombre>^<JSON>` |
+
+Los nombres vuelven **prefijados**: `f:` los de fábrica y `u:` los del usuario. Las quince preguntadas contestan, varias con el banco de usuario vacío. La respuesta es de la forma **con clave** —la categoría ocupa la primera posición, antes de las entradas—, igual que `SNAPSHOTLIST` y a diferencia de `SHOWLIST`. Evidencia: [`preajustes-2026-09-20.txt`](spikes/SPK-P0.2b/evidence/preajustes-2026-09-20.txt).
+
+El JSON trae las claves **relativas** a la tira —`.eq.b1.freq`, `.dyn.threshold`, `.gate.depth`— con su valor crudo. Un preajuste de canal trae las tres familias juntas: ecualizador, dinámica y puerta.
+
+**Cargar un preajuste no parece ser un comando, y esto es `INFERIDO`.** La consola devuelve el contenido y **el cliente escribe clave por clave**: leído de `applyPreset` y de los `loadPreset` del cliente que sirve la consola, **sin haber mandado una orden de carga ni medido su ausencia**. El suyo, además, aplica sólo las claves que ya existen y omite los nulos. Si es así, aplicar un preajuste no se le delega al aparato: son muchas escrituras propias, y pasan enteras por el motor de seguridad. *(Este párrafo vivía bajo un título que dice «medido» sin rótulo propio; lo marcó una auditoría de fidelidad el mismo día.)*
+
+**Guardar, renombrar y borrar existen y no se ejercieron**: `WRITEPRESET^<categoría>^u:<nombre>^<JSON>`, `RENAMEPRESET`, `DELETEPRESET`, más `IMPORTPRESETS` y `EXPORTPRESETS`. Quedan `INFERIDO`.
+
 ---
 
 ## 2.3 Lo que la consola sirve por HTTP
@@ -438,7 +457,7 @@ Con eso, `pre` queda como el punto más limpio que la consola ofrece: **después
 
 **La puerta tampoco.** Medido el 2026-09-09 subiendo su umbral por encima de la señal: `entrada` cayó a −∞ —la puerta cierra con su atenuación máxima— y `pre` se quedó en −48,66 sin moverse. Con esto son tres los bloques comprobados —compresor, ecualizador y puerta— y ninguno toca el punto `+0`. **El cuarto, el de-esser, sigue sin medir**: no informa cuánto atenúa y no se probó con sibilancia, así que «el bloque dinámico está comprobado» sería decir de más.
 
-Dos trampas de escala que costaron una corrida cada una, y que conviene tener escritas: la ruta del umbral es `gate.thresh`, no `gate.threshold`; y `VtoGATE_DEPTH(a) = 60a − 60`, o sea que **profundidad 0 es atenuación máxima y 1 es ninguna**. Es la tercera escala invertida de esta consola, después de `VtoRATIO(a) = 1/a`.
+Dos trampas de escala que costaron una corrida cada una, y que conviene tener escritas: la ruta del umbral es `gate.thresh`, no `gate.threshold`; y `VtoGATE_DEPTH(a) = 60a − 60`, o sea que **profundidad 0 es atenuación máxima y 1 es ninguna**. Es la tercera escala invertida de esta consola, después de `VtoRATIO(a) = 1/a`. **Esa fórmula dejó de ser leída del cliente y pasó a estar medida** el 2026-09-17 ([ítem 120](compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md)), entre el crudo 0,55 y el 1,00.
 
 **La reducción de ganancia del compresor viaja en vivo** en el byte `+5`, y se decodifica con `deconvertVU_comp((byte & 127) << 1)`, con `COMP_ZOOM = 2`. La fracción resultante se convierte a decibeles con factor `VU_RANGE / COMP_ZOOM` = 40. Comprobado contra la caída real del nivel: 10,8 % dio 4,66 dB medidos contra 4,32 calculados; 22,5 % dio 9,00 contra 9,00; 27,5 % dio 10,80 contra 11,00.
 
@@ -446,6 +465,16 @@ Dos trampas de escala que costaron una corrida cada una, y que conviene tener es
 
 > **REFUTADAS contra el aparato el 2026-09-12.** No son «leídas y sin verificar»: se verificaron y no describen este compresor. Con `VtoTHRESH(a) = −90 + 96a`, `VtoRATIO(a) = 1/a` y una rodilla dura, el exceso despejado va de **10,0 a 25,6 dB en la misma corrida, con fuente y umbral quietos** — tiene que ser constante y no lo es. Las pendientes por sustitución dependen de la relación (22,2 / 32,1 / 47,3 dB por unidad) y los cocientes dan 1,58 a 2,42 donde el modelo pide 3,00. **Y no es culpa del instrumento**: el medidor de reducción se calibró contra la caída real de nivel y sigue hasta 24,34 dB con 0,35 dB de desvío, igual en el tramo que ya estaba verificado y en el que no.
 >
+> **CORREGIDO el 2026-09-16, y la corrección es grande: esa refutación era de la CONJUNCIÓN, y el culpable era la relación.**
+>
+> El párrafo de arriba dice, correctamente, que `VtoTHRESH` **junto con** `VtoRATIO` y una rodilla dura no describen este compresor. De ahí se pasó a marcar **las dos** como refutadas, y eso afirma más de lo medido: si una de las tres piezas está mal, el conjunto falla sin que las otras tengan la culpa.
+>
+> El [ítem 117](compromisos/117-la-curva-del-compresor.md) midió la relación con la curva completa y encontró que **`1/a` está mal por un factor**. El [ítem 118](compromisos/118-el-umbral-del-compresor.md) midió el umbral **solo** —alineando las curvas de reducción, sin suponer ninguna relación— y dio **96,4 dB por unidad de crudo contra los 96 del cliente**, con residuos de 0,04 a 0,15 dB y 0,9 % de dispersión entre tres formas distintas de leerlo.
+>
+> **La pendiente de `VtoTHRESH` queda CONFIRMADA.** Lo que sigue sin medirse es su **cero**: para decir «el crudo 0,5 son −42 dB en la consola» hace falta anclar la escala interna del aparato, y este banco no tiene ese ancla.
+>
+> Y aparece un tercer culpable del que nadie sospechaba: **la rodilla dura tampoco es cierta**. El 118 midió que la pendiente por encima del codo **sube con el nivel**, de casi cero pegada al codo hasta 0,5 veinte decibeles más arriba. Ver [el hallazgo](backlog/hallazgo-el-compresor-no-tiene-una-relacion.md).
+
 > Lo que sí sigue valiendo de este párrafo es el **sentido** de `VtoRATIO`: el crudo 1 no comprime. Eso está medido aparte —con `a = 1` y el umbral en 0,14 la reducción informada es 0,00 y `entrada = pre`— así que la advertencia se sostiene por una medición y no por la fórmula.
 >
 > Aparece otra relación que encaja en un corte, `−20·log₁₀(a)`, dentro de 0,48 dB hasta a = 0,15. **No se declara ley**: con otro umbral predice 6,02 donde se midieron 2,98. Lo que falta es el barrido de **umbral × relación**, que da la superficie en vez de dos cortes. Detalle en `docs/compromisos/97-leyes-del-compresor.md`.
@@ -706,12 +735,21 @@ que ve «no probado» supone que la fórmula es lo mejor que hay; con «refutado
 sabe que usarla es peor que no tener nada. Lo encontró una auditoría de
 coherencia.
 
+> **AL DÍA 2026-09-16.** Esta tabla decía «sin probar» de dos fórmulas que estaban
+> medidas desde el 2026-09-13, y «REFUTADA» del umbral, que no lo estaba. Las
+> cuatro filas se corrigen abajo, y **el detalle no se repite acá**: vive en el
+> contrato de cada medición, que es donde se actualiza cuando cambia. Esta tabla
+> dice el estado y adónde ir.
+
 | Parámetro | Rango | Función | Estado |
 |---|---|---|---|
-| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | sin probar |
-| Q | 0,05 … 15 | `0,05·300^V` | sin probar |
-| Umbral de compresor | −90 … +6 dB | lineal | **REFUTADA** por la medición 97 (2026-09-12). El rango de esta fila *es* la fórmula refutada evaluada en 0 y en 1, así que tampoco es un rango medido |
-| Relación de compresor | — | `1/V` | **REFUTADA** en su forma. El **sentido** sí está medido: el crudo 1 no comprime |
+| Frecuencia de ecualizador | 20 Hz … 22 050 Hz | `20·1102,5^V` | **MEDIDA** contra el filtro real, ítem 101. En `RAW_MAP` como `PROBADO` |
+| Q | 0,05 … 15 | `0,05·300^V` | **MEDIDA** contra el filtro real, ítem 101. En `RAW_MAP` como `PROBADO` |
+| Umbral de compresor | pendiente **96,4 dB por unidad de crudo**, medida | lineal | **Su PENDIENTE está medida** ([ítem 118](compromisos/118-el-umbral-del-compresor.md)): 96,4 contra los 96 del cliente, con residuos de 0,04 a 0,15 dB. **Ya NO está refutada** — la 97 refutó la conjunción y el culpable era la relación. Falta su **cero**, que este banco no puede anclar, así que no pasa a `PROBADO` |
+| Relación de compresor | — | `1/V` | **REFUTADA**, y sin reemplazo de una fórmula porque **no hay una relación**: hay una curva que afloja con el nivel ([ítem 118](compromisos/118-el-umbral-del-compresor.md)). Lo que la reemplaza es **una superficie medida** —ocho posiciones por seis excesos, [ítem 119](compromisos/119-la-superficie-del-compresor.md)—, usable en cualquier umbral porque la reducción depende sólo del exceso |
+| Sostenido de la puerta | 1 … 2000 ms | `2000^desqr(V)` | **MEDIDA y exacta** ([ítem 116](compromisos/116-los-tiempos-de-la-puerta.md)): errores de 0,7 a 0,0 ms. En `RAW_MAP` como `PROBADO` |
+| Profundidad de la puerta | 0 … 27 dB de atenuación (crudo 0,55 … 1,00) | `60V − 60` | **MEDIDA y exacta** ([ítem 120](compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md)): 0,0 / 9,0 / 18,0 / 27,0 dB contra lo predicho, al décimo. En `RAW_MAP` como `PROBADO`, acotada ahí porque **más abajo lo que se mide es el piso del banco**, no la puerta |
+| Umbral de la puerta | — | `96V − 90` | **ACOTADA, no medida** ([ítem 120](compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md)). La puerta es un interruptor, así que el escalón de la escalera es la resolución: con escalones de 1,5 dB las pendientes compatibles van de **80 a 100 dB por unidad**, y los 96 están adentro. **No se confirma ni se refuta.** Sigue `INFERIDO` |
 
 ---
 

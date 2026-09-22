@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SafetyEngine } from '../src/engine.ts';
 import { clasificarRuta } from '@vse/mixer-adapter';
-import { contexto, cambioDeInventario } from './helpers.ts';
+import { contexto, cambioDeInventario, cambioDePuntaAPunta } from './helpers.ts';
 
 /**
  * **La guarda que faltaba: qué permite el motor sobre las claves REALES.**
@@ -31,8 +31,11 @@ const INVENTARIO = join(
   'docs', 'inventario', '3.4.8318-ui24-2026-09-11', 'keys-observed.txt',
 );
 
+function claves(): readonly string[] {
+  return readFileSync(INVENTARIO, 'utf8').trim().split('\n');
+}
+
 function permitidas(): readonly string[] {
-  const claves = readFileSync(INVENTARIO, 'utf8').trim().split('\n');
   const motor = new SafetyEngine();
   // **Se usa el arnes que ya existe, no un contexto fabricado acá.** La primera
   // version construía uno a mano con `sessionState: 'CONFIGURANDO_CANALES'` --que
@@ -40,7 +43,7 @@ function permitidas(): readonly string[] {
   // el error de tipos y el conteo salió de un contexto invalido.
   const ctx = contexto({ busesDeSalidaPermitidos: new Set(['m']) });
   const salida: string[] = [];
-  for (const path of claves) {
+  for (const path of claves()) {
     const kind = clasificarRuta(path);
     if (kind === null) continue;
     // El cambio se construye con `cambioDeInventario`, que es la MISMA funcion
@@ -49,6 +52,35 @@ function permitidas(): readonly string[] {
     // segunda dejo a la herramienta contando 858 en vez de 930. El motivo largo
     // esta en el docblock de la funcion.
     const cambio = cambioDeInventario(kind, path);
+    const v = motor.evaluar([cambio], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
+    if (v.permitido) salida.push(path);
+  }
+  return salida;
+}
+
+/**
+ * **El control que distingue «el tope corre» de «la puerta quedo abierta».**
+ *
+ * El censo de arriba propone un movimiento de CERO --el mismo crudo en los dos
+ * extremos-- porque lo que mide es la puerta de permiso. Eso deja una pregunta
+ * sin contestar, y es justo la que ADR-039 vino a cerrar: las 240 rutas que
+ * vuelven, ¿vuelven porque el tope en octavas las acota, o porque el tope dejo
+ * de correr?
+ *
+ * Acá se propone el movimiento MAS GRANDE que el tramo medido de cada ruta
+ * admite --de un extremo al otro del crudo barrido-- con el par crudo/magnitud
+ * atado por la ley, para que lo unico que pueda rechazarlo sea el tope. Si
+ * alguna pasa, el freno de esa hoja no esta conectado.
+ */
+function permitidasDePuntaAPunta(): readonly string[] {
+  const motor = new SafetyEngine();
+  const ctx = contexto({ busesDeSalidaPermitidos: new Set(['m']) });
+  const salida: string[] = [];
+  for (const path of claves()) {
+    const kind = clasificarRuta(path);
+    if (kind === null) continue;
+    const cambio = cambioDePuntaAPunta(kind, path);
+    if (cambio === null) continue;
     const v = motor.evaluar([cambio], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
     if (v.permitido) salida.push(path);
   }
@@ -120,6 +152,41 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // medir mas leyes del ecualizador no las hace escribibles.
   // Ver `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   //
+  // **834 -> 690 el 2026-09-21, y BAJA por exactamente el mismo motivo que la vez
+  // anterior.** Son exactamente -144: las seis rutas que el item 121 midio
+  // --`eq.b2.freq`, `eq.b2.q`, `eq.b3.freq`, `eq.b3.q`, `eq.b4.freq`, `eq.b4.q`--
+  // por veinticuatro canales, todas en CHANNEL_EQ.
+  //
+  // **Y tampoco se cayeron: nunca habian sido escribibles.** Lo que las contaba
+  // era el arnes con su `unidad: 'dB'` para todo, igual que en el salto anterior.
+  // Con la ley medida, el motor las rechaza por INV-004 --sus leyes estan en Hz
+  // y en Q, el tope de `CHANNEL_EQ` esta en dB-- exactamente como rechaza las de
+  // la banda 1 desde el 2026-09-13.
+  //
+  // **Es la prediccion de arriba cumpliendose al pie de la letra**: «mientras eso
+  // siga asi, medir mas leyes del ecualizador no las hace escribibles». Se
+  // midieron, y no las hizo. Lo que desbloquea mover una banda no es otra
+  // medicion: es resolver `un kind, una unidad`.
+  //
+  // **690 -> 930 el 2026-09-21b, y esto SUBE porque ADR-039 se construyo.** Son
+  // exactamente +240, y son las mismas que habian bajado en los dos saltos de
+  // arriba: las ocho hojas de frecuencia y Q de las cuatro bandas (192), mas
+  // `eq.lpf.freq` (24) y `eq.hpf.freq` (24), por veinticuatro canales. Las
+  // cuatro ganancias nunca se cayeron y no se cuentan de nuevo.
+  //
+  // **Lo que cambio no es una medicion sino el modelo**, que es exactamente lo
+  // que este mismo comentario predijo dos parrafos mas arriba. El freno viaja
+  // con la hoja: la unidad de la magnitud sigue siendo la de la ley --Hz y Q--
+  // y se agrega una **escala del movimiento** en la que se cuenta el tope, que
+  // en la frecuencia son octavas y en el Q octavas de ancho de banda. Las dos
+  // guardas que se contradecian --INV-004 pedia la unidad de la familia, `atar`
+  // la de la hoja-- vuelven a pedir lo mismo.
+  //
+  // **Y no vuelven con el freno aflojado**: el test de punta a punta de mas
+  // abajo propone sobre cada una el movimiento mas grande que su tramo medido
+  // admite y las rechaza a las 240. Si el censo diera 930 y ese otro tambien,
+  // el tope no estaria corriendo.
+  //
   // **Este test evito que fueran +1200.** `clasificar-ruta` mete cinco hojas
   // bajo `MONITOR_AUX_SEND` --value, mute, pan, post y postproc-- y abrir el
   // `kind` las abria las cinco. El usuario autorizo el nivel; `post` y
@@ -128,8 +195,8 @@ test('la cuenta de rutas escribibles no se mueve sola', () => {
   // ahora rechaza toda hoja que no sea `.value`.
   const n = permitidas().length;
   strictEqual(
-    n, 834,
-    `el motor permite ${n} rutas del inventario y se esperaban 834. `
+    n, 930,
+    `el motor permite ${n} rutas del inventario y se esperaban 930. `
     + 'Si subio, algo que se rechazaba ahora se escribe.',
   );
 });
@@ -154,14 +221,25 @@ const REPARTO_ESPERADO: ReadonlyMap<string, number> = new Map([
   // tienen ley medida en Hz y en Q, y el tope de este `kind` esta en dB. El motor
   // las rechaza por INV-004 y siempre las habria rechazado: lo que las contaba
   // era el arnes, que declaraba dB para todo.
-  ['CHANNEL_EQ', 432],
+  // -144 mas el 2026-09-21, por lo mismo: el item 121 midio la frecuencia y el Q
+  // de las bandas 2, 3 y 4, o sea seis rutas por canal. Medirlas no las abre;
+  // las saca de la cuenta, que es lo honesto.
+  // **+216 el 2026-09-21b, con ADR-039 construida**: vuelven las ocho hojas de
+  // frecuencia y Q de las cuatro bandas (192) y `eq.lpf.freq` (24), ahora con un
+  // tope que significa algo --octavas y octavas de ancho de banda--. 288 + 216.
+  ['CHANNEL_EQ', 504],
   // ADR-028. Veinticuatro canales por diez auxiliares.
   ['MONITOR_AUX_SEND', 240],
   // Solo los filtros del general, nada de bypass ni de recall de preset.
   ['OUTPUT_EQ', 66],
   // -24 por lo mismo: `eq.hpf.freq` tiene ley medida en Hz y el tope esta en
   // octavas. Queda `eq.hpf.slope`, que no tiene ley y sigue pasando.
-  ['HPF', 24],
+  // **+24 el 2026-09-21b**: `eq.hpf.freq` vuelve, y con ella corre por primera
+  // vez el tope de una octava que el anexo B pidio el 2026-09-07 --el primer
+  // commit del repositorio-- y que nunca pudo compararse con nada.
+  // **La pendiente sigue rigiendose por su familia y no cambio de conducta**:
+  // el arreglo va en la hoja `eq.hpf.freq` justamente para no tocarla.
+  ['HPF', 48],
   // ADR-026: la ganancia del previo, solo en configuracion de canales.
   ['PREAMP_GAIN', 24],
   ['CHANNEL_FADER', 24],
@@ -183,7 +261,87 @@ test('el reparto de lo escribible por categoria es exactamente el declarado', ()
 
   // Y que la suma sea el total que el otro test vigila: si los dos numeros se
   // separan, uno de los dos se actualizo sin mirar.
-  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 834);
+  strictEqual([...REPARTO_ESPERADO.values()].reduce((a, b) => a + b, 0), 930);
+});
+
+test('lo unico que ADR-039 abrio son la frecuencia y el ancho del ecualizador', () => {
+  // **La cuenta sola no alcanza**, igual que con ADR-027 y ADR-028: si el salto
+  // trajera de contrabando otra familia y quitara la misma cantidad de otra, el
+  // total cuadraria. Esto mira QUE entro.
+  const p = permitidas();
+  const bandas = p.filter((x) => /^i\.\d+\.eq\.b[1-4]\.(freq|q)$/.test(x));
+  strictEqual(bandas.length, 192, 'ocho hojas por canal: freq y q de las cuatro bandas');
+  const lpf = p.filter((x) => /^i\.\d+\.eq\.lpf\.freq$/.test(x));
+  strictEqual(lpf.length, 24);
+  const hpf = p.filter((x) => /^i\.\d+\.eq\.hpf\.freq$/.test(x));
+  strictEqual(hpf.length, 24);
+
+  // Y las cuatro ganancias, que NUNCA se cayeron: estan desde antes y no se
+  // cuentan como parte de las 240.
+  const ganancias = p.filter((x) => /^i\.\d+\.eq\.b[1-4]\.gain$/.test(x));
+  strictEqual(ganancias.length, 96);
+
+  // **Lo que ADR-039 NO abrio y comparte prefijo.** El compresor tiene el mismo
+  // defecto de forma --cinco hojas en tres monedas-- y la escala del movimiento
+  // de su relacion, que no tiene unidad, es una decision propia que sigue
+  // pendiente. La puerta no se retoca: medido en el aparato del usuario.
+  deepStrictEqual(p.filter((x) => /^i\.\d+\.(dyn|comp|gate|deesser)\./.test(x)), [],
+    'el compresor y la puerta no son de esta pieza');
+
+  // **La banda 5 pasa, y pasaba antes: no es de ADR-039 y no es un permiso
+  // nuevo.** Sus tres hojas no tienen ley medida, asi que el arnes les declara
+  // la unidad de la familia --dB-- y el tope de 4 dB las deja pasar, igual que
+  // a toda hoja sin ley. Lo que se midio de la banda 5 es que **no mueve el
+  // audio**: con el tono presente y 80,5 dB sobre el piso, barrer su crudo de 0
+  // a 1 movio 0,00 dB sobre 39 puntos, y por eso no tiene entrada en `RAW_MAP`.
+  // Se fija la cuenta para que el dia que alguien le agregue una ley esto lo
+  // diga en vez de esconderlo dentro del total.
+  strictEqual(p.filter((x) => /^i\.\d+\.eq\.b5\./.test(x)).length, 72,
+    'tres hojas por canal, sin ley medida y sin relacion con ADR-039');
+});
+
+/**
+ * **Las 240 vuelven con el freno puesto, no con la puerta abierta.**
+ *
+ * Es el control positivo del censo: con el movimiento mas grande que su tramo
+ * medido admite, **ninguna** ruta con ley medida pasa. Un censo de 930 con esto
+ * tambien en 930 significaria que el tope de la hoja no esta corriendo.
+ */
+test('ADR-039: de punta a punta del tramo medido no pasa ninguna', () => {
+  const pasan = permitidasDePuntaAPunta();
+  deepStrictEqual(pasan, [], 'el tramo entero de una hoja medida no es un paso');
+
+  // **Centinela**: que el barrido de arriba haya mirado algo. Sin esto celebra
+  // el conjunto vacio si `cambioDePuntaAPunta` deja de construir cambios --por
+  // ejemplo si `entrada()` vuelve a no resolver rutas concretas, que es
+  // exactamente lo que paso el 2026-09-13--.
+  let conLey = 0;
+  for (const path of claves()) {
+    const kind = clasificarRuta(path);
+    if (kind !== null && cambioDePuntaAPunta(kind, path) !== null) conLey++;
+  }
+  strictEqual(conLey, 965, 'rutas del inventario con ley medida y clase conocida');
+
+  // **Y el rechazo tiene que ser POR EL TOPE sobre las 240 que ADR-039 abrio**,
+  // no por otra regla que de el mismo veredicto. Es la diferencia entre «el
+  // freno en octavas corre» y «esto se rechaza por algun otro motivo».
+  const DE_LA_039 = /^i\.\d+\.eq\.(b[1-4]\.(freq|q)|(h|l)pf\.freq)$/;
+  const motor = new SafetyEngine();
+  const ctx = contexto({ busesDeSalidaPermitidos: new Set(['m']) });
+  let mirados = 0;
+  let porElTope = 0;
+  for (const path of claves()) {
+    if (!DE_LA_039.test(path)) continue;
+    const kind = clasificarRuta(path);
+    if (kind === null) continue;
+    const cambio = cambioDePuntaAPunta(kind, path);
+    if (cambio === null) continue;
+    mirados++;
+    const v = motor.evaluar([cambio], ctx, { conexionPermiteEscribir: true, snapshotVerificado: true });
+    if (!v.permitido && v.rechazos.some((r) => r.codigo === 'DELTA_EXCEDIDO')) porElTope++;
+  }
+  strictEqual(mirados, 240, 'las mismas 240 que el censo recupero');
+  strictEqual(porElTope, 240, 'y las 240 se rechazan por el tope en octavas');
 });
 
 test('lo unico que ADR-028 abrio son los niveles de envio a monitor', () => {

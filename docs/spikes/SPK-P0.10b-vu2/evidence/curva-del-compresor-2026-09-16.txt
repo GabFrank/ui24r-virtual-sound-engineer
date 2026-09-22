@@ -1,0 +1,91 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T23:08:24.431Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/curva-del-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/curva-del-compresor.ts sha256:570325e4619d2db8
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== 117 — LA CURVA DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   escalera de 12 escalones: -48 a -15 dBFS de 3 en 3, 1.2 s cada uno
+   se mueve LA FUENTE, no el umbral (item 98). Umbral fijo en 0.35.
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.ratio          1
+   i.9.dyn.threshold      0.875
+   i.9.dyn.bypass         0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — LA ESCALERA CON EL COMPRESOR PUENTEADO ===
+   entrada  -48 dBFS -> salida   -77.49 dBFS
+   entrada  -45 dBFS -> salida   -74.49 dBFS
+   entrada  -42 dBFS -> salida   -71.51 dBFS
+   entrada  -39 dBFS -> salida   -68.51 dBFS
+   entrada  -36 dBFS -> salida   -65.50 dBFS
+   entrada  -33 dBFS -> salida   -62.52 dBFS
+   entrada  -30 dBFS -> salida   -59.54 dBFS
+   entrada  -27 dBFS -> salida   -56.54 dBFS
+   entrada  -24 dBFS -> salida   -53.55 dBFS
+   entrada  -21 dBFS -> salida   -50.56 dBFS
+   entrada  -18 dBFS -> salida   -47.57 dBFS
+   entrada  -15 dBFS -> salida   -44.59 dBFS
+   pendiente 0.9969 (tiene que ser 1,000 +- 0.02)
+   PASA: la cadena es lineal, asi que lo que se doble despues es del compresor.
+
+C1 el escalon mas bajo llega: -77.5 dBFS
+
+=== LA CURVA, RELACION POR RELACION ===
+  crudo | rodilla en | pend. abajo | pend. arriba | RELACION medida | el cliente dice
+   1.00 |     -39 dBFS |       0.998 |        0.996 |       1.00:1 |     1.0:1
+         entrada->salida: -48:-77.5  -45:-74.5  -42:-71.5  -39:-68.5  -36:-65.5  -33:-62.5  -30:-59.5  -27:-56.5  -24:-53.5  -21:-50.5  -18:-47.6  -15:-44.6
+   0.75 |     -27 dBFS |       0.998 |        0.839 |       1.19:1 |     1.3:1
+         entrada->salida: -48:-77.5  -45:-74.5  -42:-71.5  -39:-68.5  -36:-65.5  -33:-62.5  -30:-59.5  -27:-56.6  -24:-53.7  -21:-51.3  -18:-48.8  -15:-46.2
+   0.50 |     -27 dBFS |       0.999 |        0.642 |       1.56:1 |     2.0:1
+         entrada->salida: -48:-77.6  -45:-74.5  -42:-71.6  -39:-68.5  -36:-65.5  -33:-62.6  -30:-59.6  -27:-56.6  -24:-53.9  -21:-52.2  -18:-50.3  -15:-48.1
+   0.35 |     -27 dBFS |       0.999 |        0.495 |       2.02:1 |     2.9:1
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.0  -21:-52.7  -18:-51.3  -15:-49.5
+   0.25 |     -27 dBFS |       1.001 |        0.379 |       2.64:1 |     4.0:1
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.1  -21:-53.1  -18:-52.0  -15:-50.6
+   0.15 |     -27 dBFS |       1.000 |        0.247 |       4.05:1 |     6.7:1
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.1  -21:-53.5  -18:-52.8  -15:-51.9
+   0.10 |     -27 dBFS |       1.000 |        0.171 |       5.84:1 |    10.0:1
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.2  -21:-53.7  -18:-53.2  -15:-52.6
+   0.05 |     -27 dBFS |       1.000 |        0.090 |      11.08:1 |    20.0:1
+         entrada->salida: -48:-77.6  -45:-74.6  -42:-71.6  -39:-68.6  -36:-65.6  -33:-62.6  -30:-59.6  -27:-56.6  -24:-54.2  -21:-53.9  -18:-53.7  -15:-53.4
+
+C3 el compresor comprime: PASA (alguna pendiente por debajo de 0.9)
+C4 la rodilla cae dentro de la escalera: PASA (al menos 3 escalones de cada lado)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   OK   m.afs.enabled          esperado 1  leido 1
+   OK   m.dyn.bypass           esperado 0  leido 0
+   OK   i.9.dyn.ratio          esperado 1  leido 1
+   OK   i.9.dyn.threshold      esperado 0.875  leido 0.875
+   OK   i.9.dyn.bypass         esperado 0  leido 0
+   OK   i.9.dyn.attack         esperado 0.34375  leido 0.34375
+   OK   i.9.dyn.release        esperado 0.4887695312  leido 0.4887695312
+   OK   i.9.dyn.outgain        esperado 0.7186045126  leido 0.7186045126
+   OK   i.9.gate.enabled       esperado 1  leido 1
+   OK   i.9.deesser.enabled    esperado 0  leido 0
+   OK   i.9.mix                esperado 0.7451777309  leido 0.7451777309
+
+=== ALCANCE ===
+   Un tono de 4000 Hz, UN umbral (0.35), un canal, un dia.
+   Nada de la ley del umbral: se fijo uno y se comprobo que la rodilla
+   cayera dentro. Nada de la rodilla blanda. Nada de los tiempos.
+
+
+# salida del proceso: 0

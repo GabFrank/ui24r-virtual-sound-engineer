@@ -1,0 +1,63 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T04:03:01.988Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/llega-el-tono.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/llega-el-tono.ts sha256:8ef864e5db549235
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== ¿LLEGA EL TONO? — canal 10 (i.9) en 192.168.0.78 ===
+
+   supresor del general: 1
+   fader del canal:      0.7451777309  (NO se toca)
+   mute del canal:       0  (NO se toca)
+   filtros del supresor: 12
+
+=== ANTES DEL TONO ===
+   en silencio               136 cuadros =  22.7/s | pico -69.3 dB | 14 valor(es) distinto(s), 15 repetido(s) seguido(s)
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== CON EL TONO SONANDO ===
+   con tono                   11 cuadros =   1.8/s | pico -22.7 dB | 1 valor(es) distinto(s), 10 repetido(s) seguido(s)
+
+=== DESPUES DEL TONO ===
+   en silencio otra vez      132 cuadros =  22.0/s | pico -71.7 dB | 13 valor(es) distinto(s), 10 repetido(s) seguido(s)
+
+=== VEREDICTO ===
+   el bin de 1000 Hz que vuelve por el lazo: -19.74 dBFS
+   el ruido de ese bin:                   -125.14 dBFS
+   margen sobre el ruido:                 105.4 dB
+
+   el medidor de la consola subio 46.7 dB con el tono
+   EL TONO ENTRA A LA CONSOLA. Lo dice su propio medidor.
+   Y VUELVE por el lazo con margen de sobra.
+
+   cadencia VU2: 22.7/s en silencio, 1.8/s con tono, 22.0/s despues
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   m.afs.enabled  esperado 1  leido 1
+   filtros del supresor: 12 antes, 12 despues
+   Sin cambios: el supresor no planto nada.
+
+
+# salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-16. NO ES OTRA CORRIDA.
+# divergencia reconocida: 4ed1765a0a3cf2b3
+================================================================================
+
+ANOTACION DEL 2026-09-16 (papelito de restauracion). El guion cambio: ahora deja
+un registro en disco de lo que escribio, ANTES de escribirlo, para que una
+corrida que muera de golpe --SIGKILL, corte de energia-- se pueda deshacer
+despues. `conRestauracion` declaraba ese caso como «no hay vuelta».
+
+POR QUE NO TOCA NADA DE LO MEDIDO. El agregado escribe y borra un archivo local;
+no toca la consola, ni el estimulo, ni la captura, ni ningun umbral ni veredicto.
+La secuencia de escrituras a la consola y las funciones que producen los numeros
+de este archivo son identicas antes y despues. Remedir daria lo mismo, y para las
+corridas que fallaron borraria el registro de por que fallaron.

@@ -16,6 +16,7 @@ Sesión
        ├─ Avanzar de estado según la tabla de transiciones del dominio
        ├─ Canales ───────── qué entrada es qué instrumento
        ├─ Ganancia ──────── cuánto margen tiene cada canal
+       ├─ Monitores ─────── la cuña de cada músico: verla, subirla escuchando y fijarla
        └─ Cerrar ────────── irreversible, con confirmación
 Historial
   └─ Detalle ───────────── solo lectura, exportable
@@ -96,8 +97,19 @@ reproduce audio.
 pantalla de ganancia aplica la ganancia de entrada y la verifica (ADR-026). El
 motor además admite el silencio de canal para diagnosticar (ADR-027) y el nivel
 del envío a monitor (ADR-028), pero **ninguna pantalla los dispara todavía**:
-del envío hay servicio escrito y probado sin llamador, y del silencio no hay
-camino de producción.
+del envío hay servicio escrito y probado sin llamador --la pantalla de Monitores,
+desde el 2026-09-20, **lee** la cuña pero todavía no la mueve-- y del silencio no
+hay camino de producción.
+
+**Lo que la pantalla de Monitores hace desde el 2026-09-20**: muestra los 32
+caminos que entran a una cuña, sube de a un envío por vez encadenando subir,
+escuchar y anotar, y marca el nivel como establecido. ADR-034 queda implementada.
+
+**Y lo que no se pudo probar todavía, dicho con todas las letras:** la escritura
+contra el aparato. El diario y la tabla de mediciones van directo a SQLite de
+Capacitor, o sea **sólo Android**; en el navegador la cadena se frena antes de
+escribir. Se comprobó contra la consola del usuario el 2026-09-20 --ninguna clave
+quedó tocada-- así que la rampa sólo se puede ejercitar en la tablet.
 
 ## Cómo se verifica
 

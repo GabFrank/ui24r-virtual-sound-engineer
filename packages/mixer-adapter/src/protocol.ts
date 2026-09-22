@@ -538,6 +538,27 @@ export interface CamposDeCanalVu {
   readonly posicionesDinamicoEntrada?: readonly number[];
   /** `dinamicoSalida`, el byte +4. */
   readonly posicionesDinamicoSalida?: readonly number[];
+  /**
+   * Los bloques de **auxiliar** de la cola, cinco bytes cada uno.
+   *
+   * **Antes esta función no podía armarlos, y eso dejaba sin ejercitar la mitad
+   * de la trama.** La cabecera llevaba cero en el byte de los auxiliares, así que
+   * cualquier lector de la cola —el que la aplicación necesita para saber si la
+   * cuña de un músico sonó— sólo se podía probar contra capturas del aparato
+   * pegadas a mano. Es la misma carencia que tenían los seis bytes iguales del
+   * canal, y se tapa igual.
+   *
+   * `posiciones` es lo que **sale hacia la cuña**, el byte `+1`.
+   * `posicionesAntesDelFader` es el `+0`, y por omisión iguala al otro: es lo que
+   * hace el aparato con el fader del auxiliar en la unidad de ganancia, medido el
+   * 2026-09-13. Poder separarlos es el punto — una cuña que recibe señal y no
+   * suena es exactamente el caso que hay que poder armar.
+   */
+  readonly auxiliares?: {
+    readonly posiciones: readonly number[];
+    readonly posicionesAntesDelFader?: readonly number[];
+    readonly reduccionesDb?: readonly number[];
+  };
 }
 
 export function codificarVu(
@@ -548,7 +569,11 @@ export function codificarVu(
 ): string {
   const byteDe = (p: number): number =>
     Math.max(0, Math.min(255, Math.round(Math.max(0, p) / VU_ESCALA)));
-  const bytes: number[] = [posiciones.length, 0, 0, 0, 0, 0, 0, 0];
+  const aux = campos.auxiliares;
+  // La cabecera declara las cuentas de cada sección y el lector avanza con
+  // ellas. El byte 4 son los auxiliares: si no se declara, la cola no existe y
+  // quien la lea devuelve lista vacía, que es lo que pasaba hasta ahora.
+  const bytes: number[] = [posiciones.length, 0, 0, 0, aux?.posiciones.length ?? 0, 0, 0, 0];
   for (let i = 0; i < posiciones.length; i++) {
     const p = posiciones[i]!;
     bytes.push(
@@ -558,6 +583,24 @@ export function codificarVu(
       byteDe(campos.posicionesDinamicoEntrada?.[i] ?? 0),
       byteDe(campos.posicionesDinamicoSalida?.[i] ?? 0),
       byteDeReduccion(reduccionesDb[i] ?? 0),
+    );
+  }
+  // **Los auxiliares van justo después de las entradas porque las tres secciones
+  // del medio se declaran en cero.** Reproductor, subgrupos y efectos tienen su
+  // propio paso —6, 7 y 7— y armarlos pediría inventar sus bytes; con la cuenta
+  // en cero el lector no los busca y la cola queda alineada igual. El día que
+  // alguien necesite un subgrupo, se agrega acá y la cabecera lo dice.
+  for (let i = 0; i < (aux?.posiciones.length ?? 0); i++) {
+    const p = aux!.posiciones[i]!;
+    bytes.push(
+      byteDe(aux!.posicionesAntesDelFader?.[i] ?? p),
+      byteDe(p),
+      // Los bytes +2 y +3 del bloque mono no los lee nadie todavía. Van en cero
+      // y no en el valor del nivel: repetirlo haría indistinguible un lector que
+      // se corriera de columna, que es el defecto que esta función ya tuvo.
+      0,
+      0,
+      byteDeReduccion(aux!.reduccionesDb?.[i] ?? 0),
     );
   }
   return bytesABase64(bytes);

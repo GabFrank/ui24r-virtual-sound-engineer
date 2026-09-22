@@ -57,8 +57,15 @@ test('un indice de familia desconocida falla cerrado, no adivina', () => {
   // Nadie acotó cuántos `x` hay, así que no se canoniza: dar una conversión para
   // una ruta que nadie acotó es lo que la auditoría de la lista blanca castigó.
   assert.equal(canonizarRuta('x.3.eq.b1.freq'), undefined);
-  assert.equal(canonizarRuta('a.4.mix'), undefined);
   assert.equal(canonizarRuta('f.1.aux.2.value'), undefined);
+  // **`a.4.mix` estaba acá y se sacó el 2026-09-16, no por comodidad.** La familia
+  // `a` --el bus auxiliar como sujeto-- dejó de ser desconocida: tiene el mismo
+  // número de auxiliares que ya acotaba `aux`, y el ítem 109 midió la ley de su
+  // ecualizador gráfico, así que hacía falta poder direccionarla. Lo que este test
+  // protege no es que `a` sea desconocida, sino que **lo desconocido falle
+  // cerrado**, y eso sigue comprobándose con `x` y con `f`.
+  assert.equal(canonizarRuta('a.4.mix'), 'a.M.mix');
+  assert.equal(canonizarRuta('a.10.mix'), undefined, 'y sigue acotada: no hay auxiliar 11');
 });
 
 test('lo que no tiene indices pasa igual, y `b1` no es un indice', () => {

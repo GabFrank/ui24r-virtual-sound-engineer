@@ -1,10 +1,9 @@
 # ADR-029 — Bajar el auxiliar y el general para cazar un acople
 
 **Fecha:** 2026-09-13
-**Estado:** **parcial y sin implementar.** La mitad del auxiliar queda decidida;
-la del general queda **bloqueada esperando una decisión del usuario**, y se dice
-cuál. **Ninguna de las dos cambió el código todavía**, y al final se explica qué
-haría falta.
+**Estado:** **completa y sin implementar.** Las dos mitades están decididas: la
+del auxiliar el 2026-09-12 y la del general el **2026-09-15**. **Ninguna de las
+dos cambió el código todavía**, y al final se explica qué haría falta.
 **Origen:** **Decisión del usuario**, eligiendo entre opciones el 2026-09-12.
 Textual en
 [`docs/backlog/decision-bajar-buses-para-cazar-acoples.md`](../backlog/decision-bajar-buses-para-cazar-acoples.md).
@@ -98,10 +97,67 @@ de haberlo bajado para cazar un acople?**
 4. **No la toca en absoluto**: sólo el auxiliar, y el general se lo deja al
    usuario aunque el acople se escuche en la sala.
 
-Mientras esto no se responda, `MASTER_FADER` sigue `USER_ONLY` y no escribible, y
-este ADR queda en **parcial**. Registrar la mitad que sí está decidida es mejor
-que no registrar nada: la decisión del usuario sobre el auxiliar es del 2026-09-12
-y llevaba un día sin ADR.
+### La respuesta: **1 — hasta donde estaba, igual que el auxiliar**
+
+Decisión del usuario, 2026-09-15. El general recibe el mismo trato que el
+auxiliar: la aplicación **sólo baja**, y el techo para volver a subir es **dónde
+estaba antes de que ella lo bajara**. Subir sigue siendo del usuario, «de a poco
+buscando el acople nuevamente».
+
+**Y hay que corregir el argumento con el que este ADR dudaba**, porque tenía la
+acústica al revés. Decía que «un general que estaba bien con la sala vacía no está
+bien con la sala llena», dando por sentado que la sala llena pide **menos** nivel.
+Una sala llena absorbe más, así que su tiempo de reverberación **baja**, y con él
+baja la energía que vuelve al micrófono: el público **aumenta** la ganancia
+disponible antes del acople, no la reduce. Lo que sí sube con la sala llena es el
+**ruido del público**, que pide más nivel, no menos.
+
+O sea que el motivo real para que el usuario decida no era «el nivel de antes
+quedó alto»: es que **cuánto nivel hace falta depende de la sala y del show, y eso
+la aplicación no lo sabe**. La decisión no cambia; el razonamiento sí, y queda
+escrito porque un ADR que decide bien por el motivo equivocado vuelve a
+equivocarse la próxima vez.
+
+## Trabajo previo
+
+Antes de proponerle estas cuatro opciones al usuario **no se miró qué hace nadie
+más**, y él lo señaló: *«¿no habíamos quedado en que nada iba a ser implementado
+antes que se investigue en proyectos existentes?»*. De ahí salió la regla de
+`vse-disciplina` §7 y su guarda. Lo que apareció al mirar:
+
+- **El supresor de la propia consola ya contesta esta pregunta.** La Ui24R trae
+  dbx AFS, y sus filtros en modo **LIVE** se levantan solos: el
+  [*Live Filter Lift*](https://help.harmanpro.com/afs-how-it-works) «quita las
+  asignaciones de filtro que ya no hacen falta», y los LIVE se reinician solos al
+  terminar la función. O sea que la herramienta de acoples que ya está adentro del
+  aparato **vuelve sola al estado sin intervención**, que es la opción 1.
+  *(Diferencia que importa: el AFS actúa por banda estrecha y vuelve **cuando la
+  condición desapareció**, no por reloj. Acá el que comprueba que el acople se fue
+  es el usuario subiendo de a poco, que es su método.)*
+- **Los *duckers* de cualquier consola** restauran el nivel original completo
+  cuando el disparador se va
+  ([Rane, nota 155](https://www.ranecommercial.com/legacy/note155.html)). Un
+  atenuador automático que **no** vuelve es la excepción, no la regla.
+- **Los automixers tipo Dugan** son continuos: reparten ganancia y la devuelven
+  sola. No dejan nada abajo.
+- **AutoMix** (`automix.live`), el competidor más cercano, tiene un botón «Auto»
+  que **baja las bandas que acoplan** —ecualización, no fader— y su propia
+  documentación advierte que no se use como destructor de acoples con música
+  sonando. No resuelve esta pregunta: la esquiva bajando otra cosa.
+- **Mixing Station** tiene [*Re-Gain*](https://mixingstation.app/ms-docs/re-gain/),
+  que no es esto: compensa un cambio de ganancia moviendo envíos y faderes en
+  sentido contrario para que los monitores no se muevan. Se cita porque el nombre
+  invita a confundirlo.
+- **Lo que nadie hace** es dejar un fader abajo y no decir hasta dónde puede
+  volver. Eso refuerza la opción 4 como la peor: no tocar nada es coherente, pero
+  tocar y no declarar el techo no tiene precedente.
+
+Y la literatura respalda que el techo sea **un número guardado y no una
+estimación**: la ganancia antes del acople depende de la ganancia **total** del
+sistema y del lazo acústico
+([*Gain before feedback*](https://en.wikipedia.org/wiki/Gain_before_feedback)),
+así que la aplicación no puede calcular «hasta dónde es seguro». Lo único que sabe
+con certeza es dónde estaba, y por eso ése es el techo.
 
 ## Lo que falta para implementarlo, y por qué no lo hice todavía
 
@@ -114,6 +170,12 @@ la clasifica bajo `MONITOR_AUX_SEND` y su lista blanca sólo deja pasar
    meterla en `MONITOR_AUX_SEND` le daría los límites del envío. Agregar un
    `ParameterKind` toca el dominio, el clasificador y los recorridos que cuentan
    rutas escribibles; es un cambio de modelo y va con el usuario mirando.
+
+   **Y ahora son cuatro cosas, no tres**, porque la mitad del general ya está
+   decidida: `MASTER_FADER` deja de ser `USER_ONLY` para volverse «sólo baja, con
+   techo en dónde estaba», que es el mismo contrato que el envío a monitor. El
+   estado por ruta que hace cumplir ese techo ya existe en el motor --es el que
+   indexa por cadena cruda, y por eso la forma canónica importa--.
 2. **La entrada en la tabla de conversión**, con el tramo medido por el ítem 106.
    No se agregó a propósito: `rutasProbadas()` está documentada como «las únicas
    escribibles por vía cruda», y agregarla mientras la ruta está cerrada haría que

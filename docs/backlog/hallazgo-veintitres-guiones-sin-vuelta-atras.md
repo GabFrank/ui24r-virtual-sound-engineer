@@ -96,3 +96,27 @@ que no se pueden probar sin la consola. Sigue en el trinquete.
 **El orden de prioridad es por probabilidad de volver a correrse**, no por
 tamaño: los `p0-10b-vu/ley-*.ts` son los que alguien va a querer repetir, y son
 los que dejan escrito un fader o una ganancia del usuario.
+
+---
+
+## Una tercera guarda, del 2026-09-16: que la vuelta atrás esté COMPLETA
+
+Esta guarda y `escribir-sin-leer` son estructurales, y un guion puede cumplir las
+dos y **aun así** dejarle una clave escrita al usuario: basta con que la lista de
+restauración esté incompleta. Leer la clave y tener `try/finally` no sirve si la
+clave no está en lo que el `finally` devuelve.
+
+**Pasó.** `ley-ganancia-del-eq.ts` empezó a escribir `i.N.eq.bK.freq` y no se
+agregó a `PREVIO`; las bandas 1, 3 y 4 del canal 10 quedaron en 1000 Hz. Las dos
+guardas en verde.
+
+`restaurar-lo-que-se-escribe.test.ts` cierra eso: toma el cuerpo de la vuelta
+atrás y exige que nombre toda clave escrita.
+
+**Su construcción dejó un hallazgo sobre las guardas de este repositorio.** La
+primera versión no cazaba su propio caso motivador, porque la escritura pasaba
+por una **cadena de nombres** —`const A = B`— y el detector sólo resolvía nombres
+que apuntaran directo a un literal. **`escribir-sin-leer` tiene el mismo punto
+ciego** y sigue teniéndolo: su expresión exige un literal inmediatamente después
+de `codificarSetd(`, así que cualquier escritura por variable le es invisible.
+Queda anotado; no se arregló hoy para no mezclar dos cosas en un commit.

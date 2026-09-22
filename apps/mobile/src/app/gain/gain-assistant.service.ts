@@ -7,6 +7,12 @@ import { DINAMICA_SIN_LEER, type ChannelAssignment, type DinamicaDeCanal } from 
 import { Logger } from '../core/logger';
 import { MixerService } from '../core/mixer.service';
 import { BandService } from '../core/band.service';
+import { MedicionesService } from '../core/mediciones.service';
+import { SesionService } from '../core/sesion.service';
+import { ConnectionStateService } from '../core/connection.state';
+import {
+  medicionDeLaCaptura, INTERVALO_DE_MUESTREO_MS, DURACION_CAPTURA_S, CUENTA_REGRESIVA_S,
+} from '../core/medicion-de-la-captura.ts';
 
 export type EstadoCaptura = 'INACTIVA' | 'CUENTA_REGRESIVA' | 'CAPTURANDO' | 'LISTA';
 
@@ -16,11 +22,48 @@ export interface ResultadoCaptura {
   readonly analisis: AnalisisDeGanancia;
   readonly propuesta: PropuestaDeGanancia;
   readonly capturadaEl: string;
+  /**
+   * La medición que quedó guardada de esta ventana, si quedó.
+   *
+   * **Es lo que permite decirle al motor «acá se escuchó».** Quien aplica un
+   * cambio anota este identificador como `medicionPosteriorId` de su transacción,
+   * y sin eso el motor rechaza el ajuste siguiente sobre el mismo canal aunque el
+   * músico haya tocado.
+   *
+   * `null` cuando no había sesión abierta donde guardarla —la tabla se lee por
+   * sesión y una fila huérfana no la encontraría nadie— o cuando la escritura
+   * falló. **Medir sigue funcionando en los dos casos**: la pantalla de ganancia
+   * también sirve para mirar cómo está un canal sin sesión, y perder eso por no
+   * poder guardar sería cambiar una función por un registro.
+   */
+  readonly medicionId: string | null;
+  /**
+   * Cuántos segundos de la ventana **no se pudieron oír**.
+   *
+   * Se llamaba `segundosSinConsola` y contaba sólo la consola caída; una auditoría
+   * midió el 2026-09-19 que el tic perdido con la consola arriba --porque no
+   * publicó el canal-- no lo contaba nadie.
+   *
+   * **Es lo que separa «no te escuché» de «no tocaste».** Los instantes con el
+   * enlace caído no se registran --ver `recolectar`--, así que salen solos de la
+   * cuenta de lo que sonó; sin este número, una captura recortada por un corte de
+   * red se leería como un canal que entró poco, que lleva al consejo contrario.
+   *
+   * Cero es el caso normal. Que sea mayor que cero **no invalida la captura**: la
+   * decisión del usuario del 2026-09-19 fue descontar lo que no se oyó y seguir.
+   */
+  readonly segundosNoOidos: number;
 }
 
-/** Duración de la ventana de captura, en segundos. */
-export const DURACION_CAPTURA_S = 18;
-const CUENTA_REGRESIVA_S = 3;
+/**
+ * Se reexporta porque la pantalla de ganancia la lee de acá desde antes.
+ *
+ * **La definición se mudó a `medicion-de-la-captura.ts`** el 2026-09-19, cuando
+ * el envío a monitor empezó a escuchar también: una duración de ventana definida
+ * dentro del módulo de una herramienta y copiada en la otra es exactamente cómo
+ * una constante y su copia se separan.
+ */
+export { DURACION_CAPTURA_S };
 
 /**
  * Conduce la captura de una ventana por canal y produce la recomendación.
@@ -34,6 +77,9 @@ export class GainAssistantService {
   private readonly log = inject(Logger);
   private readonly mixer = inject(MixerService);
   private readonly banda = inject(BandService);
+  private readonly mediciones = inject(MedicionesService);
+  private readonly sesion = inject(SesionService);
+  private readonly conexion = inject(ConnectionStateService);
 
   readonly estado = signal<EstadoCaptura>('INACTIVA');
   readonly segundosRestantes = signal(0);
@@ -45,8 +91,10 @@ export class GainAssistantService {
   );
 
   private muestras: MuestraVu[] = [];
+  /** Cuántos tics no se pudieron oír, por lo que sea. Ver `recolectar`. */
+  private instantesNoOidos = 0;
   private temporizador: ReturnType<typeof setInterval> | null = null;
-  /** El muestreo de niveles, cada 50 ms. Vive aparte de la cuenta atrás. */
+  /** El muestreo de niveles. Vive aparte de la cuenta atrás. */
   private muestreo: ReturnType<typeof setInterval> | null = null;
   /** Para poder terminar la cuenta atrás al cancelar, y no dejarla colgada. */
   private resolverCuenta: (() => void) | null = null;
@@ -67,6 +115,7 @@ export class GainAssistantService {
     const indice = asignacion.ui24rInputIndex;
     this.canalEnCurso.set(indice);
     this.muestras = [];
+    this.instantesNoOidos = 0;
 
     await this.contarRegresiva();
 
@@ -75,9 +124,48 @@ export class GainAssistantService {
       canal: indice, duracionS: DURACION_CAPTURA_S,
     });
 
+    // **Cuándo EMPIEZA la ventana, y por eso se toma acá y no al terminar.**
+    // `Measurement.timestamp` es el principio de la captura y el motor hace
+    // `timestamp + duracionS` para saber si la escucha terminó. Con la fecha del
+    // final, esa suma cae dieciocho segundos más adelante y la escucha **nunca**
+    // se da por terminada: el ajuste siguiente se rechazaría para siempre.
+    // `capturadaEl`, que ya existía, se toma al final y es otra cosa.
+    //
+    // Sale de `toISOString()`, así que trae la `Z`: una fecha sin huso la rechaza
+    // el motor en vez de adivinarle una, y con razón —medido, una medición de un
+    // minuto antes de la escritura quedaba tres horas después—.
+    //
+    // **Queda antes de la primera muestra, y NO hay cota por arriba.** La primera
+    // redacción decía «hasta 50 ms», «cuatro órdenes de magnitud menos que los
+    // diez segundos» y «corre hacia el lado más seguro»: las tres eran falsas, y
+    // las corrigió una auditoría el 2026-09-19. El muestreo sólo empuja si la
+    // consola ya publicó ese canal, así que la primera muestra puede llegar
+    // arbitrariamente más tarde; 10 s contra 50 ms son 200 veces, o sea dos
+    // órdenes y pico, no cuatro; y adelantar el inicio **afloja** la condición de
+    // que la ventana haya terminado, aunque endurece la de que la medición no sea
+    // anterior a la escritura.
+    //
+    // Sigue siendo despreciable contra los diez segundos, y ahora eso está dicho
+    // sin adornarlo: es un desfase chico de dirección mixta, no un margen seguro.
+    const empezoEl = new Date().toISOString();
+
     await this.recolectar();
 
-    const analisis = analizarVentana(this.muestras);
+    // **La ventana se toma por referencia una sola vez.** El motivo que estaba
+    // escrito acá --que `cancelar()` podía entrar en el medio y dejar que se
+    // analizara una cosa y se guardara otra-- **describía algo que no puede
+    // pasar**, y citaba mal su precedente: entre este análisis y la lectura de las
+    // muestras adentro de `medicionDeLaCaptura` no hay ningún `await`, así que no
+    // hay dónde entrar; y `cancelar()` **reasigna** el arreglo en vez de mutarlo,
+    // de modo que una referencia local no lo habría salvado de nada. Lo cazó una
+    // auditoría de fidelidad el 2026-09-19.
+    //
+    // Queda porque nombrar la ventana una vez es más claro que mirar dos veces un
+    // campo mutable, no porque tape un peligro vivo. Justificar una decisión
+    // inocua con un peligro inventado es la forma de defecto que este repositorio
+    // persigue, y por eso se corrige en vez de borrarse.
+    const muestras = this.muestras;
+    const analisis = analizarVentana(muestras);
     const perfil = this.banda.perfilDe(asignacion);
     const canal = this.mixer.canales().find((c) => c.indice === indice);
     // `null` cuando la consola todavia no dijo la ganancia: proponer a partir
@@ -111,6 +199,8 @@ export class GainAssistantService {
       analisis,
       propuesta,
       capturadaEl: new Date().toISOString(),
+      medicionId: await this.guardarLaEscucha(empezoEl, asignacion, analisis, muestras),
+      segundosNoOidos: (this.instantesNoOidos * INTERVALO_DE_MUESTREO_MS) / 1000,
     };
 
     this.resultados.update((prev) => [
@@ -134,6 +224,97 @@ export class GainAssistantService {
     });
 
     return resultado;
+  }
+
+  /**
+   * Guarda la ventana como medición y devuelve su identificador.
+   *
+   * **Es la mitad que faltaba del lazo.** La aplicación medía, le contaba al
+   * usuario si el cambio sirvió, y la ventana se perdía. El motor de seguridad
+   * exige una medición entre un cambio y el siguiente sobre el mismo parámetro y
+   * la busca en la tabla `measurement`: con la tabla vacía, **el segundo ajuste
+   * sobre el mismo canal se rechazaba siempre**.
+   *
+   * **Se guarda toda captura y no sólo la posterior a un cambio**, por dos
+   * motivos. Uno es que la ventana de antes es la evidencia de la propuesta, y
+   * tirarla dejaría el historial contando decisiones sin lo que las causó. El otro
+   * es que quien captura no sabe si va a haber un cambio después: decidirlo acá
+   * sería adivinar.
+   *
+   * **No interrumpe la captura si falla.** Medir sirve por sí solo —la pantalla
+   * también se usa para mirar cómo está un canal— y una escritura fallida no es
+   * motivo para no contarle al usuario lo que se acaba de oír. Lo que se pierde es
+   * el permiso para el ajuste siguiente, y eso el motor lo dice con su propio
+   * nombre en vez de dejarlo pasar.
+   */
+  private async guardarLaEscucha(
+    empezoEl: string,
+    asignacion: ChannelAssignment,
+    analisis: AnalisisDeGanancia,
+    muestras: readonly MuestraVu[],
+  ): Promise<string | null> {
+    // **Con la consola desconectada no hay escucha que guardar, y esto tapa la
+    // causa de lo que `elMedidorSeMovio` tapa por el dato.** `MixerService` sólo
+    // vacía la lista de canales cuando el usuario desconecta a propósito: si la
+    // conexión se cae sola, la captura muestrea dieciocho segundos del último
+    // número conocido. Medido el 2026-09-19: eso se guardaba como una escucha de
+    // 17,95 segundos y autorizaba el paso siguiente con cero segundos de música.
+    //
+    // **Lo que esta mitad alcanza, exacto:** la ventana que TERMINA con la
+    // consola caída. La que empieza y termina adentro la cierra `recolectar`, que
+    // desde el 2026-09-19 pregunta lo mismo en cada tic y no registra el instante
+    // que no pudo oír. Las dos hacen falta: ésta niega el permiso, aquélla impide
+    // que el silencio de la caída se cuente como música.
+    //
+    // **Antes acá decía que para eso «hay que mirar la frescura de las tramas, y
+    // es una tarea aparte», y era falso**, medido por una auditoría adversarial el
+    // mismo día: el dato ya estaba --`permiteEscribir()` es falso durante toda la
+    // caída-- y lo que faltaba era preguntarlo en el bucle. Queda escrito porque
+    // presentar como caro algo que cuesta una línea es lo que hace que esa línea
+    // no se escriba.
+    //
+    if (!this.conexion.permiteEscribir()) {
+      this.log.info('audio', 'escucha_sin_consola', {
+        canal: asignacion.ui24rInputIndex, estado: this.conexion.estado(),
+      });
+      return null;
+    }
+
+    const sessionId = this.sesion.actual()?.sesion.id ?? null;
+    if (sessionId === null) {
+      // **No es un fallo y no se registra como tal.** Sin sesión abierta no hay
+      // a qué colgar la medición: la tabla se lee por sesión y una fila huérfana
+      // no la encontraría nadie, porque la aplicación **no** activa las claves
+      // foráneas de SQLite y la base la aceptaría en silencio.
+      this.log.info('audio', 'escucha_sin_sesion', { canal: asignacion.ui24rInputIndex });
+      return null;
+    }
+
+    // El identificador sigue la forma que ya usa el ejecutor para las
+    // transacciones —`ganancia-<canal>-<instante>`—, en vez de inventar un
+    // esquema nuevo para la fila de al lado.
+    const id = `medicion-${asignacion.ui24rInputIndex}-${Date.now()}`;
+    const m = medicionDeLaCaptura({
+      id, sessionId, empezoEl, channelId: asignacion.id, analisis, muestras,
+    });
+
+    try {
+      await this.mediciones.guardar(m);
+    } catch (e) {
+      this.log.warn('audio', 'escucha_no_guardada', {
+        canal: asignacion.ui24rInputIndex,
+        motivo: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+
+    this.log.info('audio', 'escucha_guardada', {
+      canal: asignacion.ui24rInputIndex,
+      id,
+      senal: m.signalType,
+      duracionS: Number(m.duracionS.toFixed(1)),
+    });
+    return id;
   }
 
   /**
@@ -182,6 +363,18 @@ export class GainAssistantService {
     const recoger = () => {
       if (indice === null) return;
       const canal = this.mixer.canales().find((c) => c.indice === indice);
+      // **Se pregunta en cada tic si la consola sigue ahí, y antes se preguntaba
+      // una sola vez al final.** Con el enlace caído `MixerService` deja el último
+      // nivel clavado --sólo vacía sus listas cuando el usuario desconecta a
+      // propósito-- y el muestreo lo seguía leyendo como si fuera de ahora:
+      // medido el 2026-09-19 sobre la escucha de la cuña, **una sola muestra viva
+      // --0,05 s-- compraba un paso de 2 dB declarando dieciocho segundos de
+      // escucha**. El defecto es el mismo por los dos caminos --comprobado, la
+      // misma ventana por acá da lo mismo-- así que se cierra en los dos.
+      //
+      // Se cuenta aparte lo que se pierde, porque **«no te escuché» y «no tocaste»
+      // son cosas distintas** y al usuario hay que decirle la que pasó.
+      const consolaViva = this.conexion.permiteEscribir();
       // **`nivelPreProcesoDb` y no `nivelDb`.** El segundo es el que la consola
       // dibuja en su tira y el que muestra la pantalla de Consola, pero llega
       // con el compresor encima: aconsejar ganancia sobre él es aconsejar sobre
@@ -190,15 +383,27 @@ export class GainAssistantService {
       // El nivel y la reducción se toman juntos y de la misma trama: describen
       // el mismo instante, y separarlos haría que el pico de una y la reducción
       // de otra terminaran en la misma cuenta.
-      if (canal) {
-        this.muestras.push({
-          tMs: Date.now() - inicio,
-          db: canal.nivelPreProcesoDb,
-          reduccionDb: canal.reduccionDb,
-        });
+      // Un instante del que no se sabe nada no se registra: ni un cero, que
+      // sería afirmar que no sonó, ni el último valor conocido, que sería
+      // afirmar que sigue sonando.
+      if (!consolaViva || canal === undefined) {
+        // Cualquier tic que no se pudo oír, no sólo el de la consola caída: con la
+        // consola arriba pero sin publicar el canal, el segundo perdido no se
+        // contaba y se leía como que el músico tocó poco. Medido el 2026-09-19.
+        this.instantesNoOidos++;
+        return;
       }
+      this.muestras.push({
+        tMs: Date.now() - inicio,
+        db: canal.nivelPreProcesoDb,
+        reduccionDb: canal.reduccionDb,
+      });
     };
-    this.muestreo = setInterval(recoger, 50);
+    // **La cadencia sale de la constante compartida y no de un número acá.** De
+    // ella sale también el `sampleRate` de la medición que se guarda: con el valor
+    // escrito en dos sitios, cambiar el temporizador dejaría todas las mediciones
+    // declarando una cadencia que ya no es la suya.
+    this.muestreo = setInterval(recoger, INTERVALO_DE_MUESTREO_MS);
     return this.cuentaAtras(DURACION_CAPTURA_S).finally(() => {
       if (this.muestreo !== null) clearInterval(this.muestreo);
       this.muestreo = null;

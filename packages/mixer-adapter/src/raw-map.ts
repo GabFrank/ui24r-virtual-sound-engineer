@@ -191,6 +191,79 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     (q) => Math.log(q / 0.05) / Math.log(300),
     0.35, 0.70, 'SPK-P0.2b',
   ),
+
+  // **Las bandas 2, 3 y 4 comparten la ley, MEDIDO el 2026-09-21 (item 121).**
+  //
+  // Hasta ese dia estaban medidas la frecuencia y el Q de la banda 1 solamente,
+  // y las cuatro ganancias. O sea que el motor dejaba realzar cualquier banda y
+  // no sabia en que frecuencia estaba parada ninguna salvo la primera, con lo
+  // que la pieza 2 --mover una banda elegida por medicion-- no se podia
+  // construir.
+  //
+  // **La hipotesis era buena y por eso habia que medirla.** El cliente que sirve
+  // la consola usa la MISMA funcion para las cuatro --`FREQtoV` y `QtoV`, sin
+  // indice de banda-- y en la banda 1 coincide exacto con lo que midio el item
+  // 101. Es la clase de hipotesis comoda que este repositorio ya publico como
+  // hecho cuatro veces y tuvo que retractar.
+  //
+  // Una corrida por banda, con el mismo instrumento del 101 parametrizado, cada
+  // una con su banda en el barrido y las otras tres planas:
+  //
+  //   banda   error maximo de f0   factor del Q   control de cierre
+  //   2       0,25 %               1,02           PASA (0,15 dB)
+  //   3       0,18 %               1,02           PASA (0,11 dB)
+  //   4       0,17 %               1,02           PASA (0,12 dB)
+  //
+  // contra la banda 1, que dio 0,2 % y 0,09 dB. El criterio del contrato es 5 %.
+  //
+  // **El tramo publicado es el barrido, no el rango del parametro**: el crudo
+  // 0,15 se anula en las tres porque su campana --f0 en 57 Hz-- se sale por
+  // abajo de la ventana de 40 Hz del estimulo, igual que en la banda 1.
+  //
+  // **Y las tres primeras corridas de este item fallaron su control**, con la ley
+  // saliendo bien igual. No era el aparato: el instrumento puentea el compresor
+  // del canal y se llevaba los 28 dB de ganancia que el preajuste `Kick Drum`
+  // del usuario tiene cargado ahi desde el 2026-09-15. Se compenso subiendo el
+  // estimulo. Ver `docs/backlog/el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`.
+  //
+  // Evidencia: `curvas-banda-{2,3,4}-2026-09-21*.txt` en
+  // `docs/spikes/SPK-P0.2b/evidence/`.
+  medido(
+    'i.N.eq.b2.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b2.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b3.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b3.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b4.freq', 'Hz',
+    (v) => 20 * Math.pow(1102.5, v),
+    (f) => Math.log(f / 20) / Math.log(1102.5),
+    0.25, 0.90, 'SPK-P0.2b',
+  ),
+  medido(
+    'i.N.eq.b4.q', 'Q',
+    (v) => 0.05 * Math.pow(300, v),
+    (q) => Math.log(q / 0.05) / Math.log(300),
+    0.35, 0.70, 'SPK-P0.2b',
+  ),
   // **El pasa-altos y el pasa-bajos, medidos el 2026-09-13 contra el filtro.**
   //
   // El pasa-altos decia `lineal(20, 400)` en `DESCONOCIDO`: un numero puesto a
@@ -227,17 +300,97 @@ export const RAW_MAP: readonly RawMapEntry[] = [
     0.0, 0.60, 'SPK-P0.2b',
   ),
 
-  // **La ganancia: ahora hay DOS fuentes contra el codigo, y sigue sin medirse
-  // bien.** El manual dice ±20 dB contra los ±15 de aca, y la medicion 101 vio la
-  // campana subir **20,0 dB exactos** con el crudo de ganancia en 1,0, en los
-  // ocho puntos del barrido. Eso es fuerte, pero **el pico de una campana no es
-  // el parametro de ganancia** salvo que el filtro este normalizado de cierta
-  // manera, y eso no se sabe. Ademas la 101 midio un solo crudo de ganancia --el
-  // extremo--, asi que de la FORMA de la ley no se sabe nada: podria no ser
-  // lineal. Queda DESCONOCIDO con el hallazgo anotado, y se mide aparte.
+  // **La ganancia, MEDIDA contra el filtro real el 2026-09-16. Son ±20 dB.**
+  //
+  // Esta entrada decia `lineal(-15, +15)` en `DESCONOCIDO` y era falsa. Contra
+  // ella habia dos fuentes: el manual dice ±20, y la medicion 101 vio la campana
+  // subir **20,0 dB exactos** con el crudo en 1,0. Las dos tenian razon.
+  //
+  // El item 108 barrio 42 puntos con dos tonos --1 kHz y un testigo en 37 Hz--
+  // midiendo cuantos decibeles cambia el nivel en el centro de la banda como
+  // funcion del crudo. La recta ajustada da **39,999 dB por unidad de crudo y
+  // ordenada -19,999 dB**, con **residuo maximo de 0,01 dB** sobre un tope de
+  // 0,3, termino cuadratico de 0,004 dB, asimetria de 0,01 dB entre el realce
+  // maximo (20,00) y el corte maximo (-19,99), e ida y vuelta dentro de 0,01 dB.
+  // Se redondea a `40·V - 20`: escribir 39,999 seria fabricar una precision que
+  // la corrida no distingue de 40 exactos.
+  //
+  // **Es la magnitud que el producto necesita, y conviene decir cual es.** No se
+  // midio «el parametro de ganancia del filtro» sino **cuanto cambia el audio en
+  // la frecuencia central**, que es lo que `fromRaw` tiene que devolver cuando la
+  // aplicacion diga «realza esta banda 3 dB». No depende de como este normalizado
+  // el filtro por dentro.
+  //
+  // **Lo que NO dice, y hay que tenerlo presente antes de generalizar:** una
+  // banda de cinco, un canal de veinticuatro, una frecuencia, un Q, un nivel de
+  // fuente y un dia. Nada sobre la forma de la campana --se midio la altura en el
+  // centro, no el ancho-- ni sobre el ecualizador de salida, que es otro `kind`.
+  // Y un acuerdo dentro del umbral es una **cota**, no una identidad.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt`
   //
   // (El pasa-altos y el pasa-bajos se midieron: estan arriba.)
-  lineal('i.N.eq.b1.gain', 'dB', -15, 15, 'DESCONOCIDO', 'SPK-P0.2b'),
+  // **Y son CUATRO entradas, no una, desde el item 113.**
+  //
+  // Hasta el 2026-09-16 aca habia una sola linea, `i.N.eq.b1.gain`, y estaba mal
+  // de dos maneras a la vez: el item 108 habia medido la **banda 2**, no la 1
+  // --se lee en el encabezado de su evidencia-- asi que el motor dejaba escribir
+  // una banda sin ley medida y rechazaba la unica medida.
+  //
+  // El item 113 midio las cuatro contra el audio, cada una con su banda puesta en
+  // 1000 Hz y las otras planas. Las cuatro dan la misma recta:
+  //
+  //   banda 1   40,005·V − 20,004
+  //   banda 2   39,999·V − 19,999   (item 108)
+  //   banda 3   40,010·V − 20,006
+  //   banda 4   39,998·V − 19,998
+  //
+  // Se redondea a `40·V − 20` para las cuatro: la milesima no se distingue de
+  // cero con estas corridas.
+  //
+  // Evidencia: `ley-ganancia-banda-{1,3,4}-2026-09-16*.txt` en
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/`, mas la del 108 para la banda 2.
+  medido(
+    'i.N.eq.b1.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'i.N.eq.b2.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'i.N.eq.b3.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'i.N.eq.b4.gain', 'dB',
+    (v) => 40 * v - 20,
+    (db) => (db + 20) / 40,
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  // **`i.N.eq.b5.gain` NO esta, y no es que falte medirla: se midio y no hace
+  // nada.** Con la banda 5 puesta en 1000 Hz, el tono presente y 80,5 dB sobre el
+  // piso, barrer su crudo de 0 a 1 movio el audio **0,00 dB** sobre 39 puntos.
+  //
+  // El ecualizador de canal de esta consola tiene CUATRO campanas. Lo dice el
+  // manual del fabricante --«4-band Parametric EQ»--, lo dibuja asi su propio
+  // cliente --recorre `"hpf b1 b2 b3 b4 lpf"`-- y ahora lo dice el audio. Las
+  // claves `b5` existen, se pueden escribir y no llegan a ningun lado.
+  //
+  // **Poner una entrada aca seria lo peor posible**: la aplicacion le ofreceria
+  // al usuario una quinta banda que no suena, y el motor la dejaria escribir
+  // porque la unidad cuadra. Ver
+  // `docs/backlog/hallazgo-el-ecualizador-de-canal-tiene-cuatro-bandas.md`.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-banda-5-2026-09-16b.txt`
   // **Estas tres NO son lineales, y las de antes estaban inventadas.** Decían
   // -60..0, 1..20 y -80..0, a ojo, en un archivo cuya cabecera promete que las
   // entradas salen de mediciones. Las funciones de abajo estan **leidas del
@@ -280,13 +433,76 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   //
   // Y el rango tampoco es un rango medido: **es la formula refutada evaluada en
   // 0 y en 1**. Se deja escrito para que nadie lo cite como si fuera otra cosa.
+  // > **CORREGIDO el 2026-09-16: `REFUTADO` era falso, y decia mas de lo medido.**
+  // >
+  // > La 97 refuto la CONJUNCION --umbral + relacion + rodilla dura--, no el
+  // > umbral solo. El item 117 midio que el error estaba en la relacion, y el 118
+  // > midio el umbral SOLO, alineando las curvas de reduccion sin suponer ninguna
+  // > relacion: **96,4 dB por unidad de crudo contra los 96 del cliente**, con
+  // > residuos de 0,04 a 0,15 dB y 0,9 % de dispersion entre tres lecturas
+  // > distintas. La pendiente esta confirmada.
+  // >
+  // > **Y aun asi NO pasa a PROBADO, que seria el otro exceso.** Una ley son dos
+  // > cosas y aca hay una: falta el CERO. Para decir «el crudo 0,5 son -42 dB en
+  // > la consola» hay que anclar su escala interna contra el banco, y este banco
+  // > no tiene ese ancla --entre la interfaz y el canal hay un previo analogico
+  // > cuya ganancia se lee de la pantalla y no esta medida contra el audio--.
+  // >
+  // > Queda `INFERIDO`, que es lo que es: la forma esta leida del cliente, su
+  // > pendiente esta medida, y el cero no. Ver
+  // > `docs/compromisos/118-el-umbral-del-compresor.md`.
   { ...deLaConsola('i.N.dyn.threshold', 'dB', (a) => -90 + 96 * a, (db) => (db + 90) / 96),
-    estado: 'REFUTADO' as const },
-  deLaConsola('i.N.gate.depth', 'dB', (a) => 60 * a - 60, (db) => (db + 60) / 60),
+    estado: 'INFERIDO' as const },
+  /**
+   * **Cuánto atenúa la puerta cerrada. Medido contra el banco**, ítem 120 del
+   * 2026-09-17. La ley del cliente —`60a − 60`— acierta al décimo de dB:
+   * el crudo 1,00 no atenúa, el 0,85 da 9,0, el 0,70 da 18,0 y el 0,55 da 27,0.
+   *
+   * **El rango llega hasta 0,55 y ahí se corta a propósito.** Más abajo la
+   * medición se despega —35,0 dB donde la ley promete 36,0, y 39,9 donde promete
+   * 45,0— y eso **no es de la puerta: es el piso de nuestro banco**, plantado en
+   * unos −105,5 dBFS. Con ese piso metido en la cuenta, la ley predice los seis
+   * puntos dentro de 1,2 dB. Declarar `PROBADO` más abajo sería publicar el
+   * límite del instrumento como si fuera el del aparato.
+   *
+   * > **RETRACTA la conclusión del 2026-09-16**, que con la fuente 12 dB más baja
+   * > vio el techo en 29 dB y escribió que la profundidad «no llega adonde dicen
+   * > ni el cliente ni el manual». Lo que lo dirimió es la prueba que aquel mismo
+   * > contrato dejó declarada: **la fuente subió 12 dB y el techo no se movió**
+   * > —−106,6 dBFS entonces, −105,5 ahora—. Un límite de la puerta habría subido
+   * > con la fuente; uno del banco se queda donde está.
+   *
+   * **El extremo sigue sin resolverse, y no lo resuelve esta corrida.** El manual
+   * dice «Depth -inf to 0dB» y el cliente acota en −60: donde los dos discrepan
+   * está por debajo de lo que este banco ve.
+   *
+   * Evidencia:
+   * `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-de-la-puerta-2026-09-17.txt`.
+   * Contrato: `docs/compromisos/120-el-umbral-y-la-profundidad-de-la-puerta.md`.
+   */
+  medido(
+    'i.N.gate.depth', 'dB',
+    (a) => 60 * a - 60,
+    (db) => (db + 60) / 60,
+    0.55, 1, 'SPK-P0.10b-vu2',
+  ),
   // **La puerta usa la MISMA funcion que quedo refutada en el compresor**, y eso
   // hay que decirlo aunque no cambie su estado: la 97 midio el compresor, no la
   // puerta, asi que declararla refutada seria afirmar mas de lo medido. Pero
   // apoyarse en ella sabiendo que la misma recta fallo al lado seria peor.
+  //
+  // > **AL DIA 2026-09-17: la cota se aprieta y sigue sin alcanzar.** El item 120
+  // > repitio el barrido con la escalera fina de 1,5 dB y el ajuste dio 87,1
+  // > dB/unidad, **y ese numero NO se publica.** La puerta es un interruptor: la
+  // > transicion se completa en 0,8 escalones, asi que **el escalon de la escalera
+  // > ES la resolucion** y la apertura solo puede caer en su rejilla. Calculando
+  // > que pendientes son compatibles con los seis puntos medidos dada esa rejilla,
+  // > el resultado es un RANGO: **de 80 a 100 dB/unidad**, y los 96 del cliente
+  // > estan adentro. El 87,1 es un punto dentro de veinte, no una medicion.
+  // >
+  // > Mejora sobre la corrida del 2026-09-16, que con escalones de 3 dB acotaba
+  // > entre 60 y 100. Para cerrarla hace falta una escalera mas fina que la
+  // > histeresis, no mas puntos de umbral.
   deLaConsola('i.N.gate.thresh', 'dB', (a) => 96 * a - 90, (db) => (db + 90) / 96),
 
   /**
@@ -304,9 +520,16 @@ export const RAW_MAP: readonly RawMapEntry[] = [
    * **El tramo declarado es el que se midió, y para abajo. Por qué corta en 0,25.**
    * La corrida siguió midiendo hasta el crudo 0,15 y ahí el residuo se dispara a
    * 0,146 dB. No es la ley: es una **fuga** de 1 kHz que entra por el camino del
-   * general y se suma a lo que se mide (ítem 105). Pero la fuga es del banco, no de
-   * la tabla, así que lo honesto es declarar hasta donde la medición separó una
-   * cosa de la otra. Por debajo de −32 dB de envío, `aRaw` contesta
+   * general y se suma a lo que se mide (ítem 105). **De quién es esa fuga, el 105
+   * no lo pudo decidir, y esta línea decía que sí hasta el 2026-09-20**: decía «la
+   * fuga es del banco», cuando la corrida imprimió `NO SE IMPRIME VEREDICTO:
+   * fallaron G1, G2/E1, G2/E2` y el hallazgo que la resume dice con todas las
+   * letras que **no se separó si el cruce ocurre adentro de la Scarlett o en la
+   * etapa de salida de la consola** —o sea que uno de los dos candidatos es la
+   * consola—. Lo que sí está medido es que viaja **aguas abajo del fader del
+   * general**. Para esta entrada eso alcanza y el argumento no cambia: lo que se
+   * mide por debajo de 0,25 no es la ley, sea de quien sea, así que lo honesto es
+   * declarar hasta donde la medición separó una cosa de la otra. Por debajo de −32 dB de envío, `aRaw` contesta
    * `FUERA_DE_RANGO`, que es exactamente lo correcto.
    *
    * **Lo que esta entrada NO afirma, y hay que leerlo antes de usarla.** La 104 es
@@ -343,8 +566,96 @@ export const RAW_MAP: readonly RawMapEntry[] = [
   deLaConsola('i.N.dyn.outgain', 'dB', (a) => 72 * a - 24, (db) => (db + 24) / 72),
   deLaConsola('i.N.deesser.freq', 'Hz', (a) => 2000 * Math.pow(7.5, a),
     (hz) => Math.log(hz / 2000) / Math.log(7.5)),
+  // **El ecualizador GRAFICO de salida, medido contra el audio el 2026-09-16.**
+  //
+  // `30·V - 15`, o sea ±15 dB. El item 109 barrio la banda 17 del auxiliar 5 con
+  // retorno por la interfaz: pendiente 29,990, ordenada -14,995, residuo maximo
+  // **0,001 dB** sobre un tope de 0,3, recorrido 29,99 y asimetria 0,00. La
+  // formula del cliente --`VtoEQGAIN15`-- resulto exacta, igual que paso con la
+  // del canal en el 108. Se redondea a 30 y 15: la milesima no se distingue de
+  // cero con esta corrida.
+  //
+  // **NO es el ecualizador de canal con otro prefijo, y confundirlos falla por
+  // dos lados.** El canal tiene 5 bandas parametricas con frecuencia y Q y una
+  // ley de ±20; esto es un grafico de 31 bandas sin Q, con ±15. Y `m.eq.b1.gain`
+  // no existe. Ver
+  // `docs/backlog/hallazgo-el-ecualizador-de-salida-es-otra-cosa.md`.
+  //
+  // **Alcance:** se midio UNA banda de UN auxiliar (el 5) y UNA banda del
+  // general. Las otras treinta de cada superficie, y los otros cinco
+  // auxiliares, siguen sin medirse.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`
+  medido(
+    'a.M.eq.peak.K', 'dB',
+    (v) => 30 * v - 15,
+    (db) => (db + 15) / 30,
+    0, 1, 'SPK-P0.2c',
+  ),
+  // **El grafico del GENERAL, lado izquierdo.** Medido el 2026-09-16 y dio
+  // `29,993·V − 14,996`: la MISMA ley que el auxiliar, con el mismo residuo de
+  // 0,001 dB. El item 109 habia dejado escrito que compartieran la ley era «una
+  // suposicion razonable, no un resultado»; el 112 la midio y dejo de serlo.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-del-general-2026-09-16b.txt`
+  // **El sostenido de la puerta: la PRIMERA ley de tiempo medida, y acerto sola.**
+  //
+  // El item 116 barrio nueve posiciones y la formula del cliente --`2000^desqr(V)`
+  // con `desqr(a) = 1 − (1−a)²`-- dio el valor exacto: errores de +0,7 a −0,1 ms
+  // sobre un recorrido que va de 28 a 2000. No es «coincide dentro de la
+  // tolerancia»: es el mismo numero.
+  //
+  // **Y ese acierto explica por que los otros tiempos no aciertan.** Un sostenido
+  // es un RETARDO --cuanto se queda abierta antes de empezar a cerrar-- y no
+  // admite convenciones: o empezo a cerrar o no. Un ataque o una relajacion son
+  // ASENTAMIENTOS, y ahi hay que elegir a que fraccion se le llama «el tiempo».
+  // El unico de los tres que no necesita definicion es el unico que coincide.
+  //
+  // De paso vale como control del instrumento: la cadena reproduce una ley
+  // conocida al 0,1%, asi que los desacuerdos del compresor no son suyos.
+  //
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/tiempos-de-la-puerta-2026-09-16.txt`
+  medido(
+    'i.N.gate.hold', 'ms',
+    (v) => Math.pow(2000, 1 - (1 - v) * (1 - v)),
+    (ms) => 1 - Math.sqrt(1 - Math.log(ms) / Math.log(2000)),
+    // **El quinto y el sexto son el rango CRUDO, no el fisico**, y equivocarlo lo
+    // caza el test: con 1 y 2000 aca, `fisicoMax` sale de `fromRaw(2000)`, que da
+    // cero, y el rango queda invertido. El fisico lo deriva `medido()` solo.
+    0, 1, 'SPK-P0.10b-vu2',
+  ),
+  medido(
+    'm.eq.peak.l.K', 'dB',
+    (v) => 30 * v - 15,
+    (db) => (db + 15) / 30,
+    0, 1, 'SPK-P0.2c',
+  ),
+  // **El lado DERECHO no esta, y no es un olvido.** La salida que vuelve al
+  // banco es la master 1 --el lado izquierdo--, asi que el derecho no se puede
+  // medir sin que alguien cambie un cable. Suponerlo por simetria seria
+  // exactamente el error que este proyecto viene documentando: el ecualizador
+  // del general es una superficie estereo y nadie comprobo que las dos mitades
+  // se comporten igual.
+  //
+  // Y hay un motivo mas fuerte para no darlo por hecho: `m.eq.linked` **no lo
+  // resuelve la consola**. Ver
+  // `docs/backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md`.
   // `i.N.dyn.ratio` **no esta en la tabla, a proposito**, y ahora hay dos
   // razones en vez de una.
+  //
+  // > **AL DIA 2026-09-16: ya hay ley, y falta resolver COMO se escribe aca.**
+  // > El item 117 midio la curva de entrada y salida con una escalera de doce
+  // > escalones y saco `R = 1 + 0,548·(1/a − 1)`, con menos del 3 % de error en
+  // > siete posiciones de 1,2:1 a 11:1. Lo que la frena es la forma: la escala
+  // > esta **invertida** --el crudo 1 es 1:1 y el 0,05 es 11:1-- y `medido()`
+  // > deriva el rango fisico de los extremos del crudo, asi que la entrada
+  // > quedaria con el rango al reves y el trinquete la rechaza, con razon.
+  // > Decidir como representa la tabla una escala invertida es una tarea aparte,
+  // > y no se hace de apuro sobre la tabla de la que depende el motor.
+  // > Ver `docs/compromisos/117-la-curva-del-compresor.md`.
   //
   // La primera: en 0 la razon seria infinita, asi que no hay rango fisico que
   // declarar sin inventarlo, y una entrada con el rango inventado es justamente

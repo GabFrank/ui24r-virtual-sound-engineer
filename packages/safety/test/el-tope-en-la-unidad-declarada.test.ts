@@ -67,7 +67,7 @@ test('el previo de punta a punta se rechaza por exceder el tope', () => {
  */
 test('control positivo: con el delta en crudo el tope no se dispara', () => {
   const ctx = {
-    kind: 'PREAMP_GAIN' as const, acumuladoEnSesion: 0,
+    kind: 'PREAMP_GAIN' as const, path: 'hw.3.gain', acumuladoEnSesion: 0,
     hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
     // La ganancia del previo declara su tope en decibeles, y ahora
     // `verificarLimite` lo compara: la otra mitad de este episodio era que el
@@ -76,12 +76,18 @@ test('control positivo: con el delta en crudo el tope no se dispara', () => {
   };
   // Lo que el motor calculaba antes: 0,985 - 0 = 0,985, contra un tope de 3.
   assert.equal(
-    verificarLimite({ ...ctx, deltaSolicitado: 0.985 }).permitido, true,
+    verificarLimite({ ...ctx, magnitudEsperada: 0, magnitudPropuesta: 0.985 }).permitido, true,
     'el crudo entero del previo pasa el tope de 3 dB: ESE era el defecto',
   );
-  // Lo que calcula ahora.
+  // Lo que calcula ahora: los mismos dos extremos, en decibeles. **Y desde
+  // ADR-039 la resta la hace el dominio**, con la escala de la hoja; para la
+  // ganancia del previo esa escala es la diferencia en decibeles, o sea lo
+  // mismo de siempre, y es el control de que la escala por omisión no cambió
+  // nada donde no tenía que cambiarlo.
   assert.equal(
-    verificarLimite({ ...ctx, deltaSolicitado: GANANCIA_MAXIMA_DB - GANANCIA_MINIMA_DB }).permitido,
+    verificarLimite({
+      ...ctx, magnitudEsperada: GANANCIA_MINIMA_DB, magnitudPropuesta: GANANCIA_MAXIMA_DB,
+    }).permitido,
     false,
     'los mismos dos valores, en decibeles, se rechazan',
   );
@@ -173,12 +179,23 @@ test('ningun sitio de produccion pasa el crudo como si fuera la magnitud', () =>
   // declara como su primer hueco que «ningun camino de la aplicacion propone un
   // cambio de envio a monitor: el unico `CambioPropuesto` que se construye en
   // produccion en todo el repositorio es `aplicar-ganancia.service.ts`». El
-  // segundo es `apps/mobile/src/app/monitor/bajar-envio.service.ts`, y baja el
+  // segundo es `apps/mobile/src/app/monitor/envio-a-monitor.service.ts`, y baja el
   // envio de un canal a una cuña con la ley que midio el item 104.
   //
+  // **2 -> 3 el 2026-09-19**, y es el mismo archivo con un segundo metodo:
+  // `EnvioAMonitorService.subir`, que es el camino que faltaba para que ADR-034
+  // sirva de algo. Sube el envio de a un paso y enciende una cuña apagada.
+  //
+  // **Este sitio tiene algo que los otros dos no**, y por eso conviene decirlo
+  // aca: en el caso del silencio declara `magnitudEsperada: -Infinity`, que es
+  // lo UNICO que el motor acepta desde el crudo del silencio. No es una
+  // excepcion a esta guarda --el crudo sigue yendo como crudo y los decibeles
+  // como magnitud-- pero es la primera vez que una magnitud declarada no es un
+  // numero finito, y quien lea esta cuenta merece saberlo.
+  //
   // Lo miro, que es lo que este centinela pide: `malos` sigue vacio, o sea que
-  // el sitio nuevo pasa el crudo como crudo y los decibeles como magnitud. La
-  // guarda comprobo al llamador nuevo el dia que nacio.
-  assert.equal(vistos, 2, 'sitios de produccion que construyen un CambioPropuesto');
+  // los sitios nuevos pasan el crudo como crudo y los decibeles como magnitud.
+  // La guarda comprobo al llamador nuevo el dia que nacio.
+  assert.equal(vistos, 3, 'sitios de produccion que construyen un CambioPropuesto');
   assert.deepEqual(malos, [], 'el crudo pasado como magnitud: el defecto de vuelta');
 });

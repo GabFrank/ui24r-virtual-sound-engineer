@@ -1,0 +1,139 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T01:07:58.914Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/aplanar-canal.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/aplanar-canal.ts sha256:4045c6a79615ecac
+# la huella cubre 3 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== APLANAR EL CANAL 10 (i.9) EN 192.168.0.78 ===
+
+canales planos que sirven de referencia: 5, 6, 7, 14, 17, 18, 20, 21, 22, 23, 24
+
+=== LO QUE SE VA A CAMBIAR ===
+  i.9.eq.b1.gain        0.6757666526 ->             0.5
+      el contrato exige las cinco bandas planas
+  i.9.eq.b2.gain        0.6837622372 ->             0.5
+      es la banda que la corrida barre; tiene que partir de plano
+  i.9.eq.b3.gain        0.1357994978 ->             0.5
+      el contrato exige las cinco bandas planas
+  i.9.eq.b4.gain                   0 ->             0.5
+      el contrato exige las cinco bandas planas
+  i.9.eq.b5.gain                 0.5 ->             0.5   (ya estaba)
+      el contrato exige las cinco bandas planas
+  i.9.eq.b1.freq         0.149643966 ->    0.3286901902
+      con la ganancia en plano no suena, pero deja el canal comparable
+  i.9.eq.b2.freq        0.2377317311 ->    0.5584347738
+      EL CENTRO DE LA MEDICION: tiene que dar 1000,0 Hz exactos
+  i.9.eq.b3.freq        0.4241621757 ->    0.7563259869
+      con la ganancia en plano no suena, pero deja el canal comparable
+  i.9.eq.b4.freq         0.566656359 ->     0.887124964
+      con la ganancia en plano no suena, pero deja el canal comparable
+  i.9.eq.hpf.freq      0.09807360763 ->               0
+      esta en 39,8 Hz y el testigo de la corrida esta en 37
+  i.9.eq.lpf.freq             0.5588 ->               1
+      esta en 1002,6 Hz, sobre el bin que la corrida mide
+  i.9.eq.prmod                     1 ->               0
+      el contrato lo exige en 0
+  i.9.dyn.prmod                    1 ->               0
+      el preajuste Kick Drum del compresor, que el usuario nombro
+  i.9.dyn.threshold     0.6483221477 ->           0.875
+      el compresor depende del nivel y el barrido mueve 40 dB
+  i.9.dyn.ratio         0.4810963934 ->               1
+      idem
+  i.9.dyn.softknee                 1 ->               0
+      idem
+  i.9.dyn.attack        0.1548880145 ->         0.34375
+      idem
+  i.9.dyn.release       0.2219374243 ->    0.4887695312
+      idem
+
+claves que realmente cambian: 17 de 18
+
+NO se tocan, a proposito: el nombre del canal, los nombres de preajuste del
+compresor y de la puerta, y mtkrec. Son etiquetas y armado de grabacion: no
+entran en el camino de audio de la medicion.
+
+=== COMPROBACION, RELEYENDO POR HTTP ===
+  OK   i.9.eq.b1.gain                     0.5
+  OK   i.9.eq.b2.gain                     0.5
+  OK   i.9.eq.b3.gain                     0.5
+  OK   i.9.eq.b4.gain                     0.5
+  OK   i.9.eq.b5.gain                     0.5
+  OK   i.9.eq.b1.freq            0.3286901902
+  OK   i.9.eq.b2.freq            0.5584347738
+  OK   i.9.eq.b3.freq            0.7563259869
+  OK   i.9.eq.b4.freq             0.887124964
+  OK   i.9.eq.hpf.freq                      0
+  OK   i.9.eq.lpf.freq                      1
+  OK   i.9.eq.prmod                         0
+  OK   i.9.dyn.prmod                        0
+  OK   i.9.dyn.threshold                0.875
+  OK   i.9.dyn.ratio                        1
+  OK   i.9.dyn.softknee                     0
+  OK   i.9.dyn.attack                 0.34375
+  OK   i.9.dyn.release           0.4887695312
+
+el canal 10 quedo plano segun el mismo criterio que las referencias: SI
+
+=== COMO REPONER EL BOMBO, SI HACE FALTA ===
+Los valores previos, para escribirlos de vuelta clave por clave:
+  i.9.eq.b1.gain = 0.6757666526
+  i.9.eq.b2.gain = 0.6837622372
+  i.9.eq.b3.gain = 0.1357994978
+  i.9.eq.b4.gain = 0
+  i.9.eq.b5.gain = 0.5
+  i.9.eq.b1.freq = 0.149643966
+  i.9.eq.b2.freq = 0.2377317311
+  i.9.eq.b3.freq = 0.4241621757
+  i.9.eq.b4.freq = 0.566656359
+  i.9.eq.hpf.freq = 0.09807360763
+  i.9.eq.lpf.freq = 0.5588
+  i.9.eq.prmod = 1
+  i.9.dyn.prmod = 1
+  i.9.dyn.threshold = 0.6483221477
+  i.9.dyn.ratio = 0.4810963934
+  i.9.dyn.softknee = 1
+  i.9.dyn.attack = 0.1548880145
+  i.9.dyn.release = 0.2219374243
+
+
+# salida del proceso: 0
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
+# divergencia reconocida: 037108b9507761c0
+================================================================================
+
+La huella de arriba --sha256:4045c6a79615ecac-- YA NO COINCIDE con el guion de
+hoy. Cambio el CODIGO, no la prosa, asi que hace falta decir que configuracion
+midio esta corrida.
+
+QUE CAMBIO. Despues de esta corrida, la guarda restauracion-garantizada.test.ts
+rechazo el guion por escribir a la consola sin `conRestauracion`. Se lo envolvio,
+con vuelta atras CONDICIONAL: si la corrida termina y verifica, el canal queda
+plano; si muere o falla a mitad, vuelve al bombo. El motivo es que un canal a
+medio aplanar --bandas planas y pasa-bajos todavia en 1002,6 Hz-- pasa a simple
+vista por «listo para medir» conservando el filtro que deforma la ley.
+
+POR QUE ESTA CORRIDA SIGUE VALIENDO TAL CUAL. El agregado es un camino de
+FALLO, y esta corrida no fallo: salio con codigo 0 y las 18 claves verificadas
+por HTTP. La secuencia de escrituras, los valores de destino, la relectura y la
+prueba de plano son identicas en las dos versiones. El codigo nuevo no se
+ejecuto ni una vez en esta corrida.
+
+POR QUE NO SE REMIDE. Remedir daria otra cosa, y menos util: el canal 10 ya
+quedo plano por esta misma corrida, asi que una corrida nueva informaria «0
+claves cambian» y no documentaria el reseteo. Volver a poner el bombo para
+volver a sacarlo serian 36 escrituras mas sobre la consola del usuario para
+arreglar un numero de este archivo.
+
+NOTA DEL 2026-09-16: la huella reconocida de arriba se volvio a fijar, sin tocar
+el reconocimiento en si. Se movio porque cambiaron COMENTARIOS de un modulo
+compartido --`con-restauracion.ts`, que ahora explica el papelito de
+`pendiente.ts`-- y la huella cubre el guion y sus imports. El codigo que corrio
+sigue siendo el de hoy; lo que esta anotado mas arriba sobre esta corrida no
+cambia.

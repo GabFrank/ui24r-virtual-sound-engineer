@@ -58,6 +58,47 @@ const DELIBERADAS = new Map<string, string>([
     + 'rechace. Existe como `l.N.eq.easy` y `i.N.eq.easy`, no como `m.eq.easy`'],
   ['i.mix', 'una ruta MAL FORMADA a proposito: familia sin indice de canal'],
 
+  // **Las del ecualizador grafico de salida, del 2026-09-16.** El item 109 midio
+  // su ley y `canonizarRuta` aprendio a direccionarlo, asi que hubo que probar
+  // las dos formas de su clave y sus bordes. Igual que las cinco de abajo: que no
+  // esten en el inventario es el punto.
+  ['a.M.eq.peak.K', 'la PLANTILLA con la que la tabla indexa el grafico del auxiliar. '
+    + 'Las plantillas no son claves del aparato: `a.4.eq.peak.17` si lo es'],
+  ['m.eq.peak.l.K', 'la plantilla del grafico del general. Se direcciona pero NO tiene '
+    + 'conversion: se midio un auxiliar, y que el general comparta la ley es suposicion'],
+  ['m.eq.peak.r.K', 'la misma plantilla del lado derecho: el general separa L y R, con su '
+    + 'propio `linked`, y hay que probar que las dos formas se canonizan'],
+  ['a.10.eq.peak.0', 'hay 10 auxiliares, 0 a 9: prueba que el borde de arriba se rechace'],
+  ['a.10.mix', 'el mismo borde, sobre el bus como sujeto'],
+  ['a.4.eq.peak.31', 'son 31 bandas, 0 a 30. El cliente trae 32 ETIQUETAS y la ultima es '
+    + 'el borde del grafico: acotar con 32 daria conversion para una banda inexistente'],
+  ['a.04.eq.peak.1', 'el ALIAS con cero a la izquierda, por el mismo motivo que '
+    + '`i.03.aux.1.value`: es la misma banda y el estado se indexa por cadena cruda'],
+  ['m.eq.otracosa.l.7', 'una ruta MAL FORMADA a proposito: un numero despues de `l` que '
+    + 'NO viene de `peak` no es una banda, y tiene que fallar cerrado'],
+
+  // **Los bordes de las otras tres familias que entran a un auxiliar**, del
+  // 2026-09-20. A una cuna le entran 32 caminos y la pantalla por musico los
+  // lista; `esEnvioAUnAuxiliar` acota cada familia con su censo del inventario,
+  // y hay que probar que el de arriba se rechace. Que no esten en el inventario
+  // ES el punto, igual que `a.10.eq.peak.0`.
+  ['l.2.aux.0.value', 'hay 2 entradas de linea, 0 y 1: prueba que el borde de arriba se '
+    + 'rechace. Censadas en el inventario del 2026-09-11: 20 envios de linea / 10 aux'],
+  ['p.2.aux.0.value', 'hay 2 canales del reproductor, 0 y 1: el mismo borde. 20 envios '
+    + 'del reproductor sobre 10 auxiliares'],
+  ['f.4.aux.0.value', 'hay 4 retornos de efecto, 0 a 3: el mismo borde. 40 envios de '
+    + 'retorno sobre 10 auxiliares'],
+  ['m.l.7', 'idem, en su forma mas corta'],
+
+  // **El alias con ceros sobre una banda del ecualizador de canal**, del
+  // 2026-09-22 (ADR-039). Misma razon que `i.03.aux.1.value` y `a.04.eq.peak.1`:
+  // la forma de «poner la banda» exige que los tres cambios sean de la misma
+  // banda del MISMO canal, y compara la cadena cruda. Si `i.9` e `i.09` contaran
+  // como el mismo canal, la comprobacion se apoyaria en una identidad que el
+  // estado por ruta no tiene. Que no exista en la consola ES el punto.
+  ['i.09.eq.b2.freq', 'el ALIAS con cero a la izquierda sobre una banda: «poner la '
+    + 'banda» tiene que rechazarlo, porque el estado por ruta se indexa por cadena cruda'],
+
   // **Las cinco de abajo existen para probar que NO se escriben.** Son las que
   // pasaban la lista blanca de ADR-028 cuando era `/^i\.\d+\.aux\.\d+\.value$/`
   // con `\d+` sin cota, y las encontro una auditoria de seguridad. Que no esten

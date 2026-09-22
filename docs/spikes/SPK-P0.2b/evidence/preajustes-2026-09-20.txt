@@ -1,0 +1,148 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-21T00:30:19.060Z
+# comando: node --experimental-strip-types tools/spikes/p0-2b-eq/preajustes.ts 192.168.0.78
+# guion: tools/spikes/p0-2b-eq/preajustes.ts sha256:bbf7abc62addb147
+# la huella cubre 3 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+#
+# divergencia reconocida: 767ded75de0a0b4e
+#
+# QUE CAMBIO, Y POR QUE LOS NUMEROS VALEN IGUAL.
+# Horas despues de esta corrida, una auditoria adversarial encontro que
+# `solo-lectura.ts` --uno de los instrumentos que cubre la huella-- dejaba pasar
+# un salto de linea, o sea dos ordenes metidas en una. Se cerro rechazando todo
+# caracter de control, y de paso se corrigieron dos nombres de la lista blanca
+# (`PLISTS` y `PLIST_TRACKS` eran nombres de RESPUESTA; las ordenes de pedido son
+# `MEDIA_GET_PLISTS` y `MEDIA_GET_PLIST_TRACKS`).
+#
+# NINGUNO DE LOS DOS CAMBIOS TOCA LO QUE ESTA CORRIDA HIZO: mando `PRESETLIST` y
+# `READPRESET`, sin un solo caracter de control, y las dos ordenes ya estaban en
+# la lista blanca antes y despues. La validacion nueva las deja pasar igual y la
+# correccion de nombres afecta a ordenes que esta corrida nunca uso.
+#
+# Se anota en vez de remedir porque remedir daria lo mismo y dejaria dos archivos
+# diciendo lo mismo. Si manana cambia algo que SI pueda mover estos numeros, la
+# huella reconocida deja de ser la de hoy y el validador vuelve a marcarlo.
+
+=== PREAJUSTES DE LA CONSOLA, LEÍDOS POR EL PROTOCOLO ===
+consola: 192.168.0.78
+fecha:   2026-09-21T00:30:19.182Z
+espera por respuesta: 1500 ms · categorías preguntadas: 15
+escrituras: NINGUNA. Sólo PRESETLIST y READPRESET.
+
+líneas recibidas en el volcado inicial: 6766
+
+=== 1. LISTAR: PRESETLIST^<categoria> ===
+ch      | fábrica  25 | usuario  10
+          del usuario: Bajo · Djembe marcos · Djembe marcos al · Gtr beltran · Voz bruno · Voz camila · Voz gab · djembe jorgito · djembe jorgito al · grt gab
+eqch    | fábrica  28 | usuario   0
+dynch   | fábrica  22 | usuario   0
+gate    | fábrica   0 | usuario   0
+digi    | fábrica  48 | usuario   0
+eqaux   | fábrica   0 | usuario   0
+dynaux  | fábrica   0 | usuario   0
+eqm     | fábrica   0 | usuario   0
+dynm    | fábrica   1 | usuario   0
+chm     | fábrica   0 | usuario   0
+afs     | fábrica   0 | usuario   0
+fxrev   | fábrica  14 | usuario   0
+fxroom  | fábrica   9 | usuario   0
+fxcho   | fábrica   6 | usuario   0
+fxdel   | fábrica   8 | usuario   1
+          del usuario: Basic Delay
+
+=== 2. LEER: READPRESET^<categoria>^u:<nombre> ===
+preajustes propios encontrados: 11
+
+--- ch / Bajo
+    claves: 32
+    crudo:  {".eq.b5.gain":0.5,".eq.b5.q":0.5252185347,".eq.lpf.slope":0,".eq.lpf.freq":0.668561207,".eq.b4.q":0.5801457195,".eq.b4.freq":0.8506206645,".eq.b5.freq":0.9542171999,".eq.b4.gain":0.4734467675,".eq.b3.freq":0.638286476,".eq.b2.gain":0.4584935518,".eq.b3.gain":0.4546638138,".eq.b3.q":0.5200364299,".eq.b1.gain":0.5603894461,".eq.b1.q":0.2468123862,".eq.b2.q":0.6183970856,".eq.b2.freq":0.4286195334,".eq.hpf.freq":0.1697874505,".eq.easy":0,".eq.b1.freq":0.2471686275,".eq.hpf.slope":0,".dyn.outgain":0.3914505834,".dyn.release":0.3419397866,".dyn.ratio":0.5094850949,".dyn.gain":0.75,".dyn.attack":0,".dyn.softknee":1,".dyn.threshold":0.6006073882,".gate.hold":0.3042441765,".gate.release":0.3150737134,".gate.depth":0,".gate.attack":0,".gate.thresh":0}
+    pasa-altos: 66 Hz
+    banda 1:    113 Hz  +  2.4 dB  Q 0.20
+    banda 2:    403 Hz   -1.7 dB  Q 1.70
+    banda 3:   1750 Hz   -1.8 dB  Q 0.97
+    banda 4:   7744 Hz   -1.1 dB  Q 1.37
+--- ch / Djembe marcos
+    claves: 32
+    crudo:  {".eq.b2.freq":0.223343945,".eq.b2.q":0.5252185347,".eq.b1.q":0.5252185347,".eq.b1.gain":0.6756230684,".eq.hpf.slope":0,".eq.b1.freq":0.2784150818,".eq.easy":0,".eq.hpf.freq":0.1112602407,".eq.b4.gain":0.2998444706,".eq.b5.freq":0.9542171999,".eq.b4.freq":0.6470785041,".eq.b4.q":0.5252185347,".eq.b3.q":0.5252185347,".eq.b3.gain":0.1309247293,".eq.b2.gain":0.6621725962,".eq.b3.freq":0.4731101088,".eq.lpf.freq":0.5873451977,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".dyn.release":0.3405814921,".dyn.outgain":0.4564424119,".dyn.softknee":1,".dyn.attack":0,".dyn.gain":0.75,".dyn.ratio":0.4326702432,".dyn.threshold":0.5293327503,".gate.depth":0,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0}
+    pasa-altos: 44 Hz
+    banda 1:    141 Hz  +  7.0 dB  Q 1.00
+    banda 2:     96 Hz  +  6.5 dB  Q 1.00
+    banda 3:    550 Hz  -14.8 dB  Q 1.00
+    banda 4:   1861 Hz   -8.0 dB  Q 1.00
+--- ch / Djembe marcos al
+    claves: 32
+    crudo:  {".eq.b1.q":0.5252185347,".eq.b1.gain":0.6996056265395348,".eq.hpf.slope":0,".eq.b1.freq":0.21986427446244103,".eq.easy":0,".eq.hpf.freq":0.031096723251209425,".eq.b4.freq":0.4930809249753842,".eq.b4.q":0.5252185347,".eq.b3.q":0.5252185347,".eq.b3.gain":0.23993635720697637,".eq.b2.gain":0.6567220148046511,".eq.b3.freq":0.3345858712090822,".eq.b2.freq":0.11239692332271532,".eq.b2.q":0.5252185347,".eq.lpf.freq":0.7094131040083543,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".eq.b4.gain":0.3510799357162784,".eq.b5.freq":0.9542171999,".dyn.release":0.3405814921,".dyn.outgain":0.4564424119,".dyn.softknee":1,".dyn.attack":0,".dyn.gain":0.75,".dyn.ratio":0.4326702432,".dyn.threshold":0.5293327503,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0,".gate.depth":0}
+    pasa-altos: 25 Hz
+    banda 1:     93 Hz  +  8.0 dB  Q 1.00
+    banda 2:     44 Hz  +  6.3 dB  Q 1.00
+    banda 3:    208 Hz  -10.4 dB  Q 1.00
+    banda 4:    633 Hz   -6.0 dB  Q 1.00
+--- ch / Gtr beltran
+    claves: 32
+    crudo:  {".eq.lpf.slope":0,".eq.lpf.freq":0.9130522088,".eq.b5.freq":0.9542171999,".eq.b4.gain":0.4620351372,".eq.b5.gain":0.5,".eq.b5.q":0.5252185347,".eq.b3.gain":0.4249084999,".eq.b3.q":0.2358834244,".eq.b4.q":0.3087431694,".eq.b4.freq":0.8447422382,".eq.b2.q":0.3998178506,".eq.b2.freq":0.3287509961,".eq.b3.freq":0.6679369771,".eq.b2.gain":0.5065504645,".eq.b1.freq":0,".eq.hpf.slope":0,".eq.b1.gain":0.4188267394,".eq.b1.q":0.2449908925,".eq.hpf.freq":0.1856516977,".eq.easy":0,".dyn.attack":0,".dyn.softknee":1,".dyn.outgain":0.3846093383,".dyn.release":0.3419397866,".dyn.threshold":0.5469052411,".dyn.ratio":0.5094850949,".dyn.gain":0.75,".gate.depth":0,".gate.attack":0,".gate.thresh":0,".gate.hold":0.3042441765,".gate.release":0.3150737134}
+    pasa-altos: 73 Hz
+    banda 1:     20 Hz   -3.2 dB  Q 0.20
+    banda 2:    200 Hz  +  0.3 dB  Q 0.49
+    banda 3:   2154 Hz   -3.0 dB  Q 0.19
+    banda 4:   7431 Hz   -1.5 dB  Q 0.29
+--- ch / Voz bruno
+    claves: 32
+    crudo:  {".eq.b2.gain":0.47470349,".eq.b3.freq":0.5145162034,".eq.b2.freq":0.3447475026,".eq.b2.q":0.4799635701,".eq.b1.q":0.3506375228,".eq.b1.gain":0.5158270746,".eq.hpf.slope":0,".eq.b1.freq":0.3324945746,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".eq.b4.gain":0.5480299576,".eq.b5.freq":0.9542171999,".eq.b4.freq":0.7123186796,".eq.b4.q":0.3907103825,".eq.b3.q":0.4471766849,".eq.b3.gain":0.4268768738,".eq.lpf.freq":0.9001410086,".eq.lpf.slope":0,".eq.easy":0,".eq.hpf.freq":0.3487366459,".dyn.gain":0.75,".dyn.ratio":0.243902439,".dyn.threshold":0.6172364871,".dyn.release":0.3094194614,".dyn.outgain":0.3895487955,".dyn.softknee":1,".dyn.attack":0.1571815718,".gate.depth":0,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0}
+    pasa-altos: 230 Hz
+    banda 1:    205 Hz  +  0.6 dB  Q 0.37
+    banda 2:    224 Hz   -1.0 dB  Q 0.77
+    banda 3:    735 Hz   -2.9 dB  Q 0.64
+    banda 4:   2939 Hz  +  1.9 dB  Q 0.46
+--- ch / Voz camila
+    claves: 32
+    crudo:  {".eq.b4.gain":0.5835981655,".eq.b5.freq":0.9542171999,".eq.b4.freq":0.9151873003,".eq.b4.q":0.3943533698,".eq.b3.q":0.5,".eq.b3.gain":0.3363272401,".eq.b2.gain":0.4999694767,".eq.b3.freq":0.6960804287,".eq.lpf.freq":0.8787648362,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".eq.b2.freq":0.3930450421,".eq.b2.q":0.4817850638,".eq.b1.q":0.5,".eq.b1.gain":0.5,".eq.hpf.slope":0,".eq.b1.freq":0.3286901902,".eq.easy":0,".eq.hpf.freq":0.3153368203,".dyn.threshold":0.5564152387,".dyn.release":0.3189219117,".dyn.outgain":0.5372138061,".dyn.softknee":1,".dyn.attack":0.4228477604,".dyn.gain":0.75,".dyn.ratio":0.2493224932,".gate.depth":0,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0}
+    pasa-altos: 182 Hz
+    banda 1:    200 Hz  +  0.0 dB  Q 0.87
+    banda 2:    314 Hz   -0.0 dB  Q 0.78
+    banda 3:   2623 Hz   -6.5 dB  Q 0.87
+    banda 4:  12172 Hz  +  3.3 dB  Q 0.47
+--- ch / Voz gab
+    claves: 32
+    crudo:  {".eq.b1.q":0.5,".eq.b1.gain":0.5170969144,".eq.hpf.slope":2,".eq.b1.freq":0.3310439715,".eq.easy":0,".eq.hpf.freq":0.2302889586,".eq.b4.freq":0.8841509182,".eq.b4.q":0.3907103825,".eq.b3.q":0.4471766849,".eq.b3.gain":0.4690621264,".eq.b2.gain":0.5625826756,".eq.b3.freq":0.6684907167,".eq.b2.freq":0.4406308221,".eq.b2.q":0.5,".eq.lpf.freq":0.8761016904,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".eq.b4.gain":0.4835649548,".eq.b5.freq":0.9542171999,".dyn.release":0.3094194614,".dyn.outgain":0.4579612466,".dyn.softknee":1,".dyn.attack":0.1571815718,".dyn.gain":0.75,".dyn.ratio":0.243902439,".dyn.threshold":0.6057680667,".gate.depth":0,".gate.release":0.3150737133956386,".gate.hold":0.3042441765273541,".gate.thresh":0,".gate.attack":0}
+    pasa-altos: 100 Hz
+    banda 1:    203 Hz  +  0.7 dB  Q 0.87
+    banda 2:    438 Hz  +  2.5 dB  Q 0.87
+    banda 3:   2162 Hz   -1.2 dB  Q 0.64
+    banda 4:   9794 Hz   -0.7 dB  Q 0.46
+--- ch / djembe jorgito
+    claves: 32
+    crudo:  {".eq.b1.q":0.5252185347,".eq.b1.gain":0.6753124765,".eq.hpf.slope":0,".eq.b1.freq":0.2781517167,".eq.easy":0,".eq.hpf.freq":0.2365826944,".eq.b4.freq":0.9419280057,".eq.b4.q":0.5252185347,".eq.b3.q":0.317973171,".eq.b3.gain":0.163752724,".eq.b2.gain":0.6685494577,".eq.b3.freq":0.5472189347,".eq.b2.freq":0.339369994,".eq.b2.q":0.5252185347,".eq.lpf.freq":1,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".eq.b4.gain":0.5719635298,".eq.b5.freq":0.9542171999,".dyn.release":0.3405814921,".dyn.outgain":0.4222361864,".dyn.softknee":1,".dyn.attack":0,".dyn.gain":0.75,".dyn.ratio":0,".dyn.threshold":0.591053051,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0,".gate.depth":0}
+    pasa-altos: 105 Hz
+    banda 1:    140 Hz  +  7.0 dB  Q 1.00
+    banda 2:    216 Hz  +  6.7 dB  Q 1.00
+    banda 3:    924 Hz  -13.4 dB  Q 0.31
+    banda 4:  14680 Hz  +  2.9 dB  Q 1.00
+--- ch / djembe jorgito al
+    claves: 32
+    crudo:  {".eq.b2.freq":0.3392625548039942,".eq.b2.q":0.5252185347,".eq.b1.q":0.5252185347,".eq.b1.gain":0.643699104406977,".eq.hpf.slope":0,".eq.b1.freq":0.20127357368374502,".eq.easy":0,".eq.hpf.freq":0.12367698419922764,".eq.b4.gain":0.6493617856139534,".eq.b5.freq":0.9542171999,".eq.b4.freq":0.7301434822826464,".eq.b4.q":0.5252185347,".eq.b3.q":0.317973171,".eq.b3.gain":0.359973654232558,".eq.b2.gain":0.5344651553744185,".eq.b3.freq":0.5681867461685789,".eq.lpf.freq":1,".eq.lpf.slope":0,".eq.b5.q":0.5252185347,".eq.b5.gain":0.5,".dyn.release":0.3405814921,".dyn.outgain":0.4222361864,".dyn.softknee":1,".dyn.attack":0,".dyn.gain":0.75,".dyn.ratio":0,".dyn.threshold":0.591053051,".gate.depth":0,".gate.release":0.3150737134,".gate.hold":0.3042441765,".gate.thresh":0,".gate.attack":0}
+    pasa-altos: 48 Hz
+    banda 1:     82 Hz  +  5.7 dB  Q 1.00
+    banda 2:    215 Hz  +  1.4 dB  Q 1.00
+    banda 3:   1071 Hz   -5.6 dB  Q 0.31
+    banda 4:   3330 Hz  +  6.0 dB  Q 1.00
+--- ch / grt gab
+    claves: 32
+    crudo:  {".eq.b3.freq":0.6390540204,".eq.b3.gain":0.2522056619,".eq.b3.q":0.5252185347,".eq.b4.freq":0.8312908786,".eq.b4.gain":0.4376421281,".eq.b4.q":0.5252185347,".eq.b5.freq":0.9542171999,".eq.b5.gain":0.5,".eq.b5.q":0.5252185347,".eq.lpf.slope":0,".eq.lpf.freq":0.9411678843,".eq.easy":0,".eq.hpf.slope":0,".eq.hpf.freq":0.3233655159,".eq.b1.freq":0.3390904787,".eq.b1.q":0.5252185347,".eq.b1.gain":0.4669202081,".eq.b2.freq":0.4734895297,".eq.b2.gain":0.4753520466,".eq.b2.q":0.5011120152,".dyn.threshold":0.5576369723,".dyn.ratio":0.2092226947,".dyn.gain":0.75,".dyn.attack":0.34375,".dyn.softknee":1,".dyn.outgain":0.4995597891,".dyn.release":0.4887695312,".gate.depth":0,".gate.attack":0,".gate.thresh":0,".gate.hold":0.3042441765,".gate.release":0.3150737134}
+    pasa-altos: 193 Hz
+    banda 1:    215 Hz   -1.3 dB  Q 1.00
+    banda 2:    552 Hz   -1.0 dB  Q 0.87
+    banda 3:   1759 Hz   -9.9 dB  Q 1.00
+    banda 4:   6763 Hz   -2.5 dB  Q 1.00
+--- fxdel / Basic Delay
+    claves: 6
+    crudo:  {".par1":0.2131147541,".par2":0.0625,".par3":0.6551912568,".par4":0.6967213115,".par5":0,".par6":0}
+
+=== FIN. Ninguna clave de la consola fue escrita. ===
+
+
+# salida del proceso: 0

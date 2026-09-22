@@ -1,0 +1,64 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T01:07:03.602Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/aplanar-canal.ts 10 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/aplanar-canal.ts sha256:bd1080492dbd14f0
+# la huella cubre 3 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== APLANAR EL CANAL 10 (i.9) EN 192.168.0.78 ===
+
+canales planos que sirven de referencia: 5, 6, 7, 14, 17, 18, 20, 21, 22, 23, 24
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/aplanar-canal.ts:153
+  throw new Error(`los canales planos NO coinciden en: ${discordantes.join(', ')}. No se escribe `
+        ^
+
+Error: los canales planos NO coinciden en: mix (0 / 0.003611111111 / 0.5862161798 / 0.5893378427 / 0.02214839424). No se escribe nada. Que discrepen significa que «plano» no es una sola cosa en esta consola, y elegir una de las variantes seria inventar el criterio.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/aplanar-canal.ts:153:9
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1
+
+================================================================================
+ANOTACION AGREGADA DESPUES, EL 2026-09-15. NO ES OTRA CORRIDA.
+# divergencia reconocida: 037108b9507761c0
+================================================================================
+
+La huella de arriba --sha256:bd1080492dbd14f0-- YA NO COINCIDE con el guion de
+hoy, y el encabezado dice que en ese caso el archivo es de otra version. Se
+explica aca en vez de dejarlo como un desajuste mudo.
+
+QUE CAMBIO, y por que este archivo sigue valiendo. Esta corrida ABORTO SIN
+ESCRIBIR NADA, y aborto porque tenia razon: la lista de claves a aplanar incluia
+el fader `mix`, y los once canales planos de la consola lo tienen en cinco
+posiciones distintas. La guarda de unanimidad se nego a elegir una.
+
+El arreglo fue sacar `mix` de la lista --el fader es una posicion operativa, no
+una propiedad de la configuracion del canal-- y por eso el guion de hoy ya no
+produce este aborto. O sea: el codigo cambio, y cambio EXACTAMENTE por lo que
+este archivo documenta.
+
+Lo que este archivo aporta no es una medicion sino el registro de que la guarda
+funciono antes de escribir sobre la consola del usuario, y los cinco valores de
+fader que lo demuestran. Remedirlo no tiene sentido: con el guion de hoy no
+vuelve a pasar.
+
+La corrida que si escribio esta en aplanar-canal-10-2026-09-15b.txt, con la
+huella del guion actual.
+
+SEGUNDA ANOTACION, EL MISMO DIA. El guion volvio a cambiar despues de esto: se
+le agrego `conRestauracion` con vuelta atras condicional. La huella reconocida
+de arriba ya es la de esa version. Nada de lo que este archivo documenta cambia:
+la corrida aborto ANTES de conectarse, en la guarda de unanimidad.
+
+NOTA DEL 2026-09-16: la huella reconocida de arriba se volvio a fijar, sin tocar
+el reconocimiento en si. Se movio porque cambiaron COMENTARIOS de un modulo
+compartido --`con-restauracion.ts`, que ahora explica el papelito de
+`pendiente.ts`-- y la huella cubre el guion y sus imports. El codigo que corrio
+sigue siendo el de hoy; lo que esta anotado mas arriba sobre esta corrida no
+cambia.

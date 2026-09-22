@@ -5,6 +5,8 @@ import type { Confidence } from '@vse/domain';
 import type { ContextoSeguridad } from '@vse/safety';
 import { SafetyService } from '../core/safety.service';
 import { DiarioService } from '../core/diario.service';
+import { MedicionesService } from '../core/mediciones.service';
+import { historialDeLaSesion } from '@vse/safety';
 import { SessionStateService } from '../core/session.state';
 import { MixerService } from '../core/mixer.service';
 import { Logger } from '../core/logger';
@@ -55,30 +57,73 @@ const CONFIANZAS_QUE_APLICAN: readonly Confidence[] = ['HIGH', 'MEDIUM'];
 export class AplicarGananciaService {
   private readonly seguridad = inject(SafetyService);
   private readonly diario = inject(DiarioService);
+  private readonly mediciones = inject(MedicionesService);
   private readonly sesion = inject(SessionStateService);
   private readonly mixer = inject(MixerService);
   private readonly log = inject(Logger);
 
   /**
-   * Si el botón de aplicar tiene que estar habilitado, y si no, por qué.
+   * Anota en la transacción que después de ella hubo una escucha.
+   *
+   * **Es la otra mitad de guardar la medición**, y sin ella guardarla no sirve de
+   * nada: el motor no busca «alguna medición posterior», resuelve exactamente el
+   * identificador que la transacción declara. Una tabla llena de mediciones y un
+   * `medicionPosteriorId` en nulo dan el mismo veredicto que la tabla vacía.
+   *
+   * **Se llama después de volver a medir y no al aplicar**, porque la escucha
+   * ocurre después: al cerrar la transacción todavía no hay nada que oír.
+   *
+   * **Sin identificador no se anota nada.** La captura devuelve `null` cuando no
+   * hubo dónde guardar, y anotar un identificador inventado sería exactamente el
+   * agujero que el motor cerró el 2026-09-18: anotar cualquier texto contaba como
+   * haber escuchado, y una auditoría midió dieciséis pasos y 32 dB con
+   * identificadores que no existían.
+   *
+   * **Y que la medición sea de verdad una escucha no lo decide esto**: el motor
+   * comprueba **siete** cosas sobre ella —que exista; que sea de esta sesión; que
+   * hubiera señal; que durara lo que su clase de parámetro pide; que **todos** los
+   * cambios verificados de la transacción traigan fecha de envío utilizable; que
+   * no sea anterior a la más tardía de ellas; y que su ventana haya terminado—.
+   * Acá sólo se dice cuál fue. (Una primera redacción decía siete y enumeraba
+   * seis: se comía la de las fechas, que es la que cierra que un cambio sin fecha
+   * no se la preste un hermano.)
+   */
+  async anotarEscucha(idTransaccion: string, medicionId: string | null): Promise<void> {
+    if (medicionId === null) {
+      this.log.info('transaction', 'escucha_sin_anotar', { transaccion: idTransaccion });
+      return;
+    }
+    try {
+      await this.diario.actualizar(idTransaccion, { medicionPosteriorId: medicionId });
+    } catch (e) {
+      // **No propaga.** El cambio ya se aplicó y se verificó; lo que se pierde es
+      // el permiso para el paso siguiente, que el motor va a negar diciendo que
+      // falta la medición intermedia. Hacer fallar la pantalla acá convertiría un
+      // freno correcto en un error para el usuario.
+      this.log.warn('transaction', 'escucha_no_anotada', {
+        transaccion: idTransaccion, medicion: medicionId,
+        motivo: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  /**
+   * Si el botón tiene que estar habilitado, y si no, por qué.
    *
    * Devuelve el motivo aunque no se pueda: una pantalla que apaga un botón sin
-   * decir por qué obliga al usuario a adivinar, y en este producto el motivo
-   * casi siempre es accionable —conectá la consola, volvé a medir, pasá a
+   * decir por qué obliga al usuario a adivinar, y en este producto el motivo casi
+   * siempre es accionable —conectá la consola, volvé a medir, pasá a
    * configuración de canales—.
-   */
-  /**
-   * Si el botón tiene que estar habilitado, y si no, por qué.
    *
-   * Las reglas viven en `@vse/assistants`, donde se prueban; acá se junta el
-   * estado disperso —sesión, seguridad, conexión— y se pregunta.
-   */
-  /**
-   * Si el botón tiene que estar habilitado, y si no, por qué.
+   * Toma sólo la confianza porque el resto —estado de sesión, paro, conexión— lo
+   * sabe este servicio. Las reglas viven en `@vse/assistants`, donde se prueban;
+   * acá se junta el estado disperso y se pregunta.
    *
-   * Toma solo la confianza porque el resto —estado de sesión, paro, conexión—
-   * lo sabe este servicio. La pantalla no tiene por qué juntar ese estado para
-   * preguntar si se puede.
+   * **Estaban los mismos tres docblocks apilados acá, y este commit los dejó
+   * además encima de la función de al lado**: al insertar `anotarEscucha` entre
+   * ellos y `puedeAplicar`, los tres pasaron a describir otra cosa y ésta quedó sin
+   * ninguno. Lo cazó una auditoría de fidelidad el 2026-09-19. Los tres decían lo
+   * mismo con otras palabras, así que queda uno.
    */
   puedeAplicar(confianza: Confidence, canal?: number): { readonly puede: boolean; readonly motivo: string | null } {
     const permiso = this.seguridad.permiteEscritura('PREAMP_GAIN');
@@ -105,22 +150,58 @@ export class AplicarGananciaService {
    * esta operación —qué confianza tiene, si el usuario la aprobó— y no de la
    * conexión. Lo poco que es de la sesión se pide a quien la tiene.
    */
-  private contexto(confianza: Confidence): ContextoSeguridad {
+  private async contexto(confianza: Confidence, sessionId: string): Promise<ContextoSeguridad> {
+    // **Las mediciones de la sesión, que hasta el 2026-09-18 iban vacías.** El
+    // historial resuelve `medicionPosteriorId` contra esta lista para decidir si
+    // entre un paso y el siguiente se escuchó de verdad. Con la lista vacía
+    // ninguna ruta quedaba con escucha comprobada, así que **un segundo ajuste
+    // sobre el mismo canal se rechazaba siempre**.
+    //
+    // **Y el otro extremo se cerró el 2026-09-19**, que es lo que hace que esta
+    // lista traiga algo. Esta pantalla vuelve a medir después de aplicar
+    // --`capturar`, para contarte si sirvió--, y esa ventana ahora **se guarda**
+    // en `measurement` y su identificador queda anotado como `medicionPosteriorId`
+    // por `anotarEscucha`. Hasta entonces la lista se leía de una tabla que nadie
+    // escribía: o sea que volvía vacía igual, y **un segundo ajuste sobre el mismo
+    // canal se rechazaba siempre** con `SIN_MEDICION_INTERMEDIA`.
+    //
+    // `Date.now()` es el instante contra el que se comprueba que la ventana de
+    // escucha haya terminado.
+    const historial = historialDeLaSesion(
+      await this.diario.deLaSesion(sessionId),
+      await this.mediciones.deLaSesion(sessionId),
+      Date.now(),
+    );
     return {
       sessionState: this.sesion.estado() ?? 'SETUP',
       nivelAutonomia: 'ASSISTED',
-      // Estos tres llevan la cuenta de cuánto se movió cada ruta en la sesión,
-      // y hoy la aplicación no la lleva: cada aplicación de ganancia es la
-      // primera. Van vacíos a propósito y no con datos inventados; cuando el
-      // historial de la sesión los alimente, entran acá sin tocar el motor.
-      acumuladoPorRuta: new Map(),
-      rutasConMedicionPosterior: new Set(),
-      rutasYaTocadas: new Set(),
-      // **Vacío, y por el mismo motivo que los tres de arriba.** El techo de
-      // «hasta donde estaba antes de que yo lo bajara» (ADR-028) se llena con el
-      // valor que la ruta tenía la primera vez que el asistente la tocó, y eso
-      // también sale del historial de la sesión, que todavía no existe. Este
-      // servicio además sólo aplica ganancia, que no tiene techo propio.
+      // **El historial de la sesión, que hasta el 2026-09-17 iba vacío.** Estos
+      // cuatro llevan la cuenta de cuánto se movió cada ruta, cuáles se tocaron,
+      // si se escuchó después del último cambio y cuáles ya tienen un nivel de
+      // trabajo establecido --que es de monitores y acá no aplica: la ganancia no
+      // declara techo, así que su presupuesto rige siempre--. Pasarlos vacíos dejaba dos
+      // reglas del motor existiendo en el código y no en el comportamiento: el
+      // presupuesto por sesión nunca se disparaba --el acumulado arrancaba
+      // siempre en cero-- y «comprobá el efecto antes de volver a moverlo»
+      // tampoco, porque sin rutas tocadas **cada cambio parecía el primero**.
+      // Esa segunda fallaba ABIERTA.
+      //
+      // Se reconstruyen del diario, que está en la base y sobrevive a una caída:
+      // un contador en memoria se perdería con el proceso, y lo que se perdería
+      // es justamente el freno.
+      ...historial,
+      // **Vacío, y NO por el motivo que decía acá.** Este comentario afirmaba
+      // que el techo de ADR-028 «sale del historial de la sesión, que todavía no
+      // existe», cuatro líneas debajo del comentario que dice que el historial
+      // existe desde el 2026-09-17 y seis debajo de donde se lo construye: el
+      // mismo bloque afirmaba y negaba lo mismo. Lo marcó una auditoría de
+      // fidelidad el mismo día.
+      //
+      // El motivo verdadero es más simple: el techo de «hasta donde estaba antes
+      // de que yo lo bajara» lo anota `registrarTecho` cuando la aplicación BAJA
+      // un envío a monitor, y lo guarda `EnvioAMonitorService`. **Este servicio sólo
+      // aplica ganancia del previo**, que no tiene techo propio ni entra en ese
+      // mapa, así que acá va vacío y no se pierde nada.
       techoPorRuta: new Map(),
       hayTakeDeSoundcheckActivo: false,
       // **Vacío, y hay que decir por qué en vez de dejarlo pasar por obvio.**
@@ -205,7 +286,7 @@ export class AplicarGananciaService {
         magnitudPropuesta: quedoEnDb,
         magnitudEsperada: gananciaADb(p.crudoActual),
       }],
-      this.contexto(p.confianza),
+      await this.contexto(p.confianza, sessionId),
       {
         conexionPermiteEscribir: true,
         snapshotRef: instantanea,

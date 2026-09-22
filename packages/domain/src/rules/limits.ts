@@ -1,5 +1,6 @@
 import type { AutonomyLevel } from '../entities/transaction.ts';
 import type { ParameterKind } from './ownership.ts';
+import { diferenciaEn, hojaDe, type EscalaDelMovimiento } from './hojas.ts';
 
 /**
  * Límites de cambio. Implementa INV-004 y INV-005.
@@ -14,16 +15,110 @@ import type { ParameterKind } from './ownership.ts';
 export interface Limite {
   readonly porTransaccion: number;
   readonly acumuladoPorSesion: number;
+  /**
+   * La unidad de la **magnitud**: la que declara quien propone y la que ata el
+   * número que el motor juzga al crudo que va al cable.
+   *
+   * **Hasta ADR-039 esto era también la unidad del tope, y ahí estaba el
+   * defecto.** `CHANNEL_EQ` cubre hojas en hercios, en decibeles y en Q, y un
+   * tope de 4 dB no acota un salto de frecuencia. La unidad de la magnitud se
+   * queda con la hoja medida; en qué moneda se acota el movimiento lo dice
+   * `escala`, y para las hojas que la declaran distinta, `HOJAS`.
+   */
   readonly unidad: string;
+  /**
+   * La escala en que se cuentan `porTransaccion` y `acumuladoPorSesion`.
+   *
+   * **Sin declarar, es la diferencia en `unidad`**: decibeles contra decibeles,
+   * milisegundos contra milisegundos, que es lo que toda familia hacía y sigue
+   * siendo correcto para lo que se mueve en su propia unidad. Se declara cuando
+   * la moneda del movimiento no es la de la magnitud: el pasa-altos se mide en
+   * hercios y se acota en octavas (ADR-039).
+   */
+  readonly escala?: EscalaDelMovimiento;
+  /**
+   * Tope sobre la magnitud **resultante**, no sobre el movimiento.
+   *
+   * Los otros dos topes acotan *cuánto se mueve* el parámetro; éste acota *dónde
+   * queda*. Son especies distintas y por eso convive con ellos en vez de
+   * reemplazarlos: un parámetro puede quedar dentro del techo y aun así haber
+   * dado un salto brusco para llegar.
+   *
+   * **Decisión del usuario, 2026-09-17**, eligiendo entre cuatro opciones sobre
+   * hasta dónde puede subir la aplicación la cuña de un músico
+   * ([ADR-034](../../../../docs/adr/ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md)):
+   * hasta **nominal**, la posición 0 dB. El control llega a +10; pasar de nominal
+   * queda como decisión suya, no de la aplicación.
+   *
+   * **Y rige siempre, también al retocar**, que es una segunda decisión del
+   * usuario del mismo día. ADR-034 escribió el techo pensando en la subida desde
+   * el piso y dejó el retoque con «los topes de ADR-028 sin cambios», y así un
+   * nivel establecido apenas debajo de nominal se cruzaba con un retoque normal
+   * —sin que el usuario decidiera nada—. Preguntado entre tres opciones, eligió
+   * que el techo rija siempre: **el techo es del parámetro, no de la operación.**
+   * Lo que sí distingue a las dos operaciones es el presupuesto acumulado; ver
+   * `nivelEstablecido` en {@link ContextoCambio}.
+   *
+   * Sin declarar, el parámetro no tiene techo propio y se rige sólo por los otros
+   * dos topes. Declararlo tiene una consecuencia más, y está en
+   * `nivelEstablecido`: es lo único que autoriza a suspender el acumulado.
+   */
+  readonly techoAbsoluto?: number;
+  /**
+   * Cuántos segundos tiene que durar la medición posterior para que cuente como
+   * que se escuchó.
+   *
+   * **Es una tercera especie, y convive con las otras dos a propósito.** Los dos
+   * primeros topes acotan *cuánto se mueve* el parámetro, `techoAbsoluto` acota
+   * *dónde queda*, y éste acota *cuánto hay que esperar antes de volver a
+   * moverlo*. Están juntos porque los cuatro se preguntan por clase de
+   * parámetro y separarlos sería una segunda tabla que envejece aparte.
+   *
+   * **Decisión del usuario, 2026-09-18**, eligiendo entre cuatro opciones sobre
+   * cuánto tiene que durar la escucha entre un paso y el siguiente: *«que lo
+   * decida el tipo de parámetro»*. La alternativa era un solo número para toda
+   * la aplicación.
+   *
+   * **Obligatorio y no opcional, por la misma razón que `magnitudPropuesta` en
+   * `CambioPropuesto`:** así el compilador señala cada clase que se agregue a
+   * esta tabla. Un campo opcional dejaría que una clase nueva naciera sin
+   * criterio de escucha, y el que no lo declara es el que falla abierto.
+   *
+   * **Cero no es «sin criterio»**: es la decisión de que para ese parámetro el
+   * efecto es instantáneo y no hay ventana que esperar. La medición tiene que
+   * existir, ser de esta sesión, ser posterior y tener señal igual.
+   */
+  readonly escuchaMinimaS: number;
 }
 
+/**
+ * Los topes **por familia**, que son el valor por omisión de cada hoja.
+ *
+ * **Desde ADR-039 esta tabla ya no es la última palabra sobre una hoja.** El
+ * freno viaja con la hoja: las de frecuencia y Q del ecualizador de canal
+ * declaran su unidad, su escala y sus números en `HOJAS`, y la familia pone lo
+ * que la hoja no declara. Quien tenga una ruta consulta `limiteDe(kind, path)`;
+ * leer `LIMITES[kind]` directo vale sólo para una familia sin hojas propias,
+ * como el envío a monitor, y hay que saberlo al leerla.
+ */
 export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
-  CHANNEL_FADER: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  PREAMP_GAIN: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  CHANNEL_EQ: { porTransaccion: 4, acumuladoPorSesion: 6, unidad: 'dB' },
-  OUTPUT_EQ: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB' },
-  HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas' },
-  OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms' },
+  CHANNEL_FADER: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  PREAMP_GAIN: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  CHANNEL_EQ: { porTransaccion: 4, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  OUTPUT_EQ: { porTransaccion: 3, acumuladoPorSesion: 6, unidad: 'dB', escuchaMinimaS: 10 },
+  // **La familia queda en octavas y el arreglo va en la hoja, a propósito.**
+  // El tope de una octava --anexo B de la auditoría del 2026-09-07-- no pudo
+  // correr nunca desde que el motor compara unidades: la ley medida de
+  // `eq.hpf.freq` está en hercios y acá decía octavas. Es el mismo defecto que
+  // ADR-039 le encontró al ecualizador, catorce días antes y en otra familia.
+  //
+  // **Se arregla declarando la hoja `eq.hpf.freq` en `HOJAS` y no cambiando
+  // esta línea**, porque bajo esta familia cae también `eq.hpf.slope`, que no
+  // tiene ley medida y no es una frecuencia: ponerle hercios acá la sacaría del
+  // censo de rutas escribibles sin que nadie lo hubiera decidido. La pendiente
+  // del filtro no se toca en esta tarea.
+  HPF: { porTransaccion: 1, acumuladoPorSesion: 2, unidad: 'octavas', escuchaMinimaS: 10 },
+  OUTPUT_DELAY: { porTransaccion: 5, acumuladoPorSesion: 10, unidad: 'ms', escuchaMinimaS: 10 },
   // **Declarado y hoy inerte, a propósito y con su riesgo dicho.**
   // `MASTER_FADER` es `USER_ONLY` con `escribible: false` (INV-009), así que el
   // motor lo rechaza por propiedad antes de llegar acá y este tope no se evalúa
@@ -38,7 +133,7 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
   // aplicación pueda bajar el general para cazar un acople --«Los dos, con
   // techo»--, así que ese ADR está pendiente y no ausente. Ver
   // `docs/backlog/decision-bajar-buses-para-cazar-acoples.md`.
-  MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB' },
+  MASTER_FADER: { porTransaccion: 1, acumuladoPorSesion: 1, unidad: 'dB', escuchaMinimaS: 10 },
   /**
    * **El silencio no tiene magnitud: es binario.** Un tope de «cuánto se mueve»
    * no significa nada acá, y por eso INV-004 lo rechazaba —con razón— hasta que
@@ -56,7 +151,17 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * alcanza para probar seis canales, que es más de los que suelen estar
    * abiertos cuando aparece un acople.
    */
-  CHANNEL_MUTE: { porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales' },
+  //
+  // **Y la escucha en cero, que es la única clase de esta tabla que lo lleva.**
+  // Un silencio es binario y su efecto es instantáneo: el acople que se está
+  // cazando o para o no para, y se oye en el momento. Exigir diez segundos de
+  // ventana acá frenaría el diagnóstico justo cuando la sala está acoplando, que
+  // es el momento en que nadie tiene diez segundos. Lo que sigue exigiéndose es
+  // lo demás: que la medición exista, sea de esta sesión, sea posterior a la
+  // escritura y tenga señal.
+  CHANNEL_MUTE: {
+    porTransaccion: 1, acumuladoPorSesion: 12, unidad: 'canales', escuchaMinimaS: 0,
+  },
   /**
    * El envío a un monitor, en decibeles.
    *
@@ -86,8 +191,77 @@ export const LIMITES: Readonly<Partial<Record<ParameterKind, Limite>>> = {
    * El techo de «hasta donde estaba» es una regla aparte y vive en el motor:
    * ver `techoPorRuta` en `ContextoSeguridad`.
    */
-  MONITOR_AUX_SEND: { porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB' },
+  MONITOR_AUX_SEND: {
+    porTransaccion: 2, acumuladoPorSesion: 4, unidad: 'dB',
+    // **Diez segundos, que es el número que la aplicación ya usa** para decidir
+    // si una medición de ganancia duró lo suficiente para significar algo
+    // (`DURACION_MINIMA_S` en `packages/assistants/src/gain.ts`). Reusarlo en vez
+    // de elegir otro mantiene un solo criterio de «esto se midió lo bastante» en
+    // toda la aplicación, y sobre todo **no inventa una cifra**: no hay ninguna
+    // medición acústica que diga cuánto necesita un músico para juzgar su cuña.
+    // El día que la haya, este número se cambia acá y el motor no se toca.
+    escuchaMinimaS: 10,
+    // Nominal. Ver `techoAbsoluto`: es el único tope de esta tabla que dice
+    // **dónde queda** el parámetro y no cuánto se movió, y es lo que hace
+    // posible la rampa de ADR-034 sin dejarla sin freno.
+    techoAbsoluto: 0,
+  },
 };
+
+/** Un tope ya resuelto para una hoja concreta: la escala siempre está. */
+export interface LimiteResuelto extends Limite {
+  readonly escala: EscalaDelMovimiento;
+}
+
+/**
+ * El tope que rige sobre una ruta: el de su hoja si lo declara, el de su
+ * familia si no.
+ *
+ * **Es lo que cambia la interfaz pública de este paquete** (ADR-039): hasta hoy
+ * el tope se leía por `kind`, y `ContextoCambio` no traía la ruta. Sin la ruta
+ * no hay forma de saber si `i.3.eq.b2.freq` es una frecuencia o una ganancia,
+ * y las dos son `CHANNEL_EQ`.
+ *
+ * **Una hoja que declare otra familia que la pedida se ignora.** El motor ya
+ * exige que `kind` sea la clase real de la ruta; si la tabla de hojas y el
+ * clasificador se separaran, esto devolvería el tope de la familia, que para
+ * una hoja en hercios es rechazar por unidad: fallar cerrado.
+ */
+export function limiteDe(kind: ParameterKind, path: string): LimiteResuelto | undefined {
+  const familia = LIMITES[kind];
+  if (familia === undefined) return undefined;
+  const hoja = hojaDe(path);
+  if (hoja !== undefined && hoja.kind === kind) {
+    return {
+      ...familia,
+      unidad: hoja.unidad,
+      escala: hoja.escala,
+      porTransaccion: hoja.porTransaccion,
+      acumuladoPorSesion: hoja.acumuladoPorSesion,
+    };
+  }
+  return { ...familia, escala: familia.escala ?? diferenciaEn(familia.unidad) };
+}
+
+/**
+ * Cuánto se movió una ruta, en la escala del movimiento de su hoja.
+ *
+ * Es lo que suma el historial de la sesión, y por eso vive acá y no allá: el
+ * acumulado y el tope tienen que contarse en la misma moneda o la comparación
+ * es entre especies distintas, que es el defecto entero de ADR-039.
+ *
+ * **Devuelve `NaN` cuando no se puede contar**: sin tope declarado, o con una
+ * unidad que no es la de la hoja. No es un cero ni un «se ignora»: un
+ * acumulado que no se puede contar es un acumulado que no acota nada, y `NaN`
+ * es lo único que `verificarLimite` rechaza en vez de dejar pasar.
+ */
+export function movimientoDe(
+  kind: ParameterKind, path: string, unidad: string, desde: number, hasta: number,
+): number {
+  const lim = limiteDe(kind, path);
+  if (lim === undefined || unidad !== lim.unidad) return NaN;
+  return lim.escala.movimiento(desde, hasta);
+}
 
 /** Factor de calidad mínimo en salidas: filtros estrechos sin evidencia, no. */
 export const Q_MINIMO_SALIDA = 0.7;
@@ -108,8 +282,14 @@ export const PACING_MS: Readonly<Record<'ASSISTED' | 'AUTO' | 'SYSTEM', number>>
   AUTO: 100,
   // Las transacciones de sistema quedan exentas del límite de cuatro
   // parámetros: seleccionar un canal en el bus de análisis exige poner a menos
-  // infinito los otros veintitrés envíos. A cien milisegundos cada uno serían
-  // más de dos segundos, incompatible con el tiempo de conmutación exigido.
+  // infinito los otros **31** envíos --32 por bus: 24 canales, 2 de línea, 2 del
+  // reproductor, 4 de retornos--. A cien milisegundos cada uno serían más de
+  // tres segundos, incompatible con el tiempo de conmutación exigido.
+  //
+  // Decía «veintitrés» y se corrigió el 2026-09-18, en un segundo pase: el
+  // primero corrigió el docblock de `maximoDeParametros` y dejó esta línea, 76
+  // más arriba y en el mismo archivo, diciendo lo mismo mal. Lo cazó una
+  // auditoría. Que 31 sean **rutas** y no escrituras se explica en ese docblock.
   SYSTEM: 20,
 };
 
@@ -164,6 +344,13 @@ export const PARAMETROS_DE_OPERACION_DE_SISTEMA:
  * Se exige que la operación esté declarada **y** que cada cambio toque un
  * parámetro que esa operación puede tocar. Una transacción vacía no la obtiene:
  * no hay nada que la justifique.
+ *
+ * **«Cada cambio» es cada cambio clasificable.** Las rutas que `clasificarRuta`
+ * no reconoce no llegan acá --quien llama filtra los `null`--, así que **no
+ * rompen la exención**: medido, 24 rutas de bus más `p.0.aux.2.mute`, que
+ * clasifica `null`, siguen dando `true`. Hoy no es explotable porque esa ruta
+ * cae antes por `RUTA_DESCONOCIDA`, pero la frase «todas las clases» que estuvo
+ * acá el 2026-09-18 prometía más de lo que esta función comprueba.
  */
 export function correspondeExencionDeSistema(
   tipoDeOperacion: string | undefined,
@@ -179,10 +366,46 @@ export function correspondeExencionDeSistema(
  * Cuántos parámetros admite una transacción.
  *
  * Las de sistema están exentas del límite de cuatro (INV-005): seleccionar un
- * canal en el bus de análisis exige poner a menos infinito los otros veintitrés
- * envíos, y con el límite de ASSISTED esa operación se rechazaría entera. La
- * exención estaba enunciada en la invariante y **no se podía ni expresar**,
- * porque el máximo se resolvía solo por nivel de autonomía.
+ * canal en el bus de análisis exige poner a menos infinito los otros envíos, y
+ * con el límite de ASSISTED esa operación se rechazaría entera. La exención
+ * estaba enunciada en la invariante y **no se podía ni expresar**, porque el
+ * máximo se resolvía solo por nivel de autonomía.
+ *
+ * **Esta línea decía «los otros veintitrés» y subcontaba.** A un bus auxiliar le
+ * entran 32 envíos `.aux.` --24 canales, 2 de línea, 2 del reproductor, 4 de
+ * retornos--, así que son **31**. El anexo A-06 de la auditoría técnica ya lo
+ * decía --«los sends de FX/player/line también alimentan el AUX»-- y el 23 se
+ * propagó igual. Corregido el 2026-09-18.
+ *
+ * **Y 31 son rutas, no escrituras.** Un envío en `value = 0` ya está en menos
+ * infinito, así que no hay que callarlo: en el volcado del 2026-09-18, del bus 2
+ * sólo 3 de los 32 tienen nivel, y de los buses 3 al 9, ninguno. Cuántas
+ * escrituras hace falta depende del estado, y hay que leerlo.
+ *
+ * **La exención no se pierde por los ocho que no son de canal. Se pierde
+ * antes.** Una primera redacción de este docblock, del 2026-09-18, dijo que
+ * `clasificarRuta` da `ANALYSIS_BUS_SEND` para los 24 de canal y que los ocho
+ * restantes --`LINE_INPUT`, `PLAYER_SEND`, `FX`-- rompían la exención. Es cierto
+ * de las funciones **aisladas** y falso **dentro del motor**, que es lo que
+ * importa: `engine.ts` llama a `clasificarRuta(c.path)` **sin `busDeAnalisis`**
+ * --líneas 136, 160 y 296--, así que los 24 de canal también dan
+ * `MONITOR_AUX_SEND` y la exención devuelve `false` **con los ocho y sin ellos**.
+ * Medido las dos veces. La conclusión que se sacó de ahí --«la que pasa es la
+ * que calla sólo 23»-- **también era falsa: no pasa ninguna**.
+ *
+ * **Y hay un segundo freno debajo, que sobrevive a cualquier arreglo del
+ * primero: `ANALYSIS_BUS_SEND` no tiene entrada en `LIMITES`**, así que INV-004
+ * la rechaza por no tener tope declarado. `runner.test.ts` ya lo decía --«ninguna
+ * transacción de sistema puede pasar el motor todavía»-- y el primer pase no lo
+ * cruzó.
+ *
+ * **La decisión del usuario existe, pero no es la que se escribió.** Ensanchar
+ * esta tabla **no ensancha la superficie escribible**: sólo la usan
+ * `maximoDeParametros` y el pacing, y quién puede escribir lo decide `OWNERSHIP`.
+ * Medido: `esEscribible` da lo mismo antes y después. Lo que sí sería una
+ * decisión suya es hacer **escribibles las entradas de línea y los retornos**,
+ * hoy `USER_ONLY`, que es lo que aislar el bus de verdad necesita, y vive en
+ * `OWNERSHIP`, no acá. Queda anotado en ADR-035, choque 2.
  */
 export function maximoDeParametros(
   nivel: AutonomyLevel,
@@ -215,14 +438,57 @@ export function pacingMs(
 export type ResultadoLimite =
   | { readonly permitido: true }
   | { readonly permitido: false; readonly codigo: 'DELTA_CAP' | 'CUMULATIVE_CAP'
-    | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA';
+    | 'SIN_LIMITE_DECLARADO' | 'SIN_MEDICION_INTERMEDIA' | 'UNIDAD_NO_DECLARADA'
+    | 'TECHO_ABSOLUTO' | 'MAGNITUD_NO_NUMERICA';
     readonly mensaje: string };
 
 export interface ContextoCambio {
   readonly kind: ParameterKind;
-  readonly deltaSolicitado: number;
   /**
-   * Desplazamiento **neto y con signo** respecto al valor inicial de la sesión.
+   * La ruta, porque el tope es de la hoja y no de la familia (ADR-039).
+   *
+   * **Obligatoria, y es lo que cambia la interfaz pública de este paquete.**
+   * Hasta el 2026-09-21 esta función leía `LIMITES[kind]` y con eso no podía
+   * distinguir `i.3.eq.b2.freq` de `i.3.eq.b2.gain`: las dos son `CHANNEL_EQ`,
+   * una se mueve en octavas y la otra en decibeles. Sin la ruta el tope se
+   * resuelve por familia, y para una hoja en hercios eso es rechazarla por
+   * unidad —fallar cerrado—, pero un campo opcional dejaría que un llamador
+   * nuevo naciera midiendo la puerta equivocada sin que el compilador lo diga.
+   */
+  readonly path: string;
+  /**
+   * De dónde viene y a dónde va el parámetro, **en la unidad de la magnitud**
+   * de la hoja: hercios para una frecuencia, Q para un ancho, decibeles para
+   * una ganancia.
+   *
+   * **El movimiento lo calcula esta función y no quien la llama, a propósito.**
+   * Hasta ADR-039 el contexto traía un `deltaSolicitado` ya restado, y con la
+   * escala del movimiento eso es una trampa: una resta en Q se parece a un
+   * número chico y no lo es —entre Q 0,37 y 0,47 hay 0,6 octavas de ancho de
+   * banda—, así que un llamador que restara en vez de convertir pasaría un salto
+   * grande por uno chico. Acá entran las dos magnitudes y la escala de la hoja
+   * decide cuánto es.
+   *
+   * `magnitudPropuesta` es además contra lo que se compara `techoAbsoluto`: un
+   * techo dice dónde queda el parámetro, y dónde queda es esto. Si el tipo
+   * declara techo y esto no es un número, el cambio se rechaza —tener el tope
+   * escrito y no corriendo es el defecto que este proyecto ya pagó con
+   * `techoPorRuta` y con INV-034—.
+   */
+  readonly magnitudEsperada: number;
+  readonly magnitudPropuesta: number;
+  /**
+   * Desplazamiento **neto y con signo** respecto a la **referencia vigente**,
+   * **en la escala del movimiento** de la hoja: octavas para una frecuencia,
+   * decibeles para una ganancia.
+   *
+   * **La referencia es el valor inicial de la sesión, salvo que alguien haya
+   * establecido un nivel de trabajo para ese parámetro**; desde ahí se cuenta
+   * desde el nivel establecido. Lo decide quien reconstruye el acumulado
+   * --`historialDeLaSesion`--, no esta función. Este docblock decía «respecto al
+   * valor inicial de la sesión» después de que el productor cambiara de
+   * definición, así que el productor y el consumidor describían dos referencias
+   * distintas; lo marcó una auditoría de fidelidad el 2026-09-17.
    *
    * Con signo, no en valor absoluto. La diferencia no es de estilo: INV-004
    * define el tope como «respecto al valor inicial», o sea que el parámetro
@@ -231,6 +497,10 @@ export interface ContextoCambio {
    * **la única dirección segura**, la que devuelve el parámetro hacia donde
    * estaba: un canal que subió 6 dB en la prueba y resulta estar alto en el
    * show no se podía bajar.
+   *
+   * **En la escala del movimiento y no en la unidad de la magnitud**, desde
+   * ADR-039: es la moneda del tope, y sumarlo en otra sería comparar especies
+   * distintas otra vez. Quien lo produce lo cuenta con `movimientoDe`.
    */
   readonly acumuladoEnSesion: number;
   /** Si hay una medición posterior a la última transacción sobre este parámetro. */
@@ -252,6 +522,10 @@ export interface ContextoCambio {
    * demostró midiendo: una escritura de recorrido completo, crudo 0 a 1,
    * aprobada bajo un techo de −6 dB declarando magnitudes −31 a −30.
    *
+   * **Desde ADR-039 se compara contra la unidad de la magnitud de la hoja**, no
+   * contra la del tope: una frecuencia se declara en hercios y se acota en
+   * octavas, y las dos cosas son correctas a la vez.
+   *
    * Lo que esto **no** cierra, y hay que decirlo: nada ata `magnitudPropuesta`
    * al `valorPropuesto` que va al cable. El motor juzga lo que el llamador
    * declara. Comparar la unidad hace que declarar mal sea un error visible en
@@ -259,10 +533,36 @@ export interface ContextoCambio {
    * conversión verificadas, que para varios parámetros todavía no están.
    */
   readonly unidad: string;
+  /**
+   * Si esta sesión ya estableció un nivel de trabajo para este parámetro.
+   *
+   * **Es lo que separa poner el nivel de retocarlo** (ADR-034). El presupuesto
+   * acumulado mide cuánto se corrió el parámetro respecto de una referencia, y
+   * esa referencia sólo significa algo si alguien la puso ahí a propósito. Con
+   * las cuñas de los monitores en el piso al empezar el soundcheck, la referencia
+   * es el piso, y proteger 4 dB alrededor del piso no protege a nadie: deja al
+   * músico sin monitor y al soundcheck sin terminar.
+   *
+   * Mientras el nivel **no** está establecido, el presupuesto acumulado se
+   * suspende y lo que acota es `techoAbsoluto`. Una vez establecido, el
+   * presupuesto vuelve entero y se mide **desde el nivel establecido**, que es
+   * trabajo de quien reconstruye el acumulado y no de acá.
+   *
+   * **Sin declarar significa «establecido», y falla cerrado a propósito.** Lo
+   * normal es que el presupuesto rija; suspenderlo es la excepción, y una
+   * excepción que se obtiene por omisión es una excepción que alguien va a
+   * obtener sin querer.
+   *
+   * **Y la suspensión sólo se concede si el parámetro declara `techoAbsoluto`.**
+   * Un presupuesto suspendido sin un techo que lo reemplace deja el parámetro sin
+   * ningún freno sobre el total, y eso no es lo que ADR-034 decidió: decidió
+   * cambiar un freno por otro, no sacar uno.
+   */
+  readonly nivelEstablecido?: boolean;
 }
 
 export function verificarLimite(c: ContextoCambio): ResultadoLimite {
-  const lim = LIMITES[c.kind];
+  const lim = limiteDe(c.kind, c.path);
   if (!lim) {
     return {
       permitido: false,
@@ -274,28 +574,111 @@ export function verificarLimite(c: ContextoCambio): ResultadoLimite {
     return {
       permitido: false,
       codigo: 'UNIDAD_NO_DECLARADA',
-      mensaje: `${c.kind} tiene su tope en ${lim.unidad} y el cambio declara ${c.unidad}: `
+      mensaje: `${c.path} se mide en ${lim.unidad} y el cambio declara ${c.unidad}: `
         + 'comparar los dos numeros seria comparar especies distintas',
     };
   }
-  const delta = Math.abs(c.deltaSolicitado);
+  // **Un número que no es un número pasaba TODOS los topes de esta función.**
+  // Toda comparación con `NaN` da `false`, así que `Math.abs(NaN) > tope` es
+  // `false`, `Math.abs(NaN) > acumulado` es `false` y `NaN > techo` también:
+  // un cambio que declarara `NaN` en su magnitud quedaba aprobado por INV-004
+  // entera. Y no se quedaba ahí: `verificarAtadura` --la guarda que comprueba
+  // que el motor juzgue el mismo número que va al cable-- devolvía `atada: true`
+  // por el mismo motivo, así que el `NaN` pasaba **con cualquier crudo**.
+  //
+  // No estaba expuesto --los dos servicios de producción calculan magnitudes
+  // finitas-- y el motor es justamente la pieza que no puede depender de que
+  // quien lo llama haga las cosas bien. Comprobado de las dos puntas el
+  // 2026-09-17 antes de taparlo.
+  //
+  // **Sólo `NaN`, y los infinitos se dejan como están, a propósito.** Un delta
+  // infinito ya lo rechaza el tope de abajo --`Infinity > 2`-- y eso es lo
+  // correcto mientras nadie sepa proponer un salto desde el silencio; cuando
+  // ADR-034 lo construya, la excepción va a ser deliberada y con su nombre, no
+  // un agujero heredado.
+  // **Y no alcanza con mirar `NaN`, que fue la primera versión de esta guarda.**
+  // Una auditoría del mismo día la midió: `null`, `[]` y `{}` pasaban el techo
+  // igual que `NaN` --`null > 0` es `false`, y `null ?? 0` ni siquiera llegaba a
+  // la comprobación--, y una cadena o un booleano hacían estallar el mensaje del
+  // rechazo con `TypeError: ….toFixed is not a function`, o sea fallando cerrado
+  // pero como caída, que es lo que `engine.ts` dice explícitamente que no quiere.
+  // Se tapó `NaN` y se dejó abierto al vecino de al lado.
+  //
+  // Se comprueba **el tipo y después el valor**: lo que no es un número no se
+  // compara con un tope, y lo que es `NaN` tampoco.
+  //
+  // **La ausencia cae acá también, desde ADR-039.** Antes había un código
+  // aparte, `SIN_MAGNITUD_RESULTANTE`, para el techo sin magnitud resultante;
+  // ahora las dos magnitudes son obligatorias y la que falte llega como
+  // `undefined`, que no es un número. El veredicto es el mismo --se rechaza-- y
+  // el mensaje dice cuál faltó.
+  for (const [que, n] of [
+    ['de dónde viene', c.magnitudEsperada],
+    ['a cuánto quedaría', c.magnitudPropuesta],
+    ['lo acumulado en la sesión', c.acumuladoEnSesion],
+  ] as const) {
+    if (typeof n !== 'number' || Number.isNaN(n)) {
+      return {
+        permitido: false,
+        codigo: 'MAGNITUD_NO_NUMERICA',
+        mensaje: `${que} no es un número (${String(n)}) en ${c.path}: un tope no se `
+          + 'comprueba contra algo que no se puede comparar, y toda comparación con '
+          + '`NaN` --o con lo que no es un número-- es falsa',
+      };
+    }
+  }
+
+  // **El movimiento, en la escala de la hoja y no en la unidad de la magnitud.**
+  // Para una ganancia es la resta de siempre; para una frecuencia, octavas; para
+  // un Q, octavas de ancho de banda. Y la escala puede devolver `NaN` con dos
+  // números que sí lo son --`log2` de un cociente negativo--, así que se vuelve
+  // a mirar: es el mismo agujero de arriba entrando por la conversión.
+  const movimiento = lim.escala.movimiento(c.magnitudEsperada, c.magnitudPropuesta);
+  if (Number.isNaN(movimiento)) {
+    return {
+      permitido: false,
+      codigo: 'MAGNITUD_NO_NUMERICA',
+      mensaje: `el movimiento de ${c.magnitudEsperada} a ${c.magnitudPropuesta} ${lim.unidad} `
+        + `en ${c.path} no se puede contar en ${lim.escala.unidad}`,
+    };
+  }
+  const delta = Math.abs(movimiento);
   if (delta > lim.porTransaccion) {
     return {
       permitido: false,
       codigo: 'DELTA_CAP',
-      mensaje: `${delta} ${lim.unidad} supera el máximo por transacción de ${lim.porTransaccion}`,
+      mensaje: `${delta.toFixed(3)} ${lim.escala.unidad} supera el máximo por transacción `
+        + `de ${lim.porTransaccion.toFixed(3)} (${c.magnitudEsperada} → ${c.magnitudPropuesta} `
+        + `${lim.unidad} en ${c.path})`,
     };
   }
+  // **El techo va antes que el acumulado porque el acumulado puede no correr.**
+  // Mientras el nivel no está establecido, el techo es lo ÚNICO que acota el
+  // total: comprobarlo después de un `return` que no ocurre lo dejaría sin
+  // correr justo en el caso para el que se escribió.
+  if (lim.techoAbsoluto !== undefined && c.magnitudPropuesta > lim.techoAbsoluto) {
+    return {
+      permitido: false,
+      codigo: 'TECHO_ABSOLUTO',
+      mensaje:
+        `el parámetro quedaría en ${c.magnitudPropuesta.toFixed(1)} ${lim.unidad} y el `
+        + `techo es ${lim.techoAbsoluto}: pasar de ahí es decisión del usuario`,
+    };
+  }
+
+  // **El presupuesto acumulado se suspende mientras no haya un nivel del que
+  // desviarse**, y sólo si hay un techo que lo reemplace. Ver `nivelEstablecido`.
+  const presupuestoRige = c.nivelEstablecido !== false || lim.techoAbsoluto === undefined;
   // El desplazamiento resultante, no la suma de magnitudes: un movimiento que
   // acerca el parámetro a su valor inicial siempre es admisible.
-  const resultante = c.acumuladoEnSesion + c.deltaSolicitado;
-  if (Math.abs(resultante) > lim.acumuladoPorSesion) {
+  const resultante = c.acumuladoEnSesion + movimiento;
+  if (presupuestoRige && Math.abs(resultante) > lim.acumuladoPorSesion) {
     return {
       permitido: false,
       codigo: 'CUMULATIVE_CAP',
       mensaje:
-        `el parámetro quedaría a ${resultante.toFixed(1)} ${lim.unidad} de su valor ` +
-        `inicial, y el máximo por sesión es ${lim.acumuladoPorSesion}`,
+        `el parámetro quedaría a ${resultante.toFixed(3)} ${lim.escala.unidad} de su ` +
+        `referencia, y el máximo por sesión es ${lim.acumuladoPorSesion}`,
     };
   }
   if (!c.esPrimerCambioDelParametro && !c.hayMedicionPosterior) {

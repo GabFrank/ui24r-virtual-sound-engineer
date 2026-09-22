@@ -1,0 +1,62 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T19:33:58.755Z
+# comando: node --experimental-strip-types tools/spikes/p0-10b-vu/tiempos-del-compresor.ts 192.168.0.78
+# guion: tools/spikes/p0-10b-vu/tiempos-del-compresor.ts sha256:8b81914e5fad50bf
+# la huella cubre 8 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+
+=== ATENCION: quedo una restauracion sin terminar ===
+   la dejo tiempos-del-compresor.ts el 2026-09-16T19:32:48.797Z en 192.168.0.78
+     m.afs.enabled tiene que volver a 1
+     m.dyn.bypass tiene que volver a 0
+     i.9.dyn.attack tiene que volver a 0.34375
+     i.9.dyn.release tiene que volver a 0.4887695312
+     i.9.dyn.threshold tiene que volver a 0.875
+     i.9.dyn.ratio tiene que volver a 1
+     i.9.dyn.bypass tiene que volver a 0
+     i.9.dyn.outgain tiene que volver a 0.7186045126
+     i.9.gate.enabled tiene que volver a 1
+     i.9.deesser.enabled tiene que volver a 0
+     i.9.mix tiene que volver a 0.7451777309
+   Se arregla con: node --experimental-strip-types tools/spikes/reparar-pendiente.ts
+
+=== 114 — LOS TIEMPOS DEL COMPRESOR, CONTRA EL AUDIO ===
+   canal 10 -> general -> entrada 1 de la interfaz
+   tono 4000 Hz, escalon de -30 a -12 dBFS
+   ventana 6 ciclos = 1.50 ms, paso 0.50 ms -> piso del instrumento 5 ms
+   rodilla (softknee) = 0: se lee y NO se toca
+
+   m.afs.enabled          1
+   m.dyn.bypass           0
+   i.9.dyn.attack         0.34375
+   i.9.dyn.release        0.4887695312
+   i.9.dyn.threshold      0.875
+   i.9.dyn.ratio          1
+   i.9.dyn.bypass         0
+   i.9.dyn.outgain        0.7186045126
+   i.9.gate.enabled       1
+   i.9.deesser.enabled    0
+   i.9.mix                0.7451777309
+
+   supresor apagado y COMPROBADO por HTTP
+
+=== C2 — EL ESCALON CON EL COMPRESOR PUENTEADO ===
+file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/tiempos-del-compresor.ts:308
+      throw new Error('C2 FALLA: no se encontro un escalon claro con el compresor puenteado. '
+            ^
+
+Error: C2 FALLA: no se encontro un escalon claro con el compresor puenteado. Sin escalon no hay nada que cronometrar.
+    at file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/tiempos-del-compresor.ts:308:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async conRestauracion (file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/con-restauracion.ts:104:12)
+    at async file:///Users/gabfranck/workspace/frc-sistemas-informaticos/ui24r-virtual-sound-engineer/tools/spikes/p0-10b-vu/tiempos-del-compresor.ts:275:1
+
+Node.js v22.23.2
+
+
+# salida del proceso: 1

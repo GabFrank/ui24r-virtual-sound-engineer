@@ -1,0 +1,38 @@
+# Medición archivada por tools/spikes/medir.mjs
+# fecha: 2026-09-16T12:32:57.227Z
+# comando: node --experimental-strip-types tools/spikes/p0-2a/recorta-la-consola.ts 5 192.168.0.78
+# guion: tools/spikes/p0-2a/recorta-la-consola.ts sha256:3990a6ee1e765555
+# la huella cubre 7 archivo(s): el guion y sus instrumentos locales
+#
+# Esta es LA MISMA corrida que se vio en pantalla. No se transcribió a mano.
+# La huella es del guion Y DE SUS IMPORTS LOCALES tal como estaban al correr:
+# si hoy no coincide, el
+# archivo es de otra version y lo que diga de si mismo no vale.
+
+=== ¿RECORTA LA CONSOLA? — i.4.mix en 192.168.0.78 ===
+
+   canal 5: silenciado (mute = 1), fader en 0
+   se restaura a 0 al terminar
+
+   pedido   | leido por HTTP | veredicto
+   ---------|----------------|------------------------
+        1.5 |            1.5 | lo guardo tal cual
+            |                | (medio recorrido por encima del maximo)
+       -0.2 |           -0.2 | lo guardo tal cual
+            |                | (por debajo del minimo, que es el caso que un resto podria producir)
+          2 |              2 | lo guardo tal cual
+            |                | (el doble del maximo)
+
+=== RESTAURACION, RELEIDA POR HTTP ===
+   i.4.mix  esperado 0  leido 0  OK
+
+=== VEREDICTO ===
+   LA CONSOLA GUARDA EL VALOR TAL CUAL. No hay red de contencion del lado
+   del aparato: la guarda tiene que estar entera en la aplicacion, y
+   INV-004 deja de apoyarse en una suposicion prestada de otro modelo.
+
+   Esto mide UNA ruta de fader en UN canal. Nada dice de `hw.N.gain`,
+   que no se toca a proposito, ni de las rutas de otro tipo.
+
+
+# salida del proceso: 0

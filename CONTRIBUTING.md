@@ -1,5 +1,65 @@
 # Cómo se trabaja en este repositorio
 
+## Sesión y comprobación por impacto
+
+Empezar por [AGENTS.md](AGENTS.md) y [estado actual](docs/estado-actual.md).
+Registrar el commit inicial con `git rev-parse HEAD`; comprobar los cambios
+locales antes de editar. No ejecutar pruebas por abrir sesión. Durante el trabajo
+correr el test del resultado que se está construyendo.
+
+Antes de cerrar una tarea:
+
+```bash
+npm run verificar:cambio -- --base <commit-inicial> --plan  # qué se ejecutaría
+npm run verificar:cambio -- --base <commit-inicial>         # ejecutarlo
+npm run verificar:commits -- --base <base-de-la-rama>       # después del commit
+```
+
+Sin `--base`, la selección compara con HEAD y cubre sólo cambios sin commit.
+Con una base explícita incluye además todos los commits posteriores. Incluye
+archivos nuevos, índice, cambios locales, borrados y ambos lados de traslados.
+Una base inexistente falla; no se interpreta como «no hay cambios».
+
+| Cambio | Comprobación antes del commit |
+|---|---|
+| Prosa, estado, skills y cierres | Validadores de documentación |
+| App web y sus tests | Documentación, plantillas, límites, tipos/build y tests de workspaces |
+| Contratos de seguridad/protocolo, ADR, compromisos y evidencia | Suite completa |
+| Paquetes compartidos, herramientas, dependencias, CI o ruta desconocida | Suite completa |
+
+La tabla selecciona por archivos; un cambio de prosa que decide comportamiento
+sensible se trata como contrato y requiere `npm run verificar` explícitamente.
+No basta clasificar el formato: revisar el diff y su alcance.
+
+`npm run verificar` **sigue siendo la suite completa**. Se usa para cambios
+transversales y antes de integrar/publicar. CI la ejecuta con el mismo comando,
+incluyendo audio y tests de las guardas. No hay caché de aprobaciones: si cambia
+el árbol, volver a seleccionar lo afectado. Una corrida parcial no es una
+comprobación completa ni valida hardware.
+
+La salida muestra el resultado y tiempo de cada grupo. Señal y audio corren a la
+vez —son dos tercios del tiempo y no se pisan—; el resto, de a uno. Los logs completos y
+`resumen.json` quedan en `.artifacts/verificacion/`, fuera de Git. Si falla algo,
+se muestra el final del log y se conserva el código de error. La guarda de rutas medidas contrasta código/matriz y busca contradicciones en
+README, AGENTS, CONTRIBUTING, skills, Markdown directo de docs, las carpetas
+desarrollo/templates, **las ADR y los contratos**. El listado está en
+`tools/docs/documentos-vigentes.mjs`; no recorre cierres, pedidos ni backlog,
+ni interpreta toda la prosa.
+El validador de trabajo previo comprueba presencia de sección, no calidad de
+investigación: revisar fuentes y alcance al tomar la decisión.
+Consultar el log del grupo fallido; no volcar miles de líneas en el contexto del agente.
+
+Revisar con el alcance de [protocolo de verificación](docs/protocolo-de-verificacion.md).
+Documentar, commit y push por tarea coherente antes de la siguiente. No abrir PR
+sin pedido. Actualizar sólo las fuentes afectadas y el estado si cambió el
+siguiente paso; no agregar un cierre que herede otros cierres.
+Entregar la [plantilla de continuidad](docs/templates/prompt-continuidad.md)
+completada en el chat.
+
+
+Las pruebas que importan servicios Angular reales se explican en
+[pruebas de integración](docs/desarrollo/pruebas-de-integracion.md).
+
 ## Definition of Done — historia
 
 Una historia (`S-nn.m`) se cierra solo cuando:
@@ -51,18 +111,10 @@ nuevos.
 está mal: dentro de seis meses "mvp0" no le dice a nadie qué parte del sistema
 cambió. Ámbitos permitidos en `commitlint.config.js`.
 
-**Antes de empujar**, un solo comando corre lo mismo que la integración
-continua:
-
-```bash
-npm run verificar            # documentación, plantillas, límites, tipos y tests
-npm run verificar:commits    # los mensajes de esta rama, contra main
-```
-
-El segundo existe porque el mismo error costó dos ciclos de integración
-continua: un asunto de 74 caracteres cuando el máximo es 72, descubierto
-después de empujar. Y comprueba el **rango**, no el último commit: un asunto
-largo de hace tres commits sigue rompiendo la comprobación de la rama.
+**Mensajes:** el gancho `commit-msg` comprueba cada commit antes de crearlo.
+`verificar:commits` comprueba el rango explícito antes de empujar. Sin `--base`
+usa el ancestro común con `origin/main`; si esa referencia falta, falla y pide
+una base. No reescribir historia ajena si el rango incluye commits anteriores.
 
 ```
 feat(domain): agrega ChannelAssignment con enlace a BandProfile
@@ -99,18 +151,8 @@ Cada pull request responde estas preguntas en su descripción:
 
 ## Conocimiento del proyecto
 
-Hay una skill con el conocimiento consolidado del proyecto en
-[`.claude/skills/vse-experto/`](.claude/skills/vse-experto/SKILL.md): qué es,
-cómo está construido, por qué está construido así, cómo se usa y qué reglas no
-se pueden romper. El fichero `referencia.md` de esa misma carpeta guarda el
-detalle numérico —estados, invariantes, protocolo, DSP, publicación—.
-
-Y hay una segunda,
-[`.claude/skills/vse-disciplina/`](.claude/skills/vse-disciplina/SKILL.md), con
-**cómo se trabaja**: commits granulares, ningún commit sin su documentación,
-cómo medir sin engañarse, cómo tratar la consola de alguien, y qué preguntar en
-vez de decidir. Cada regla lleva al lado el error real que la produjo, porque
-una regla sin su cicatriz se lee y se olvida.
-
-Si vas a tocar este repositorio por primera vez, empezá por la primera. Si vas a
-escribir algo, leé la segunda.
+Las skills breves [vse-experto](.claude/skills/vse-experto/SKILL.md) y
+[vse-disciplina](.claude/skills/vse-disciplina/SKILL.md) orientan el trabajo.
+El estado vive en un solo archivo; cifras, leyes y decisiones se consultan en
+sus fuentes. Los relatos de incidentes siguen en el historial y en sus contratos,
+pero no son lectura obligatoria de cada sesión.

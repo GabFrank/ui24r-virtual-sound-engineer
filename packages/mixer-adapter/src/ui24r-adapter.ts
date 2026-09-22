@@ -8,6 +8,7 @@ import { actualizarPico, type Pico } from './retencion-pico.ts';
 import {
   codificarSetd, dbDeMedidor, decodificar, decodificarVuCanales, MEDIDOR_SATURACION,
 } from './protocol.ts';
+import { decodificarVuBuses } from './vu-buses.ts';
 import { faderADb, gananciaADb } from './conversiones.ts';
 import { confirmarPorMedidor, NIVEL_MINIMO_PARA_CONFIRMAR_DB } from './confirmacion-por-medidor.ts';
 import { comoConfirmarPorMedidor, type PuntoDeMedida } from './que-medidor-mira.ts';
@@ -227,6 +228,58 @@ export interface EstadoCanal {
 }
 
 /**
+ * Lo que el medidor de un auxiliar —la cuña de un músico— sabe decir.
+ *
+ * **Por qué existe, que no es para dibujar una barra.** La aplicación va a
+ * levantar la cuña de un músico de a pasos, y entre un paso y el siguiente el
+ * motor exige una escucha. Para la ganancia esa escucha se comprueba sobre el
+ * medidor del canal, y alcanza: la ganancia está **antes** de ese medidor, así
+ * que moverla lo mueve. **Para la cuña no alcanza**, y ésa es la diferencia que
+ * obliga a leer este bloque: el envío a un auxiliar sale del canal hacia otro
+ * lado, de modo que subirlo **no mueve el medidor del canal ni un escalón**. Una
+ * escucha comprobada sólo sobre el canal diría que el músico tocó sin decir nada
+ * de si su cuña sonó.
+ *
+ * La cola de cada trama `VU2` trae estos bloques desde siempre y el
+ * decodificador los lee desde el 2026-09-09; lo que faltaba era que llegaran a
+ * la aplicación en marcha. Hasta hoy sólo los leían los guiones de medición.
+ */
+export interface EstadoAuxiliar {
+  /** Base uno, como `EstadoCanal.indice`: el auxiliar 1 es la primera cuña. */
+  readonly indice: number;
+  /**
+   * Lo que **sale hacia la cuña**, después del fader del auxiliar.
+   *
+   * **Es el byte `+1` y es el que hay que mirar para afirmar que al parlante del
+   * músico le llegó algo**, porque incluye el mando que puede dejar la cuña muda
+   * sin que ningún envío lo delate. La distinción está **medida en este aparato**,
+   * no heredada por analogía del bus de efectos: el 2026-09-09, moviendo
+   * `a.0.mix`, **el `+1` siguió al fader y el `+0` no** —ver el docblock de
+   * `busMono` en [`vu-buses.ts`](./vu-buses.ts), donde está la medición—.
+   *
+   * *Una redacción anterior apoyaba esto en «el barrido de la 94 usó ese fader en
+   * 0,45», y era falso: ese 0,45 es de la 102 y la 104. Lo corrigió una auditoría
+   * de fidelidad el 2026-09-19.*
+   */
+  readonly nivelDb: number;
+  /**
+   * Lo que llega al auxiliar **antes** de su fader, el byte `+0`.
+   *
+   * Es el que responde al envío del canal, y es el que barrieron las mediciones
+   * de esa ley: la **94** lo intentó y **se declaró indecidible**, y quien
+   * estableció la ley fue la
+   * [`104`](../../../docs/compromisos/104-la-ley-del-envio-a-monitor.md). Se expone
+   * junto al otro porque la diferencia entre los dos **es el fader del auxiliar**,
+   * y esa diferencia es la que explica una cuña que recibe señal y no suena.
+   */
+  readonly nivelAntesDelFaderDb: number;
+  /** El mayor `nivelDb` visto, sin la balística de caída del medidor de canal. */
+  readonly picoDb: number;
+  /** Cuánto le está sacando el procesador dinámico del auxiliar ahora mismo. */
+  readonly reduccionDb: number;
+}
+
+/**
  * Adaptador de la consola Ui24R.
  *
  * Es el único punto del sistema que habla el protocolo. Todo lo demás usa
@@ -295,6 +348,21 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
   private readonly picosReduccion = new Map<number, number>();
   private readonly nivelesPreProceso = new Map<number, number>();
   private readonly picosPreProceso = new Map<number, number>();
+  /**
+   * Cuántos auxiliares dijo la cabecera de la última trama `VU2`.
+   *
+   * **No se supone y no tiene valor por omisión**, a diferencia de los canales,
+   * que arrancan en `CANALES_HASTA_SABER` para poder dibujar una tira antes de
+   * la primera trama. Acá no hay nada que dibujar mientras tanto, y una cuña
+   * inventada sería una cuña que la aplicación cree tener: con cero, quien
+   * pregunte por los auxiliares antes de la primera trama recibe una lista
+   * vacía, que es la verdad.
+   */
+  private auxiliaresDetectados = 0;
+  private readonly nivelesAux = new Map<number, number>();
+  private readonly nivelesAuxAntesDelFader = new Map<number, number>();
+  private readonly picosAux = new Map<number, number>();
+  private readonly reduccionesAux = new Map<number, number>();
 
   private info: DeviceInfo = { modelo: 'desconocido', firmware: 'desconocido' };
   private oyentesConexion: ((e: ConnectionState) => void)[] = [];
@@ -1082,6 +1150,38 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     return this.fuenteDelAnalizador;
   }
 
+  /**
+   * Vista de las cuñas, ya en decibeles.
+   *
+   * **Vacía hasta que llegue la primera trama `VU2` con cola**, y eso es lo
+   * correcto: la cantidad sale de la cabecera de la trama y no de una constante.
+   * Una consola que todavía no habló no tiene auxiliares que ofrecer, y
+   * devolverle diez a quien pregunta sería inventarle diez cuñas mudas que
+   * parecerían medidas.
+   *
+   * **El simulador no emite esta cola**, así que contra él esto devuelve vacío.
+   * Es deliberado y está dicho acá para que nadie lo lea como un defecto: un
+   * simulador que fabricara cuñas donde el protocolo real las trae vacías sería
+   * exactamente el punto ciego con forma de test en verde que este paquete ya
+   * pagó una vez con los seis bytes iguales de `codificarVu`.
+   */
+  auxiliares(): readonly EstadoAuxiliar[] {
+    const salida: EstadoAuxiliar[] = [];
+    for (let aux = 1; aux <= this.auxiliaresDetectados; aux++) {
+      salida.push({
+        indice: aux,
+        nivelDb: this.nivelesAux.get(aux) ?? -Infinity,
+        nivelAntesDelFaderDb: this.nivelesAuxAntesDelFader.get(aux) ?? -Infinity,
+        picoDb: this.picosAux.get(aux) ?? -Infinity,
+        // Cero y no −∞: la reducción está acotada por abajo, y «todavía no llegó
+        // ninguna trama» ya se distingue mirando el nivel. Es la misma decisión
+        // que toma `canales()` y por el mismo motivo.
+        reduccionDb: this.reduccionesAux.get(aux) ?? 0,
+      });
+    }
+    return salida;
+  }
+
   /** Vista de los canales, ya en unidades físicas, para la interfaz. */
   canales(cantidad = this.canalesDetectados || CANALES_HASTA_SABER): readonly EstadoCanal[] {
     const salida: EstadoCanal[] = [];
@@ -1271,6 +1371,37 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
         this.saturacionesSalida.set(canal, (this.saturacionesSalida.get(canal) ?? 0) + 1);
       }
     }
+
+    // **La cola de la trama, que hasta hoy se tiraba en la aplicación.** Se
+    // decodifica en la misma pasada y no en otra porque es la misma trama: leerla
+    // aparte obligaría a guardarla o a pedirla de nuevo, y los dos bloques
+    // describen el mismo instante. Ver `EstadoAuxiliar` para por qué hace falta.
+    //
+    // **Se decodifica siempre y no sólo cuando alguien mira**, al revés que el
+    // analizador de espectro. El motivo es la cadencia y el tamaño: el espectro son
+    // treinta tramas por segundo con **122** bandas cada una --`RTA_BANDAS`; una
+    // redacción anterior decía 31, que son las del ecualizador gráfico de salida y
+    // no las del analizador, y lo corrigió una auditoría de fidelidad-- y esto son
+    // diez bloques de cinco bytes sobre una trama que ya se está recorriendo
+    // entera.
+    //
+    // **Y la segunda mitad de este comentario decía otra cosa que no se sostiene**:
+    // que un decodificador perezoso «llegaría tarde a su propia ventana». No es
+    // cierto —una captura se suscribiría al empezar su ventana, o sea en el primer
+    // instante que le interesa— y no hay ninguna latencia de arranque medida que le
+    // dé contenido. Se retira: el argumento de tamaño alcanza solo.
+    const buses = decodificarVuBuses(base64);
+    this.auxiliaresDetectados = Math.max(this.auxiliaresDetectados, buses.auxiliares.length);
+    for (let i = 0; i < buses.auxiliares.length; i++) {
+      const aux = i + 1;
+      const medidor = buses.auxiliares[i]!;
+      const db = dbDeMedidor(medidor.post);
+      this.nivelesAux.set(aux, db);
+      this.nivelesAuxAntesDelFader.set(aux, dbDeMedidor(medidor.pre));
+      this.picosAux.set(aux, Math.max(this.picosAux.get(aux) ?? -Infinity, db));
+      this.reduccionesAux.set(aux, medidor.reduccionDb);
+    }
+
     for (const cb of this.oyentesTelemetria) cb();
   }
 
@@ -1392,6 +1523,12 @@ export class Ui24rMixerAdapter implements MixerDomainAPI {
     // seguiría acusando a un canal ya limpio.
     this.picosReduccion.clear();
     this.picosPreProceso.clear();
+    // El pico de la cuña se reinicia con los demás por el mismo motivo: una
+    // captura que arranca arrastrando el pico de la anterior mediría la ventana
+    // de antes. Los **niveles** no se tocan acá —ni los de los canales—: reiniciar
+    // un pico es olvidar lo más alto que hubo, y poner el nivel en −∞ sería
+    // afirmar que ahora no entra nada.
+    this.picosAux.clear();
   }
 }
 

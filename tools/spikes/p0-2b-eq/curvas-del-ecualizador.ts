@@ -13,8 +13,15 @@
  * Lo que dice algo es la respuesta en frecuencia del canal, y con el bucle a la
  * interfaz se puede medir.
  *
+ * **Parametrizado por banda desde el 2026-09-20**, para el item 121. La banda 1
+ * la midio el item 101; las otras tres estaban sin ley y por eso la aplicacion no
+ * podia escribirlas. El cliente de la consola usa la misma funcion para las
+ * cuatro y en la banda 1 coincide exacto con lo medido, pero eso es una hipotesis
+ * comoda y este repositorio ya publico cuatro de esas como hecho.
+ *
  * Uso:
- *   node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts 10 192.168.0.78
+ *   node --experimental-strip-types tools/spikes/p0-2b-eq/curvas-del-ecualizador.ts \
+ *     10 192.168.0.78 [banda] [callar] [picoDelEstimuloDbFS]
  */
 import { spawn } from 'node:child_process';
 import { rmSync, mkdtempSync } from 'node:fs';
@@ -25,6 +32,7 @@ import { estadoPorHttpExigido, exigirClave } from '../canal-muerto.ts';
 import { argIndice, argTexto } from '../argumentos.ts';
 import { conRestauracion } from '../con-restauracion.ts';
 import { restaurarClaves } from '../restaurar.ts';
+import { anotarPendiente, cerrarPendiente, avisarSiHayPendiente } from '../pendiente.ts';
 // Los instrumentos de audio son JavaScript puro y no tienen tipos. El import va
 // en una linea porque `@ts-expect-error` aplica a la linea siguiente, y con el
 // import partido el error cae en la del `from` y la directiva queda sin usar.
@@ -34,6 +42,61 @@ import { frecuenciasPorOctava, escribirMultitono, respuesta, picoInterpolado, qP
 const canal = argIndice(2, 'canal', 10, { desde: 1, hasta: 24 });
 const n = canal - 1;
 const maquina = argTexto(3, '192.168.0.78');
+/**
+ * Que banda se mide. Por omision la 1, que es la que midio el item 101: asi una
+ * corrida sin el argumento reproduce aquella y no mide otra cosa en silencio.
+ */
+const banda = argIndice(4, 'banda', 1, { desde: 1, hasta: 4 });
+/**
+ * `callar` silencia todo lo que entra al general salvo el canal que se mide.
+ *
+ * **De donde salio.** La primera corrida de la banda 2, el 2026-09-20, fallo el
+ * control de cierre: la linea base se movio 0,97 dB contra el limite de 0,5, y la
+ * dispersion punto a punto dio 0,234 dB contra los 0,024 de la corrida buena de
+ * la banda 1. No era el aparato ni la interfaz: eran **diez canales abiertos, seis
+ * de ellos microfonos de voz**, mas las entradas de linea y tres retornos de
+ * efecto, todos entrando a la misma mezcla por la que el banco escucha.
+ *
+ * **No es el modo por omision, y es a proposito.** Silenciar los canales de
+ * alguien es una escritura con consecuencias audibles inmediatas, asi que se pide
+ * explicitamente. El usuario lo autorizo el 2026-09-20 para esta medicion.
+ */
+const callar = argTexto(5, 'no') === 'callar';
+
+/**
+ * El pico del estimulo, en dBFS. Por omision el que uso el item 101.
+ *
+ * **Por que se vuelve parametro el 2026-09-21.** El guion puentea el compresor
+ * del canal --tiene que hacerlo: un compresor aplasta la punta de la campana, de
+ * donde salen f0, la altura y el Q-- y con eso **se lleva la ganancia de salida
+ * que el compresor tenga cargada**. En el canal del banco eso son **28,00 dB
+ * medidos**, porque el usuario le puso el preajuste `Kick Drum` el 2026-09-15.
+ * Tres corridas de la banda 2 capturaron a -58,8 dBFS y fallaron su control de
+ * cierre por falta de margen, con la ley saliendo bien igual --la curva es una
+ * resta y una perdida de nivel se cancela ahi; la relacion senal a ruido no--.
+ * Todo en `el-banco-no-estaba-roto-el-instrumento-se-comia-28-db.md`.
+ *
+ * **Y el valor que compensa es el que este guion tenia al principio.** El -27 se
+ * eligio el 2026-09-13 porque con -8 «la linea base llegaria a +0,1 dBFS:
+ * recortaria antes de medir nada» --lo dice el docblock de `PICO_OBJETIVO_DBFS`--
+ * y esa cuenta se hizo sobre una cadena que tenia 28 dB mas. Sin esos 28, -8
+ * aterriza en unos -30,6 dBFS, que es donde capturaba la corrida buena de la
+ * banda 1.
+ *
+ * **No se sube a ciegas.** El guion ya calcula el recorrido que queda antes del
+ * recorte y aborta si se pasa, asi que subir de mas falla ruidosamente en vez de
+ * publicar la curva del limitador de la interfaz.
+ */
+const picoObjetivo = (() => {
+  const crudo = argTexto(6, '');
+  if (crudo === '') return -27;
+  const v = Number(crudo);
+  if (!Number.isFinite(v) || v > -1 || v < -60) {
+    console.error(`pico del estimulo invalido: ${crudo}. Se espera un numero en dBFS entre -60 y -1.`);
+    process.exit(2);
+  }
+  return v;
+})();
 
 const FM = 48000;
 const SEGUNDOS = 4;
@@ -64,7 +127,7 @@ const ANCHO_DEL_BIN = 1 / SEGUNDOS;
  * los 45 que el contrato exige. Bajar el estimulo no cuesta nada; recortar
  * arruina la corrida entera.
  */
-const PICO_OBJETIVO_DBFS = -27;
+const PICO_OBJETIVO_DBFS = picoObjetivo;
 /** Lo que la campana puede subir el pico, medido con +20 dB y Q 0,368. */
 const SUBIDA_MAXIMA_DE_LA_CAMPANA_DB = 12;
 const MARGEN_DE_RECORTE_DB = 3;
@@ -178,9 +241,9 @@ const e0 = await estadoPorHttpExigido(maquina);
  */
 const PREVIO = {
   bypass: Number(exigirClave(e0, `i.${n}.eq.bypass`)),
-  freq: Number(exigirClave(e0, `i.${n}.eq.b1.freq`)),
-  gain: Number(exigirClave(e0, `i.${n}.eq.b1.gain`)),
-  q: Number(exigirClave(e0, `i.${n}.eq.b1.q`)),
+  freq: Number(exigirClave(e0, `i.${n}.eq.b${banda}.freq`)),
+  gain: Number(exigirClave(e0, `i.${n}.eq.b${banda}.gain`)),
+  q: Number(exigirClave(e0, `i.${n}.eq.b${banda}.q`)),
   afs: Number(exigirClave(e0, 'm.afs.enabled')),
   dynCanal: Number(exigirClave(e0, `i.${n}.dyn.bypass`)),
   deesser: Number(exigirClave(e0, `i.${n}.deesser.enabled`)),
@@ -188,8 +251,26 @@ const PREVIO = {
   dynGeneral: Number(exigirClave(e0, 'm.dyn.bypass')),
 };
 
+/**
+ * Todo lo que puede llegar al general y no es el canal que se mide.
+ *
+ * Se lee el silencio previo de cada uno **del aparato**, no se supone: devolver
+ * un canal a «sin silenciar» porque uno cree que asi estaba es la forma de dejar
+ * abierto algo que el usuario tenia cerrado a proposito.
+ */
+const MUTES_PREVIOS: readonly (readonly [string, number])[] = callar
+  ? [
+    ...Array.from({ length: 24 }, (_, k) => k).filter((k) => k !== n)
+      .map((k) => [`i.${k}.mute`, Number(exigirClave(e0, `i.${k}.mute`))] as const),
+    ...['l.0', 'l.1', 'p.0', 'p.1', 'f.0', 'f.1', 'f.2', 'f.3']
+      .map((k) => [`${k}.mute`, Number(exigirClave(e0, `${k}.mute`))] as const),
+  ]
+  : [];
+
+avisarSiHayPendiente();
+
 console.log('=== 101 — LAS CURVAS DEL ECUALIZADOR, MEDIDAS CONTRA EL FILTRO ===');
-console.log(`canal ${canal} (i.${n}), multitono de ${frecuencias.length} tonos`);
+console.log(`canal ${canal} (i.${n}), BANDA ${banda}, multitono de ${frecuencias.length} tonos`);
 console.log(`   de ${frecuencias[0]!.toFixed(1)} a ${frecuencias[frecuencias.length - 1]!.toFixed(0)} Hz, `
   + `bin de ${ANCHO_DEL_BIN} Hz, captura de ${SEGUNDOS} s`);
 console.log('');
@@ -197,7 +278,7 @@ console.log('=== ESTADO, LEIDO DEL APARATO ===');
 console.log(`   ${e0.size} claves por HTTP`);
 for (const k of [
   `i.${n}.eq.bypass`, `i.${n}.eq.easy`, `i.${n}.eq.prmod`,
-  `i.${n}.eq.b1.freq`, `i.${n}.eq.b1.q`, `i.${n}.eq.b1.gain`,
+  `i.${n}.eq.b${banda}.freq`, `i.${n}.eq.b${banda}.q`, `i.${n}.eq.b${banda}.gain`,
   `i.${n}.eq.b2.gain`, `i.${n}.eq.b3.gain`, `i.${n}.eq.b4.gain`, `i.${n}.eq.b5.gain`,
   `i.${n}.eq.hpf.freq`, `i.${n}.eq.hpf.slope`, `i.${n}.eq.lpf.freq`, `i.${n}.eq.lpf.slope`,
   `i.${n}.dyn.bypass`, `i.${n}.dyn.ratio`, `i.${n}.gate.enabled`, `i.${n}.gate.thresh`,
@@ -251,16 +332,23 @@ let contribucionDelResto = NaN;
  * claves cambiadas.
  */
 const A_RESTAURAR: readonly (readonly [string, number])[] = [
+  ...MUTES_PREVIOS,
   [`i.${n}.eq.bypass`, PREVIO.bypass],
-  [`i.${n}.eq.b1.freq`, PREVIO.freq],
-  [`i.${n}.eq.b1.gain`, PREVIO.gain],
-  [`i.${n}.eq.b1.q`, PREVIO.q],
+  [`i.${n}.eq.b${banda}.freq`, PREVIO.freq],
+  [`i.${n}.eq.b${banda}.gain`, PREVIO.gain],
+  [`i.${n}.eq.b${banda}.q`, PREVIO.q],
   [`i.${n}.dyn.bypass`, PREVIO.dynCanal],
   [`i.${n}.deesser.enabled`, PREVIO.deesser],
   [`i.${n}.gate.enabled`, PREVIO.gate],
   ['m.dyn.bypass', PREVIO.dynGeneral],
   ['m.afs.enabled', PREVIO.afs],
 ];
+
+// **Antes de la primera escritura, no despues.** Si el proceso muere ahora, la
+// corrida siguiente encuentra en disco que canales quedaron silenciados y a que
+// valor vuelven. Con `callar` esto deja de ser una precaucion teorica: lo que
+// puede quedar mal son los microfonos de su banda.
+anotarPendiente('curvas-del-ecualizador.ts', maquina, A_RESTAURAR);
 
 await conRestauracion(
   async () => {
@@ -269,6 +357,16 @@ await conRestauracion(
     rmSync(carpeta, { recursive: true, force: true });
   },
   async () => {
+    if (MUTES_PREVIOS.length > 0) {
+      for (const [k] of MUTES_PREVIOS) t.enviar(codificarSetd(k, 1));
+      await new Promise((r) => setTimeout(r, 1500));
+      const yaEstaban = MUTES_PREVIOS.filter(([, v]) => v === 1).map(([k]) => k);
+      console.log('');
+      console.log('=== SE CALLA TODO SALVO EL CANAL QUE SE MIDE ===');
+      console.log(`   ${MUTES_PREVIOS.length} rutas silenciadas; ${yaEstaban.length} ya lo estaban`);
+      console.log(`   se devuelven a su valor leido del aparato, y se comprueba por HTTP al final`);
+    }
+
     // **Se puentea lo que depende del nivel, y nada mas.**
     t.enviar(codificarSetd('m.afs.enabled', 0));
     t.enviar(codificarSetd(`i.${n}.dyn.bypass`, 1));
@@ -323,19 +421,19 @@ await conRestauracion(
         + 'curva del limitador de la interfaz.');
     }
 
-    // --- La linea base que de verdad aisla b1 -----------------------------
+    // --- La linea base que de verdad aisla la banda que se mide -----------
     //
     // **Puentear el ecualizador entero y despues meterlo entero hace que la resta
-    // entregue b1 x b2 x b3 x b4 x b5 x pasa-altos x pasa-bajos, no b1.** Con el
-    // ecualizador ADENTRO y b1 en su ganancia neutra, las otras cuatro bandas y
+    // entregue b1 x b2 x b3 x b4 x b5 x pasa-altos x pasa-bajos, no una.** Con el
+    // ecualizador ADENTRO y la banda medida en su ganancia neutra, las otras y
     // los dos filtros estan en las DOS capturas y se cancelan igual que se cancela
     // la interfaz, el cable y el previo.
     //
-    // Y que la ganancia previa de b1 sea neutra no se supone: si lo es, esta
+    // Y que la ganancia previa de esa banda sea neutra no se supone: si lo es, esta
     // captura tiene que coincidir con la puenteada, y la diferencia es la
     // contribucion del resto del ecualizador. Se mide y se publica.
     t.enviar(codificarSetd(`i.${n}.eq.bypass`, 0));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.gain`, PREVIO.gain));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.gain`, PREVIO.gain));
     await new Promise((r) => setTimeout(r, 2000));
     const base = await capturar('base-dentro');
     const mediaD = base.reduce((s2, p) => s2 + p.db, 0) / base.length;
@@ -349,9 +447,9 @@ await conRestauracion(
     console.log('   cancela: por eso la base que se usa es ESTA y no la puenteada.');
 
     // --- El control positivo ----------------------------------------------
-    t.enviar(codificarSetd(`i.${n}.eq.b1.gain`, CRUDO_GANANCIA));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.freq`, CRUDO_FREQ_PARA_Q));
-    t.enviar(codificarSetd(`i.${n}.eq.b1.q`, PREVIO.q));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.gain`, CRUDO_GANANCIA));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.freq`, CRUDO_FREQ_PARA_Q));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.q`, PREVIO.q));
     await new Promise((r) => setTimeout(r, 2000));
     const control = contraLaBase(await capturar('control'), base);
     const picoControl = picoInterpolado(control) as { alturaDb: number } | null;
@@ -372,7 +470,7 @@ await conRestauracion(
 
     // Y que crudo guardo de verdad la consola, releido por un camino distinto.
     const eCtrl = await estadoPorHttpExigido(maquina);
-    const crudoLeido = Number(exigirClave(eCtrl, `i.${n}.eq.b1.freq`));
+    const crudoLeido = Number(exigirClave(eCtrl, `i.${n}.eq.b${banda}.freq`));
     console.log(`   crudo escrito ${CRUDO_FREQ_PARA_Q}, releido por HTTP ${crudoLeido}`);
     console.log('   La 99b midio que el crudo del FADER no se redondea. Del ecualizador no');
     console.log('   se sabia nada, y una cuantizacion se comeria el 5 % de E3 sin tener');
@@ -384,7 +482,7 @@ await conRestauracion(
       + 'altura | Q    | margen');
 
     const medirEnFrecuencia = async (crudo: number, repetida = false): Promise<void> => {
-      t.enviar(codificarSetd(`i.${n}.eq.b1.freq`, crudo));
+      t.enviar(codificarSetd(`i.${n}.eq.b${banda}.freq`, crudo));
       await new Promise((r) => setTimeout(r, 1800));
       const curva = contraLaBase(await capturar(`f-${crudo}${repetida ? '-bis' : ''}`), base);
       let pico = picoInterpolado(curva) as { hz: number; alturaDb: number; indice: number } | null;
@@ -442,10 +540,10 @@ await conRestauracion(
     console.log('');
     console.log('=== E5: LA LEY DEL Q, con la frecuencia fija en el de fabrica de 1 kHz ===');
     console.log('crudo        | Q medido | exponencial | recta | factor exp | factor recta | f0    | altura');
-    t.enviar(codificarSetd(`i.${n}.eq.b1.freq`, CRUDO_FREQ_PARA_Q));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.freq`, CRUDO_FREQ_PARA_Q));
     await new Promise((r) => setTimeout(r, 1500));
     for (const crudo of CRUDOS_Q) {
-      t.enviar(codificarSetd(`i.${n}.eq.b1.q`, crudo));
+      t.enviar(codificarSetd(`i.${n}.eq.b${banda}.q`, crudo));
       await new Promise((r) => setTimeout(r, 1800));
       const curva = contraLaBase(await capturar(`q-${crudo}`), base);
       const pico = picoInterpolado(curva) as { hz: number; alturaDb: number; indice: number } | null;
@@ -470,11 +568,11 @@ await conRestauracion(
     // --- E6: la vuelta ----------------------------------------------------
     console.log('');
     console.log('=== E6: LA VUELTA AL PRIMER PUNTO ===');
-    t.enviar(codificarSetd(`i.${n}.eq.b1.q`, PREVIO.q));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.q`, PREVIO.q));
     await new Promise((r) => setTimeout(r, 1200));
     await medirEnFrecuencia(CRUDO_QUE_SE_REPITE, true);
 
-    t.enviar(codificarSetd(`i.${n}.eq.b1.gain`, PREVIO.gain));
+    t.enviar(codificarSetd(`i.${n}.eq.b${banda}.gain`, PREVIO.gain));
     await new Promise((r) => setTimeout(r, 2000));
     const base2 = await capturar('base-cierre');
     const m2 = base2.reduce((s2, p) => s2 + p.db, 0) / base2.length;
@@ -511,9 +609,10 @@ console.log(planitudBase <= 1.0
     + '   contra la linea base, y una irregularidad ESTATICA del camino se cancela\n'
     + '   ahi. Lo que falsa es la afirmacion «el banco es plano», que es un dato\n'
     + '   sobre el banco y se publica como tal.');
-console.log(`   contribucion de b2..b5, pasa-altos y pasa-bajos: ${contribucionDelResto.toFixed(2)} dB`);
+console.log(`   contribucion de las otras bandas, pasa-altos y pasa-bajos: ${contribucionDelResto.toFixed(2)} dB`);
 console.log('   Sea la que sea, esta en las dos capturas y se cancela: la base que se usa');
-console.log('   es la del ecualizador ADENTRO con b1 en su ganancia neutra, no la puenteada.');
+console.log('   es la del ecualizador ADENTRO con la banda medida en su ganancia neutra,');
+console.log('   no la puenteada.');
 
 // E2 — la campana, con sus dos lados MEDIDOS.
 //
@@ -728,8 +827,8 @@ console.log('=== LO QUE SE INFORMA Y NO SE PUNTUA ===');
 
 console.log('');
 console.log('=== LO QUE ESTA CORRIDA NO DICE ===');
-console.log('   Nada de las otras cuatro bandas: se midio b1. Que b2..b5 usen la misma');
-console.log('   ley es lo mas probable y NO esta medido.');
+console.log(`   Nada de las otras tres bandas: se midio la banda ${banda}. Que las demas usen`);
+console.log('   la misma ley es lo mas probable y NO lo dice esta corrida.');
 console.log('   Nada del pasa-altos ni del pasa-bajos: otros parametros y otra forma.');
 console.log('   Nada de la ganancia del ecualizador, por lo dicho arriba.');
 console.log('   Y medir la curva no la vuelve PROBADO en las dos direcciones: esto mide');
@@ -748,10 +847,11 @@ console.log('');
 console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
 {
   const esperado: Record<string, number> = {
+    ...Object.fromEntries(MUTES_PREVIOS),
     [`i.${n}.eq.bypass`]: PREVIO.bypass,
-    [`i.${n}.eq.b1.freq`]: PREVIO.freq,
-    [`i.${n}.eq.b1.gain`]: PREVIO.gain,
-    [`i.${n}.eq.b1.q`]: PREVIO.q,
+    [`i.${n}.eq.b${banda}.freq`]: PREVIO.freq,
+    [`i.${n}.eq.b${banda}.gain`]: PREVIO.gain,
+    [`i.${n}.eq.b${banda}.q`]: PREVIO.q,
     [`i.${n}.dyn.bypass`]: PREVIO.dynCanal,
     [`i.${n}.deesser.enabled`]: PREVIO.deesser,
     [`i.${n}.gate.enabled`]: PREVIO.gate,
@@ -767,8 +867,13 @@ console.log('=== RESTAURACION, RELEIDA POR HTTP ===');
     console.log(`   ${k.padEnd(22)} esperado ${String(v).padEnd(14)} leido ${leido}`
       + (bien ? '' : '   <-- NO COINCIDE'));
   }
+  // **El registro en disco se cierra SOLO si la relectura dio bien.** Borrarlo
+  // porque la restauracion «se llamo» seria tapar justo el caso para el que
+  // existe: con `callar`, lo que puede quedar mal son los microfonos de su banda.
+  if (todo) cerrarPendiente();
   console.log(todo
     ? '   Todo restaurado, comprobado por un camino distinto del que escribio.'
     : '   **HAY CLAVES SIN RESTAURAR.** Anotar cuales y dejarlas escritas: la consola\n'
-      + '   quedo distinta de como estaba y el usuario tiene que saberlo.');
+      + '   quedo distinta de como estaba y el usuario tiene que saberlo.\n'
+      + '   Queda el registro en disco: `tools/spikes/reparar-pendiente.ts` lo deshace.');
 }

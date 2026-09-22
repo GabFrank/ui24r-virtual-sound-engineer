@@ -24,7 +24,23 @@
  * **Lo que NO puede cubrir**, declarado para que nadie lo crea más fuerte de lo
  * que es:
  *
- * - `SIGKILL` y quedarse sin corriente. No hay vuelta.
+ * - `SIGKILL` y quedarse sin corriente. **Este modulo** no tiene vuelta ahi: no
+ *   llega a correr. Lo que si hay desde el 2026-09-16 es `pendiente.ts`, que deja
+ *   en disco --ANTES de la primera escritura-- que claves se tocaron y a que
+ *   valor vuelven. La corrida siguiente lo encuentra y avisa, y
+ *   `reparar-pendiente.ts` lo deshace. **Avisa, no restaura solo**: aplicar
+ *   valores de una sesion que murio quien sabe como, sin que nadie mire, es
+ *   escribir a ciegas sobre la consola de alguien.
+ *
+ *   Y no es hipotetico: el 2026-09-16, al cortar `banco-en-vivo.ts`, la senal
+ *   llego y la restauracion arranco --alcanzo a imprimir que arrancaba-- pero al
+ *   proceso lo mataron antes de que terminara de escribir. La consola quedo con
+ *   el supresor apagado y un envio de auxiliar abierto, y se detecto releyendo a
+ *   mano porque alguien se acordo de mirar.
+ *
+ *   **No se arregla acortando la restauracion**, que es lo primero que uno
+ *   piensa: buena parte de esos segundos es la espera a que el tono muera antes
+ *   de reencender el supresor, y saltearla es como se planto la notch de la 104.
  * - Que el socket esté caído cuando toca restaurar. Se informa por la salida de
  *   error qué quedó escrito, que es lo mínimo para que alguien lo arregle a
  *   mano.

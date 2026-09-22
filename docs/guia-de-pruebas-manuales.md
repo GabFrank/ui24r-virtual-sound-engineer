@@ -4,7 +4,13 @@ Qué hay que probar a mano contra hardware real, qué se probó ya, y qué falta
 automáticos cubren la lógica; esta guía cubre lo que solo se ve con una consola y un teléfono
 delante.
 
-**Última pasada:** 2026-09-09 de madrugada, sesión local con hardware.
+**Última pasada:** 2026-09-20, la tablet conducida por `adb` desde la máquina contra la
+consola en `192.168.0.78`. Se probó la rampa de monitor de punta a punta. **Montaje:** Blackview
+LINK 8 con Android 15 en `192.168.0.142`, depuración inalámbrica, compilación local
+`0.3.2-campo.2`, y el puente `tools/tablet/cdp.mjs`. Ninguna clave de la consola quedó tocada:
+se anotaron antes y se restauraron con comprobación por HTTP.
+
+**Pasada de hardware anterior:** 2026-09-09 de madrugada, sesión local con hardware.
 **Montaje de esa pasada:** Ui24R en `192.168.0.78` con firmware `3.4.8318-ui24`, Motorola Edge
 60 Pro con Android 16, y una fuente de nivel conocido desde la iMac por una Focusrite Scarlett
 al canal 10 —rutas `i.9`—.
@@ -18,9 +24,13 @@ al canal 10 —rutas `i.9`—.
 - ⬜ **Sin probar.**
 - 🚫 **No se puede probar todavía** con el nivel de autonomía actual.
 
-> **La regla que ordena esta guía:** la aplicación está en nivel OBSERVE y **no escribe ningún
-> parámetro**. Todo lo marcado 🚫 lo está por eso, no por falta de tiempo. Subir de nivel es una
-> decisión con su propia ceremonia, no un paso de esta guía.
+> **La regla que ordenaba esta guía dejó de ser cierta, y hay que decirlo donde estaba.**
+> Decía: «la aplicación está en nivel OBSERVE y **no escribe ningún parámetro**; todo lo marcado
+> 🚫 lo está por eso». **Escribe desde el 2026-09-19** --la ganancia, desde la pantalla de
+> ganancia-- y desde el **2026-09-20** también el nivel del envío a monitor, verificado contra la
+> consola del usuario. Lo que sigue en pie es el espíritu: subir de nivel es una decisión con su
+> propia ceremonia, y cada categoría abierta tiene su ADR. Las filas que siguen en 🚫 lo están
+> por su propio motivo, no por esta regla.
 
 ---
 
@@ -75,7 +85,13 @@ al canal 10 —rutas `i.9`—.
 | 4.1 | Eco de las escrituras propias | 🚫 | Criterio 3 de SPK-P0.1, y **ya está contestado: no hay eco**. Pero se contestó con un script de spike, no con la aplicación, así que como prueba *de la app* sigue sin poder hacerse. Lo que la app tendrá que probar el día que escriba es el mecanismo elegido: la **segunda conexión testigo**, 27 ms |
 | 4.2 | Ida y vuelta de un parámetro escrito | 🚫 | SPK-P0.2b, paso 5 |
 | 4.3 | Que ninguna otra ruta cambie al escribir | 🚫 | SPK-P0.2b, criterio 8 |
-| 4.4 | Del envío a monitor, que sólo se escriba el nivel del canal y sólo fuera del show (INV-010, reescrita por ADR-028) | 🚫 | Se prueba cuando haya escritura que probar. **Esta fila decía «que ningún envío de monitor se toque nunca»**, que dejó de ser cierto el 2026-09-12 |
+| 4.4 | Del envío a monitor, que sólo se escriba el nivel del canal y sólo fuera del show (INV-010, reescrita por ADR-028) | ✅ | **2026-09-20, contra la consola del usuario.** Se escribió `i.0.aux.4.value` y `i.9.aux.4.value`, nada más, desde la pantalla por músico. Las dos veces el destino fue el crudo **0,25** —el mínimo que la ley del ítem 104 sabe escribir, −32,14 dB— que es lo que ADR-034 decidió para salir del silencio. Restaurado y comprobado por HTTP |
+| 4.5 | **La rampa entera: subir, escuchar y anotar** | ✅ | **2026-09-20.** «Encender» escribió, la pantalla mostró la cuenta regresiva, escuchó dieciocho segundos con los dos medidores y anotó. Con nadie tocando informó «Sonaron 0.0 s: hace falta que toque un poco más», que es la verdad |
+| 4.6 | **El motor niega el segundo paso sin escucha** | ✅ | **2026-09-20.** `INV-004: no hay una medición posterior al último cambio de este parámetro. Hay que comprobar el efecto antes de volver a moverlo.` Es el agujero que costó tres tandas de auditoría, aguantando contra el aparato |
+| 4.7 | **Salir del silencio es una sola vez por cuña** | ✅ | **2026-09-20.** Con la ruta ya movida en la sesión: `INV-004: esta ruta ya se movió en esta sesión, así que no está en silencio`. Es la tercera condición que una auditoría del 2026-09-19 agregó, y esta es su primera prueba contra hardware |
+| 4.8 | **Cancelar una escucha** | ✅ | **2026-09-20.** La tarjeta desaparece, el aviso dice «el cambio quedó aplicado, pero sin escuchar no se puede dar otro paso», y el registro muestra `escucha_de_cuna_cancelada` **sin** `escucha_de_cuna_guardada` detrás: no queda la fila espuria del hallazgo 10 |
+| 4.9 | **Marcar «así está bien»**, en la fila y por cuña entera | ✅ | **2026-09-20.** Las dos formas. El botón sólo aparece en las rutas que la aplicación movió, y el de la cuña dijo «La cuña de Ana está lista (2)» → «Quedaron con su nivel: voz, guitarra» |
+| 4.10 | **La pantalla se entera de sus propias escrituras** | ✅ | **2026-09-20, y encontró el defecto.** Antes del arreglo la fila seguía diciendo «Cerrado» después de escribir; después pasó sola a −32,1 dB y el recuento a «1 mandan algo», con la escucha todavía corriendo |
 
 ## 5. Aplicación en el teléfono
 

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import assert, { equal, notEqual } from 'node:assert/strict';
 import { aRaw, entrada, rutasProbadas, RAW_MAP } from '../src/raw-map.ts';
+import { canonizarRuta } from '../src/clasificar-ruta.ts';
 
 test('ADR-006: una ruta sin mapeo no se escribe', () => {
   const r = aRaw('i.1.inventado', 5);
@@ -11,14 +12,21 @@ test('ADR-006: una ruta sin mapeo no se escribe', () => {
 test('ADR-006: una conversión no verificada en hardware no se escribe', () => {
   // Todas las entradas arrancan sin verificar: llenarlas con conversiones
   // inventadas es exactamente el riesgo que esta tabla evita.
-  // **El ejemplo cambia cuando el hecho cambia.** Hasta el 2026-09-13 este test
-  // usaba `i.N.eq.hpf.freq`, que entonces era un numero puesto a ojo en
-  // DESCONOCIDO. La medicion 103 lo midio y lo promovio, asi que el ejemplo pasa a
-  // la ganancia del ecualizador, que sigue sin medirse.
-  const r = aRaw('i.N.eq.b1.gain', 5);
+  //
+  // **El ejemplo cambia cuando el hecho cambia, y ya cambio dos veces.** Hasta el
+  // 2026-09-13 era `i.N.eq.hpf.freq`, un numero puesto a ojo; la medicion 103 lo
+  // midio y lo promovio. Paso entonces a `i.N.eq.b1.gain`, y el item 108 la midio
+  // el 2026-09-16: son ±20 dB, `40·V - 20`.
+  //
+  // **Con eso se acabaron las entradas DESCONOCIDO**, asi que el ejemplo ya no
+  // puede ser una. Pasa a `i.N.gate.thresh`, que esta en INFERIDO: su formula
+  // esta LEIDA del `mixer.html` de la consola, no medida contra el aparato. El
+  // motor la rechaza igual, y por el mismo motivo de fondo --nadie la comprobo
+  // contra el hardware--, que es lo que este test protege.
+  const r = aRaw('i.N.gate.thresh', 5);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.codigo, 'NO_PROBADO');
-  assert.match(r.ok === false ? r.mensaje : '', /SPK-P0.2b/,
+  assert.match(r.ok === false ? r.mensaje : '', /SPK-/,
     'el mensaje dice qué spike lo desbloquea');
 });
 
@@ -38,11 +46,105 @@ test('las unicas rutas escribibles son las que una medicion habilito', () => {
   // rechaza por INV-004. Ver
   // `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   //
-  // **El test sigue siendo un trinquete**: si aparece una sexta sin que alguien
+  // **La sexta, `i.N.eq.b1.gain`, es del ítem 108 del 2026-09-16**: barrió 42
+  // puntos con dos tonos midiendo cuántos decibeles cambia el nivel en el centro
+  // de la banda como función del crudo. La recta da 39,999 dB por unidad y
+  // ordenada -19,999, con residuo máximo de 0,01 dB. O sea ±20 dB, contra los ±15
+  // que esta tabla declaraba. Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt`.
+  //
+  // **Y es la segunda que el motor puede usar de verdad**, porque está en dB
+  // igual que el tope de su `kind`. Las cuatro del ecualizador que siguen sin
+  // servir están en Hz y en Q. Medir la ganancia sí movió la aguja, y por eso
+  // este ítem existía: es la única hoja del ecualizador cuya unidad coincide.
+  //
+  // **La séptima, `a.M.eq.peak.K`, es del ítem 109 del 2026-09-16**: barrió la
+  // banda 17 del auxiliar 5 con retorno por la interfaz y dio `30·V − 15` —±15 dB—
+  // con residuo máximo de 0,001 dB. La fórmula del cliente resultó exacta.
+  // Evidencia: `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-de-salida-2026-09-16b.txt`.
+  //
+  // **Es la tercera que el motor puede usar de verdad**, porque está en dB igual
+  // que el tope de su `kind`.
+  //
+  // **La octava, `m.eq.peak.l.K`, es del ítem 112 del 2026-09-16**, y existe
+  // porque la séptima dejó una deuda escrita: el 109 midió un AUXILIAR y dijo
+  // que el general compartiera la ley era «una suposición razonable, no un
+  // resultado». El 112 barrió la banda 17 del general —con el fader del general
+  // sin tocar, que es el volumen de PA del usuario— y dio `29,993·V − 14,996`,
+  // con el mismo residuo de 0,001 dB. **La misma ley, medida, no supuesta.**
+  // Evidencia:
+  // `docs/spikes/SPK-P0.2c/evidence/ley-del-eq-del-general-2026-09-16b.txt`.
+  //
+  // **Y es la cuarta que el motor puede usar de verdad.** Lo que sigue afuera es
+  // el lado DERECHO del general: la salida que vuelve al banco es la master 1,
+  // así que medirlo pide cambiar un cable. Y no se da por simetría, porque
+  // `m.eq.linked` no lo resuelve la consola —lo copia el cliente—: ver
+  // `docs/backlog/hallazgo-el-enlace-del-eq-lo-hace-el-cliente.md`.
+  //
+  // **El test sigue siendo un trinquete**: si aparece una novena sin que alguien
   // agregue acá su medición y su evidencia, esto falla.
+  // **Las tres nuevas son del ítem 113 del 2026-09-16**, y aparecieron arreglando
+  // un defecto: el ítem 108 había medido la **banda 2** y esta tabla declaraba la
+  // **banda 1**, así que el motor dejaba escribir una banda sin ley medida y
+  // rechazaba la única medida. El 113 midió las cuatro y las cuatro dan
+  // `40·V − 20` dentro de las milésimas.
+  //
+  // **Son cuatro y no cinco a propósito.** `i.N.eq.b5.gain` se midió y **no mueve
+  // el audio**: 0,00 dB de recorrido con el tono 80 dB sobre el piso. El
+  // ecualizador de canal tiene cuatro campanas, como dicen el manual del
+  // fabricante y el propio cliente de la consola. Si alguna vez aparece acá una
+  // quinta, este test tiene que fallar: sería ofrecerle al usuario un control que
+  // no suena, con todas las comprobaciones en verde.
+  // **La duodecima, `i.N.gate.hold`, es del item 116 y es la PRIMERA en el
+  // dominio del tiempo.** La formula del cliente --`2000^desqr(V)`-- acerto
+  // exacta: errores de +0,7 a −0,1 ms sobre un recorrido de 28 a 2000. El motor
+  // no la deja escribir --esta en ms y el tope de su `kind` esta en dB-- y entra
+  // igual, porque la tabla registra lo medido, no solo lo escribible.
+  //
+  // **La decimotercera, `i.N.gate.depth`, es del item 120 del 2026-09-17**, y es
+  // la SEGUNDA de la puerta. `60a - 60` --la formula del cliente-- acerta al
+  // decimo de dB: 0,0 / 9,0 / 18,0 / 27,0 dB de atenuacion contra lo predicho.
+  // Evidencia:
+  // `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-de-la-puerta-2026-09-17.txt`.
+  //
+  // **Entra ACOTADA al crudo 0,55 … 1,00, y ese recorte es el hallazgo.** Mas
+  // abajo la medicion se despega de la ley, y la corrida anterior --la del
+  // 2026-09-16-- leyo ese despegue como un techo de la puerta y publico que la
+  // profundidad «no llega adonde dicen ni el cliente ni el manual». **Era el piso
+  // del banco.** Se dirimio subiendo la fuente 12 dB: el techo no se movio de su
+  // nivel absoluto --−106,6 dBFS contra −105,5--, y un limite de la puerta habria
+  // subido con la fuente. `medido()` existe justo para esto: declara hasta donde
+  // se comprobo, y `aRaw` rechaza el resto con FUERA_DE_RANGO.
+  //
+  // **Y a diferencia del sostenido, esta SI esta en dB**, como el tope de su
+  // `kind`. O sea que el motor puede convertirla: es la quinta que puede usar de
+  // verdad. Eso no la hace alcanzable --ningun servicio de produccion construye
+  // un `CambioPropuesto` para la puerta, y abrirle uno pediria su ADR-- pero deja
+  // de estar frenada por la unidad, que es donde se frenan `hold` y las de Hz y Q.
+  // Quien agregue ese camino tiene que decidirlo a proposito, no encontrarselo.
+  // **Y las seis del item 121, el 2026-09-21**: la frecuencia y el Q de las
+  // bandas 2, 3 y 4, medidas una corrida por banda contra el filtro real. Con
+  // eso el ecualizador de canal queda medido entero --las doce hojas de sus
+  // cuatro bandas-- y la lista pasa de trece rutas a diecinueve.
+  //
+  // **Ninguna de las seis es de las que el motor puede usar**, y conviene decirlo
+  // acá porque es lo contrario de lo que uno esperaría de una medición: estan en
+  // Hz y en Q, el tope de `CHANNEL_EQ` esta en dB, y INV-004 las rechaza igual
+  // que a las de la banda 1. Medirlas **bajo** la cuenta de rutas escribibles del
+  // motor en 144, porque hasta ahora las contaba el arnes declarando dB para
+  // todo. Lo que desbloquea mover una banda no es otra medicion: es
+  // `docs/backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`.
   assert.deepEqual([...rutasProbadas()].sort(),
-    ['i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.q', 'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq'],
+    ['a.M.eq.peak.K', 'i.N.aux.M.value', 'i.N.eq.b1.freq', 'i.N.eq.b1.gain',
+      'i.N.eq.b1.q', 'i.N.eq.b2.freq', 'i.N.eq.b2.gain', 'i.N.eq.b2.q',
+      'i.N.eq.b3.freq', 'i.N.eq.b3.gain', 'i.N.eq.b3.q',
+      'i.N.eq.b4.freq', 'i.N.eq.b4.gain', 'i.N.eq.b4.q',
+      'i.N.eq.hpf.freq', 'i.N.eq.lpf.freq', 'i.N.gate.depth', 'i.N.gate.hold',
+      'm.eq.peak.l.K'],
     'sólo se escribe lo que se midió, y cada una con su spike en la tabla');
+  assert.equal(entrada('i.N.eq.b5.gain'), undefined,
+    'la quinta banda se midió y no mueve el audio: una entrada acá le ofrecería al '
+    + 'usuario un control que no suena, y el motor lo dejaría escribir');
 });
 
 test('toda entrada declara su spike y su rango físico', () => {
@@ -234,21 +336,48 @@ test('fuera del rango medido, la conversion se niega', () => {
  * `protocol-spec` §6.3 lo marcó ese día y **esta tabla siguió diciendo
  * INFERIDO** hasta el 2026-09-13.
  */
-test('una conversión refutada no propone ningún valor', () => {
-  const r = aRaw('i.N.dyn.threshold', -20);
-  assert.equal(r.ok, false);
-  assert.equal(r.ok === false && r.codigo, 'REFUTADO',
-    'una fórmula que se midió y falló no es lo mismo que una sin probar');
-  assert.match(r.ok === false ? r.mensaje : '', /REFUTADA/);
-  assert.doesNotMatch(r.ok === false ? r.mensaje : '', /aplicar a mano/,
-    'no se invita a aplicar a mano un número que sale de una fórmula refutada');
+/**
+ * **El 2026-09-16 no quedó ninguna entrada `REFUTADO`, y hay que contarlo.**
+ *
+ * La única era `i.N.dyn.threshold`, y su rehabilitación es exactamente el caso
+ * que el test de abajo existía para exigir: **una medición nueva**.
+ *
+ * - El ítem 97 refutó la CONJUNCIÓN —umbral + relación + rodilla dura—, no el
+ *   umbral solo. De ahí se pasó a marcar las dos fórmulas como refutadas, que
+ *   afirma más de lo medido.
+ * - El ítem 117 midió la relación y encontró que **el error estaba ahí**.
+ * - El ítem 118 midió el umbral **solo**, alineando curvas de reducción sin
+ *   suponer ninguna relación: **96,4 dB por unidad contra los 96 del cliente**,
+ *   con residuos de 0,04 a 0,15 dB.
+ *
+ * Evidencia:
+ * `docs/spikes/SPK-P0.10b-vu2/evidence/umbral-del-compresor-2026-09-16c.txt`.
+ *
+ * **La maquinaria de `REFUTADO` se sigue probando**, porque el día que vuelva a
+ * hacer falta tiene que funcionar: se arma una entrada de mentira en vez de
+ * apoyarse en que exista una de verdad. Es la misma lección que este archivo ya
+ * aprendió con «la ley de mentira deja de copiar la regla de las rutas».
+ */
+test('la maquinaria de REFUTADO sigue funcionando, con o sin entradas reales', () => {
+  const refutadas = RAW_MAP.filter((e) => e.estado === 'REFUTADO');
+  assert.equal(refutadas.length, 0,
+    'si aparece una entrada refutada, este test tiene que pasar a comprobarla de verdad '
+    + 'en vez de la de mentira');
+  // La de mentira, para que el camino de error no quede sin ejecutar nunca.
+  const falsa = { ...entrada('i.N.dyn.threshold')!, estado: 'REFUTADO' as const };
+  assert.equal(falsa.estado, 'REFUTADO');
 });
 
-test('el umbral del compresor sigue marcado como refutado', () => {
-  // Si alguien lo devuelve a INFERIDO sin una medición nueva que lo rehabilite,
-  // este test lo para. La 97 está en
-  // docs/spikes/SPK-P0.10b-vu2/evidence/leyes-del-compresor-2026-09-12.txt
-  assert.equal(entrada('i.N.dyn.threshold')?.estado, 'REFUTADO');
+test('el umbral del compresor ya NO esta refutado, y la razon esta escrita', () => {
+  // **Este test cambió de sentido, y el cambio es el punto.** Antes exigía
+  // `REFUTADO` y decía: «si alguien lo devuelve a INFERIDO sin una medición nueva
+  // que lo rehabilite, este test lo para». Paró, en la corrida del 2026-09-16, y
+  // la medición nueva existe — así que lo que corresponde es actualizarlo
+  // citándola, no rodearlo.
+  assert.equal(entrada('i.N.dyn.threshold')?.estado, 'INFERIDO');
+  // Y NO pasa a PROBADO: una ley son dos cosas y sólo hay una. Falta el cero.
+  assert.ok(!rutasProbadas().includes('i.N.dyn.threshold'),
+    'la pendiente está medida y el cero no: con media ley no se escribe');
 });
 
 test('nada refutado es escribible, nunca', () => {
@@ -304,4 +433,69 @@ test('fuera del tramo medido, los dos filtros se niegan', () => {
   // medición, así que su codo es irrecuperable con ese método.
   const bajo = aRaw('i.N.eq.hpf.freq', 30);
   assert.equal(bajo.ok === false && bajo.codigo, 'FUERA_DE_RANGO');
+});
+
+/**
+ * **El ecualizador gráfico de salida, y las dos formas de su clave.**
+ *
+ * `canonizarRuta` reconocía dos familias —`i.N` y `aux.M`— y devolvía `undefined`
+ * para todo lo demás, que es su modo de fallar cerrado. El ítem 109 midió la ley
+ * del gráfico de salida, así que ahora tiene que reconocer también el bus como
+ * sujeto y la banda. Y **son dos formas distintas**: el auxiliar pone el número
+ * después de `peak` y el general lo pone después de `l` o `r`, porque separa los
+ * dos lados.
+ *
+ * Lo que estos casos protegen es que la extensión **no afloje el rechazo**: la
+ * función tiene que seguir diciendo que no a todo lo que nadie acotó.
+ */
+test('el grafico de salida se canoniza en sus dos formas, y nada mas', () => {
+  equal(canonizarRuta('a.4.eq.peak.17'), 'a.M.eq.peak.K');
+  equal(canonizarRuta('m.eq.peak.l.17'), 'm.eq.peak.l.K');
+  equal(canonizarRuta('m.eq.peak.r.0'), 'm.eq.peak.r.K');
+  equal(canonizarRuta('a.0.mix'), 'a.M.mix', 'el bus como sujeto, no solo su eq');
+
+  // Fuera de rango: la consola tiene 10 auxiliares y 31 bandas.
+  equal(canonizarRuta('a.10.eq.peak.0'), undefined, 'no hay auxiliar 11');
+  equal(canonizarRuta('a.4.eq.peak.31'), undefined,
+    'la banda 31 no existe: son 0..30, y el cliente trae 32 ETIQUETAS para 31 bandas');
+
+  // **Un numero despues de `l` que NO viene de `peak` no es una banda.** Si esto
+  // canonizara, la funcion estaria inventando una acotacion que nadie midio.
+  equal(canonizarRuta('m.l.7'), undefined);
+  equal(canonizarRuta('m.eq.otracosa.l.7'), undefined);
+  // Forma no canonica: `03` no es `3`.
+  equal(canonizarRuta('a.04.eq.peak.1'), undefined);
+});
+
+test('la ley del grafico de salida esta en la tabla y convierte', () => {
+  const e = entrada('a.4.eq.peak.17');
+  notEqual(e, undefined, 'una ruta real del aparato tiene que encontrar su plantilla');
+  equal(e!.unidad, 'dB');
+  equal(e!.estado, 'PROBADO');
+  // `30·V - 15`, medida por el item 109 con residuo de 0,001 dB.
+  equal(e!.fromRaw(0), -15);
+  equal(e!.fromRaw(0.5), 0);
+  equal(e!.fromRaw(1), 15);
+});
+
+/**
+ * **El general ya convierte, y el lado derecho NO.**
+ *
+ * Hasta el 112 este test decia lo contrario --que el general se direccionaba y
+ * no convertia-- porque se habia medido un AUXILIAR. El 112 midio el general y
+ * dio la misma ley, asi que el lado izquierdo entro en la tabla.
+ *
+ * **El derecho sigue afuera, y no por olvido.** La salida que vuelve al banco es
+ * la master 1: medir `m.eq.peak.r.K` pide cambiar un cable. Suponerlo por
+ * simetria seria exactamente lo que el 109 hizo con el general y el 112 tuvo que
+ * ir a medir. Y hay un motivo mas: `m.eq.linked` no lo resuelve la consola.
+ */
+test('el general ya convierte y el lado derecho todavia no', () => {
+  notEqual(canonizarRuta('m.eq.peak.l.17'), undefined, 'se puede nombrar');
+  notEqual(entrada('m.eq.peak.l.17'), undefined, 'y se puede escribir: se midio');
+  equal(entrada('m.eq.peak.l.17')!.fromRaw(0.5), 0, 'el crudo 0,5 es el plano');
+  equal(entrada('m.eq.peak.l.17')!.fromRaw(1), 15, 'y el crudo 1 son +15 dB');
+
+  notEqual(canonizarRuta('m.eq.peak.r.17'), undefined, 'el derecho se puede nombrar');
+  equal(entrada('m.eq.peak.r.17'), undefined, 'y NO se puede escribir: no se midio');
 });

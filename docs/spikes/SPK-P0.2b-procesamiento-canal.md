@@ -24,7 +24,7 @@ Ninguno de estos tiene interfaz tipada en la biblioteca. Sus claves existen en e
 | # | Criterio | Tipo | Umbral | Medido | Resultado |
 |---|---|---|---|---|---|
 | 1 | Pasa altos: frecuencia y pendiente | bloqueante | 7 puntos o más por parámetro | | ⬜ |
-| 2 | Ecualizador paramétrico: ganancia, factor de calidad y frecuencia de cada banda | bloqueante | 7 puntos o más por parámetro | | ⬜ |
+| 2 | Ecualizador paramétrico: ganancia, factor de calidad y frecuencia de cada banda | bloqueante | 7 puntos o más por parámetro | **Frecuencia y Q**, medidos por el ítem 101 contra el filtro real: `20·1102,5^V` y `0,05·300^V`. **Ganancia**, medida por el [ítem 108](../compromisos/108-la-ley-de-la-ganancia-del-ecualizador.md) el 2026-09-16 con 42 puntos y dos tonos: **`40·V − 20`**, o sea **±20 dB** y no los ±15 que la tabla declaraba, con residuo máximo de 0,01 dB. [Evidencia](SPK-P0.10b-vu2/evidence/ley-ganancia-del-eq-2026-09-16b.txt). Los tres parámetros de una banda, en un canal | ✅ |
 | 3 | Compresor: umbral, relación, ataque, relajación y ganancia | bloqueante | 7 puntos o más por parámetro | | ⬜ |
 | 4 | Puerta: umbral y profundidad | bloqueante | 7 puntos o más | | ⬜ |
 | 5 | Deesser: frecuencia, relación y umbral | informativo | 7 puntos o más | | ⬜ |

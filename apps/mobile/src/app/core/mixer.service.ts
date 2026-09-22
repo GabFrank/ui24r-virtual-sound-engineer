@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import {
-  Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoCanal,
+  Ui24rMixerAdapter, Ui24rTransport, WebSocketTransport, type EstadoAuxiliar, type EstadoCanal,
   type MixerDomainAPI,
   type ConnectionState, type BulkExternalChange,
 } from '@vse/mixer-adapter';
@@ -76,11 +76,109 @@ export class MixerService {
     return this.adapter.leer(ruta)?.value ?? null;
   }
 
+  /**
+   * El camino para escribir en la consola, envuelto para que **avise**.
+   *
+   * **El defecto que esto cierra lo encontró la tablet del usuario el
+   * 2026-09-20, con la suite en verde.** `revisionDelEstado` se tocaba cuando
+   * cambiaba **otro** operador, cuando llegaba el volcado y al conectar, pero
+   * **no cuando escribía la propia aplicación**: el almacén marca esas como
+   * `LOCAL`, así que `alCambiarExterno` no dispara. En el campo se vio así: la
+   * pantalla de monitores encendió una cuña, escribió `0,25` en la consola,
+   * escuchó dieciocho segundos, lo anotó... y la fila seguía diciendo
+   * «Cerrado», con el recuento en «0 mandan algo». La aplicación se enteraba de
+   * todo el mundo menos de sí misma.
+   *
+   * **Se envuelve acá y no se avisa desde cada servicio**, que es lo que la
+   * primera idea proponía. `escribir` es el único embudo por el que pasa toda
+   * escritura --ganancia, monitor y lo que venga-- así que puesto acá ninguna
+   * pantalla futura tiene que acordarse. Es la regla que este repositorio ya
+   * tiene escrita: cuando algo se repite, la pregunta no es «cómo me acuerdo la
+   * próxima» sino «dónde se pone para que no dependa de que me acuerde».
+   *
+   * **Avisa pase lo que pase con la escritura, y es deliberado.** Un conflicto
+   * también significa que el estado confirmado aprendió algo --el valor real,
+   * que es por lo que el conflicto se detectó--. Un refresco de más cuesta un
+   * recálculo; uno de menos le muestra un número viejo a quien está decidiendo
+   * sobre la cuña de un músico.
+   */
   api(): MixerDomainAPI | null {
-    return this.conexion.estado() === 'CONNECTED' ? this.adapter : null;
+    if (this.conexion.estado() !== 'CONNECTED') return null;
+    const adapter = this.adapter;
+    if (adapter === null) return null;
+    if (this.apiEnvuelta?.base !== adapter) {
+      this.apiEnvuelta = { base: adapter, envuelta: this.queAvise(adapter) };
+    }
+    return this.apiEnvuelta.envuelta;
+  }
+
+  /** La envoltura, memorizada por adaptador para no rehacerla en cada llamada. */
+  private apiEnvuelta: { base: MixerDomainAPI; envuelta: MixerDomainAPI } | null = null;
+
+  private queAvise(base: MixerDomainAPI): MixerDomainAPI {
+    return new Proxy(base, {
+      get: (obj, prop) => {
+        // **El receptor es el objeto real, no el proxy.** Con el proxy como
+        // receptor, cualquier campo privado del adaptador revienta al leerse
+        // desde un método heredado.
+        const v = Reflect.get(obj, prop, obj);
+        if (prop !== 'escribir' || typeof v !== 'function') {
+          return typeof v === 'function' ? v.bind(obj) : v;
+        }
+        return async (...args: Parameters<MixerDomainAPI['escribir']>) => {
+          try {
+            return await (v as MixerDomainAPI['escribir']).apply(obj, args);
+          } finally {
+            this.tocarEstado();
+          }
+        };
+      },
+    });
   }
 
   readonly canales = signal<readonly EstadoCanal[]>([]);
+  /**
+   * Los medidores de las cuñas, uno por auxiliar.
+   *
+   * **Por qué hace falta aparte de `canales`.** La ganancia se puede escuchar
+   * sobre el medidor del canal porque está antes de él: moverla lo mueve. El
+   * envío a una cuña sale del canal hacia otro lado, así que subirlo **no mueve
+   * el medidor del canal ni un escalón**. Una escucha de monitor comprobada sólo
+   * sobre el canal probaría que el músico tocó y no diría nada de si su cuña
+   * sonó.
+   *
+   * **Vacía mientras no haya trama, a DIFERENCIA de `canales`.** La cantidad de
+   * cuñas sale de la cabecera de la trama y no de una constante, mientras que los
+   * canales arrancan en `CANALES_HASTA_SABER` —doce— para poder dibujar una tira
+   * antes de la primera trama.
+   *
+   * *Esto decía «igual que `canales`», que es falso y además contradecía el
+   * docblock que el mismo commit puso en el adaptador. Lo cazó una auditoría de
+   * fidelidad el 2026-09-19.*
+   */
+  readonly auxiliares = signal<readonly EstadoAuxiliar[]>([]);
+  /**
+   * Cuántas veces cambió el estado confirmado. Para que una pantalla lo siga.
+   *
+   * **Existe porque `volcadoDelEstado()` es un método, no una señal**, y eso
+   * convirtió en trampa lo que parecía el cableado obvio. Una pantalla escribió
+   * `computed(() => this.mixer.volcadoDelEstado())` y quedó **congelada para
+   * siempre**: ese `computed` no lee ninguna señal, así que Angular no lo
+   * recalcula nunca. Medido el 2026-09-20 con el motor de señales real: llegaba
+   * el volcado entero, llegaban las tramas de medidores, alguien movía un envío
+   * en la consola, y la pantalla seguía mostrando la foto del primer instante
+   * --diciendo «la consola no está conectada» con la consola publicando--.
+   *
+   * Lo peor era que **parecía viva**: los medidores de arriba sí salen de
+   * señales y se movían con la música, encima de una tabla muerta.
+   *
+   * Se toca en los cuatro momentos en que el estado confirmado deja de ser el
+   * que era: cuando termina el volcado inicial, cuando alguien más mueve algo,
+   * cuando llega una avalancha, y al conectar o desconectar.
+   */
+  private readonly _revisionDelEstado = signal(0);
+  readonly revisionDelEstado = this._revisionDelEstado.asReadonly();
+
   readonly cambiosExternos = signal<readonly AvisoCambioExterno[]>([]);
   readonly cambioMasivo = signal<BulkExternalChange | null>(null);
   readonly conectando = signal(false);
@@ -125,9 +223,23 @@ export class MixerService {
     return () => quitar(this.oyentesConexion, cb);
   }
 
-  /** El estado confirmado entero. Vacío si no hay conexión. */
+  /**
+   * El estado confirmado entero. Vacío si no hay conexión.
+   *
+   * **No es una señal y no puede serlo barato**: devuelve una copia del almacén
+   * del adaptador, y copiarlo en cada trama para tenerlo como señal costaría más
+   * de lo que vale. Quien lo lea en un `computed` **tiene que leer antes
+   * {@link revisionDelEstado}**, o su `computed` no se va a recalcular nunca.
+   * Hay un test que lo comprueba sobre las pantallas que lo usan, porque esto no
+   * lo caza el compilador.
+   */
   volcadoDelEstado(): ReadonlyMap<string, { readonly valor: number }> {
     return this.adapter?.volcadoDelEstado() ?? new Map();
+  }
+
+  /** Avisa que el estado confirmado dejó de ser el que era. */
+  private tocarEstado(): void {
+    this._revisionDelEstado.update((n) => n + 1);
   }
 
   async infoDispositivo(): Promise<{ modelo: string; firmware: string } | null> {
@@ -196,6 +308,7 @@ export class MixerService {
       });
 
       adapter.alVolcadoCompleto(() => {
+        this.tocarEstado();
         this.conexion.volcadoCompletoRecibido();
         this.log.info('mixer', 'volcado_completo', {});
         for (const cb of this.oyentesVolcado) cb();
@@ -203,6 +316,7 @@ export class MixerService {
 
       adapter.alActualizarTelemetria(() => {
         this.canales.set(adapter.canales());
+        this.auxiliares.set(adapter.auxiliares());
         for (const cb of this.oyentesTelemetria) cb();
       });
 
@@ -211,6 +325,7 @@ export class MixerService {
       });
 
       adapter.alCambiarExterno((parametro, valor) => {
+        this.tocarEstado();
         this.cambiosExternos.update((prev) => [
           { parametro, valor, cuando: new Date().toISOString() },
           ...prev,
@@ -219,14 +334,17 @@ export class MixerService {
       });
 
       adapter.alCambioMasivo((e) => {
+        this.tocarEstado();
         this.cambioMasivo.set(e);
         this.conexion.invalidarPorCambioMasivo();
         this.log.warn('mixer', 'cambio_masivo', { ...e });
       });
 
       await adapter.conectar(url);
+      this.tocarEstado();
       this.direccion.set(url);
       this.canales.set(adapter.canales());
+      this.auxiliares.set(adapter.auxiliares());
       this.detenerReintento();
     } catch (e) {
       this.ultimoError.set(String(e));
@@ -259,7 +377,17 @@ export class MixerService {
     this.detenerReintento();
     await this.adapter?.desconectar();
     this.adapter = null;
+    this.tocarEstado();
     this.canales.set([]);
+    // **Las dos listas se vacían juntas, y hay que decir qué NO arregla eso.**
+    // Vaciar al desconectar a propósito es lo que este servicio ya hacía con los
+    // canales, y la auditoría del 2026-09-19 midió lo que deja afuera: cuando la
+    // conexión **se cae sola** nadie pasa por acá, así que los últimos niveles
+    // conocidos se quedan en la señal y una captura muestrea dieciocho segundos
+    // de un número muerto. Quien se protege de eso es la captura, mirando que la
+    // consola siga conectada y que el medidor se haya movido; esta línea sólo
+    // evita que una cuña apagada siga mostrando su último nivel en pantalla.
+    this.auxiliares.set([]);
   }
 
   /**
@@ -383,6 +511,7 @@ export class MixerService {
       }
       this.cambioMasivo.set(null);
       this.canales.set(adapter.canales());
+      this.auxiliares.set(adapter.auxiliares());
       this.log.info('mixer', 'estado_releido', {});
     } catch (e) {
       this.ultimoError.set(String(e));

@@ -32,4 +32,14 @@ Una decisión por archivo. Se agregan, no se editan: si una decisión cambia, se
 | [026](ADR-026-cerrar-el-lazo.md) | Cerrar el lazo: la aplicación escribe la ganancia | Aceptada |
 | [027](ADR-027-silenciar-para-diagnosticar.md) | Silenciar un canal para diagnosticar, en soundcheck | Aceptada |
 | [028](ADR-028-abrir-el-envio-a-monitor.md) | Abrir el envío a monitor, sólo el nivel y con techo en donde estaba | Aceptada |
-| [029](ADR-029-bajar-los-buses-para-cazar-acoples.md) | Bajar el auxiliar y el general para cazar un acople: el auxiliar decidido, el general espera al usuario | Parcial, sin implementar |
+| [029](ADR-029-bajar-los-buses-para-cazar-acoples.md) | Bajar el auxiliar y el general para cazar un acople: los dos sólo bajan, con techo en dónde estaban | Decidida, sin implementar |
+| [030](ADR-030-como-se-nombran-los-tiempos.md) | Los tiempos del compresor se muestran con los dos números: el de la consola y el medido | Decidida, sin implementar |
+| [031](ADR-031-la-mezcla-de-conjunto-entra.md) | La mezcla de conjunto entra al MVP, y la aplicación mueve faders de canal con tope | Decidida, sin implementar |
+| [032](ADR-032-puerta-y-compresor-por-lazo-cerrado.md) | La puerta y el compresor se ajustan cerrando el lazo sobre el indicador y el medidor de reducción, no por ley | Decidida, sin implementar |
+| [033](ADR-033-los-envios-a-efectos-entran.md) | Los envíos a efectos entran: cuánto manda cada canal, con tope; los parámetros internos siguen siendo del usuario | Decidida, sin implementar |
+| [034](ADR-034-poner-el-nivel-de-monitor-y-retocarlo.md) | Poner el nivel de un monitor y retocarlo son dos operaciones: la rampa sube de a 2 dB con techo en nominal, retocar mantiene los 4 dB | Decidida, sin implementar |
+| [035](ADR-035-el-tope-es-por-parlante-no-por-clave.md) | El tope se cuenta por parlante y no por clave: dos caminos al mismo parlante comparten presupuesto, y juntos en una transacción se rechazan | Decidida, sin implementar |
+| [036](ADR-036-la-escucha-de-una-cuna-se-comprueba-sobre-dos-medidores.md) | La escucha de una cuña se comprueba sobre dos medidores: el del músico prueba que tocó y el de la cuña, después de su fader, que le llegó | Implementada, sin quien la dispare |
+| [037](ADR-037-que-cuenta-como-que-el-musico-estaba-tocando.md) | Un instante cuenta como música si el medidor se movía ahí y el nivel está a menos de 20 dB del pico de esa misma escucha | Implementada, sin quien la dispare |
+| [038](ADR-038-el-criterio-del-ecualizador-de-canal.md) | El criterio del ecualizador de canal: una curva nombrada para arrancar, la medición del propio canal para corregir, y lo que el usuario aprueba vuelve a la biblioteca | Decidida, sin implementar |
+| [039](ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md) | El freno viaja con la hoja y no con la familia: un salto de frecuencia se cuenta en octavas, el ancho en octavas de ancho de banda, y poner una banda se hace con la campana en cero | Implementada, menos la exención del salto libre |

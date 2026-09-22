@@ -1,10 +1,23 @@
 import {
-  ownership, esEscribible, verificarLimite,
+  ownership, esEscribible, verificarLimite, limiteDe,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
+  PONER_LA_BANDA, formaDePonerLaBanda,
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
-import { verificarAtadura } from './magnitud-atada.ts';
+import { verificarAtadura, verificarAtaduraDelOrigen } from './magnitud-atada.ts';
+
+/**
+ * Cuánto puede alejarse del mínimo escribible el destino de una salida del
+ * silencio.
+ *
+ * **Chica a propósito, y en decibeles.** El destino no es «por ahí abajo»: es
+ * **un punto**, el que ADR-034 eligió, y es lo único que acota ese movimiento
+ * porque el delta es infinito. Una décima de decibel cubre el redondeo de ir y
+ * volver por la ley --que se invierte por bisección-- sin dejar sitio para
+ * estirar el destino hacia arriba.
+ */
+const HOLGURA_MINIMO_ESCRIBIBLE = 0.1;
 import type { ParameterKind, ResultadoLimite } from '@vse/domain';
 import type { CambioPropuesto, ContextoSeguridad, Rechazo, Veredicto } from './types.ts';
 
@@ -167,6 +180,151 @@ export class SafetyEngine {
       });
     }
 
+    // **La misma ruta dos veces en una transacción multiplica todos los topes.**
+    //
+    // `evaluarCambio` juzga cada cambio contra un `ctx` que **no se actualiza
+    // entre uno y otro**: el acumulado, las rutas ya tocadas y las que tienen
+    // medición posterior son las de antes de empezar. Así que N cambios
+    // encadenados sobre la misma ruta cobran cada uno el presupuesto entero:
+    // **ni el tope por paso ni el acumulado acotan lo que de verdad se mueve.**
+    // Y si esa ruta no venía tocada en la sesión, `esPrimerCambioDelParametro`
+    // es verdadero para todos y tampoco se exige escuchar en el medio. (Esa
+    // última cláusula vale sólo para ese caso: con la ruta ya tocada y sin
+    // medición anotada, los cambios se rechazan por `SIN_MEDICION_INTERMEDIA`.
+    // La conclusión se sostiene por los dos caminos, pero la primera redacción
+    // enunció el mecanismo de más y lo corrigió una auditoría.)
+    //
+    // **Medido por una auditoría adversarial el 2026-09-17b: cuatro pasos
+    // honestos de 2 dB en una sola transacción mueven la cuña 8 dB, con el tope
+    // por transacción en 2.** No hace falta mentir ningún número: los cuatro
+    // cambios son coherentes con el crudo, cada uno pasa la atadura de los dos
+    // extremos y cada uno cabe en su tope. Lo que nadie sumaba era la cadena.
+    //
+    // **Se rechaza en vez de acumular, y la razón no es la comodidad.** INV-004
+    // exige una medición entre un cambio y el siguiente sobre el mismo
+    // parámetro, y **dentro de una transacción no hay dónde medir**: es una
+    // ráfaga de escrituras, y la escucha del músico ocurre entre transacciones.
+    // Acumular dejaría pasar una rampa entera sin escuchar, con la suma dentro
+    // del tope, que es exactamente lo que ADR-034 no quiere: lo que hace de la
+    // subida una rampa y no una corrida es la escucha, no el tamaño del paso.
+    //
+    // **Y los cambios intermedios SÍ suenan, que es lo que vuelve real el
+    // argumento.** La primera redacción de este comentario decía que «lo único
+    // que llega al aire es el último, así que el intermedio es una escritura
+    // que no se justifica», y una auditoría lo midió con el ejecutor real: el
+    // ejecutor escribe **todos** los cambios, en orden, con su espera entre uno
+    // y otro. Los cuatro llegaron a la consola, separados por ~101 ms. O sea
+    // que el hallazgo no era un salto de 8 dB sino **una rampa de 312 ms en la
+    // cuña de un músico sin una sola escucha en el medio** — peor, y mucho más
+    // parecido a lo que ADR-034 describe. Lo único que *queda* es el último;
+    // los otros se oyen.
+    //
+    // **Lo que esta guarda apoyaba en otra que no existía, y se construyó el
+    // 2026-09-18.** Rechazar la ráfaga obliga a partirla en transacciones, y el
+    // argumento entero depende de que entre una transacción y la siguiente se
+    // haya escuchado. Eso **no se comprobaba**: `historialDeLaSesion` miraba sólo
+    // que `medicionPosteriorId` no fuera nulo, sin resolverlo, sin fecha y sin
+    // ningún espaciado de reloj. Medido con el motor: dieciséis transacciones
+    // honestas de 2 dB levantaban la cuña **32 dB, de −32 a nominal**, anotando
+    // dieciséis mediciones inventadas, y lo que cortaba era el techo.
+    //
+    // Hoy lo comprueba `escuchaComprobada`: la medición tiene que resolver, ser
+    // de esta sesión, traer una señal de la lista blanca, durar lo que su clase
+    // pide, no empezar antes de que la escritura llegara al cable y **haber
+    // terminado su ventana**. Esa última es la que convierte una duración
+    // declarada en tiempo transcurrido, y sin ella la ráfaga volvía entera con
+    // mediciones bien formadas. Partir en transacciones ahora sí obliga a
+    // esperar.
+    //
+    // **Es la misma forma que el silencio de acá arriba** —una regla sobre la
+    // COMPOSICIÓN de la transacción, que la tabla de límites no puede expresar
+    // porque mira un cambio por vez— y por eso vive al lado.
+    //
+    // **Lo que esta guarda NO cierra, con todas las letras y con los números.**
+    // Cuenta por la cadena de la ruta, igual que `acumuladoPorRuta`,
+    // `techoPorRuta` y `rutasYaTocadas`. Así que **dos claves distintas que
+    // llegan al mismo parlante se le escapan**, y hay tres casos conocidos:
+    //
+    // - **El alias con ceros**, que para el envío a monitor ya cierra la forma
+    //   canónica de `esNivelDeEnvioAMonitor` y para otras familias no. Medido:
+    //   `hw.0.gain` más sus alias `hw.00.gain`, `hw.000.gain` y `hw.0000.gain`,
+    //   3 dB cada uno, pasan en **una** transacción —12 dB con el tope en 3— y
+    //   en ráfaga **24 dB, no 36**: el acumulado son 6 dB por ruta y cuatro
+    //   rutas dan 24, medido --dos transacciones y la tercera cae con
+    //   `ACUMULADO_EXCEDIDO`--. El 36 corresponde a SEIS alias, y seis no
+    //   entran, porque INV-005 acota a cuatro parámetros por transacción. La
+    //   cifra estuvo acá desde el 2026-09-17b y la corrigió una auditoría de
+    //   fidelidad el 18. **Y el número honesto no es 24: el patrón del alias no
+    //   tiene cota, así que partiendo en tandas de cuatro no hay techo.** Es la
+    //   ganancia del previo, o sea **el único parámetro que la aplicación mueve
+    //   hoy de punta a punta**. Lo que lo tapa no es una guarda sino un
+    //   accidente: el alias no tiene valor confirmado y el ejecutor lo rechaza
+    //   por INV-002.
+    // - **El enlace estéreo de `fmalcher`**, donde una sola llamada de «poner el
+    //   nivel del envío» escribe hasta cuatro `i.N.aux.M.value` distintos.
+    //   Anotado desde antes en `docs/referencia/trabajo-previo-de-terceros.md`.
+    // - **Familias distintas sobre el mismo parlante**: `i.3.mix` más
+    //   `i.3.eq.b1.gain` más `i.3.aux.1.value` pasan juntos, y sus tres topes
+    //   suman 9 dB. **Pero en esta consola el fader no llega a la cuña**: los
+    //   320 envíos a auxiliar tienen `post = 0` y `postproc = 1`, y para esa
+    //   combinación la tabla del ítem 95 dice que el ecualizador mueve el
+    //   auxiliar y el fader no, así que el movimiento real es de 6 dB. Esta
+    //   línea decía «post-fader y post-proceso —lo que midió el ítem 95—»: el
+    //   ítem 95 puso `post = 1` a mano durante aquella corrida y lo restauró,
+    //   o sea que citaba lo contrario de lo que el aparato tiene puesto.
+    //   Corregido el 2026-09-18. **El tope es por clave y el
+    //   oído es por parlante**, y ésa es la forma general de los tres.
+    //
+    // Los tres quedan como tareas, medidos.
+    const vecesPorRuta = new Map<string, number>();
+    for (const c of cambios) vecesPorRuta.set(c.path, (vecesPorRuta.get(c.path) ?? 0) + 1);
+    for (const [ruta, veces] of vecesPorRuta) {
+      if (veces <= 1) continue;
+      rechazos.push({
+        codigo: 'RUTA_REPETIDA',
+        invariante: 'INV-004',
+        mensaje: `${ruta} aparece ${veces} veces en la misma transacción: cada una `
+          + 'cobraría el tope entero y ninguna exigiría escuchar en el medio, así que '
+          + 'el movimiento real no quedaría acotado por nada. Va de a un cambio por '
+          + 'ruta, y se vuelve a escuchar antes del siguiente',
+        path: ruta,
+      });
+    }
+
+    // **«Poner la banda»: la etiqueta es necesaria y no suficiente** (ADR-039).
+    //
+    // Quien propone declara la operación, y el motor comprueba que los tres
+    // cambios de verdad tengan esa forma: las tres hojas de la misma banda del
+    // mismo canal, en el orden ganancia → frecuencia → ancho, con la ganancia
+    // exactamente en cero. Es la misma forma que `correspondeExencionDeSistema`,
+    // y por la misma razón: pedir un permiso no puede ser tan fácil como decir
+    // que se lo merece.
+    //
+    // **Es una regla sobre la COMPOSICIÓN de la transacción**, como el silencio
+    // de canal y `RUTA_REPETIDA`, y por eso vive acá y no en la tabla de
+    // límites, que mira un cambio por vez.
+    //
+    // **Y hoy sólo EXIGE: todavía no concede nada.** ADR-039 deja la exención
+    // del salto libre condicionada a una medición que falta --correr una campana
+    // neutra por el tramo y comprobar que la respuesta no se mueve--, así que
+    // los tres cambios siguen pasando por sus topes de siempre y un salto de dos
+    // octavas se rechaza con `DELTA_EXCEDIDO` aunque la forma sea correcta. Lo
+    // que cambia el día que esa medición exista es que acá, con la forma ya
+    // comprobada, la frecuencia y el ancho dejen de pasar por `verificarLimite`.
+    // Construir la exención antes sería construir sobre lo que nadie comprobó.
+    if (opciones.tipoDeOperacion === PONER_LA_BANDA) {
+      const forma = formaDePonerLaBanda(cambios);
+      if (!forma.bienFormada) {
+        rechazos.push({
+          codigo: 'PONER_LA_BANDA_MAL_FORMADA',
+          invariante: 'INV-004',
+          mensaje: `la transacción se declara «poner la banda» y no tiene esa forma: `
+            + forma.motivo,
+          path: null,
+        });
+      }
+    }
+
     for (const c of cambios) rechazos.push(...this.evaluarCambio(c, ctx));
 
     return rechazos.length === 0 ? { permitido: true } : { permitido: false, rechazos };
@@ -256,6 +414,106 @@ export class SafetyEngine {
           path: c.path,
         });
         return salida; // Sin sentido juzgar topes sobre un número que no es el que se escribe.
+      }
+    }
+
+    // **Y de dónde venía, que es la otra mitad y faltaba.**
+    //
+    // Los topes de INV-004 no acotan el destino: acotan el **movimiento**, que
+    // es `magnitudPropuesta - magnitudEsperada`. Atar sólo el destino deja esa
+    // resta apoyada en un número que nadie comprueba, y la auditoría del
+    // 2026-09-17 lo midió: **un salto de 31 dB en la cuña de un músico pasa el
+    // tope de 2 dB por paso declarando que venía de un decibel más abajo.**
+    //
+    // **Lo que esto ata es el puente, y hay que decir dónde cierra la cadena,
+    // porque no es acá.** Los dos números que se comparan --`valorEsperado` y
+    // `magnitudEsperada`-- **los declara el mismo llamador**: el motor no lee la
+    // consola en ningún punto de `evaluar`. Así que un llamador que mienta los
+    // dos de forma coherente sigue sacando `permitido: true`, medido.
+    //
+    // Quien ata el crudo a la realidad es el **adaptador, y después**: compara
+    // `valorEsperado` contra el estado confirmado justo antes de enviar y
+    // devuelve `CONFLICT` sin escribir (INV-011, `coincideConEsperado`). De ahí
+    // sale la garantía que sí se sostiene, y conviene enunciarla sobre el cable
+    // y no sobre el veredicto: **ninguna escritura sale de acá con el movimiento
+    // mal medido.** O el origen declarado es el de verdad --y entonces esta
+    // guarda comprueba sus decibeles-- o no lo es, y la escritura no sale.
+    //
+    // **Lo que cerró este paso, entonces, es el hueco entre las dos:** declarar
+    // el crudo de partida verdadero, para que el adaptador lo acepte, y los
+    // decibeles de partida falsos, para que el motor mida mal. Eso pasaba
+    // entero, con la escritura saliendo al cable.
+    //
+    // Una auditoría de fidelidad corrigió esta frase el mismo día que se
+    // escribió: decía «la cadena queda entera» y presentaba como propiedad del
+    // motor algo que es del adaptador, dos pasos más abajo. Es la forma de error
+    // que este proyecto repite --escribir la garantía antes de que exista-- y
+    // acá lo que faltaba no era la garantía sino la precisión sobre quién la da.
+    //
+    // **Y hoy es más urgente que cuando se encontró.** ADR-034 suspende el
+    // presupuesto acumulado mientras la cuña no tiene nivel establecido, así
+    // que durante toda la subida el tope por paso es el **único** freno sobre
+    // la brusquedad. Es además lo que el `CHANGELOG` le promete al usuario.
+    //
+    // **Va con código propio y no con `MAGNITUD_NO_ATADA`.** Son dos defectos
+    // distintos —uno escribe un número que el motor no juzgó, el otro juzga un
+    // movimiento que no es el que ocurre— y con el mismo código un test del
+    // origen pasaría por lo que frenó el destino. Es la misma razón por la que
+    // `TECHO_ABSOLUTO` no es `DELTA_EXCEDIDO`.
+    //
+    // **Y desde el 2026-09-19 hay una salida, una sola, para el borde del
+    // silencio**: el pedazo de ADR-034 que el motor no hacía. Ver
+    // `saleDelSilencio` justo abajo.
+    let saleDelSilencio = false;
+    {
+      const origen = verificarAtaduraDelOrigen(
+        c.path, c.valorEsperado, c.magnitudEsperada, c.unidad,
+      );
+      if (!origen.atada && origen.codigo === 'ORIGEN_EN_SILENCIO') {
+        // **El primer paso desde el silencio, decisión del usuario en ADR-034
+        // entre tres opciones: arrancar en el mínimo escribible.**
+        //
+        // No es una rampa de 2 dB: es salir de la nada, y **lo que lo acota no
+        // es el delta sino el destino**. El delta es infinito y no hay tope que
+        // se le pueda aplicar; el destino, en cambio, es un único punto —el más
+        // bajo que la ley medida sabe escribir— así que pinchándolo el
+        // movimiento queda tan acotado como lo estaría por un tope.
+        //
+        // **Las dos condiciones, y por qué no alcanza con una.** El destino
+        // tiene que ser ese punto exacto, leído de la ley y no escrito a mano
+        // --ADR-034 lo pidió así--; y la clase tiene que ser la que el usuario
+        // autorizó, el envío a monitor. Sin lo segundo, esta puerta la cruzaría
+        // cualquier parámetro que tenga un silencio en su ley, y el usuario
+        // autorizó levantar cuñas, no salir del silencio en general.
+        //
+        // **Se repite una sola vez por cuña y se cierra sola**: después de este
+        // cambio la consola ya no está en el crudo del silencio, así que la
+        // próxima propuesta vuelve por el camino normal, con sus 2 dB por paso y
+        // su escucha entre uno y otro.
+        const permitido = c.kind === 'MONITOR_AUX_SEND'
+          && Number.isFinite(c.magnitudPropuesta)
+          && Math.abs(c.magnitudPropuesta - origen.minimoEscribible) <= HOLGURA_MINIMO_ESCRIBIBLE;
+        if (!permitido) {
+          salida.push({
+            codigo: 'SALIDA_DEL_SILENCIO_NO_PERMITIDA',
+            invariante: 'INV-004',
+            mensaje: `${c.path}: desde el silencio el único destino admitido es el mínimo `
+              + `escribible, ${origen.minimoEscribible.toFixed(2)} ${c.unidad}, y sólo para `
+              + `el envío a monitor. Este cambio pide ${String(c.magnitudPropuesta)} `
+              + `${c.unidad} sobre ${c.kind}`,
+            path: c.path,
+          });
+          return salida;
+        }
+        saleDelSilencio = true;
+      } else if (!origen.atada && origen.codigo !== 'SIN_LEY_VERIFICADA') {
+        salida.push({
+          codigo: 'ORIGEN_NO_ATADO',
+          invariante: 'INV-004',
+          mensaje: origen.motivo,
+          path: c.path,
+        });
+        return salida; // Sin sentido juzgar topes sobre un movimiento que no es el real.
       }
     }
 
@@ -512,16 +770,100 @@ export class SafetyEngine {
     // `CambioPropuesto.magnitudPropuesta`: durante meses esto restaba crudos y
     // los comparaba contra decibeles, así que el tope de INV-004 dejaba pasar
     // el recorrido entero del previo.
-    const delta = c.magnitudPropuesta - c.magnitudEsperada;
+    // **La salida del silencio no pasa por `verificarLimite`.** El delta es
+    // infinito --de −∞ al mínimo escribible-- así que no hay tope que se le
+    // pueda aplicar: esa función lo rechazaría por no ser finito, que es lo
+    // correcto para todo lo demás. Lo que acota este movimiento es el destino,
+    // ya comprobado arriba contra la ley medida, y ADR-034 lo decidió así: «lo
+    // que lo acota no es el delta sino el destino».
+    //
+    // **Pero saltearla entera dejaba fuera tres cosas más, y eso era un
+    // agujero.** Una auditoría adversarial del 2026-09-19 lo midió con el motor
+    // real: con la ruta ya tocada y sin escucha, un paso normal caía con
+    // `SIN_MEDICION_INTERMEDIA` y la salida del silencio pasaba; con el
+    // acumulado en el tope, el paso normal caía con `ACUMULADO_EXCEDIDO` y la
+    // salida del silencio pasaba. **Veinticinco salidas del silencio seguidas
+    // sin una sola escucha en el medio.** Y el commit que la introdujo afirmaba
+    // que no se salteaba nada más, igual que ADR-034: las dos frases eran
+    // falsas.
+    //
+    // No escalaba el nivel --el destino es siempre el mínimo escribible, el
+    // punto más bajo audible-- pero convertía una puerta de un solo uso en una
+    // que se podía empujar indefinidamente, y el freno de verdad quedaba en el
+    // adaptador, dos pasos más abajo y después del veredicto.
+    //
+    // **Las dos condiciones que faltaban, y por qué éstas y no un `verificarLimite`
+    // con un delta inventado:**
+    if (saleDelSilencio) {
+      // 1. **Es el primer cambio de esta ruta en la sesión.** Salir del silencio
+      //    se hace una vez por cuña: si la aplicación ya la tocó, o no estaba en
+      //    silencio, o ya salió. Esto es lo que hace verdadera la frase «la
+      //    puerta se cierra sola» **en el motor**, que es donde tiene que ser
+      //    verdadera; antes dependía de que el adaptador comparara con la
+      //    consola, y eso ocurre después de que el motor ya dijo que sí.
+      //
+      //    Sale de `ctx.rutasYaTocadas`, que es el mismo dato que
+      //    `verificarLimite` usa para `esPrimerCambioDelParametro`: no es una
+      //    segunda copia de la regla, es la misma entrada leída acá.
+      if (ctx.rutasYaTocadas.has(c.path)) {
+        salida.push({
+          codigo: 'SALIDA_DEL_SILENCIO_NO_PERMITIDA',
+          invariante: 'INV-004',
+          mensaje: `${c.path}: esta ruta ya se movió en esta sesión, así que no está `
+            + 'en silencio. Salir del silencio es una sola vez por cuña; de acá en '
+            + 'adelante se sube de a pasos, escuchando entre uno y otro',
+          path: c.path,
+        });
+        return salida;
+      }
+      // 2. **El techo absoluto sigue rigiendo.** Hoy no muerde --el mínimo
+      //    escribible de esta ley está muy por debajo de nominal-- pero que no
+      //    muerda por el valor de una constante no es lo mismo que comprobarlo.
+      //    Es un tope sobre el DESTINO, y el destino es justamente lo único que
+      //    acota este movimiento.
+      const techoAbs = limiteDe(c.kind, c.path)?.techoAbsoluto;
+      if (techoAbs !== undefined && c.magnitudPropuesta > techoAbs) {
+        salida.push({
+          codigo: 'TECHO_ABSOLUTO',
+          invariante: 'INV-004',
+          mensaje: `${c.path}: salir del silencio dejaría el envío en `
+            + `${c.magnitudPropuesta} ${c.unidad}, por encima del techo de ${techoAbs}`,
+          path: c.path,
+        });
+        return salida;
+      }
+      return salida;
+    }
+
     const limite = verificarLimite({
       kind: c.kind,
-      deltaSolicitado: delta,
+      // **La ruta, porque desde ADR-039 el tope es de la hoja y no de la
+      // familia.** Sin ella `i.3.eq.b2.freq` y `i.3.eq.b2.gain` son la misma
+      // cosa para el tope, y una se mueve en octavas y la otra en decibeles.
+      path: c.path,
+      // **Las dos magnitudes, y la resta la hace el dominio.** Antes acá se
+      // restaba y se pasaba un delta ya hecho; con la escala del movimiento eso
+      // sería restar hercios o Q y llamarlo movimiento, que es exactamente lo
+      // que ADR-039 vino a cerrar. Quien sabe en qué moneda se cuenta esta hoja
+      // es la tabla de hojas, no el motor.
+      magnitudEsperada: c.magnitudEsperada,
+      magnitudPropuesta: c.magnitudPropuesta,
       acumuladoEnSesion: ctx.acumuladoPorRuta.get(c.path) ?? 0,
       hayMedicionPosterior: ctx.rutasConMedicionPosterior.has(c.path),
       esPrimerCambioDelParametro: !ctx.rutasYaTocadas.has(c.path),
       // La unidad que declara quien propone, para que `verificarLimite` pueda
-      // comparar especies antes de comparar numeros.
+      // comparar especies antes de comparar numeros. **Es la unidad de la
+      // MAGNITUD** --hercios en una frecuencia-- y no la de la escala del
+      // movimiento; las dos conviven desde ADR-039 y la que se declara es la
+      // que ata el número al crudo.
       unidad: c.unidad,
+      // **Sin `?.` y sin `?? true`, a propósito.** Un contexto sin este conjunto
+      // es un llamador que no se enteró de que existe, y lo que tiene que pasar
+      // ahí es un `TypeError` ruidoso y no una suspensión silenciosa del
+      // presupuesto acumulado. `techoPorRuta` eligió lo contrario --y con razón,
+      // porque ahí fallar cerrado es no tener techo-- pero acá el campo ausente
+      // AFLOJA, así que esconderlo sería abrir la puerta que ADR-034 acota.
+      nivelEstablecido: ctx.rutasConNivelEstablecido.has(c.path),
     });
 
     if (!limite.permitido) {
@@ -547,6 +889,18 @@ export class SafetyEngine {
         // el motor no puede juzgar, asi que se rechaza por la misma invariante
         // que exige que el tope exista.
         UNIDAD_NO_DECLARADA: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
+        // El techo de nominal del envío a monitor (ADR-034). **INV-010 y no
+        // INV-004**: los topes de INV-004 acotan el movimiento, y éste sale de la
+        // invariante que gobierna qué puede hacer la aplicación con la cuña de un
+        // músico. Hoy `MONITOR_AUX_SEND` es el único tipo que declara techo; si
+        // alguna vez lo declara otro, esta fila tiene que dejar de ser una sola.
+        TECHO_ABSOLUTO: { codigo: 'TECHO_ABSOLUTO', inv: 'INV-010' },
+        // Una magnitud que no es un número no es un cambio que el motor pueda
+        // juzgar, y antes las pasaba todas. Ver el comentario en `limits.ts`.
+        // **Desde ADR-039 también cae acá la magnitud AUSENTE**, que antes tenía
+        // su propio código: las dos magnitudes son obligatorias, y la que falta
+        // llega como `undefined`, que no es un número. El veredicto no cambió.
+        MAGNITUD_NO_NUMERICA: { codigo: 'MAGNITUD_NO_ATADA', inv: 'INV-004' },
       };
       const m = mapa[limite.codigo];
       salida.push({

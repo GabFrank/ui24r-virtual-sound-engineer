@@ -20,44 +20,32 @@
  * los documentos.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lectorDe, intentar as intentarGuarda } from './guarda.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const leer = (r) => readFileSync(join(RAIZ, r), 'utf8');
 
 /**
- * Corre una expresión contra un módulo TypeScript del repositorio y devuelve
- * lo que imprime.
+ * **Dos cuentas, no una.** «La cifra dice 22 y son 23» es un documento que miente
+ * y hay que corregirlo. «No pude leer el archivo» o «la frase cambió de forma» es
+ * una comprobación que **no se hizo**, y el que lo lee tiene que decidir otra
+ * cosa: mover la ruta, reescribir el patrón, o aceptar que esa cifra se quedó sin
+ * quien la mire. Meter las dos abajo del titular «N cifra(s) que no cuadran»
+ * --que es lo que hacía-- le pone al lector la etiqueta equivocada, y era la que
+ * esta guarda más quería evitar.
  *
- * **Existe porque contar texto no es contar.** La primera versión de la guarda
- * de rutas medidas contaba líneas `  medido(` con una expresión regular, y una
- * auditoría mostró lo que eso deja pasar: `raw-map.ts` ya promueve entradas a
- * `PROBADO` por otro camino --`{ ...deLaConsola(...), estado: 'PROBADO' }`-- y
- * una entrada así no la veía; al revés, colapsar una llamada a una sola línea
- * disparaba una falsa alarma sin cambiar una coma de la semántica. Una guarda
- * que compara el repositorio contra su propio estilo de escritura es más débil
- * todavía que compararlo consigo mismo, que es lo que `vse-disciplina` §6 ya
- * desaconseja.
- *
- * Así que se ejecuta la función que el propio paquete exporta para esto.
+ * Las dos hacen fallar la verificación. Sólo se cuentan por separado.
  */
-const contarEjecutando = (modulo, expresion) => {
-  const salida = execFileSync(
-    process.execPath,
-    ['--experimental-strip-types', '--no-warnings', '--input-type=module', '-e',
-      `const m = await import(${JSON.stringify(join(RAIZ, modulo))});\n`
-      + `process.stdout.write(String(${expresion}));`],
-    { encoding: 'utf8' },
-  );
-  const n = Number(salida.trim());
-  if (!Number.isInteger(n)) {
-    throw new Error(`contar ${expresion} sobre ${modulo} devolvió «${salida.trim()}», que no es un entero`);
-  }
-  return n;
-};
+let fallos = 0;
+let imposibles = 0;
+let comprobadas = 0;
+
+const { leer, listar, contarEjecutando } = lectorDe(RAIZ);
+
+/** Avisa del problema, lo cuenta, y deja que la corrida siga. */
+const anotar = (e) => { imposibles++; console.error(e.message); };
+const intentar = (fn, alFallar = anotar) => intentarGuarda(fn, alFallar);
 
 /** Las cifras que se pueden contar, con de dónde salen y quién las afirma. */
 const HECHOS = [
@@ -67,7 +55,6 @@ const HECHOS = [
     afirmaciones: [
       ['docs/flujo-de-usuario.md', /estos (\w+) pasos en dos anchos/],
       ['docs/visual/README.md', /Los (\d+) pasos del camino de usuario/],
-      ['.claude/skills/vse-experto/SKILL.md', /flujo\.mjs\s+# (\d+) pasos/],
     ],
   },
   {
@@ -77,7 +64,7 @@ const HECHOS = [
   },
   {
     que: 'primitivas de interfaz',
-    contar: () => readdirSync(join(RAIZ, 'apps/mobile/src/app/ui'))
+    contar: () => listar('apps/mobile/src/app/ui')
       .filter((f) => f.endsWith('.component.ts')).length,
     afirmaciones: [['CHANGELOG.md', /tacto; (\w+)\n  primitivas de componente/]],
   },
@@ -108,12 +95,23 @@ const HECHOS = [
   // escribirlas; y por eso mismo hay que contarlas.
   {
     que: 'charters de spike',
-    contar: () => readdirSync(join(RAIZ, 'docs/spikes'))
+    contar: () => listar('docs/spikes')
       .filter((f) => f.startsWith('SPK-') && f.endsWith('.md')).length,
     // `\d+ de` y no `0 de`: el día que cierre un spike, la guarda tiene que
     // seguir comprobando el denominador en vez de decir que el README «ya no
     // dice» cuántos hay, que apunta al problema equivocado.
     afirmaciones: [['README.md', /\| Spikes cerrados \| \d+ de (\d+) \|/]],
+  },
+  {
+    // **El numerador tampoco lo miraba nadie.** Se comprobaba el denominador --23
+    // charters-- y no cuántos están cerrados: un auditor marcó P0.10b en ✅ dentro
+    // de la tabla de estado, con el README raíz diciendo «0 de 23», y no lo vio
+    // ninguno de los once validadores. Un spike que se cierra es una decisión, que
+    // es justo la clase de número que este archivo dice que vale la pena escribir.
+    que: 'spikes cerrados',
+    contar: () => (leer('docs/spikes/README.md')
+      .match(/^\| \[[^\]]+\]\([^)]+\)[^|]*\| [^|]+ \| [^|]+ \| ✅ \|$/gm) ?? []).length,
+    afirmaciones: [['README.md', /\| Spikes cerrados \| (\d+) de \d+ \|/]],
   },
   {
     que: 'rutas crudas con conversión medida (PROBADO en RAW_MAP)',
@@ -138,6 +136,9 @@ const EN_LETRAS = {
   uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8,
   nueve: 9, diez: 10,
   once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciséis: 16,
+  // Del 17 al 19 faltaban, y el hueco no daba «no sé leer esto» sino «el
+  // documento dice diecisiete y son 17», que acusa al documento de mentir.
+  diecisiete: 17, dieciocho: 18, diecinueve: 19,
   veinte: 20, veintiún: 21, veintidós: 22, veintitrés: 23, veinticuatro: 24,
   veinticinco: 25, veintiséis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
   treinta: 30,
@@ -202,23 +203,54 @@ const DE_LA_CONSOLA = [
   },
 ];
 
-let fallos = 0;
-let comprobadas = 0;
+/**
+ * Cuántas afirmaciones tiene que comprobar una corrida sana. **Escrito a mano, y
+ * ése es el punto.**
+ *
+ * La primera versión de esta línea lo calculaba sumando las listas de acá abajo,
+ * y un auditor midió que eso no sirve de piso: borrar un HECHO entero encoge el
+ * cálculo junto con la corrida, así que la guarda quedaba **en verde diciendo
+ * «Cifras validadas: 20 … todas ciertas»** y nadie se enteraba de que una cifra
+ * se había quedado sin quien la mire. Es el mismo defecto que esta guarda existe
+ * para atrapar, cometido por ella misma.
+ *
+ * Un número escrito a mano no se encoge solo. Si sube porque se agregó una
+ * afirmación, hay que subirlo acá, que es parte de agregarla. Mismo trato que el
+ * centinela del inventario en `rutas-de-los-tests.test.ts`.
+ */
+// La skill enlaza el recorrido; ya no duplica su cuenta.
+const AFIRMACIONES_ESPERADAS = 21;
 
-const evidenciaConsola = leer(
-  'docs/spikes/SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt',
-);
-for (const c of DE_LA_CONSOLA) {
+/**
+ * La evidencia contra la que se comparan las constantes de la consola.
+ *
+ * Se lee dentro de `intentar` porque es la única lectura de la que dependen
+ * varias afirmaciones a la vez: si el archivo no está, eso es **un** fallo con
+ * su frase, y las comprobaciones que no dependen de él siguen corriendo.
+ */
+let evidenciaConsola;
+intentar(() => {
+  evidenciaConsola = leer(
+    'docs/spikes/SPK-P0.10b/evidence/constantes-mixer-html-2026-09-09.txt',
+  );
+});
+if (evidenciaConsola === undefined) {
+  console.error(
+    `  Sin ella, las ${DE_LA_CONSOLA.length} constantes que se comparan contra el ` +
+    'cliente de la consola quedan sin comprobar.',
+  );
+}
+for (const c of evidenciaConsola === undefined ? [] : DE_LA_CONSOLA) intentar(() => {
   const enCodigo = leer(c.fuente).match(new RegExp(`export const ${c.nombre} = (-?[\\d.]+);`));
   const enConsola = evidenciaConsola.match(c.declaracion);
   if (enCodigo === null || enConsola === null) {
-    fallos++;
+    imposibles++;
     console.error(
       `${c.nombre}: no se pudo comparar contra el cliente de la consola.\n` +
       `  ${enCodigo === null ? `${c.fuente} ya no la declara así` : 'la evidencia del mixer.html cambió de forma'}.\n` +
       '  Sin esta comparación, un error de lectura de la fuente vuelve a ser invisible.',
     );
-    continue;
+    return;
   }
   comprobadas++;
   const codigo = Number(enCodigo[1]);
@@ -230,24 +262,31 @@ for (const c of DE_LA_CONSOLA) {
       `(${enConsola[0]}).`,
     );
   }
-}
+});
 
-const especificacion = leer('docs/protocol-spec.md');
-for (const [nombre, fuente] of CONSTANTES) {
+let especificacion;
+intentar(() => { especificacion = leer('docs/protocol-spec.md'); });
+if (especificacion === undefined) {
+  console.error(
+    `  Sin ella, las ${CONSTANTES.length} constantes medidas quedan sin comparar ` +
+    'contra su tabla.',
+  );
+}
+for (const [nombre, fuente] of especificacion === undefined ? [] : CONSTANTES) intentar(() => {
   const enCodigo = leer(fuente).match(new RegExp(`export const ${nombre} = (-?[\\d.]+);`));
   const enTabla = especificacion.match(new RegExp(`\\\`${nombre}\\\` \\| ([^|]+?) \\|`));
   if (enCodigo === null) {
-    fallos++;
+    imposibles++;
     console.error(`${fuente} ya no define ${nombre}, o cambió de forma.`);
-    continue;
+    return;
   }
   if (enTabla === null) {
-    fallos++;
+    imposibles++;
     console.error(
       `docs/protocol-spec.md ya no declara ${nombre} en su tabla de constantes medidas.\n` +
       '  Sin esa fila la constante puede volver a pudrirse sin que nadie lo note.',
     );
-    continue;
+    return;
   }
   comprobadas++;
   const codigo = Number(enCodigo[1]);
@@ -258,33 +297,82 @@ for (const [nombre, fuente] of CONSTANTES) {
       `${nombre}: el código dice ${codigo} y docs/protocol-spec.md dice ${enTabla[1].trim()}.`,
     );
   }
-}
+});
 for (const hecho of HECHOS) {
-  const real = hecho.contar();
-  for (const [archivo, patron] of hecho.afirmaciones) {
+  // **Cuántas se pierden, dicho.** Si `contar()` falla, caen con él todas las
+  // afirmaciones de ese hecho, y hasta ahora eso salía como un solo aviso: faltar
+  // `tools/visual/flujo.mjs` costaba tres comprobaciones y se informaba como una.
+  let real;
+  const seContó = intentar(() => { real = hecho.contar(); }, (e) => {
+    imposibles++;
+    console.error(
+      `${e.message}\n`
+      + `  Con eso quedan sin comprobar las ${hecho.afirmaciones.length} afirmación(es) `
+      + `sobre ${hecho.que}.`,
+    );
+  });
+  if (!seContó) continue;
+  for (const [archivo, patron] of hecho.afirmaciones) intentar(() => {
     const m = leer(archivo).match(patron);
     if (m === null) {
-      fallos++;
+      imposibles++;
       console.error(
         `${archivo} ya no dice cuántos ${hecho.que} hay.\n` +
         '  O se quitó la frase, o cambió de forma y este comprobador dejó de verla:\n' +
         '  las dos cosas hacen que la cifra vuelva a poder pudrirse sin que nadie lo note.',
       );
-      continue;
+      return;
+    }
+    const dicho = aNumero(m[1]);
+    if (dicho === undefined) {
+      // **La guarda que no sabe leer no acusa al documento.** `EN_LETRAS` no
+      // conoce todas las palabras: sin esto, un documento que escribe
+      // correctamente «diecisiete» recibía «dice diecisiete y son 17», que se
+      // lee como que el documento miente. Es un defecto de esta guarda y tiene
+      // que decirlo así.
+      imposibles++;
+      console.error(
+        `${archivo} dice «${m[1]}» ${hecho.que} y este comprobador no sabe leer esa palabra.\n` +
+        '  Falta en la tabla EN_LETRAS de este archivo. Hasta que se agregue, esa\n' +
+        '  cifra no tiene quien la compruebe.',
+      );
+      return;
     }
     comprobadas++;
-    const dicho = aNumero(m[1]);
     if (dicho !== real) {
       fallos++;
       console.error(
         `${archivo} dice ${m[1]} ${hecho.que}, y son ${real}.`,
       );
     }
-  }
+  });
 }
 
-if (fallos > 0) {
-  console.error(`\n${fallos} cifra(s) que no cuadran.`);
+// **El piso.** Sin esto, una corrida que comprueba de menos y no falla en nada
+// se declara en verde. Se mira sólo cuando no hubo ningún otro problema: cuando
+// los hubo, la cuenta baja por un motivo que ya está dicho arriba.
+if (fallos === 0 && imposibles === 0 && comprobadas !== AFIRMACIONES_ESPERADAS) {
+  console.error(
+    comprobadas < AFIRMACIONES_ESPERADAS
+      ? `Esta guarda conoce ${AFIRMACIONES_ESPERADAS} afirmaciones y comprobó ${comprobadas}, `
+        + 'sin fallar en ninguna.\n'
+        + '  O se sacó una del alcance --y entonces esa cifra dejó de tener quien la\n'
+        + '  compruebe--, o algo dejó de contarse sin decirlo. Las dos hay que mirarlas.'
+      : `Esta guarda comprobó ${comprobadas} afirmaciones y tiene escritas `
+        + `${AFIRMACIONES_ESPERADAS}.\n`
+        + '  Se agregó una: actualizá AFIRMACIONES_ESPERADAS, que es parte de agregarla.',
+  );
+  process.exit(1);
+}
+
+if (fallos > 0 || imposibles > 0) {
+  const partes = [];
+  if (fallos > 0) partes.push(`${fallos} cifra(s) que no cuadran`);
+  if (imposibles > 0) partes.push(`${imposibles} comprobación(es) que no se pudieron hacer`);
+  console.error(
+    `\n${partes.join(' y ')}. ${comprobadas} afirmaciones sí se comprobaron, de las `
+    + `${AFIRMACIONES_ESPERADAS} que esta guarda conoce.`,
+  );
   process.exit(1);
 }
 console.log(`Cifras validadas: ${comprobadas} afirmaciones contra el código, todas ciertas.`);
