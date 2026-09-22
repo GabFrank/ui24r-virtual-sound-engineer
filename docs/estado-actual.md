@@ -31,21 +31,31 @@ anterior queda como respaldo, no como paso pendiente.
   apagada.** Hoy poner una banda lejos se rechaza por el tope aunque la forma
   sea correcta.
 
-## Próxima sesión: la medición que enciende el salto libre, o la tarea 2
+## Próxima sesión: medir la campana neutra
 
-**La decisión es del usuario y hay dos caminos.** Los dos están en el
-[plan de la pieza 2](pedidos/2026-09-20c-plan-de-la-pieza-2.md).
+**Elegido por el usuario el 2026-09-22**, entre esa medición, la tarea 2 y las
+dos juntas.
 
-1. **Medir que una campana neutra se puede correr sin que la respuesta se
-   mueva**, que es la condición que ADR-039 le puso a la exención. Es barata y
-   usa el mismo banco del ítem 121. **Toca la consola**: leer
-   [hardware](desarrollo/hardware.md) antes y preguntarle al usuario, que la
-   tiene apagada. Sin esa medición la aplicación puede correr una banda de a un
-   tercio de octava por paso, que alcanza para afinar y no para mudarla lejos.
-2. **La tarea 2, decidir si la aplicación puede elegir qué canal analiza.** Es
-   una escritura de clase nueva, le cambia una pantalla al operador y necesita
-   decisión del usuario antes de construir nada. No toca la consola para
-   decidirse.
+Correr una campana que está en ganancia cero a lo largo del tramo medido
+—115,2 Hz a 10 943,9 Hz— y comprobar que la respuesta no se mueve. Es la
+condición que ADR-039 le puso a la exención del salto libre, y es lo que
+permite que la aplicación **mude** una banda encima de una resonancia en vez de
+sólo afinarla de a un tercio de octava por paso.
+
+**Toca la consola**: leer [hardware](desarrollo/hardware.md) antes, y pedirle al
+usuario que la encienda —el 2026-09-22 la tenía apagada—. El banco es el del
+ítem 121, y ese ítem dejó avisado que **el instrumento puentea el compresor del
+canal y se lleva la ganancia de salida que ese preajuste tenga cargada**: son
+28 dB en el canal del bombo, y costó tres corridas fallidas.
+
+Con la medición hecha, encender la exención es un cambio chico y acotado: la
+forma de «poner la banda» ya se comprueba, y lo que falta es que la frecuencia y
+el ancho de una transacción bien formada no pasen por el tope. Están marcados
+los dos huecos que hay que resolver ahí, en «qué queda abierto» de ADR-039.
+
+Después sigue **la tarea 2**, decidir si la aplicación puede elegir qué canal
+analiza: escritura de clase nueva, le cambia una pantalla al operador, y se
+decide antes de construir nada.
 
 Después siguen la decisión sobre selección del analizador, lector de espectro,
 asistente, servicio, pantalla y biblioteca; el plan contiene sus condiciones.
