@@ -267,3 +267,34 @@ export function cambioDeInventario(kind: ParameterKind, path: string): CambioPro
  * que cada test quiere probar.
  */
 export const crudoDeEnvio = (db: number): number => dbAFader(db);
+
+/**
+ * El movimiento **más grande que el tramo medido admite** sobre una ruta, con
+ * el par crudo/magnitud atado por la ley.
+ *
+ * **Existe para contestar lo que el censo no contesta.** `cambioDeInventario`
+ * propone el mismo crudo en los dos extremos --movimiento cero-- porque lo que
+ * mide es la puerta de permiso, no la conversión. Eso deja sin distinguir dos
+ * mundos: uno donde el tope de la hoja acota el salto, y otro donde el tope
+ * dejó de correr. Los dos dan el mismo censo.
+ *
+ * Acá se va de `rawMin` a `rawMax` --el tramo que de verdad se barrió-- y las
+ * magnitudes salen de `fromRaw` de cada extremo, así que `verificarAtadura` y
+ * `verificarAtaduraDelOrigen` quedan conformes por construcción y **lo único
+ * que puede rechazar es el tope**. Si una ruta con ley medida pasa esto, su
+ * freno no está conectado.
+ *
+ * Devuelve `null` para las rutas sin ley medida: ahí no hay tramo del que ir a
+ * punta, y proponer números inventados mediría otra cosa.
+ */
+export function cambioDePuntaAPunta(
+  kind: ParameterKind, path: string,
+): CambioPropuesto | null {
+  const e = entrada(path);
+  if (e === undefined || e.estado !== 'PROBADO') return null;
+  return {
+    kind, path, unidad: e.unidad,
+    valorEsperado: e.rawMin, valorPropuesto: e.rawMax,
+    magnitudEsperada: e.fromRaw(e.rawMin), magnitudPropuesta: e.fromRaw(e.rawMax),
+  } as CambioPropuesto;
+}

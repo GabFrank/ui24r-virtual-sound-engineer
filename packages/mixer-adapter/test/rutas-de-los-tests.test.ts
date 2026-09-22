@@ -90,6 +90,15 @@ const DELIBERADAS = new Map<string, string>([
     + 'retorno sobre 10 auxiliares'],
   ['m.l.7', 'idem, en su forma mas corta'],
 
+  // **El alias con ceros sobre una banda del ecualizador de canal**, del
+  // 2026-09-22 (ADR-039). Misma razon que `i.03.aux.1.value` y `a.04.eq.peak.1`:
+  // la forma de «poner la banda» exige que los tres cambios sean de la misma
+  // banda del MISMO canal, y compara la cadena cruda. Si `i.9` e `i.09` contaran
+  // como el mismo canal, la comprobacion se apoyaria en una identidad que el
+  // estado por ruta no tiene. Que no exista en la consola ES el punto.
+  ['i.09.eq.b2.freq', 'el ALIAS con cero a la izquierda sobre una banda: «poner la '
+    + 'banda» tiene que rechazarlo, porque el estado por ruta se indexa por cadena cruda'],
+
   // **Las cinco de abajo existen para probar que NO se escriben.** Son las que
   // pasaban la lista blanca de ADR-028 cuando era `/^i\.\d+\.aux\.\d+\.value$/`
   // con `\d+` sin cota, y las encontro una auditoria de seguridad. Que no esten

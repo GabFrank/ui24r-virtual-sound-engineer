@@ -1,6 +1,7 @@
 import {
-  ownership, esEscribible, verificarLimite, LIMITES,
+  ownership, esEscribible, verificarLimite, limiteDe,
   maximoDeParametros, Q_MINIMO_SALIDA, REALCE_MAXIMO_SALA_DB,
+  PONER_LA_BANDA, formaDePonerLaBanda,
 } from '@vse/domain';
 import { ecualizacionPermitida, admiteFactorDeCalidad } from '@vse/domain';
 import { clasificarRuta, esNivelDeEnvioAMonitor } from '@vse/mixer-adapter';
@@ -288,6 +289,40 @@ export class SafetyEngine {
           + 'ruta, y se vuelve a escuchar antes del siguiente',
         path: ruta,
       });
+    }
+
+    // **«Poner la banda»: la etiqueta es necesaria y no suficiente** (ADR-039).
+    //
+    // Quien propone declara la operación, y el motor comprueba que los tres
+    // cambios de verdad tengan esa forma: las tres hojas de la misma banda del
+    // mismo canal, en el orden ganancia → frecuencia → ancho, con la ganancia
+    // exactamente en cero. Es la misma forma que `correspondeExencionDeSistema`,
+    // y por la misma razón: pedir un permiso no puede ser tan fácil como decir
+    // que se lo merece.
+    //
+    // **Es una regla sobre la COMPOSICIÓN de la transacción**, como el silencio
+    // de canal y `RUTA_REPETIDA`, y por eso vive acá y no en la tabla de
+    // límites, que mira un cambio por vez.
+    //
+    // **Y hoy sólo EXIGE: todavía no concede nada.** ADR-039 deja la exención
+    // del salto libre condicionada a una medición que falta --correr una campana
+    // neutra por el tramo y comprobar que la respuesta no se mueve--, así que
+    // los tres cambios siguen pasando por sus topes de siempre y un salto de dos
+    // octavas se rechaza con `DELTA_EXCEDIDO` aunque la forma sea correcta. Lo
+    // que cambia el día que esa medición exista es que acá, con la forma ya
+    // comprobada, la frecuencia y el ancho dejen de pasar por `verificarLimite`.
+    // Construir la exención antes sería construir sobre lo que nadie comprobó.
+    if (opciones.tipoDeOperacion === PONER_LA_BANDA) {
+      const forma = formaDePonerLaBanda(cambios);
+      if (!forma.bienFormada) {
+        rechazos.push({
+          codigo: 'PONER_LA_BANDA_MAL_FORMADA',
+          invariante: 'INV-004',
+          mensaje: `la transacción se declara «poner la banda» y no tiene esa forma: `
+            + forma.motivo,
+          path: null,
+        });
+      }
     }
 
     for (const c of cambios) rechazos.push(...this.evaluarCambio(c, ctx));
@@ -786,7 +821,7 @@ export class SafetyEngine {
       //    muerda por el valor de una constante no es lo mismo que comprobarlo.
       //    Es un tope sobre el DESTINO, y el destino es justamente lo único que
       //    acota este movimiento.
-      const techoAbs = LIMITES[c.kind]?.techoAbsoluto;
+      const techoAbs = limiteDe(c.kind, c.path)?.techoAbsoluto;
       if (techoAbs !== undefined && c.magnitudPropuesta > techoAbs) {
         salida.push({
           codigo: 'TECHO_ABSOLUTO',
@@ -800,27 +835,28 @@ export class SafetyEngine {
       return salida;
     }
 
-    const delta = c.magnitudPropuesta - c.magnitudEsperada;
     const limite = verificarLimite({
       kind: c.kind,
-      deltaSolicitado: delta,
+      // **La ruta, porque desde ADR-039 el tope es de la hoja y no de la
+      // familia.** Sin ella `i.3.eq.b2.freq` y `i.3.eq.b2.gain` son la misma
+      // cosa para el tope, y una se mueve en octavas y la otra en decibeles.
+      path: c.path,
+      // **Las dos magnitudes, y la resta la hace el dominio.** Antes acá se
+      // restaba y se pasaba un delta ya hecho; con la escala del movimiento eso
+      // sería restar hercios o Q y llamarlo movimiento, que es exactamente lo
+      // que ADR-039 vino a cerrar. Quien sabe en qué moneda se cuenta esta hoja
+      // es la tabla de hojas, no el motor.
+      magnitudEsperada: c.magnitudEsperada,
+      magnitudPropuesta: c.magnitudPropuesta,
       acumuladoEnSesion: ctx.acumuladoPorRuta.get(c.path) ?? 0,
       hayMedicionPosterior: ctx.rutasConMedicionPosterior.has(c.path),
       esPrimerCambioDelParametro: !ctx.rutasYaTocadas.has(c.path),
       // La unidad que declara quien propone, para que `verificarLimite` pueda
-      // comparar especies antes de comparar numeros.
+      // comparar especies antes de comparar numeros. **Es la unidad de la
+      // MAGNITUD** --hercios en una frecuencia-- y no la de la escala del
+      // movimiento; las dos conviven desde ADR-039 y la que se declara es la
+      // que ata el número al crudo.
       unidad: c.unidad,
-      // **A cuánto quedaría**, que es contra lo que se compara un techo. Es la
-      // misma magnitud que el motor usa más arriba para `techoPorRuta`, que es el
-      // otro tope sobre el DESTINO.
-      //
-      // Este comentario decía «y para el realce de sala: los tres son topes sobre
-      // el destino», y es falso: el realce es `magnitudPropuesta -
-      // magnitudEsperada`, o sea un tope sobre el MOVIMIENTO. Se contradecía con
-      // la distinción que este mismo cambio introduce en `Limite.techoAbsoluto`
-      // --«unos acotan cuánto se mueve, éste acota dónde queda; son especies
-      // distintas»--. Lo marcó una auditoría de fidelidad el 2026-09-17.
-      magnitudResultante: c.magnitudPropuesta,
       // **Sin `?.` y sin `?? true`, a propósito.** Un contexto sin este conjunto
       // es un llamador que no se enteró de que existe, y lo que tiene que pasar
       // ahí es un `TypeError` ruidoso y no una suspensión silenciosa del
@@ -859,11 +895,11 @@ export class SafetyEngine {
         // músico. Hoy `MONITOR_AUX_SEND` es el único tipo que declara techo; si
         // alguna vez lo declara otro, esta fila tiene que dejar de ser una sola.
         TECHO_ABSOLUTO: { codigo: 'TECHO_ABSOLUTO', inv: 'INV-010' },
-        // No declarar a cuánto quedaría un parámetro que tiene techo es la misma
-        // especie de error que declarar mal la unidad: el motor no puede juzgar.
-        SIN_MAGNITUD_RESULTANTE: { codigo: 'PARAMETRO_NO_ESCRIBIBLE', inv: 'INV-004' },
         // Una magnitud que no es un número no es un cambio que el motor pueda
         // juzgar, y antes las pasaba todas. Ver el comentario en `limits.ts`.
+        // **Desde ADR-039 también cae acá la magnitud AUSENTE**, que antes tenía
+        // su propio código: las dos magnitudes son obligatorias, y la que falta
+        // llega como `undefined`, que no es un número. El veredicto no cambió.
         MAGNITUD_NO_NUMERICA: { codigo: 'MAGNITUD_NO_ATADA', inv: 'INV-004' },
       };
       const m = mapa[limite.codigo];

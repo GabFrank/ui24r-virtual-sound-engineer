@@ -1,9 +1,20 @@
 # ADR-039 — El freno viaja con la hoja: la frecuencia y el ancho se acotan en octavas, y poner una banda se hace con la campana en cero
 
-**Estado:** Decidida, sin implementar
+**Estado:** Decidida e implementada el 2026-09-22, **menos la exención del salto
+libre**, que espera su medición (ver el recuadro de abajo)
 **Fecha:** 2026-09-21
 **Origen:** decisión del usuario, entre tres opciones en tres preguntas, sobre la tarea **1b** del plan de la pieza 2. La destapó medir el ítem 121: las doce hojas del ecualizador de canal quedaron medidas y **ninguna de las seis de frecuencia y Q se volvió escribible**.
 
+> **Construida el 2026-09-22.** El freno vive en `packages/domain/src/rules/hojas.ts`,
+> la forma de «poner la banda» en `poner-la-banda.ts`, y el acumulado suma en la
+> escala del movimiento en `historialDeLaSesion`. El censo de rutas que el motor
+> permite volvió **de 690 a 930 exacto**, con el reparto por familia fijado en
+> `que-permite-el-motor.test.ts`. **Lo que NO se construyó es la exención del
+> salto libre de la decisión 3**: la forma se exige --una transacción etiquetada
+> «poner la banda» que no la tenga se rechaza-- y los tres cambios siguen pasando
+> por sus topes, así que un salto de dos octavas se rechaza aunque la forma sea
+> correcta. Se enciende el día que la medición que falta exista, y no antes.
+>
 > **Esta ADR pasó por una auditoría adversarial de fidelidad el mismo día**, antes de commitearse, y la auditoría encontró diecinueve cosas. Dos cambiaron la decisión y no sólo la prosa: **el orden de escritura de la operación «poner la banda»** y que **la premisa sobre la que se apoya su exención no estaba medida**. Las dos están abajo, con su nombre. Las demás eran números y atribuciones, corregidos en su lugar.
 
 ## Contexto
@@ -88,6 +99,24 @@ El permiso sale de que **la campana queda muda**: una campana en ganancia unidad
 
 Una vez que la banda tiene ganancia, correrla o ensancharla **sí** lleva tope, en la escala del movimiento y con escucha entre paso y paso, como todo lo demás.
 
+### Lo que la implementación agregó, y el usuario no decidió
+
+Dos números que ADR-039 no fijó y que hubo que elegir para construir. Quedan
+marcados acá y no escondidos en el código:
+
+- **El pasa-bajos, `eq.lpf.freq`, toma los números del retoque** —un tercio de
+  octava por paso, una octava por sesión— y no los del pasa-altos. Esta ADR lo
+  recupera entre las 240 rutas y no le pone número; es una frecuencia y no es
+  una banda, así que ninguna de las dos decisiones anteriores lo cubre. Se toma
+  el más apretado de los dos porque correr el corte de agudos un tercio de
+  octava ya es un cambio de timbre que se oye.
+- **`eq.hpf.slope` no cambia de conducta.** El arreglo del pasa-altos va en la
+  hoja `eq.hpf.freq` y no en su familia justamente por eso: bajo `HPF` cae
+  también la pendiente del filtro, que no tiene ley medida y no es una
+  frecuencia. Ponerle hercios a la familia la habría sacado del censo sin que
+  nadie lo decidiera. Qué significa mover una pendiente es una pregunta que esta
+  tarea no abre.
+
 ### Lo que es operacionalización del agente, y no decisión del usuario
 
 Se separa a propósito, porque esa autoría ya se invirtió una vez en este repositorio y `safety-invariants.md` pide no fusionarlas. **El usuario eligió las tres cosas de arriba.** Lo de abajo lo propone el agente y queda sujeto a revisión:
@@ -115,6 +144,8 @@ Se separa a propósito, porque esa autoría ya se invirtió una vez en este repo
 **Qué queda abierto y pide su propia decisión.**
 
 - **Medir que una campana neutra se puede correr sin que se oiga**, que es la condición de la exención de la decisión 3.
+- **Una banda con más de 6 dB puestos no puede llegar a cero en una sesión, y esta ADR dice lo contrario.** Arriba está escrito que «bajar doce decibeles de golpe sí se oye» y que se baja «en pasos de 4 dB con escucha entre uno y otro», y eso describe una operación que el presupuesto acumulado de `CHANNEL_EQ` —6 dB por sesión— no permite: 12 → 8 pasa, y 8 → 4 ya acumula 8. **Encontrado el 2026-09-22 al construir la 1b**, por el auditor que fijó las expectativas antes de ver la implementación. No se tocó nada: subir ese presupuesto es una decisión con consecuencia audible y es del usuario. Mientras tanto la consecuencia honesta es más fuerte que la que esta ADR escribió: una banda muy realzada no se puede neutralizar entera en una sesión, así que tampoco se puede mudar.
+- **«Poner la banda ya no gasta el presupuesto» tampoco tiene mecanismo.** Se dice arriba, al justificar por qué el acumulado del retoque puede ser chico, y `historialDeLaSesion` suma **todo** cambio verificado: el único rebase que existe es el ancla de ADR-034, restringida a los tipos que declaran `techoAbsoluto`, y `CHANNEL_EQ` no declara ninguno. Hoy no se observa porque la exención está apagada y no hay salto grande que escribir; **el día que se encienda hay que resolverlo**, o el primer retoque nacerá con el presupuesto ya gastado por la mudanza. Mismo origen y misma fecha.
 - **Medir el ancho real arriba de 3 kHz**, donde el Q nominal y el ancho medido se separan.
 - **Cargar una curva con nombre son doce cambios** —cuatro bandas por tres hojas— contra el máximo de cuatro por transacción. Esta ADR no lo resuelve: es la tarea 7 del plan y la fuente 1 de ADR-038, y tiene además el problema de que un preajuste del usuario es de canal entero y trae dinámica y puerta adentro.
 - **Cuándo dos bandas del mismo canal son el mismo destino audible** lo decidió [ADR-035](ADR-035-el-tope-es-por-parlante-no-por-clave.md) y sigue sin implementar; ahí vive el criterio de cuántas octavas de solapamiento cuentan como el mismo punto. Con las tres hojas abiertas, esa pregunta deja de ser teórica.

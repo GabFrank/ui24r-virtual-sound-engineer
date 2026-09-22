@@ -67,7 +67,7 @@ test('el previo de punta a punta se rechaza por exceder el tope', () => {
  */
 test('control positivo: con el delta en crudo el tope no se dispara', () => {
   const ctx = {
-    kind: 'PREAMP_GAIN' as const, acumuladoEnSesion: 0,
+    kind: 'PREAMP_GAIN' as const, path: 'hw.3.gain', acumuladoEnSesion: 0,
     hayMedicionPosterior: true, esPrimerCambioDelParametro: true,
     // La ganancia del previo declara su tope en decibeles, y ahora
     // `verificarLimite` lo compara: la otra mitad de este episodio era que el
@@ -76,12 +76,18 @@ test('control positivo: con el delta en crudo el tope no se dispara', () => {
   };
   // Lo que el motor calculaba antes: 0,985 - 0 = 0,985, contra un tope de 3.
   assert.equal(
-    verificarLimite({ ...ctx, deltaSolicitado: 0.985 }).permitido, true,
+    verificarLimite({ ...ctx, magnitudEsperada: 0, magnitudPropuesta: 0.985 }).permitido, true,
     'el crudo entero del previo pasa el tope de 3 dB: ESE era el defecto',
   );
-  // Lo que calcula ahora.
+  // Lo que calcula ahora: los mismos dos extremos, en decibeles. **Y desde
+  // ADR-039 la resta la hace el dominio**, con la escala de la hoja; para la
+  // ganancia del previo esa escala es la diferencia en decibeles, o sea lo
+  // mismo de siempre, y es el control de que la escala por omisión no cambió
+  // nada donde no tenía que cambiarlo.
   assert.equal(
-    verificarLimite({ ...ctx, deltaSolicitado: GANANCIA_MAXIMA_DB - GANANCIA_MINIMA_DB }).permitido,
+    verificarLimite({
+      ...ctx, magnitudEsperada: GANANCIA_MINIMA_DB, magnitudPropuesta: GANANCIA_MAXIMA_DB,
+    }).permitido,
     false,
     'los mismos dos valores, en decibeles, se rechazan',
   );

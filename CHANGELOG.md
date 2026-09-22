@@ -6,6 +6,43 @@ Sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versionado s
 
 ### Agregado
 
+- **La aplicación ya puede mover una banda del ecualizador de un canal, y no
+  sólo subirla o bajarla.** Hasta ahora podía cambiarle cuánto realza, y nada
+  más: dónde trabaja la campana y qué tan angosta es quedaban fuera, aunque las
+  doce hojas de las cuatro bandas estuvieran medidas contra el aparato. No era
+  falta de medición. El freno que protege de un movimiento brusco estaba escrito
+  en decibeles para todo el ecualizador, y **un tope de 4 dB no dice nada sobre
+  un salto de frecuencia**, así que la aplicación se negaba —con razón— a tocar
+  esas hojas.
+
+  **Ahora cada cosa se frena en su propia moneda.** Correr una campana se mide
+  en octavas, que es como se oye: un tercio de octava son 26 Hz abajo en 100 Hz
+  y 1300 Hz arriba en 5 kHz, y al oído es el mismo movimiento, mientras que un
+  número fijo de hercios sería enorme abajo y no se notaría arriba. Ensanchar o
+  estrechar se mide en octavas de ancho de banda, la misma moneda. Y la ganancia
+  sigue en decibeles, con los mismos 4 dB de siempre.
+
+  **Lo que la aplicación se permite por paso**: correr o ensanchar un tercio de
+  octava, y hasta una octava en toda la sesión, siempre con escucha entre un
+  paso y el siguiente. Son números elegidos por criterio y no medidos, y están
+  marcados como tales: el tercio de octava es el paso más fino con que se
+  ecualiza y son cuatro bandas del analizador de la consola, así que un paso se
+  puede comprobar midiendo.
+
+  **El filtro de graves gana un freno que estaba escrito desde el primer día del
+  proyecto y nunca había funcionado**, por el mismo motivo: decía «una octava» y
+  se comparaba contra hercios.
+
+  **Poner una banda encima de una resonancia todavía no se puede hacer de un
+  salto.** Es una operación aparte —bajar la campana a cero, después correrla,
+  después ajustarle el ancho, y **en ese orden**, porque cada cambio sale al
+  aire uno por uno y una campana con ganancia barriendo el espectro se escucha—
+  y la aplicación ya exige esa forma. Lo que falta para permitir el salto largo
+  es una comprobación en la consola: correr una campana que está en cero de una
+  punta a la otra y confirmar que no se oye nada. Se cree que no se oye, por
+  cómo funciona un filtro, pero nadie lo midió en este aparato, y hasta que se
+  mida el salto se sigue haciendo de a pasos.
+
 - **Hay una pantalla de Monitores.** Entrás desde la
   sesión, elegís al músico y elegís cuál de tus monitores es su cuña; la pantalla
   te muestra **todo lo que le llega a esa cuña, con su propio instrumento

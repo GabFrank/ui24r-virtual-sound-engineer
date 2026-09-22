@@ -53,7 +53,7 @@
  * desde ahí»*— y separarlas dejaría al retoque naciendo con el presupuesto ya
  * gastado por la rampa.
  */
-import { LIMITES } from '@vse/domain';
+import { limiteDe, movimientoDe } from '@vse/domain';
 import type { Measurement } from '@vse/domain';
 import { clasificarRuta } from '@vse/mixer-adapter';
 import type { EntradaDiario } from './journal.ts';
@@ -68,6 +68,14 @@ export interface HistorialDeLaSesion {
    * hacia donde estaba **descuenta**, que es lo que el motor espera —*«un
    * movimiento que acerca el parámetro a su valor inicial siempre es
    * admisible»*—.
+   *
+   * **En la escala del movimiento de cada hoja, desde ADR-039**, que es la
+   * misma en que el motor compara el tope: octavas en una frecuencia, octavas
+   * de ancho de banda en un Q, decibeles en una ganancia. Sumar hercios y
+   * comparar contra un tope en octavas sería el defecto entero de esa decisión,
+   * entrando por el productor en vez de por el consumidor. Lo cuenta
+   * `movimientoDe`, la misma función del dominio que usa `verificarLimite`: no
+   * es una segunda copia de la regla, es la misma leída acá.
    *
    * **La referencia es dónde estaba la ruta al empezar la sesión, salvo que
    * alguien haya establecido un nivel de trabajo**; desde ese momento la
@@ -173,7 +181,7 @@ export interface HistorialDeLaSesion {
  *  4. **Hubo señal.** `signalType` no puede ser `SILENCE`: si nadie tocó, nadie
  *     oyó la cuña. Es lo más cerca que la aplicación puede llegar de «el músico
  *     lo escuchó» sin preguntarle.
- *  5. **Duró lo que su clase de parámetro pide.** `LIMITES[kind].escuchaMinimaS`,
+ *  5. **Duró lo que su clase de parámetro pide.** `limiteDe(kind, ruta).escuchaMinimaS`,
  *     que para el envío a monitor son diez segundos y para el silencio de canal
  *     cero. Ver ahí por qué.
  *
@@ -257,7 +265,7 @@ function escuchaComprobada(
   // no hay criterio, y sin criterio no se concede: es el mismo fallar cerrado
   // con que INV-004 rechaza todo parámetro sin límite declarado.
   const kind = clasificarRuta(ruta);
-  const minimo = kind === null ? undefined : LIMITES[kind]?.escuchaMinimaS;
+  const minimo = kind === null ? undefined : limiteDe(kind, ruta)?.escuchaMinimaS;
   if (minimo === undefined) return false;
   // **`Number.isFinite` antes de comparar, que es la trampa que este repositorio
   // ya pagó cuatro veces.** Con `duracionS` en `NaN`, `NaN < minimo` da `false`
@@ -393,7 +401,21 @@ export function historialDeLaSesion(
       // un número: sumarlo envenena el acumulado de esa ruta para toda la
       // sesión. La ruta queda tocada —se movió— y su desplazamiento arranca a
       // contarse desde donde el silencio quedó atrás.
-      const delta = c.magnitudEnviada - c.magnitudEsperada;
+      //
+      // **Y el movimiento lo cuenta la escala de la hoja, no una resta.** Para
+      // una ganancia las dos cosas son lo mismo; para una frecuencia, restar
+      // hercios daría un número que no se puede comparar con un tope en
+      // octavas. `movimientoDe` devuelve `NaN` cuando no puede contar --sin
+      // tope declarado, o con la unidad de la fila distinta de la de la hoja--
+      // y ese `NaN` cae en la misma guarda que el salto desde el silencio: no
+      // se suma. **La diferencia con ADR-034 es qué significa**, y conviene
+      // decirla: allá es un primer paso legítimo que no tiene delta, acá es una
+      // fila que no se puede interpretar. Las dos veces lo correcto es no
+      // inventar un número, y la ruta queda tocada igual, así que el motor va a
+      // exigir escucha antes del próximo movimiento.
+      const kindDeLaRuta = clasificarRuta(c.path);
+      const delta = kindDeLaRuta === null ? NaN
+        : movimientoDe(kindDeLaRuta, c.path, c.unidad, c.magnitudEsperada, c.magnitudEnviada);
       tocadas.add(c.path);
       movidasAca.add(c.path);
       // **Se guarda la transacción, no un booleano, y se pisa en cada vuelta a
@@ -407,7 +429,26 @@ export function historialDeLaSesion(
       // pregunta acá con `(entrada.medicionPosteriorId ?? null) !== null`, o sea
       // mirando sólo que el campo no fuera nulo.
       escuchadaAlFinal.set(c.path, entrada);
-      if (!Number.isFinite(delta)) continue;
+      // **Salir del silencio es la única ausencia de delta que se perdona, y
+      // se reconoce por el origen y no por el resultado.** Antes la condición
+      // era `!Number.isFinite(delta)`, que perdona cualquier cuenta que no dé
+      // un número: una fila con la unidad cambiada, una ruta que el dominio no
+      // sabe clasificar, una frecuencia declarada en cero --`log2(x/0)` es
+      // infinito-- pasaban por la misma puerta que el primer paso de ADR-034 y
+      // el acumulado quedaba en cero, que es **aflojar**. Son dos cosas
+      // distintas: allá no hay delta que contar y es correcto, acá la fila no
+      // se puede interpretar.
+      if (c.magnitudEsperada === -Infinity) continue;
+      // **Lo que no se puede contar envenena la ruta en vez de valer cero.**
+      // El motor lee este número y lo compara contra un tope; un `NaN` cae en
+      // `MAGNITUD_NO_NUMERICA` y la ruta no se vuelve a mover en la sesión,
+      // mientras que un cero la deja con el presupuesto entero. Ante una fila
+      // que no se entiende, lo correcto es no moverse: es la misma forma con
+      // que INV-004 rechaza todo parámetro sin límite declarado.
+      if (!Number.isFinite(delta)) {
+        acumulado.set(c.path, NaN);
+        continue;
+      }
       acumulado.set(c.path, (acumulado.get(c.path) ?? 0) + delta);
     }
 
@@ -453,7 +494,7 @@ export function historialDeLaSesion(
       // de un tipo sin techo le saca el único tope sobre el total sin darle
       // nada a cambio, que es exactamente lo que ADR-034 **no** decidió.
       const kind = clasificarRuta(ruta);
-      if (kind === null || LIMITES[kind]?.techoAbsoluto === undefined) continue;
+      if (kind === null || limiteDe(kind, ruta)?.techoAbsoluto === undefined) continue;
       // **3. Una sola vez.** `journal.ts` razona que desestablecer sería
       // peligroso porque devolvería la rampa entera; volver a **establecer**
       // hacía lo mismo y nadie lo impedía --marcar la ruta en cada transacción

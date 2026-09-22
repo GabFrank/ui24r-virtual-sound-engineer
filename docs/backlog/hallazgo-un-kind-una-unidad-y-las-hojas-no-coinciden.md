@@ -51,6 +51,12 @@ tabla de conversión mide por hoja.
 primero: `LIMITES.MONITOR_AUX_SEND` está en **dB** y la ley medida del envío
 (ítem 104) está en **dB**. Coinciden.
 
+## CERRADO el 2026-09-22: construido
+
+El freno viaja con la hoja, la escala del movimiento existe, y la cuenta de
+rutas que el motor permite volvió de 690 a **930 exacto**. Lo que sigue abierto
+de ADR-039 es sólo la exención del salto libre, que espera su medición.
+
 ## DECIDIDO el 2026-09-21: [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)
 
 **El usuario eligió la primera de las tres de abajo**, en tres preguntas, y con

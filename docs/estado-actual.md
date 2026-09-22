@@ -1,6 +1,6 @@
 # Estado actual
 
-Actualizado el 2026-09-21, en la tarde. Base de producto: `claude/soundcraft-ui24-assistant-kh8ezj`,
+Actualizado el 2026-09-22. Base de producto: `claude/soundcraft-ui24-assistant-kh8ezj`,
 que ya incorpora la corrección del flujo de `fix/flujo-de-desarrollo-ligero`
 (mezclada sin conflictos). Consultar `git log` para los commits posteriores.
 Este archivo reemplaza la cadena de cierres como entrada de sesión.
@@ -20,30 +20,32 @@ anterior queda como respaldo, no como paso pendiente.
 - Las doce hojas de las cuatro bandas están medidas:
   [ítem 121](compromisos/121-la-frecuencia-y-el-q-de-las-bandas-2-3-y-4.md).
   No repetir esa medición por arrastrar un prompt viejo.
-- **La tarea 1b, «un kind, una unidad», está decidida y sin implementar:**
-  [ADR-039](adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md),
-  del usuario, tres preguntas con tres opciones. La aplicación mueve las tres
-  hojas de una banda; el freno viaja con la hoja —la unidad de la magnitud queda,
-  se agrega una **escala del movimiento**: octavas en frecuencia, octavas de
-  ancho de banda en Q—; poner una banda se hace con la campana en cero y **la
-  ganancia se escribe primero**. El censo permitido está en 690 y tiene que
-  volver a 930 exacto al implementar.
+- **La tarea 1b, «un kind, una unidad», está construida el 2026-09-22:**
+  [ADR-039](adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md).
+  El freno viaja con la hoja —la unidad de la magnitud queda y se agrega una
+  **escala del movimiento**: octavas en frecuencia, octavas de ancho de banda en
+  Q—, el acumulado suma en esa escala, y «poner la banda» se comprueba sobre el
+  contenido y el orden. **El censo volvió a 930 exacto**, con su reparto por
+  familia y un control que ejercita las 240 contra el tope.
+- **Lo único que queda de ADR-039 es la exención del salto libre, y está
+  apagada.** Hoy poner una banda lejos se rechaza por el tope aunque la forma
+  sea correcta.
 
-## Próxima sesión: construir la 1b
+## Próxima sesión: la medición que enciende el salto libre, o la tarea 2
 
-1. Leer ADR-039 entera, incluido el recuadro inicial con lo que encontró la
-   auditoría, y los cuatro pasos de la 1b en el
-   [plan de la pieza 2](pedidos/2026-09-20c-plan-de-la-pieza-2.md).
-2. Implementar en `packages/domain` y `packages/safety`: escala del movimiento
-   por hoja con la familia por omisión; la operación «poner la banda» comprobada
-   sobre el contenido y el orden de la transacción; acumulado en la escala del
-   movimiento. Leer el tope por hoja cambia la interfaz pública de `@vse/domain`
-   (el contexto del cambio no lleva la ruta) y toca siete sitios, tres en
-   `packages/assistants`.
-3. **La exención del salto libre no se enciende** hasta medir que una campana
-   neutra se puede correr por el tramo sin que la respuesta se mueva. Lo demás
-   se construye sin eso. Esa medición toca la consola: leer
-   [hardware](desarrollo/hardware.md) antes.
+**La decisión es del usuario y hay dos caminos.** Los dos están en el
+[plan de la pieza 2](pedidos/2026-09-20c-plan-de-la-pieza-2.md).
+
+1. **Medir que una campana neutra se puede correr sin que la respuesta se
+   mueva**, que es la condición que ADR-039 le puso a la exención. Es barata y
+   usa el mismo banco del ítem 121. **Toca la consola**: leer
+   [hardware](desarrollo/hardware.md) antes y preguntarle al usuario, que la
+   tiene apagada. Sin esa medición la aplicación puede correr una banda de a un
+   tercio de octava por paso, que alcanza para afinar y no para mudarla lejos.
+2. **La tarea 2, decidir si la aplicación puede elegir qué canal analiza.** Es
+   una escritura de clase nueva, le cambia una pantalla al operador y necesita
+   decisión del usuario antes de construir nada. No toca la consola para
+   decidirse.
 
 Después siguen la decisión sobre selección del analizador, lector de espectro,
 asistente, servicio, pantalla y biblioteca; el plan contiene sus condiciones.
@@ -51,8 +53,9 @@ Un hallazgo anotado entra cuando el campo o la tarea actual lo necesita.
 
 ## Equipo y comprobaciones
 
-Construir la 1b no requiere consola ni tablet; la medición de la campana
-neutra sí. Para medir, cargar [hardware](desarrollo/hardware.md); contiene el banco y su
+La 1b se construyó sin consola ni tablet. La medición de la campana neutra sí
+las necesita, y el 2026-09-22 el usuario avisó que **la consola está apagada**:
+se le pide que la encienda antes de esa medición, no antes. Para medir, cargar [hardware](desarrollo/hardware.md); contiene el banco y su
 diagnóstico. Un dato de un cierre no sustituye leer el equipo en esa sesión.
 
 Al comenzar, comprobar rama, cambios locales y diferencias con esta base. Para

@@ -258,6 +258,21 @@ export type CodigoRechazo =
    * se rechaza en vez de acumular.
    */
   | 'RUTA_REPETIDA'
+  /**
+   * La transacción se declara «poner la banda» y no tiene esa forma.
+   *
+   * **Código propio y no `DEMASIADOS_PARAMETROS`**, por la razón de siempre acá:
+   * un test de la forma pasaría por el techo de cantidad de INV-005. Lo que
+   * falla puede ser la cantidad, el orden, la banda, el canal o la ganancia, y
+   * el mensaje dice cuál.
+   *
+   * Es la misma familia que `correspondeExencionDeSistema`: la etiqueta la pone
+   * quien quiere el permiso, así que el motor comprueba que el contenido la
+   * respalde. Ver `poner-la-banda.ts` en `@vse/domain`, que explica por qué el
+   * orden --la ganancia primero-- es parte de la decisión del usuario y no un
+   * detalle de implementación.
+   */
+  | 'PONER_LA_BANDA_MAL_FORMADA'
   | 'DEMASIADOS_PARAMETROS'
   | 'ESTADO_DE_SESION'
   | 'TAKE_ACTIVO'

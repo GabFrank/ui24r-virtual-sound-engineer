@@ -253,7 +253,13 @@ test('establecer el nivel de una ruta no toca el de otra', () => {
 
 test('el ancla no rebasa una ruta que esta transaccion no movio', () => {
   // La marca nombra la ganancia del previo; la transaccion movio un monitor.
-  const GANANCIA = 'i.3.gain';
+  //
+  // **La ruta decia `i.3.gain`, que no existe**: la ganancia del previo es
+  // `hw.N.gain`, y `clasificarRuta` devuelve `null` para la otra. No se notaba
+  // porque el acumulado se sumaba por cadena sin mirar de que parametro era;
+  // desde ADR-039 se cuenta en la escala de la hoja, hace falta la clase, y el
+  // test empezo a medir una ruta desconocida en vez de la ganancia que nombra.
+  const GANANCIA = 'hw.3.gain';
   const h = historialDeLaSesion([
     entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })]),
     entrada([cambio({ path: RUTA, magnitudEsperada: -10, magnitudEnviada: -8 })], null, [GANANCIA]),
@@ -265,7 +271,7 @@ test('el ancla no rebasa una ruta que esta transaccion no movio', () => {
 test('el ancla no rebasa un parametro que no tiene techo declarado', () => {
   // Aunque la transaccion SI la haya movido: suspender el presupuesto sin un
   // techo que lo reemplace deja al parametro sin ningun tope sobre el total.
-  const GANANCIA = 'i.3.gain';
+  const GANANCIA = 'hw.3.gain';
   const h = historialDeLaSesion([
     entrada([cambio({ path: GANANCIA, magnitudEsperada: 0, magnitudEnviada: 3 })], null, [GANANCIA]),
   ], MEDICIONES, AHORA);
@@ -574,4 +580,104 @@ test('un identificador repetido en la lista se descarta, no gana el ultimo', () 
     );
     assert.equal(h.rutasConMedicionPosterior.has(RUTA), false);
   }
+});
+
+// --- El acumulado suma en la escala del movimiento (ADR-039) ----------------
+//
+// **Es el tercer paso de la tarea 1b, y es donde el defecto entraría por el
+// productor.** El motor compara el acumulado contra un tope en octavas; si el
+// historial lo sumara en hercios, los dos números serían de especies distintas
+// otra vez, con el motor haciendo la comparación correcta sobre un dato mal
+// contado.
+
+/** Una hoja del ecualizador en el diario, con su unidad y sus dos magnitudes. */
+function hojaEq(
+  path: string, unidad: string, desde: number, hasta: number,
+  extra: Partial<CambioRegistrado> = {},
+): CambioRegistrado {
+  return cambio({ path, unidad, magnitudEsperada: desde, magnitudEnviada: hasta, ...extra });
+}
+
+const FREQ = 'i.9.eq.b2.freq';
+
+test('ADR-039: una frecuencia se acumula en octavas, no en hercios', () => {
+  // 1000 -> 1250 Hz son log2(1,25) = 0,3219 octavas. En hercios serían 250, que
+  // contra un tope de una octava es un número sin sentido.
+  const h = historialDeLaSesion([
+    entrada([hojaEq(FREQ, 'Hz', 1000, 1250)]),
+  ], MEDICIONES, AHORA);
+  const a = h.acumuladoPorRuta.get(FREQ)!;
+  assert.ok(Math.abs(a - 0.3219) < 1e-3, `${a} deberia ser 0,3219 octavas y no 250 hercios`);
+});
+
+test('ADR-039: tres pasos de un tercio gastan la octava del presupuesto', () => {
+  // Tres pasos honestos: 1000 -> 1250 -> 1560 -> 1950. Cada uno cabe en un
+  // tercio de octava y los tres suman 0,9635, que todavia entra en la octava.
+  const h = historialDeLaSesion([
+    entrada([hojaEq(FREQ, 'Hz', 1000, 1250)]),
+    entrada([hojaEq(FREQ, 'Hz', 1250, 1560)]),
+    entrada([hojaEq(FREQ, 'Hz', 1560, 1950)]),
+  ], MEDICIONES, AHORA);
+  const a = h.acumuladoPorRuta.get(FREQ)!;
+  assert.ok(Math.abs(a - 0.9635) < 2e-3, `${a} deberia ser 0,9635 octavas`);
+  // **Y en hercios habrian sido 950**, o sea que el segundo paso ya habria
+  // chocado contra un tope de 1. El numero delata la moneda.
+  assert.ok(a < 1, 'todavia entra en el presupuesto de una octava');
+});
+
+test('ADR-039: volver hacia el origen descuenta, tambien en octavas', () => {
+  // Ir y volver deja el acumulado en cero exacto: el motor y el historial usan
+  // la misma funcion de escala. Con dos funciones distintas --una en octavas y
+  // otra en hercios, o `log2(Q)` contra octavas de ancho-- esto no da cero.
+  const h = historialDeLaSesion([
+    entrada([hojaEq(FREQ, 'Hz', 1000, 1250)]),
+    entrada([hojaEq(FREQ, 'Hz', 1250, 1000)]),
+  ], MEDICIONES, AHORA);
+  assert.ok(Math.abs(h.acumuladoPorRuta.get(FREQ)!) < 1e-12, 'ida y vuelta es cero');
+});
+
+test('ADR-039: el ancho se acumula en octavas de ancho de banda', () => {
+  // Q 1,0 -> 1,3 son 0,3044 octavas de ancho --BW(1,0) = 1,3885 y BW(1,3) =
+  // 1,0841--. Con `log2(Q2/Q1)` habrian sido 0,3785, que es MAS que el tercio
+  // de octava: la moneda equivocada cambia el veredicto, no sólo el número.
+  const Q = 'i.9.eq.b2.q';
+  const h = historialDeLaSesion([
+    entrada([hojaEq(Q, 'Q', 1.0, 1.3)]),
+  ], MEDICIONES, AHORA);
+  const a = h.acumuladoPorRuta.get(Q)!;
+  assert.ok(Math.abs(a + 0.3044) < 1e-3, `${a} deberia ser -0,3044 octavas de ancho`);
+});
+
+test('ADR-039: una ganancia sigue sumando decibeles, como siempre', () => {
+  // El control de que la escala por omision no cambio nada donde no tenia que
+  // cambiarlo: la ganancia de una banda se mueve en su propia unidad.
+  const G = 'i.9.eq.b2.gain';
+  const h = historialDeLaSesion([
+    entrada([hojaEq(G, 'dB', 0, 3)]),
+  ], MEDICIONES, AHORA);
+  assert.equal(h.acumuladoPorRuta.get(G), 3);
+});
+
+test('ADR-039: una fila que no se puede contar envenena la ruta en vez de valer cero', () => {
+  // Una frecuencia anotada en decibeles no se puede convertir a octavas. Antes
+  // la guarda era `!Number.isFinite(delta)` y una fila asi caia por la misma
+  // puerta que el primer paso de ADR-034: el acumulado quedaba en cero y la
+  // ruta arrancaba con el presupuesto entero. Son dos cosas distintas.
+  const h = historialDeLaSesion([
+    entrada([hojaEq(FREQ, 'dB', 1000, 1250)]),
+  ], MEDICIONES, AHORA);
+  assert.ok(Number.isNaN(h.acumuladoPorRuta.get(FREQ)!), 'no se puede contar: envenena');
+  assert.ok(h.rutasYaTocadas.has(FREQ), 'y la ruta quedo tocada igual: se movio');
+});
+
+test('ADR-039: salir del silencio sigue sin acumular, y se reconoce por el origen', () => {
+  // El primer paso de ADR-034 no tiene delta que contar y es correcto que no
+  // sume. Se distingue por `magnitudEsperada === -Infinity` --el origen que el
+  // llamador declara-- y no por que la cuenta no de un numero, que es lo que
+  // confundia los dos casos.
+  const h = historialDeLaSesion([
+    entrada([cambio({ path: RUTA, magnitudEsperada: -Infinity, magnitudEnviada: -32.14 })]),
+  ], MEDICIONES, AHORA);
+  assert.equal(h.acumuladoPorRuta.has(RUTA), false, 'no acumula');
+  assert.ok(h.rutasYaTocadas.has(RUTA), 'pero la cuña se movio');
 });

@@ -23,7 +23,7 @@ usuario eligió explícitamente cuando se le ofrecieron tres arranques.
 | | Tarea | Por qué va acá | ¿Toca la consola? |
 |---|---|---|---|
 | ~~**1**~~ | ~~**Medir la frecuencia y el Q de las bandas 2, 3 y 4**~~ | **HECHA el 2026-09-21**, ítem 121. Las tres comparten la exponencial de la banda 1, con error de `f0` entre 0,17 % y 0,25 % contra un criterio del 5 % | ya está |
-| **1b** | ~~**Decidir**~~ **Implementar** «un `kind`, una unidad»: que el motor pueda acotar un salto de frecuencia. **La decisión está tomada el 2026-09-21: [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)** | **Lo destapó la tarea 1 y es lo primero.** Medir las seis rutas **bajó** de 834 a 690 la cuenta de lo que el motor deja escribir: sus leyes están en Hz y en Q, el tope de `CHANNEL_EQ` está en dB, y INV-004 las rechaza —con razón: un tope de 4 dB no acota un salto de frecuencia—. **Mientras esto no se resuelva, la aplicación no puede mover una banda**, y toda la pieza 2 queda en el aire. El hallazgo está escrito desde el 2026-09-13 en [`hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`](../backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md) | no |
+| ~~**1b**~~ | ~~**Decidir**~~ ~~**Implementar**~~ **HECHA el 2026-09-22** «un `kind`, una unidad»: que el motor pueda acotar un salto de frecuencia. **La decisión está tomada el 2026-09-21: [ADR-039](../adr/ADR-039-el-freno-viaja-con-la-hoja-y-se-cuenta-en-octavas.md)** | **Lo destapó la tarea 1 y es lo primero.** Medir las seis rutas **bajó** de 834 a 690 la cuenta de lo que el motor deja escribir: sus leyes están en Hz y en Q, el tope de `CHANNEL_EQ` está en dB, y INV-004 las rechaza —con razón: un tope de 4 dB no acota un salto de frecuencia—. **Mientras esto no se resuelva, la aplicación no puede mover una banda**, y toda la pieza 2 queda en el aire. El hallazgo está escrito desde el 2026-09-13 en [`hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md`](../backlog/hallazgo-un-kind-una-unidad-y-las-hojas-no-coinciden.md) | no |
 | **2** | **Decidir si la aplicación puede elegir qué canal analiza** | Sin eso no hay forma de medir un canal, y la elección **es global: le cambia una pantalla al operador**. Es una escritura de clase nueva y necesita decisión del usuario | Decisión primero |
 | **3** | **Leer el espectro de un canal** | Las 122 bandas, convertidas con la escala ya medida, promediadas en una ventana. Sólo lee | No escribe |
 | **4** | **El asistente: qué banda mover y por qué** | El corazón. Necesita su propia decisión sobre **qué cuenta como «sobresale»** y **qué cuenta como «mejoró»** | No: es función pura |
@@ -54,27 +54,31 @@ con la unidad de la magnitud intacta y una **escala del movimiento** nueva
 banda se hace con la campana en cero**, sin tope al salto, porque una campana
 neutra no se oye. Con ganancia puesta, el retoque vuelve a llevar tope.
 
-**Lo que queda por construir**, y es lo primero de todo lo demás:
+**Los cuatro pasos están construidos el 2026-09-22:**
 
-1. La escala del movimiento por hoja, con la familia como valor por omisión. La
-   consultan **siete** sitios, tres de ellos fuera del motor, y leer por hoja
-   **cambia la interfaz pública de `@vse/domain`**: el contexto del cambio hoy no
-   lleva la ruta.
-2. La operación «poner la banda»: tres cambios sobre la misma banda del mismo
-   canal **y en ese orden —la ganancia primero—**, comprobado sobre el contenido
-   de la transacción. El orden no es cosmético: el ejecutor escribe uno por uno y
-   los intermedios suenan.
-3. El acumulado por sesión sumando en la escala del movimiento.
-4. El conteo de rutas permitidas, que tiene que volver a subir **exactamente**
-   las 240 que bajó —las ocho hojas de frecuencia y Q de las cuatro bandas más
-   el pasa-altos y el pasa-bajos, por veinticuatro canales; las cuatro ganancias
-   nunca se cayeron—. Si sube más, entró algo que nadie decidió.
+1. La escala del movimiento por hoja, con la familia como valor por omisión, en
+   `packages/domain/src/rules/hojas.ts`. Leer el tope por hoja cambió la
+   interfaz pública de `@vse/domain`: `ContextoCambio` lleva ahora la ruta y las
+   dos magnitudes, y la resta la hace el dominio con la escala de la hoja en vez
+   de recibir un delta ya hecho.
+2. La operación «poner la banda», en `poner-la-banda.ts`, comprobada sobre el
+   contenido y el orden por el motor. **La etiqueta es necesaria y no
+   suficiente**, igual que la exención de sistema.
+3. El acumulado por sesión sumando en la escala del movimiento, con la misma
+   función del dominio que usa el motor: ir y volver da cero exacto.
+4. El conteo volvió a **930 exacto**, con su reparto por familia —el ecualizador
+   de canal de 288 a 504 y el pasa-altos de 24 a 48— y con un control que
+   propone sobre cada una de las 240 el movimiento más grande que su tramo
+   medido admite y las rechaza a las 240 **por el tope**. Un censo de 930 con
+   ese control también en 930 querría decir que el freno no está conectado.
 
-**Y antes de encender la exención del salto libre, una medición barata que
-falta**: correr una campana neutra a lo largo del tramo medido y comprobar que la
-respuesta no se mueve. Lo que hay hoy es una cota sobre una configuración quieta,
-no una campana moviéndose, y lo encontró la auditoría de la propia ADR. Lo demás
-se puede construir sin eso.
+**Lo que NO se construyó, y es lo que sigue de esta pieza: la exención del salto
+libre.** Hoy la forma se exige y los tres cambios pasan por sus topes de
+siempre, así que poner una banda lejos todavía se rechaza. Falta la medición
+barata: correr una campana neutra a lo largo del tramo medido y comprobar que la
+respuesta no se mueve. Lo que hay es una cota sobre una configuración quieta, no
+una campana moviéndose, y lo encontró la auditoría de la propia ADR. **Esa
+medición toca la consola**, así que se pregunta antes.
 
 **2. Quién elige qué canal analiza.** El analizador de la consola es **uno solo**,
 y elegir su fuente es una escritura. No entra en ninguna de las categorías

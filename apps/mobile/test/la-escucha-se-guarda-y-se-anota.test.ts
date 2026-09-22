@@ -157,10 +157,24 @@ function transaccionConEscucha(medicionId: string | null): EntradaDiario {
     creadoEl: ENVIADO, cerradoEl: ENVIADO,
     medicionPosteriorId: medicionId,
     nivelEstablecidoEn: [],
+    // **Los nombres de campo son los de `CambioRegistrado`, y no lo eran.**
+    // Esta fila decia `valorAnterior`, `valorPropuesto` y `magnitudPropuesta`
+    // --que son los de `CambioPropuesto`, otro tipo-- y el `as unknown as` de
+    // abajo lo tapaba. `historialDeLaSesion` lee `magnitudEsperada` y
+    // `magnitudEnviada`, asi que leia `undefined` en las dos y el movimiento de
+    // esta transaccion **no se contaba**: el acumulado de la ruta quedaba
+    // ausente y el motor lo leia como cero.
+    //
+    // No se notaba porque la guarda de entonces --`!Number.isFinite(delta)`--
+    // dejaba pasar en silencio toda fila que no se pudiera contar. Desde
+    // ADR-039 una fila asi **envenena la ruta** en vez de valer cero, que es
+    // fallar cerrado, y por eso este test empezo a rechazar el segundo paso.
+    // El defecto era de la fila, no del motor.
     cambios: [{
-      path: RUTA, kind: 'PREAMP_GAIN',
-      valorAnterior: 0.3, valorPropuesto: 0.35, magnitudPropuesta: 3,
-      verificado: true, enviadoEl: ENVIADO,
+      path: RUTA, kind: 'PREAMP_GAIN', unidad: 'dB',
+      valorPrevio: 0.3, valorEsperado: 0.3, valorEnviado: 0.35,
+      magnitudEsperada: 0, magnitudEnviada: 3,
+      confirmadoPor: 'WITNESS', verificado: true, enviadoEl: ENVIADO,
     }],
   } as unknown as EntradaDiario;
 }

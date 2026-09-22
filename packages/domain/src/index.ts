@@ -20,3 +20,5 @@ export * from './rules/validacion.ts';
 export * from './rules/buses-de-salida.ts';
 export * from './rules/recorrido.ts';
 export * from './rules/canal-de-la-captacion.ts';
+export * from './rules/hojas.ts';
+export * from './rules/poner-la-banda.ts';
